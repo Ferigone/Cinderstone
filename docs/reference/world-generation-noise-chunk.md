@@ -33,6 +33,16 @@ records. Registration delegates through the reference before marking its shared
 identity, so a held marker is registered exactly once. Keeping an extra holder
 layer would make direct and held copies allocate different cache owners.
 
+Holder erasure also lets `Ap2.mapAll` rebuild ADD/MUL as `MulOrAdd` when a child
+becomes a direct constant. `ChunkDensity` retains this arithmetic rewrite for
+both scalar and array evaluation, including external point contexts; its
+canonical marker keys use the same rewritten shape. A zero coefficient still
+evaluates the held input, preserving negative zero and pre-interpolation
+errors. The [density ledger](world-generation-density.md) and
+`fixtures/world-generation-density-rewrite.json` record the source methods and
+actual constructed-NoiseChunk witnesses. Raw density evaluation retains its
+pre-wrapping semantics.
+
 `ChunkDensity::preliminary_surface_level` samples the wrapped initial-density
 root with a separate point context, including queries outside the chunk. It
 preserves the current interpolation owner flag and never substitutes the

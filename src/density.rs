@@ -353,10 +353,10 @@ fn rarity(kind: Rarity, value: f64) -> f64 {
     }
 }
 fn canonical(name: &str) -> String {
-    if name.contains(':') {
-        name.to_owned()
-    } else {
-        format!("minecraft:{name}")
+    match name.split_once(':') {
+        Some(("", path)) => format!("minecraft:{path}"),
+        Some(_) => name.to_owned(),
+        None => format!("minecraft:{name}"),
     }
 }
 fn number(value: &Value, key: &str) -> Result<f64> {
@@ -380,6 +380,14 @@ fn name<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
 /// contexts delegate markers; chunk contexts own their cache/counter state.
 pub trait DensityContext: Sized {
     type Error;
+    /// A visitor may replace an ADD/MUL node with MulOrAdd after erasing its
+    /// holder arguments. The input is evaluated before applying the constant,
+    /// even when that constant is zero. Raw RandomState contexts do not perform
+    /// this NoiseChunk rewrite. This describes the wrapped function, regardless
+    /// of whether its sampling FunctionContext belongs to the chunk.
+    fn rewritten_constant_argument(&self, _id: NodeId) -> Option<(NodeId, f64)> {
+        None
+    }
     fn marker(
         &mut self,
         graph: &DensityGraph,
@@ -1017,6 +1025,26 @@ impl DensityGraph {
         };
         self.push(node, bounds)
     }
+    /// NoiseChunk.wrapNew erases HolderHolder after visiting its contents.
+    /// Ap2.mapAll then re-runs the two-argument factory: only a resulting direct
+    /// Constant permits MulOrAdd, not a marker or other function over a constant.
+    fn wrapped_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {
+        let DensityNode::Binary(Binary::Add | Binary::Mul, a, b) = self.nodes[id.0] else {
+            return None;
+        };
+        let constant = |mut id: NodeId| loop {
+            match self.nodes[id.0] {
+                DensityNode::Reference(input) => id = input,
+                DensityNode::Constant(value) => break Some(value),
+                _ => break None,
+            }
+        };
+        if let Some(value) = constant(a) {
+            Some((b, value))
+        } else {
+            constant(b).map(|value| (a, value))
+        }
+    }
     fn parse_spline(&mut self, value: &Value) -> Result<Spline> {
         if let Some(value) = value.as_f64() {
             return Ok(Spline::Constant(value as f32));
@@ -1125,6 +1153,14 @@ impl DensityGraph {
             DensityNode::BlendAlpha => 1.0,
             DensityNode::BlendOffset | DensityNode::Beardifier => 0.0,
             DensityNode::Binary(kind, a, b) => {
+                if let Some((input, argument)) = context.rewritten_constant_argument(id) {
+                    let value = self.eval_sampled(input, point, context)?;
+                    return Ok(match kind {
+                        Binary::Add => value + argument,
+                        Binary::Mul => value * argument,
+                        _ => unreachable!("wrapped constant optimization is add/mul only"),
+                    });
+                }
                 let a = self.eval_sampled(*a, point, context)?;
                 match kind {
                     Binary::Add => a + self.eval_sampled(*b, point, context)?,
@@ -1319,6 +1355,17 @@ impl DensityGraph {
                 }
             }
             DensityNode::Binary(kind, a, b) => {
+                if let Some((input, argument)) = context.rewritten_constant_argument(id) {
+                    self.fill_sampled(input, values, context)?;
+                    for value in values {
+                        *value = match kind {
+                            Binary::Add => *value + argument,
+                            Binary::Mul => *value * argument,
+                            _ => unreachable!("wrapped constant optimization is add/mul only"),
+                        };
+                    }
+                    return Ok(());
+                }
                 self.fill_sampled(*a, values, context)?;
                 match kind {
                     Binary::Add => {
