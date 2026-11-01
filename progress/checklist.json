@@ -1,15 +1,15 @@
 {
   "format": "mc121-port-progress-v1",
-  "updated_at": "2026-11-01T02:19:40.178967+00:00",
+  "updated_at": "2026-11-01T14:30:04.800990+00:00",
   "scope_version": 1,
   "metric": "100 named unweighted delivery items; planning-checklist completion only",
   "not_behavior_coverage": true,
   "not_engineering_effort_percentage": true,
   "total_points": 100,
-  "code_ported_points": 55,
-  "main_integrated_points": 50,
-  "code_ported_percent": 55,
-  "main_integrated_percent": 50,
+  "code_ported_points": 56,
+  "main_integrated_points": 51,
+  "code_ported_percent": 56,
+  "main_integrated_percent": 51,
   "full_vanilla_parity": false,
   "rows": [
     {
@@ -44,8 +44,20 @@
       "id": "network.5",
       "area": "network",
       "points": 1,
-      "code_ported": false,
-      "main_integrated": false
+      "code_ported": true,
+      "main_integrated": true,
+      "closure_evidence": {
+        "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+        "binary_sha256": "d68f5c8de6c95cec4df4d28777c3e35f045890ac9a725181a29b38d0eb3690dd",
+        "runtime_completed_at": "2026-11-01T14:18:52.638Z",
+        "public_report": "https://github.com/Ferigone/Cinderstone/blob/master/docs/validation/configuration-flow.json",
+        "main_callsites": [
+          "connection/receive_login",
+          "main_configuration::configure",
+          "play: cookie/resource response handling and actual actor cleanup/readmission"
+        ],
+        "scope_unchanged": true
+      }
     },
     {
       "id": "authentication.1",
