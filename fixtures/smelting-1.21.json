@@ -1,0 +1,2190 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source": {
+    "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "recipes": "data/minecraft/recipe/*.json",
+    "item_tags": "data/minecraft/tags/item/*.json",
+    "fuel_method": "AbstractFurnaceBlockEntity.getFuel",
+    "mapping_sha256": "c9d9fda3143c100fa0566099074fc5d912b8b7ef3cb5b84c87eab411bd5bfb51",
+    "fuel_derivation": "Ordered original bytecode additions expanded against default item tags; non_flammable_wood omitted"
+  },
+  "scope": "Pinned vanilla default recipes and item tags; datapack reload and custom recipe priority are not represented",
+  "fuel_additions": [
+    {
+      "kind": "item",
+      "id": "minecraft:lava_bucket",
+      "duration": 20000
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:coal_block",
+      "duration": 16000
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:blaze_rod",
+      "duration": 2400
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:coal",
+      "duration": 1600
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:charcoal",
+      "duration": 1600
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:logs",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:bamboo_blocks",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:planks",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bamboo_mosaic",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_stairs",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bamboo_mosaic_stairs",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_slabs",
+      "duration": 150
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bamboo_mosaic_slab",
+      "duration": 150
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_trapdoors",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_pressure_plates",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_fences",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:fence_gates",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:note_block",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bookshelf",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:chiseled_bookshelf",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:lectern",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:jukebox",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:chest",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:trapped_chest",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:crafting_table",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:daylight_detector",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:banners",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bow",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:fishing_rod",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:ladder",
+      "duration": 300
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:signs",
+      "duration": 200
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:hanging_signs",
+      "duration": 800
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:wooden_shovel",
+      "duration": 200
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:wooden_sword",
+      "duration": 200
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:wooden_hoe",
+      "duration": 200
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:wooden_axe",
+      "duration": 200
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:wooden_pickaxe",
+      "duration": 200
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_doors",
+      "duration": 200
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:boats",
+      "duration": 1200
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wool",
+      "duration": 100
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wooden_buttons",
+      "duration": 100
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:stick",
+      "duration": 100
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:saplings",
+      "duration": 100
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bowl",
+      "duration": 100
+    },
+    {
+      "kind": "tag",
+      "id": "minecraft:wool_carpets",
+      "duration": 67
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:dried_kelp_block",
+      "duration": 4001
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:crossbow",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:bamboo",
+      "duration": 50
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:dead_bush",
+      "duration": 100
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:scaffolding",
+      "duration": 50
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:loom",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:barrel",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:cartography_table",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:fletching_table",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:smithing_table",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:composter",
+      "duration": 300
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:azalea",
+      "duration": 100
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:flowering_azalea",
+      "duration": 100
+    },
+    {
+      "kind": "item",
+      "id": "minecraft:mangrove_roots",
+      "duration": 300
+    }
+  ],
+  "fuels": {
+    "36": 300,
+    "37": 300,
+    "38": 300,
+    "39": 300,
+    "40": 300,
+    "41": 300,
+    "42": 300,
+    "43": 300,
+    "44": 300,
+    "47": 300,
+    "48": 100,
+    "49": 100,
+    "50": 100,
+    "51": 100,
+    "52": 100,
+    "53": 100,
+    "54": 100,
+    "55": 100,
+    "81": 16000,
+    "132": 300,
+    "133": 300,
+    "134": 300,
+    "135": 300,
+    "136": 300,
+    "137": 300,
+    "138": 300,
+    "139": 300,
+    "140": 300,
+    "144": 300,
+    "145": 300,
+    "146": 300,
+    "147": 300,
+    "148": 300,
+    "149": 300,
+    "150": 300,
+    "151": 300,
+    "152": 300,
+    "155": 300,
+    "156": 300,
+    "157": 300,
+    "158": 300,
+    "159": 300,
+    "160": 300,
+    "161": 300,
+    "162": 300,
+    "165": 300,
+    "166": 300,
+    "167": 300,
+    "168": 300,
+    "169": 300,
+    "170": 300,
+    "171": 300,
+    "172": 300,
+    "173": 300,
+    "197": 100,
+    "198": 100,
+    "199": 100,
+    "202": 100,
+    "203": 100,
+    "204": 100,
+    "205": 100,
+    "206": 100,
+    "207": 100,
+    "208": 100,
+    "209": 100,
+    "210": 100,
+    "211": 100,
+    "212": 100,
+    "213": 100,
+    "214": 100,
+    "215": 100,
+    "216": 100,
+    "217": 100,
+    "251": 50,
+    "252": 150,
+    "253": 150,
+    "254": 150,
+    "255": 150,
+    "256": 150,
+    "257": 150,
+    "258": 150,
+    "259": 150,
+    "260": 150,
+    "261": 150,
+    "286": 300,
+    "287": 300,
+    "299": 300,
+    "300": 300,
+    "303": 300,
+    "310": 300,
+    "311": 300,
+    "312": 300,
+    "313": 300,
+    "314": 300,
+    "315": 300,
+    "316": 300,
+    "317": 300,
+    "318": 300,
+    "319": 300,
+    "383": 300,
+    "384": 300,
+    "385": 300,
+    "386": 300,
+    "387": 300,
+    "388": 300,
+    "389": 300,
+    "390": 300,
+    "391": 300,
+    "392": 300,
+    "446": 67,
+    "447": 67,
+    "448": 67,
+    "449": 67,
+    "450": 67,
+    "451": 67,
+    "452": 67,
+    "453": 67,
+    "454": 67,
+    "455": 67,
+    "456": 67,
+    "457": 67,
+    "458": 67,
+    "459": 67,
+    "460": 67,
+    "461": 67,
+    "656": 50,
+    "670": 300,
+    "674": 300,
+    "678": 300,
+    "681": 300,
+    "684": 100,
+    "685": 100,
+    "686": 100,
+    "687": 100,
+    "688": 100,
+    "689": 100,
+    "690": 100,
+    "691": 100,
+    "692": 100,
+    "699": 300,
+    "700": 300,
+    "701": 300,
+    "702": 300,
+    "703": 300,
+    "704": 300,
+    "705": 300,
+    "706": 300,
+    "707": 300,
+    "711": 200,
+    "712": 200,
+    "713": 200,
+    "714": 200,
+    "715": 200,
+    "716": 200,
+    "717": 200,
+    "718": 200,
+    "719": 200,
+    "731": 300,
+    "732": 300,
+    "733": 300,
+    "734": 300,
+    "735": 300,
+    "736": 300,
+    "737": 300,
+    "738": 300,
+    "739": 300,
+    "750": 300,
+    "751": 300,
+    "752": 300,
+    "753": 300,
+    "754": 300,
+    "755": 300,
+    "756": 300,
+    "757": 300,
+    "758": 300,
+    "774": 1200,
+    "775": 1200,
+    "776": 1200,
+    "777": 1200,
+    "778": 1200,
+    "779": 1200,
+    "780": 1200,
+    "781": 1200,
+    "782": 1200,
+    "783": 1200,
+    "784": 1200,
+    "785": 1200,
+    "786": 1200,
+    "787": 1200,
+    "788": 1200,
+    "789": 1200,
+    "790": 1200,
+    "791": 1200,
+    "799": 100,
+    "801": 300,
+    "803": 1600,
+    "804": 1600,
+    "818": 200,
+    "819": 200,
+    "820": 200,
+    "821": 200,
+    "822": 200,
+    "848": 100,
+    "886": 200,
+    "887": 200,
+    "888": 200,
+    "889": 200,
+    "890": 200,
+    "891": 200,
+    "892": 200,
+    "893": 200,
+    "894": 200,
+    "897": 800,
+    "898": 800,
+    "899": 800,
+    "900": 800,
+    "901": 800,
+    "902": 800,
+    "903": 800,
+    "904": 800,
+    "905": 800,
+    "910": 20000,
+    "923": 4001,
+    "931": 300,
+    "994": 2400,
+    "1133": 300,
+    "1134": 300,
+    "1135": 300,
+    "1136": 300,
+    "1137": 300,
+    "1138": 300,
+    "1139": 300,
+    "1140": 300,
+    "1141": 300,
+    "1142": 300,
+    "1143": 300,
+    "1144": 300,
+    "1145": 300,
+    "1146": 300,
+    "1147": 300,
+    "1148": 300,
+    "1192": 300,
+    "1194": 300,
+    "1204": 300,
+    "1205": 300,
+    "1208": 300,
+    "1209": 300,
+    "1211": 300
+  },
+  "remainders": {
+    "914": 908,
+    "909": 908,
+    "910": 908,
+    "1157": 999,
+    "1224": 999
+  },
+  "recipes": [
+    {
+      "id": "minecraft:baked_potato",
+      "kind": "Smelting",
+      "ingredient": [
+        1098
+      ],
+      "result": {
+        "item_id": 1099,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:baked_potato_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        1098
+      ],
+      "result": {
+        "item_id": 1099,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:black_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        442
+      ],
+      "result": {
+        "item_id": 554,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:blue_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        438
+      ],
+      "result": {
+        "item_id": 550,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:brick",
+      "kind": "Smelting",
+      "ingredient": [
+        922
+      ],
+      "result": {
+        "item_id": 921,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.3
+    },
+    {
+      "id": "minecraft:brown_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        439
+      ],
+      "result": {
+        "item_id": 551,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:charcoal",
+      "kind": "Smelting",
+      "ingredient": [
+        138,
+        172,
+        151,
+        161,
+        132,
+        166,
+        145,
+        155,
+        136,
+        170,
+        149,
+        159,
+        134,
+        168,
+        147,
+        157,
+        135,
+        169,
+        148,
+        158,
+        133,
+        167,
+        146,
+        156,
+        139,
+        173,
+        152,
+        162,
+        137,
+        171,
+        150,
+        160
+      ],
+      "result": {
+        "item_id": 804,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.15
+    },
+    {
+      "id": "minecraft:coal_from_blasting_coal_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        62
+      ],
+      "result": {
+        "item_id": 803,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:coal_from_blasting_deepslate_coal_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        63
+      ],
+      "result": {
+        "item_id": 803,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:coal_from_smelting_coal_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        62
+      ],
+      "result": {
+        "item_id": 803,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:coal_from_smelting_deepslate_coal_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        63
+      ],
+      "result": {
+        "item_id": 803,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cooked_beef",
+      "kind": "Smelting",
+      "ingredient": [
+        988
+      ],
+      "result": {
+        "item_id": 989,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_beef_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        988
+      ],
+      "result": {
+        "item_id": 989,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_chicken",
+      "kind": "Smelting",
+      "ingredient": [
+        990
+      ],
+      "result": {
+        "item_id": 991,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_chicken_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        990
+      ],
+      "result": {
+        "item_id": 991,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_cod",
+      "kind": "Smelting",
+      "ingredient": [
+        935
+      ],
+      "result": {
+        "item_id": 939,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_cod_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        935
+      ],
+      "result": {
+        "item_id": 939,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_mutton",
+      "kind": "Smelting",
+      "ingredient": [
+        1131
+      ],
+      "result": {
+        "item_id": 1132,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_mutton_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        1131
+      ],
+      "result": {
+        "item_id": 1132,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_porkchop",
+      "kind": "Smelting",
+      "ingredient": [
+        881
+      ],
+      "result": {
+        "item_id": 882,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_porkchop_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        881
+      ],
+      "result": {
+        "item_id": 882,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_rabbit",
+      "kind": "Smelting",
+      "ingredient": [
+        1118
+      ],
+      "result": {
+        "item_id": 1119,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_rabbit_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        1118
+      ],
+      "result": {
+        "item_id": 1119,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_salmon",
+      "kind": "Smelting",
+      "ingredient": [
+        936
+      ],
+      "result": {
+        "item_id": 940,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:cooked_salmon_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        936
+      ],
+      "result": {
+        "item_id": 940,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:copper_ingot_from_blasting_copper_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        66
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:copper_ingot_from_blasting_deepslate_copper_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        67
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:copper_ingot_from_blasting_raw_copper",
+      "kind": "Blasting",
+      "ingredient": [
+        812
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:copper_ingot_from_smelting_copper_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        66
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:copper_ingot_from_smelting_deepslate_copper_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        67
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:copper_ingot_from_smelting_raw_copper",
+      "kind": "Smelting",
+      "ingredient": [
+        812
+      ],
+      "result": {
+        "item_id": 813,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:cracked_deepslate_bricks",
+      "kind": "Smelting",
+      "ingredient": [
+        346
+      ],
+      "result": {
+        "item_id": 347,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cracked_deepslate_tiles",
+      "kind": "Smelting",
+      "ingredient": [
+        348
+      ],
+      "result": {
+        "item_id": 349,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cracked_nether_bricks",
+      "kind": "Smelting",
+      "ingredient": [
+        366
+      ],
+      "result": {
+        "item_id": 367,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cracked_polished_blackstone_bricks",
+      "kind": "Smelting",
+      "ingredient": [
+        1236
+      ],
+      "result": {
+        "item_id": 1239,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cracked_stone_bricks",
+      "kind": "Smelting",
+      "ingredient": [
+        340
+      ],
+      "result": {
+        "item_id": 342,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:cyan_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        436
+      ],
+      "result": {
+        "item_id": 548,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:deepslate",
+      "kind": "Smelting",
+      "ingredient": [
+        9
+      ],
+      "result": {
+        "item_id": 8,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:diamond_from_blasting_deepslate_diamond_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        77
+      ],
+      "result": {
+        "item_id": 805,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:diamond_from_blasting_diamond_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        76
+      ],
+      "result": {
+        "item_id": 805,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:diamond_from_smelting_deepslate_diamond_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        77
+      ],
+      "result": {
+        "item_id": 805,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:diamond_from_smelting_diamond_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        76
+      ],
+      "result": {
+        "item_id": 805,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:dried_kelp_from_smelting",
+      "kind": "Smelting",
+      "ingredient": [
+        244
+      ],
+      "result": {
+        "item_id": 985,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:dried_kelp_from_smoking",
+      "kind": "Smoking",
+      "ingredient": [
+        244
+      ],
+      "result": {
+        "item_id": 985,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:emerald_from_blasting_deepslate_emerald_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        73
+      ],
+      "result": {
+        "item_id": 806,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:emerald_from_blasting_emerald_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        72
+      ],
+      "result": {
+        "item_id": 806,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:emerald_from_smelting_deepslate_emerald_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        73
+      ],
+      "result": {
+        "item_id": 806,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:emerald_from_smelting_emerald_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        72
+      ],
+      "result": {
+        "item_id": 806,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:glass",
+      "kind": "Smelting",
+      "ingredient": [
+        57,
+        60
+      ],
+      "result": {
+        "item_id": 188,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:gold_ingot_from_blasting_deepslate_gold_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        69
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_blasting_gold_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        68
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_blasting_nether_gold_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        78
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_blasting_raw_gold",
+      "kind": "Blasting",
+      "ingredient": [
+        814
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_smelting_deepslate_gold_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        69
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_smelting_gold_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        68
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_smelting_nether_gold_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        78
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_ingot_from_smelting_raw_gold",
+      "kind": "Smelting",
+      "ingredient": [
+        814
+      ],
+      "result": {
+        "item_id": 815,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:gold_nugget_from_blasting",
+      "kind": "Blasting",
+      "ingredient": [
+        830,
+        829,
+        831,
+        832,
+        828,
+        872,
+        873,
+        874,
+        875,
+        1125
+      ],
+      "result": {
+        "item_id": 996,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:gold_nugget_from_smelting",
+      "kind": "Smelting",
+      "ingredient": [
+        830,
+        829,
+        831,
+        832,
+        828,
+        872,
+        873,
+        874,
+        875,
+        1125
+      ],
+      "result": {
+        "item_id": 996,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:gray_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        434
+      ],
+      "result": {
+        "item_id": 546,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:green_dye",
+      "kind": "Smelting",
+      "ingredient": [
+        308
+      ],
+      "result": {
+        "item_id": 957,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 1.0
+    },
+    {
+      "id": "minecraft:green_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        440
+      ],
+      "result": {
+        "item_id": 552,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:iron_ingot_from_blasting_deepslate_iron_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        65
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_ingot_from_blasting_iron_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        64
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_ingot_from_blasting_raw_iron",
+      "kind": "Blasting",
+      "ingredient": [
+        810
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_ingot_from_smelting_deepslate_iron_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        65
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_ingot_from_smelting_iron_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        64
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_ingot_from_smelting_raw_iron",
+      "kind": "Smelting",
+      "ingredient": [
+        810
+      ],
+      "result": {
+        "item_id": 811,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:iron_nugget_from_blasting",
+      "kind": "Blasting",
+      "ingredient": [
+        835,
+        834,
+        836,
+        837,
+        833,
+        864,
+        865,
+        866,
+        867,
+        1124,
+        860,
+        861,
+        862,
+        863
+      ],
+      "result": {
+        "item_id": 1165,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:iron_nugget_from_smelting",
+      "kind": "Smelting",
+      "ingredient": [
+        835,
+        834,
+        836,
+        837,
+        833,
+        864,
+        865,
+        866,
+        867,
+        1124,
+        860,
+        861,
+        862,
+        863
+      ],
+      "result": {
+        "item_id": 1165,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:lapis_lazuli_from_blasting_deepslate_lapis_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        75
+      ],
+      "result": {
+        "item_id": 807,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:lapis_lazuli_from_blasting_lapis_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        74
+      ],
+      "result": {
+        "item_id": 807,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:lapis_lazuli_from_smelting_deepslate_lapis_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        75
+      ],
+      "result": {
+        "item_id": 807,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:lapis_lazuli_from_smelting_lapis_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        74
+      ],
+      "result": {
+        "item_id": 807,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:light_blue_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        430
+      ],
+      "result": {
+        "item_id": 542,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:light_gray_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        435
+      ],
+      "result": {
+        "item_id": 547,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:lime_dye_from_smelting",
+      "kind": "Smelting",
+      "ingredient": [
+        201
+      ],
+      "result": {
+        "item_id": 949,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:lime_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        432
+      ],
+      "result": {
+        "item_id": 544,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:magenta_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        429
+      ],
+      "result": {
+        "item_id": 541,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:nether_brick",
+      "kind": "Smelting",
+      "ingredient": [
+        325
+      ],
+      "result": {
+        "item_id": 1115,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:netherite_scrap",
+      "kind": "Smelting",
+      "ingredient": [
+        80
+      ],
+      "result": {
+        "item_id": 817,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 2.0
+    },
+    {
+      "id": "minecraft:netherite_scrap_from_blasting",
+      "kind": "Blasting",
+      "ingredient": [
+        80
+      ],
+      "result": {
+        "item_id": 817,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 2.0
+    },
+    {
+      "id": "minecraft:orange_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        428
+      ],
+      "result": {
+        "item_id": 540,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:pink_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        433
+      ],
+      "result": {
+        "item_id": 545,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:popped_chorus_fruit",
+      "kind": "Smelting",
+      "ingredient": [
+        1150
+      ],
+      "result": {
+        "item_id": 1151,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:purple_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        437
+      ],
+      "result": {
+        "item_id": 549,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:quartz",
+      "kind": "Smelting",
+      "ingredient": [
+        79
+      ],
+      "result": {
+        "item_id": 808,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:quartz_from_blasting",
+      "kind": "Blasting",
+      "ingredient": [
+        79
+      ],
+      "result": {
+        "item_id": 808,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.2
+    },
+    {
+      "id": "minecraft:red_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        441
+      ],
+      "result": {
+        "item_id": 553,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:redstone_from_blasting_deepslate_redstone_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        71
+      ],
+      "result": {
+        "item_id": 657,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:redstone_from_blasting_redstone_ore",
+      "kind": "Blasting",
+      "ingredient": [
+        70
+      ],
+      "result": {
+        "item_id": 657,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 100,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:redstone_from_smelting_deepslate_redstone_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        71
+      ],
+      "result": {
+        "item_id": 657,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:redstone_from_smelting_redstone_ore",
+      "kind": "Smelting",
+      "ingredient": [
+        70
+      ],
+      "result": {
+        "item_id": 657,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.7
+    },
+    {
+      "id": "minecraft:smooth_basalt",
+      "kind": "Smelting",
+      "ingredient": [
+        328
+      ],
+      "result": {
+        "item_id": 330,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:smooth_quartz",
+      "kind": "Smelting",
+      "ingredient": [
+        423
+      ],
+      "result": {
+        "item_id": 281,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:smooth_red_sandstone",
+      "kind": "Smelting",
+      "ingredient": [
+        510
+      ],
+      "result": {
+        "item_id": 282,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:smooth_sandstone",
+      "kind": "Smelting",
+      "ingredient": [
+        191
+      ],
+      "result": {
+        "item_id": 283,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:smooth_stone",
+      "kind": "Smelting",
+      "ingredient": [
+        1
+      ],
+      "result": {
+        "item_id": 284,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:sponge",
+      "kind": "Smelting",
+      "ingredient": [
+        187
+      ],
+      "result": {
+        "item_id": 186,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.15
+    },
+    {
+      "id": "minecraft:stone",
+      "kind": "Smelting",
+      "ingredient": [
+        35
+      ],
+      "result": {
+        "item_id": 1,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        309
+      ],
+      "result": {
+        "item_id": 462,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.35
+    },
+    {
+      "id": "minecraft:white_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        427
+      ],
+      "result": {
+        "item_id": 539,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    },
+    {
+      "id": "minecraft:yellow_glazed_terracotta",
+      "kind": "Smelting",
+      "ingredient": [
+        431
+      ],
+      "result": {
+        "item_id": 543,
+        "count": 1,
+        "components": [],
+        "removed_components": []
+      },
+      "cooking_time": 200,
+      "experience": 0.1
+    }
+  ]
+}

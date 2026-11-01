@@ -78,6 +78,7 @@ pub mod player_body_world;
 pub mod player_food;
 pub mod server_recipe_book;
 pub mod simulation;
+pub mod smelting;
 pub mod storage;
 pub mod survival;
 pub mod tick;
