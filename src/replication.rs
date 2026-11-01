@@ -302,6 +302,13 @@ impl PlayerTracker {
             EntityEvent::Spawn(player) => {
                 self.upsert(update.revision, (**player).clone(), loaded, &mut packets)?
             }
+            EntityEvent::ChatSession { session, .. } => {
+                if let Some(known) = self.known.get_mut(&id) {
+                    known.player.chat_session = session.clone();
+                    known.revision = update.revision;
+                    packets.push(entity::player_info_update(std::slice::from_ref(&known.player), 0x02)?);
+                }
+            }
             EntityEvent::Move { current, .. } => {
                 current.validate()?;
                 if let Some(player) = self.known.get_mut(&id) {

@@ -276,6 +276,7 @@ impl PlayerState {
 #[derive(Debug, Clone)]
 pub enum EntityEvent {
     Spawn(Box<PlayerState>),
+    ChatSession { entity_id: i32, uuid: [u8; 16], session: Option<ChatSession> },
     Move {
         entity_id: i32,
         previous: Position,
@@ -311,6 +312,7 @@ impl EntityEvent {
         match self {
             Self::Spawn(player) => player.entity_id,
             Self::Move { entity_id, .. }
+            | Self::ChatSession { entity_id, .. }
             | Self::Animation { entity_id, .. }
             | Self::Metadata { entity_id, .. }
             | Self::EntityData { entity_id, .. }
@@ -323,12 +325,13 @@ impl EntityEvent {
     /// player. Send self tab-list updates separately with player_info_update.
     pub fn packets_for(&self, observer_entity_id: i32) -> Result<Vec<Packet>> {
         if self.entity_id() == observer_entity_id
-            && !matches!(self, Self::Metadata { .. } | Self::EntityData { .. })
+            && !matches!(self, Self::Metadata { .. } | Self::EntityData { .. } | Self::ChatSession { .. })
         {
             return Ok(Vec::new());
         }
         match self {
             Self::Spawn(player) => spawn_packets(player),
+            Self::ChatSession { uuid, session, .. } => Ok(vec![chat_session_packet(*uuid, session.as_ref())?]),
             Self::Move {
                 entity_id,
                 previous,
@@ -382,6 +385,15 @@ impl EntityRegistry {
         self.players
             .values()
             .find(|p| p.profile.name.eq_ignore_ascii_case(name))
+    }
+    pub fn set_chat_session(&mut self, id: i32, session: Option<ChatSession>) -> Result<Option<EntityEvent>> {
+        if let Some(value) = &session {
+            ensure!(value.public_key.len() <= 512 && value.key_signature.len() <= 4096, "chat session exceeds wire limits");
+        }
+        let player = self.players.get_mut(&id).ok_or_else(|| anyhow::anyhow!("unknown player chat session owner"))?;
+        if player.chat_session == session { return Ok(None); }
+        player.chat_session = session.clone();
+        Ok(Some(EntityEvent::ChatSession { entity_id: id, uuid: player.profile.uuid, session }))
     }
     pub fn register(&mut self, mut player: PlayerState) -> Result<EntityEvent> {
         apply_metadata(&mut player.entity_data, player.metadata)?;
@@ -560,6 +572,18 @@ fn packet(id: i32, writer: Writer) -> Packet {
 
 /// All six protocol-767 PlayerInfoUpdate actions, with each action's payload
 /// emitted only when its bit is present. Unrecognized future action bits fail.
+pub fn chat_session_packet(uuid: [u8; 16], session: Option<&ChatSession>) -> Result<Packet> {
+    let mut out = Writer::new();
+    out.u8(0x02).varint(1).uuid(uuid).bool(session.is_some());
+    if let Some(session) = session {
+        ensure!(session.public_key.len() <= 512 && session.key_signature.len() <= 4096, "chat session exceeds wire limits");
+        out.uuid(session.uuid).i64(session.expires_at)
+            .varint(session.public_key.len() as i32).raw(&session.public_key)
+            .varint(session.key_signature.len() as i32).raw(&session.key_signature);
+    }
+    Ok(packet(0x3e, out))
+}
+
 pub fn player_info_update(players: &[PlayerState], actions: u8) -> Result<Packet> {
     ensure!(
         actions & !0x3f == 0,

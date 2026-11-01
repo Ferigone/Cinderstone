@@ -104,6 +104,9 @@ mod main_bucket_interactions;
 mod main_configuration;
 mod main_administration;
 mod main_admin_dispatch;
+mod main_chat;
+mod main_chat_dispatch;
+mod main_chat_keys;
 use main_admin_dispatch::AdminConnectionEvent;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
@@ -135,6 +138,7 @@ struct Options {
     max_players: i32,
     enforce_whitelist: bool,
     op_permission_level: i32,
+    enforce_secure_profile: bool,
 }
 
 impl Options {
@@ -157,6 +161,7 @@ impl Options {
             max_players: 20,
             enforce_whitelist: false,
             op_permission_level: 4,
+            enforce_secure_profile: true,
         };
         let mut pack_url = String::new();
         let mut pack_hash = String::new();
@@ -199,6 +204,7 @@ impl Options {
                 "--server-directory" => options.server_directory = Some(value.into()),
                 "--max-players" => options.max_players = value.parse().context("invalid maximum players")?,
                 "--op-permission-level" => options.op_permission_level = value.parse().context("invalid operator permission level")?,
+                "--enforce-secure-profile" => options.enforce_secure_profile = value.parse().context("enforce-secure-profile must be true or false")?,
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
                 "--resource-pack-url" => pack_url = value,
@@ -264,6 +270,7 @@ struct Capture {
     packets: Vec<CapturedPacket>,
 }
 struct Fixtures {
+    chat_type: i32,
     configuration: Vec<Packet>,
     dimension: i32,
     dimension_facts: DimensionFacts,
@@ -272,6 +279,8 @@ struct Fixtures {
 
 #[derive(Clone, Copy)]
 struct ClientInformation {
+    chat_visibility: i32,
+    text_filtering: bool,
     view_distance: i32,
     skin_parts: u8,
     main_hand: u8,
@@ -384,7 +393,9 @@ async fn fixtures(path: &Path) -> Result<Fixtures> {
             .context("invalid seed hash low word")?,
     )?;
     let seed_hash = ((u64::from(high as u32) << 32) | u64::from(low as u32)) as i64;
+    let chat_type = main_chat_keys::captured_chat_type(&configuration)?;
     Ok(Fixtures {
+        chat_type,
         configuration,
         dimension,
         dimension_facts,
@@ -426,6 +437,9 @@ struct Server {
     administration: StdRwLock<main_administration::Administration>,
     admin_events: broadcast::Sender<AdminConnectionEvent>,
     connection_ticks: watch::Sender<u64>,
+    chat_keys: watch::Sender<Arc<mc121_rust::chat_crypto::ServiceKeySet>>,
+    chat_keys_attempted: watch::Sender<bool>,
+    chat_dispatch: Mutex<()>,
     entities: AtomicI32,
     connection_sequence: AtomicU64,
     configuration_requests: broadcast::Sender<i32>,
@@ -462,6 +476,8 @@ struct LivePlayers {
     containers: BTreeMap<i32, SharedContainer>,
     disconnects: BTreeMap<i32, watch::Sender<Option<&'static str>>>,
     connection_addresses: BTreeMap<i32, SocketAddr>,
+    chat: main_chat::MainChatRuntime,
+    player_last_actions: BTreeMap<i32, i64>,
     pending_block_acks: BTreeMap<i32, i32>,
     flying: BTreeSet<i32>,
     unavailable_pose: BTreeMap<i32, String>,
@@ -637,6 +653,7 @@ impl ClientTrackers {
 
 #[derive(Clone)]
 enum PlayerEvent {
+    ChatDisconnect { recipient: i32, reason: &'static str },
     ChunksReady {
         recipient: i32,
         cutoff: u64,
@@ -719,6 +736,8 @@ impl LivePlayers {
             containers: BTreeMap::new(),
             disconnects: BTreeMap::new(),
             connection_addresses: BTreeMap::new(),
+            chat: main_chat::MainChatRuntime::default(),
+            player_last_actions: BTreeMap::new(),
             pending_block_acks: BTreeMap::new(),
             flying: BTreeSet::new(),
             unavailable_pose: BTreeMap::new(),
@@ -2230,6 +2249,8 @@ impl Server {
             players.containers.remove(&id);
             players.disconnects.remove(&id);
             players.connection_addresses.remove(&id);
+            players.chat.remove(id);
+            players.player_last_actions.remove(&id);
             players.pending_block_acks.remove(&id);
             players.flying.remove(&id);
             players.unavailable_pose.remove(&id);
@@ -2551,6 +2572,9 @@ async fn main() -> Result<()> {
         administration: StdRwLock::new(administration),
         admin_events: broadcast::channel(256).0,
         connection_ticks: watch::channel(0).0,
+        chat_keys: watch::channel(Arc::new(mc121_rust::chat_crypto::ServiceKeySet::empty())).0,
+        chat_keys_attempted: watch::channel(false).0,
+        chat_dispatch: Mutex::new(()),
         entities: AtomicI32::new(next_entity_id),
         connection_sequence: AtomicU64::new(1),
         configuration_requests: broadcast::channel(64).0,
@@ -2568,6 +2592,7 @@ async fn main() -> Result<()> {
         entity_store,
         shutting_down: AtomicBool::new(false),
     });
+    main_chat_keys::start_key_refresh(Arc::clone(&server));
     let permits = Arc::new(Semaphore::new(64));
     println!(
         "{}",
@@ -2639,6 +2664,7 @@ async fn main() -> Result<()> {
                 // XP and Item bodies share the actual level tick order above.
                 server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
+                server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.tick();
                 connection_tick_sequence=connection_tick_sequence.checked_add(1).context("connection tick counter exhausted")?;
                 server.connection_ticks.send_replace(connection_tick_sequence);
                 server.publish_pending_block_acknowledgments()?;
@@ -2891,10 +2917,11 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         if request.id != 0 || !request.payload.is_empty() {
             bail!("invalid status request");
         }
+        server.wait_first_chat_key_attempt().await?;
         let response = json!({"version":{"name":"1.21","protocol":PROTOCOL},
             "players":{"max":server.maximum_players()?,"online":server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?.registry.len(),"sample":[]},
             "description":{"text":"Rust compatibility checkpoint — creative fixture; vanilla parity incomplete"},
-            "enforcesSecureChat":false});
+            "enforcesSecureChat":server.current_secure_chat_enforcement()});
         send(
             &codec,
             &mut writer,
@@ -2964,6 +2991,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
     ).await?;
     loop {
+        server.wait_first_chat_key_attempt().await?;
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
             client_information, admission, address, &mut protocol, &mut packs,
@@ -2986,13 +3014,15 @@ fn read_client_information(payload: &[u8]) -> Result<ClientInformation> {
     fields.bool()?;
     let skin = fields.u8()?;
     let hand = fields.varint()?;
-    fields.bool()?;
+    let text_filtering = fields.bool()?;
     fields.bool()?;
     fields.finish()?;
     if !(0..=2).contains(&chat) || !(0..=1).contains(&hand) {
         bail!("invalid client information enum");
     }
     Ok(ClientInformation {
+        chat_visibility: chat,
+        text_filtering,
         view_distance,
         skin_parts: skin,
         main_hand: hand as u8,
@@ -3131,7 +3161,14 @@ async fn play(
             players.item_use_runtime.register_native(&player)?;
         }
         native_motion = players.player_motion_runtime.contains(entity_id);
+        let chat_profile = player.profile.clone();
         let event = players.registry.register(player)?;
+        let chat_settings = match client_information {
+            Some(info) => main_chat::MainChatSettings::from_client_information(info.chat_visibility, info.text_filtering)?,
+            None => main_chat::MainChatSettings::default(),
+        };
+        players.chat.register(entity_id, &chat_profile, chat_settings)?;
+        players.player_last_actions.insert(entity_id, server.epoch.elapsed().as_millis() as i64);
         let uuid = players
             .registry
             .get(entity_id)
@@ -3179,6 +3216,7 @@ async fn play(
     )?)?;
     let view = server.options.view_distance;
     let maximum_players = server.maximum_players()?;
+    let enforce_secure_chat = server.current_secure_chat_enforcement();
     send(
         &codec,
         &mut writer,
@@ -3203,7 +3241,7 @@ async fn play(
                 .bool(true)
                 .bool(false)
                 .varint(0)
-                .bool(false);
+                .bool(enforce_secure_chat);
         }),
     )
     .await?;
@@ -3410,26 +3448,8 @@ async fn play(
                 }
                 let mut fields = Reader::new(&packet.payload);
                 match packet.id {
-                    0x04 => {
-                        let command=mc121_rust::command_protocol::decode_unsigned_command(&packet.payload)?;
-                        if mc121_rust::command_protocol::command_contains_illegal_characters(&command) {
-                            play_disconnect(&codec, &mut writer, "multiplayer.disconnect.illegal_characters").await?;
-                            return Ok(PlayExit::Disconnected);
-                        }
-                        server.execute_administration(&command, Some(entity_id)).await?;
-                    },
-                    0x05 => {
-                        let _command=mc121_rust::command_protocol::decode_signed_command(&packet.payload)?;
-                        if mc121_rust::command_protocol::command_contains_illegal_characters(&_command.command) {
-                            play_disconnect(&codec, &mut writer, "multiplayer.disconnect.illegal_characters").await?;
-                            return Ok(PlayExit::Disconnected);
-                        }
-                        // Envelope decoding is not signature/chat-chain verification.
-                        let reason=Tag::Compound(vec![
-                            ("text".into(),Tag::String("Signed command execution is not implemented by this native server profile".into())),
-                            ("color".into(),Tag::String("red".into())),
-                        ]).encode_network_anonymous()?;
-                        send(&codec, &mut writer, 0x6c, encoded(|w| { w.raw(&reason).bool(false); })).await?;
+                    0x03..=0x07 => {
+                        server.handle_chat_packet(entity_id, &packet).await?;
                     },
                     0x0b => {
                         let request=mc121_rust::command_protocol::decode_suggestion_request(&packet.payload)?;
@@ -3525,6 +3545,9 @@ async fn play(
                     0x0a => {
                         let info=read_client_information(&packet.payload)?;
                         current_information=Some(info);
+                        server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.update_client_information(
+                            entity_id, main_chat::MainChatSettings::from_client_information(info.chat_visibility, info.text_filtering)?
+                        )?;
                         requested_view_distance=info.view_distance;
                         let radius=entity_tracking::player_view_distance(requested_view_distance,server.options.view_distance);
                         let view=(radius!=chunk_radius).then_some((center,radius,false));
@@ -3690,6 +3713,12 @@ async fn play(
                     },
                     OrderedEntityInput::Event(PlayerEvent::Item(event)) => send_packets(&codec,&mut writer,tracker.item_event(entity_id,&event,&loaded)?).await?,
                     OrderedEntityInput::Event(PlayerEvent::State(update)) => send_packets(&codec, &mut writer, tracker.players.event(&update, &loaded)?).await?,
+                    OrderedEntityInput::Event(PlayerEvent::ChatDisconnect { recipient, reason }) => {
+                        if recipient == entity_id {
+                            play_disconnect(&codec, &mut writer, reason).await?;
+                            return Ok(PlayExit::Disconnected);
+                        }
+                    },
                     OrderedEntityInput::Event(PlayerEvent::Motion{revision,entity_id,position,packets}) => send_packets(&codec, &mut writer, tracker.players.motion(revision, entity_id, position, &packets)?).await?,
                     OrderedEntityInput::Event(PlayerEvent::Latency(players))=>send_packets(&codec,&mut writer,vec![entity::player_info_update(&players,0x10)?]).await?,
                     OrderedEntityInput::Event(PlayerEvent::Container{recipient,update}) if recipient==entity_id && update.revision>container_revision => {
