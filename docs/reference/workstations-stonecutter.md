@@ -200,3 +200,22 @@ recipe/advancement, feature-set, block validity, sound and real drop owners.
 Mutating item callbacks/custom recipe contexts outside the pinned block-result
 profile require an explicit integration contract rather than a no-op substitute.
 No Main callsite or completed aggregate checklist delivery is claimed.
+
+## Retained full-state integration API
+
+The [central integration request](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6563646842)
+adds exactly
+`StonecutterMenu::broadcast_full_state(&mut self, &PlayerInventory) -> Result<Vec<SyncEvent>>`
+for spectator/full-state resynchronization. It clones the retained menu, calls
+`MenuSync.broadcast_full_state` with its actual top slots, canonical player
+inventory and selected data, advances the checked action revision, and installs
+that clone. It does not call initialize, replace the menu instance, consume
+inputs, clear the cursor/drag state or emit authoritative dirty callbacks.
+The existing phased initialize, incremental and click APIs remain separate.
+
+The focused native regression preserves the input, derived result, selected
+recipe, external cursor, menu instance and active drag across full resync,
+checks the complete content/cursor/data packets, and rejects an action prepared
+before the revision change. Completing the retained drag afterwards transfers
+exactly its existing cursor once. This verifies the requested API seam; central
+Main wiring and its runtime evidence remain the integrator's responsibility.

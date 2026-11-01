@@ -260,6 +260,17 @@ impl StonecutterMenu {
             })
             .collect())
     }
+    /// Spectator/full-state resynchronization of this retained menu. This does
+    /// not initialize a new menu or perform authoritative slot/dirty mutations.
+    pub fn broadcast_full_state(&mut self, inventory: &PlayerInventory) -> Result<Vec<SyncEvent>> {
+        let mut next = self.clone();
+        let top = next.top();
+        let data = next.data();
+        let out = next.sync.broadcast_full_state(&top, inventory, &data)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(out)
+    }
     pub fn still_valid(&self, access: &impl WorkstationAccess) -> Result<bool> {
         self.sync.still_valid(access)
     }
@@ -1709,6 +1720,135 @@ mod tests {
         assert_eq!(inventory.slot(44).unwrap(), &stack("stone_slab", 4));
         assert_eq!(menu.carried(), &stack("stone_slab", 2));
         assert!(menu.state().input().is_empty());
+        Ok(())
+    }
+    #[test]
+    fn full_resync_preserves_retained_state_and_invalidates_prepared_action() -> Result<()> {
+        let recipes = PinnedStonecutterRecipes::new(|_: &ItemStack| Ok(true));
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, stack("stone", 3));
+        let mut menu = StonecutterMenu::new(7)?;
+        menu.initialize(&inventory)?;
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            2,
+            0,
+            ClickType::QuickMove,
+            50,
+        )?;
+        let choice = menu
+            .state()
+            .recipes()
+            .iter()
+            .position(|id| id == "minecraft:stone_slab_from_stone_stonecutting")
+            .unwrap() as i32;
+        menu.prepare_button(choice, &inventory, &recipes)?
+            .commit(&mut menu, &mut inventory)?;
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            1,
+            0,
+            ClickType::Pickup,
+            50,
+        )?;
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            -999,
+            0,
+            ClickType::QuickCraft,
+            50,
+        )?;
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            3,
+            1,
+            ClickType::QuickCraft,
+            50,
+        )?;
+        let pending = menu.prepare_button(choice, &inventory, &recipes)?;
+        let state = menu.state.clone();
+        let instance = menu.instance;
+        let cursor = menu.carried().clone();
+        let drag = (
+            menu.quickcraft_status,
+            menu.quickcraft_type,
+            menu.quickcraft_slots.clone(),
+        );
+        let before_state_id = menu.state_id();
+        let before_inventory = inventory.clone();
+        let events: Vec<SyncEvent> = menu.broadcast_full_state(&inventory)?;
+        assert_eq!(menu.instance, instance);
+        assert_eq!(menu.state, state);
+        assert_eq!(menu.carried(), &cursor);
+        assert_eq!(
+            (
+                menu.quickcraft_status,
+                menu.quickcraft_type,
+                menu.quickcraft_slots.clone()
+            ),
+            drag
+        );
+        assert_eq!(menu.state_id(), (before_state_id + 1) & 32767);
+        let packet = events
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .unwrap();
+        let mut reader = Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, 7);
+        assert_eq!(reader.varint()?, menu.state_id());
+        assert_eq!(reader.varint()?, 38);
+        for slot in 0..38 {
+            let (value, used) = ItemStack::decode(reader.remaining())?;
+            reader.bytes(used)?;
+            if slot == 0 {
+                assert_eq!(value, stack("stone", 2));
+            }
+            if slot == 1 {
+                assert_eq!(value, stack("stone_slab", 2));
+            }
+        }
+        assert_eq!(ItemStack::decode_exact(reader.remaining())?, cursor);
+        let data = events
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x14 => Some(packet),
+                _ => None,
+            })
+            .unwrap();
+        let mut reader = Reader::new(&data.payload);
+        assert_eq!(reader.u8()?, 7);
+        assert_eq!(reader.i16()?, 0);
+        assert_eq!(reader.i16()?, choice as i16);
+        reader.finish()?;
+        assert!(pending.commit(&mut menu, &mut inventory).is_err());
+        assert_eq!(inventory.slots(), before_inventory.slots());
+        assert_eq!(inventory.carried(), before_inventory.carried());
+        assert_eq!(inventory.state_id(), before_inventory.state_id());
+        // The retained drag still completes, returning exactly the old cursor.
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            -999,
+            2,
+            ClickType::QuickCraft,
+            50,
+        )?;
+        assert_eq!(inventory.slot(10).unwrap(), &stack("stone_slab", 2));
+        assert!(menu.carried().is_empty());
+        assert_eq!(menu.state.input(), &stack("stone", 2));
+        assert_eq!(menu.state.result_preview(), &stack("stone_slab", 2));
         Ok(())
     }
 }
