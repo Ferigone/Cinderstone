@@ -7,7 +7,7 @@ use crate::{
     },
     inventory::{self, ItemStack, PlayerInventory},
     workstations::{
-        menu::{MenuSync, SyncEvent, WorkstationAccess, WorkstationKind},
+        menu::{MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess, WorkstationKind},
         stonecutter::{
             StonecutterEffect, StonecutterRecipes, StonecutterState, StonecutterTake, MENU_SLOTS,
         },
@@ -33,6 +33,11 @@ pub struct StonecutterMenu {
 pub enum StonecutterMenuEvent {
     Sync(SyncEvent),
     Effect(StonecutterEffect),
+    /// Execute exactly this owned drop at its source callback position. The
+    /// index refers to `StonecutterPublication.outcome.drops`, not a copy.
+    Drop {
+        index: usize,
+    },
     /// Item.onCraftedBy(stack, level, player), before trying result quick-move.
     /// This callback occurs even when the actual inventory accepts nothing.
     ItemCraftedBeforeQuickMove {
@@ -51,6 +56,9 @@ pub struct PreparedStonecutterAction {
     events: Vec<StonecutterMenuEvent>,
     outcome: ClickOutcome,
 }
+/// Publish `events` in order. A Drop index consumes that one owned stack from
+/// outcome.drops; never drain drops independently before/after this sequence.
+/// Packet events are the sole packet publication owner (outcome.packets empty).
 pub struct StonecutterPublication {
     pub events: Vec<StonecutterMenuEvent>,
     pub outcome: ClickOutcome,
@@ -242,11 +250,28 @@ impl StonecutterMenu {
         let mut action = self.preparation(inventory);
         action.next_menu.reset_quickcraft();
         let input = action.next_menu.state.remove_owned_input_for_close()?;
-        action.outcome = action.next_menu.sync.close_inputs(
+        let removal = action.next_menu.sync.close_inputs_ordered(
             &mut [input],
             &mut action.next_inventory,
             context,
         )?;
+        action.outcome = removal.outcome;
+        for event in removal.events {
+            match event {
+                MenuRemovalEvent::Packet { index } => {
+                    action
+                        .events
+                        .push(StonecutterMenuEvent::Sync(SyncEvent::Packet(
+                            action.outcome.packets[index].clone(),
+                        )))
+                }
+                MenuRemovalEvent::Drop { index } => {
+                    action.events.push(StonecutterMenuEvent::Drop { index })
+                }
+            }
+        }
+        // Packets have a single ordered publication owner in events.
+        action.outcome.packets.clear();
         action.next_menu.advance_revision()?;
         Ok(action)
     }
@@ -819,11 +844,13 @@ impl PreparedStonecutterAction {
     }
     fn drop_stack(&mut self, stack: ItemStack) {
         if !stack.is_empty() {
+            let index = self.outcome.drops.len();
             self.outcome.drops.push(DroppedStack {
                 stack,
                 around: false,
                 trace_item: true,
             });
+            self.events.push(StonecutterMenuEvent::Drop { index });
         }
     }
 }
@@ -909,6 +936,35 @@ mod tests {
         blocked.commit(&mut right_menu, &mut right_inventory)?;
         assert_eq!(right_menu.carried(), &stack("stone_slab", 63));
         assert_eq!(right_menu.state().input(), &stack("stone", 2));
+        let throwing = menu.prepare_click(
+            &click(&menu, 1, 0, ClickType::Throw),
+            &inventory,
+            &recipes,
+            12,
+            false,
+        )?;
+        let sound = throwing
+            .events()
+            .iter()
+            .position(|e| {
+                matches!(
+                    e,
+                    StonecutterMenuEvent::Effect(StonecutterEffect::PlayTakeResultSound)
+                )
+            })
+            .unwrap();
+        let dropped = throwing
+            .events()
+            .iter()
+            .position(|e| matches!(e, StonecutterMenuEvent::Drop { index: 0 }))
+            .unwrap();
+        let final_sync = throwing
+            .events()
+            .iter()
+            .rposition(|e| matches!(e, StonecutterMenuEvent::Sync(SyncEvent::Packet(_))))
+            .unwrap();
+        assert!(sound < dropped && dropped < final_sync);
+        assert_eq!(throwing.drops()[0].stack, stack("stone_slab", 2));
         let old = menu.prepare_button(choice, &inventory, &recipes)?;
         let action = menu.prepare_click(
             &click(&menu, 1, 0, ClickType::QuickMove),
@@ -1023,6 +1079,30 @@ mod tests {
         assert_eq!(inventory.slot(10).unwrap(), &stack("stone", 4));
         assert!(menu.state().input().is_empty());
         assert!(menu.state().result_preview().is_empty());
+        // Cursor overflow must drop before a later input insertion packet.
+        menu.state.replace_input(stack("stone", 3), &recipes)?;
+        menu.sync.set_carried(stack("quartz", 2));
+        for slot in 9..45 {
+            inventory.set_slot_authoritative(slot, stack("dirt", 64));
+        }
+        inventory.set_slot_authoritative(9, stack("stone", 63));
+        inventory.set_slot_authoritative(45, stack("dirt", 64));
+        let closing = menu.prepare_close(&inventory, MenuCloseContext::AliveConnected)?;
+        assert!(matches!(
+            closing.events(),
+            [
+                StonecutterMenuEvent::Drop { index: 0 },
+                StonecutterMenuEvent::Sync(SyncEvent::Packet(_)),
+                StonecutterMenuEvent::Drop { index: 1 }
+            ]
+        ));
+        assert_eq!(closing.drops()[0].stack, stack("quartz", 2));
+        assert_eq!(closing.drops()[1].stack, stack("stone", 2));
+        let publication = closing.commit(&mut menu, &mut inventory)?;
+        assert!(publication.outcome.packets.is_empty());
+        assert_eq!(inventory.slot(9).unwrap(), &stack("stone", 64));
+        assert!(menu.carried().is_empty());
+        assert!(menu.state().input().is_empty());
         Ok(())
     }
 }

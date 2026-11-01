@@ -134,3 +134,21 @@ the hotbar with its inventory listener before the sound boundary, proves
 pick-all leaves the same-item preview unowned, then moves the remaining real
 input into the actual offhand. The earlier ownership/shift/result-capacity flow
 also passed. This does not establish Main integration or a full checklist row.
+
+## Ordered drop publication
+
+`StonecutterMenuEvent::Drop { index }` references exactly one owned entry in
+`StonecutterPublication.outcome.drops`. The host dispatches this event in place;
+it must not drain the drop vector independently of the ordered event sequence.
+A result THROW therefore emits crafted/recipe callbacks, nested local sync,
+sound, the actual player-drop request, then the final click synchronization.
+The drop is not moved to the beginning or end of the whole menu transaction.
+
+Close consumes `MenuSync.close_inputs_ordered`: cursor first, then actual input,
+retaining each insertion packet or overflow drop in its original position.
+Packet events are the sole publication owner and `outcome.packets` is cleared,
+preventing a host from sending an aggregate duplicate packet batch. Main still
+owns the outer server-close packet, which precedes these removed callbacks.
+The focused adapter flow now verifies result-throw sound/drop/final-sync order
+and a mixed alive close where the cursor overflow drops before a later input
+insertion packet and that input's remaining overflow drop.

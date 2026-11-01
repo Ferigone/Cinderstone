@@ -66,6 +66,19 @@ pub enum SyncEvent {
     Packet(Packet),
 }
 
+/// Indices into one removal outcome, retaining ordering across per-stack
+/// inventory insertion packets and actual Player.drop callbacks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MenuRemovalEvent {
+    Packet { index: usize },
+    Drop { index: usize },
+}
+#[derive(Debug)]
+pub struct MenuRemoval {
+    pub outcome: ClickOutcome,
+    pub events: Vec<MenuRemovalEvent>,
+}
+
 /// Implement with the captured ContainerLevelAccess and actual player. The
 /// player's attribute owner decides reach; 1.21 passes additional range 4.0.
 pub trait WorkstationAccess {
@@ -343,12 +356,28 @@ impl MenuSync {
         inventory: &mut PlayerInventory,
         context: MenuCloseContext,
     ) -> Result<ClickOutcome> {
+        Ok(self
+            .close_inputs_ordered(inputs, inventory, context)?
+            .outcome)
+    }
+    /// Production removal uses this ordered form: an overflow drop from the
+    /// cursor or an earlier input may precede a later input's insertion packet.
+    /// The aggregate compatibility method cannot express that ordering alone.
+    pub fn close_inputs_ordered(
+        &mut self,
+        inputs: &mut [ItemStack],
+        inventory: &mut PlayerInventory,
+        context: MenuCloseContext,
+    ) -> Result<MenuRemoval> {
         let mut next_inventory = inventory.clone();
         let mut owned = std::iter::once(copy(&self.carried))
             .chain(inputs.iter().map(copy))
             .collect::<Vec<_>>();
         let mut out = ClickOutcome::default();
+        let mut events = vec![];
         for stack in &mut owned {
+            let packet_start = out.packets.len();
+            let drop_start = out.drops.len();
             match context {
                 MenuCloseContext::AliveConnected => {
                     return_to_inventory_on_menu_close(&mut next_inventory, stack, &mut out)?
@@ -362,11 +391,22 @@ impl MenuSync {
                 }
                 _ => {}
             }
+            // Each placeItemBackInInventory sends its insertion packets first,
+            // then drops any one remaining overflow before the next input.
+            events.extend(
+                (packet_start..out.packets.len()).map(|index| MenuRemovalEvent::Packet { index }),
+            );
+            events.extend(
+                (drop_start..out.drops.len()).map(|index| MenuRemovalEvent::Drop { index }),
+            );
         }
         *inventory = next_inventory;
         self.carried = ItemStack::empty();
         inputs.fill(ItemStack::empty());
-        Ok(out)
+        Ok(MenuRemoval {
+            outcome: out,
+            events,
+        })
     }
     /// Preserve old menu listener and remote baselines for the actual shared
     /// inventory slots. Top slots, preview, data and cursor are never transferred.
@@ -464,6 +504,32 @@ mod tests {
         assert!(inputs[0].is_empty());
         assert!(sync.carried().is_empty());
         assert!(inv.slot(36).unwrap().is_empty());
+        Ok(())
+    }
+    #[test]
+    fn alive_overflow_drop_precedes_later_input_insertion_packet() -> Result<()> {
+        let mut inv = PlayerInventory::default();
+        for slot in 9..45 {
+            inv.set_slot_authoritative(slot, stone(64));
+        }
+        let coal_id = RecipeBook::vanilla().item_id("coal").unwrap();
+        inv.set_slot_authoritative(10, ItemStack::new(coal_id, 63)?);
+        let mut sync = MenuSync::new(1, WorkstationKind::Stonecutter)?;
+        sync.set_carried(stone(1));
+        let mut inputs = [ItemStack::new(coal_id, 1)?];
+        let removal =
+            sync.close_inputs_ordered(&mut inputs, &mut inv, MenuCloseContext::AliveConnected)?;
+        assert_eq!(
+            removal.events,
+            vec![
+                MenuRemovalEvent::Drop { index: 0 },
+                MenuRemovalEvent::Packet { index: 0 }
+            ]
+        );
+        assert_eq!(removal.outcome.drops[0].stack, stone(1));
+        assert_eq!(inv.slot(10).unwrap().count, 64);
+        assert!(sync.carried().is_empty());
+        assert!(inputs[0].is_empty());
         Ok(())
     }
 }
