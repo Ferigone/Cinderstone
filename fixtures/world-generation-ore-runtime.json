@@ -1,0 +1,2543 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "native_source_commit": "2de9240eae9ffddeeab68e234ef2d542e788e411",
+  "native_composed_commit": "82d26a7ca342854aea77e55ea1d637cdd4171d28",
+  "production_sha256": {
+    "src/worldgen/feature/config.rs": "f04a5e78d1e633b49aaea7c0d584cae8771df18396c4e6a8cc459e270e200307",
+    "src/worldgen/feature/host.rs": "09298b8afd53153d32572a44f4a827cd102d72dc976f6a84f1525a043e3f87e0",
+    "src/worldgen/feature/mod.rs": "fe0ab7cd56a32e2590043b1c1d0533d78d379c0bb868a9b1a2186fb479b9d0ab",
+    "src/worldgen/feature/ore.rs": "1336530fdff03ff3ffd0a46aa2da8989c759c59cf8426e90720d37551492442d",
+    "src/worldgen/feature/scattered_ore.rs": "f8d3bdf0e3504e149c9eb46b270fd72c0d6ffe0299f621247d354bbb42433f19",
+    "src/worldgen/mod.rs": "54f6c6744573cc8d55d74a6baa001ca07a41e718cf2b8b20ffd6666d5f13f586",
+    "fixtures/world-generation-ore-configs.json": "a0b32358b2a063e1486d35e4245cfc0f2f03bf13cfbde307e054e4cb3b689a34",
+    "src/random.rs": "417b2461a9f298c8ee17fb4932a22c3bbcdba0ddecdd130c30b3ce46fe21aa64",
+    "src/geometry.rs": "1246833a74d8a2ad794f5f8f7c91e833ef09003f8dfac77cd29cb8e1bee5234b",
+    "src/hotspot_math.rs": "61130ee3c64f3aa7fa48c4ca96afa454e2e94bebde4f2cae4f787bc38777bc17",
+    "src/placement.rs": "330cb717569bad6c15b3ef9b6704a49bad971e0d5de2e518ab28a5aa104d3963",
+    "src/inventory.rs": "583d38fb19d54a057d567545b591c7d3056cb71a1ba804ef106cbf5dde9c9178",
+    "src/lighting.rs": "0828ba4b55685724aba79734a05951e2bb6660ac5912b9d5b0bae02db345fc40",
+    "src/worldgen/generator.rs": "46bdc3b8498e1977279542f110f178043f1d9c6415852cd00fb593021474360b",
+    "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
+    "fixtures/light-1.21.json": "0947a8c376329cd690eb3c5087b6f1449d04020852e38342325815bf2a9d0804",
+    "fixtures/placement-1.21.json": "e044d4bdf90cfcae62043b630b1c673bb3582025b684a7fbe5878fe6747e8a50",
+    "fixtures/placement-block-tags-1.21.json": "6b1ea865a150d67ed569ca28645de0388c576582ff9ae8a92cbc41bc4028428d",
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/geometry-collisions-1.21.rs": "4fcc7d60c69194106f2eeda67df465768ad8081b57cbfb510f192766f25ae7ae"
+  },
+  "probe_sha256": {
+    "src/worldgen/validation/WorldgenOreOracle.java": "7d316e1cb4decface9978f55d87ca7b5f2e90653a70c8eea4e340a38b83562e6",
+    "src/worldgen/validation/ore_probe.rs": "217d364b74625ee4d8437545fa330a4b4186ebe81f3c51ffe7cff93043f9452e",
+    "src/worldgen/validation/check_ores.py": "0f89af3f9d2946e6ca80cbddbc7d3e89a48b798b7526d9ece152e50b76592622",
+    "src/worldgen/validation/check_biome_stage.py": "c7f9323b0038b0d6fa22530583dc21f11405b600411a3fcae20315fefb90637c",
+    "src/worldgen/validation/WorldgenSurfaceOracle.java": "800ce0add17160ba0a74e3b56eeaf73f756473b2049cd00d52cf44112aad7de8",
+    "src/worldgen/validation/WorldgenBiomeStageOracle.java": "a73658f21bdb40468a6f015122a71ea615d527f38c09c22812c3adf63873f179",
+    "src/worldgen/validation/WorldgenBiomeSurfaceOracle.java": "8bc9a3a5dead6a1e6728980a9b98d703f882ce5c04d02c67a1dd0114cbe5469b",
+    "src/worldgen/validation/WorldgenCarverOracle.java": "e499cc33dbc1449bda3e15846a18e2911af8b203846c1bc8cbcfff8a2128fc86"
+  },
+  "generated_bootstrap_sha256": "ebfaf6ffb72b3b0e5f977b634a73c11e89797218e61eb9f850931eaa9bbcdd47",
+  "evidence": "unchanged original runtime observations",
+  "configured_ores": [
+    {
+      "key": "minecraft:ore_ancient_debris_large",
+      "source_sha256": "ef3f9d88dbb91c2336cb952b62e9401aaf655d6ca1756462ef877e91f84dfc38",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": true,
+            "minecraft:end_stone": false
+          },
+          "state": 19448
+        }
+      ],
+      "feature_type": "edh",
+      "size": 3,
+      "discard_bits": 1065353216
+    },
+    {
+      "key": "minecraft:ore_ancient_debris_small",
+      "source_sha256": "81938f9d586ab028dde54a7578e84a301b58745fac73ba5a03a888c88a21c211",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": true,
+            "minecraft:end_stone": false
+          },
+          "state": 19448
+        }
+      ],
+      "feature_type": "edh",
+      "size": 2,
+      "discard_bits": 1065353216
+    },
+    {
+      "key": "minecraft:ore_andesite",
+      "source_sha256": "add2247bb7e9e9395deeb5571f0329fda9c781d70d1e24641c45bd50984ba009",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 6
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 64,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_blackstone",
+      "source_sha256": "3994934d12bb94c13f7b293702e40f589af3cf7b6e6381cc904686009542af6b",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 19460
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_clay",
+      "source_sha256": "d405c53cf395599f364b1f95f59451e75db57a059872edc8aa7cd8cc322da090",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 5798
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_coal",
+      "source_sha256": "ef4a8bea17e65ac286e285808d45219fc2d6b989cf795aa5d161de9eea6147f0",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 127
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 128
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 17,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_coal_buried",
+      "source_sha256": "234de622543fae113fdad6d991c213ad2e0bc61b98bfdbb4ca79a1cebb1af734",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 127
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 128
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 17,
+      "discard_bits": 1056964608
+    },
+    {
+      "key": "minecraft:ore_copper_large",
+      "source_sha256": "e0d5f9cdc4d17e0374e41f30c8255122606d2d42b1f5643698e38f9a40f5ed9d",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 22942
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 22943
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 20,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_copper_small",
+      "source_sha256": "354dadad5004e859b3dfa1c8d161235da058f1bc1d64c26f3efceca611e01ebc",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 22942
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 22943
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 10,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_diamond_buried",
+      "source_sha256": "6ab5a4ba0663d1a07ab7f418b663e681a0c9d2c49d12daadb61f5e91ab7dbfa6",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4274
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4275
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 8,
+      "discard_bits": 1065353216
+    },
+    {
+      "key": "minecraft:ore_diamond_large",
+      "source_sha256": "90892ee7cadb7aefefed1893d5b30e0237907f8c0d4b5961abaea8a7ad350493",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4274
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4275
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 12,
+      "discard_bits": 1060320051
+    },
+    {
+      "key": "minecraft:ore_diamond_medium",
+      "source_sha256": "06070a5035223b20949c471dc99837b446efe01417d3413c1f751dba1e5e8a49",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4274
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4275
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 8,
+      "discard_bits": 1056964608
+    },
+    {
+      "key": "minecraft:ore_diamond_small",
+      "source_sha256": "61c1dea530a4d7604ab28f0e24cb30b3eba3e8e0da40da8a450b1f83c884be7a",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4274
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4275
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 4,
+      "discard_bits": 1056964608
+    },
+    {
+      "key": "minecraft:ore_diorite",
+      "source_sha256": "aafa75748b44eb5c0683aa0806c78e84b3409fc3ce3a0305b6e5f54e9dc83182",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 4
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 64,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_dirt",
+      "source_sha256": "261065a5cb681653cfe1f78ad214e84da1b203143e30a65edc8c3081f4cf166e",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 10
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_emerald",
+      "source_sha256": "d819e3a1498731a6ac0f3ed36d68231c033d20a34c7fe1806e645c865bcdf801",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 7511
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 7512
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 3,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_gold",
+      "source_sha256": "a70a038829725492347e44ac986628737c98476d1b84ba734f2dbbe697ea345d",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 123
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 124
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 9,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_gold_buried",
+      "source_sha256": "dc148eeac67d570add10087bfcdc71c36b8df4a365d483c38d07ecc7ce70ccc2",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 123
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 124
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 9,
+      "discard_bits": 1056964608
+    },
+    {
+      "key": "minecraft:ore_granite",
+      "source_sha256": "8567ae951eaf97d912eca16e46f19e66a43acd8e2b4bcc156edcf092a76a8cc7",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 2
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 64,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_gravel",
+      "source_sha256": "27d25dd85d2d3fe6f91cc3b7a3b5275e17ff4cad553402d7c4f781f75447a2da",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 118
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_gravel_nether",
+      "source_sha256": "2d53f9b03fc1907277d7e0a83f39911c3a848f7e8466cb989be2a11cde305c28",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 118
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_infested",
+      "source_sha256": "5d71ee74ab3f261ded6fff8809a0ff53ee6072fd5695b9a1c2b522afda89ddde",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 6543
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 26555
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 9,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_iron",
+      "source_sha256": "dc48a7ccaa6af2ac8e24cbf0c850404112774b31743eba24d91c5168b7158e9d",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 125
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 126
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 9,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_iron_small",
+      "source_sha256": "0ac548ca4a9b076ef828c58c0e80c565b838349bfda609a56c7ef08fa66879fe",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 125
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 126
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 4,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_lapis",
+      "source_sha256": "bb7cd378e2ed67550f444bc4a16f9fcb7b65859d3fa9f6b93cf38bf07dbd2a09",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 520
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 521
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 7,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_lapis_buried",
+      "source_sha256": "9cf4b3abafe5ad84529d9a1a90161e2f0ecc175f7aa68361a1a562248951f2c0",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 520
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 521
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 7,
+      "discard_bits": 1065353216
+    },
+    {
+      "key": "minecraft:ore_magma",
+      "source_sha256": "251a8f42c92d76279b9cf1a8033acdde3143752654dc7f031a829212dab62166",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 12543
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 33,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_nether_gold",
+      "source_sha256": "407b32f3d94d3af7201a9ab960038ea051f95ea36c6afdfbfb84a7c5bd7bc776",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 129
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 10,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_quartz",
+      "source_sha256": "c0614136cc144eb459cdc7ada212774a91f4bd9e05fe08efc2800003b58596c0",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 9224
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 14,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_redstone",
+      "source_sha256": "f99d986b5188caf4073345a9daa6ae8cddbd92250eaf385a89cedadbfee97aa2",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 5735
+        },
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 5737
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 8,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_soul_sand",
+      "source_sha256": "464fbfd0659772fd9dfb7e3d68e72681d12c2e07fe9c6579a7100abb0e340d8a",
+      "targets": [
+        {
+          "rule_class": "emv",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": false,
+            "minecraft:deepslate": false,
+            "minecraft:netherrack": true,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 5850
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 12,
+      "discard_bits": 0
+    },
+    {
+      "key": "minecraft:ore_tuff",
+      "source_sha256": "123d0beddb41555d899b30ff5f6011dee054b70d03778956cf5f3aea73123a56",
+      "targets": [
+        {
+          "rule_class": "env",
+          "matches": {
+            "minecraft:air": false,
+            "minecraft:stone": true,
+            "minecraft:deepslate": true,
+            "minecraft:netherrack": false,
+            "minecraft:dirt": false,
+            "minecraft:gravel": false,
+            "minecraft:blackstone": false,
+            "minecraft:end_stone": false
+          },
+          "state": 21081
+        }
+      ],
+      "feature_type": "ecz",
+      "size": 64,
+      "discard_bits": 0
+    }
+  ],
+  "cases": [
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          -20,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "iron_layered",
+        "feature": "minecraft:ore_iron"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 21,
+      "random_state128": [
+        "14846040511975416065",
+        "8256853601624023891"
+      ],
+      "config_size": 9,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          15,
+          -22,
+          15,
+          126
+        ],
+        [
+          14,
+          -21,
+          14,
+          126
+        ],
+        [
+          15,
+          -21,
+          14,
+          126
+        ],
+        [
+          14,
+          -21,
+          15,
+          126
+        ],
+        [
+          15,
+          -21,
+          15,
+          126
+        ],
+        [
+          14,
+          -20,
+          14,
+          126
+        ]
+      ],
+      "image_sha256": "c072c405a79cfcdf14ac8d7a59bcee67f247ae21be96cce121441bf4b21b1560",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 35,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 6,
+        "chunk": 1,
+        "ensure": 7,
+        "height": 1,
+        "outside_y": 13,
+        "section_set": 6
+      },
+      "events_sha256": "f643c14beac19e36c3a889ce54b01cf23b389c0433c7d867c90da3f911cf0345",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          40,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "iron_stone",
+        "feature": "minecraft:ore_iron"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 21,
+      "random_state128": [
+        "14846040511975416065",
+        "8256853601624023891"
+      ],
+      "config_size": 9,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          15,
+          38,
+          15,
+          125
+        ],
+        [
+          14,
+          39,
+          14,
+          125
+        ],
+        [
+          15,
+          39,
+          14,
+          125
+        ],
+        [
+          14,
+          39,
+          15,
+          125
+        ],
+        [
+          15,
+          39,
+          15,
+          125
+        ],
+        [
+          14,
+          40,
+          14,
+          125
+        ]
+      ],
+      "image_sha256": "ba0da49b23ca5e51a60cc4fcf13b38a6e8a9a717abfee3639fd7e99aabdc3d02",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 35,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 6,
+        "chunk": 1,
+        "ensure": 7,
+        "height": 1,
+        "outside_y": 13,
+        "section_set": 6
+      },
+      "events_sha256": "4c4a80a706356e67aaf30b274e95487cde0dd7fdd80af4bfd9b58a4eaa439cb7",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "0",
+        "origin": [
+          14,
+          42,
+          14
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "stone",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "copper_cross",
+        "feature": "minecraft:ore_copper_large"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 43,
+      "random_state128": [
+        "6751091116321522490",
+        "7480534171809679350"
+      ],
+      "config_size": 20,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          12,
+          39,
+          12,
+          22942
+        ],
+        [
+          13,
+          39,
+          12,
+          22942
+        ],
+        [
+          12,
+          39,
+          13,
+          22942
+        ],
+        [
+          13,
+          39,
+          13,
+          22942
+        ],
+        [
+          14,
+          39,
+          13,
+          22942
+        ],
+        [
+          13,
+          39,
+          14,
+          22942
+        ],
+        [
+          12,
+          40,
+          11,
+          22942
+        ],
+        [
+          13,
+          40,
+          11,
+          22942
+        ],
+        [
+          12,
+          40,
+          12,
+          22942
+        ],
+        [
+          13,
+          40,
+          12,
+          22942
+        ],
+        [
+          14,
+          40,
+          12,
+          22942
+        ],
+        [
+          12,
+          40,
+          13,
+          22942
+        ],
+        [
+          13,
+          40,
+          13,
+          22942
+        ],
+        [
+          14,
+          40,
+          13,
+          22942
+        ],
+        [
+          12,
+          40,
+          14,
+          22942
+        ],
+        [
+          13,
+          40,
+          14,
+          22942
+        ],
+        [
+          14,
+          40,
+          14,
+          22942
+        ],
+        [
+          15,
+          40,
+          14,
+          22942
+        ],
+        [
+          14,
+          40,
+          15,
+          22942
+        ],
+        [
+          12,
+          41,
+          12,
+          22942
+        ],
+        [
+          13,
+          41,
+          12,
+          22942
+        ],
+        [
+          14,
+          41,
+          12,
+          22942
+        ],
+        [
+          12,
+          41,
+          13,
+          22942
+        ],
+        [
+          13,
+          41,
+          13,
+          22942
+        ],
+        [
+          14,
+          41,
+          13,
+          22942
+        ],
+        [
+          12,
+          41,
+          14,
+          22942
+        ],
+        [
+          13,
+          41,
+          14,
+          22942
+        ],
+        [
+          14,
+          41,
+          14,
+          22942
+        ],
+        [
+          15,
+          41,
+          14,
+          22942
+        ],
+        [
+          13,
+          41,
+          15,
+          22942
+        ],
+        [
+          14,
+          41,
+          15,
+          22942
+        ],
+        [
+          15,
+          41,
+          15,
+          22942
+        ],
+        [
+          13,
+          42,
+          13,
+          22942
+        ],
+        [
+          14,
+          42,
+          14,
+          22942
+        ],
+        [
+          14,
+          42,
+          15,
+          22942
+        ],
+        [
+          15,
+          42,
+          15,
+          22942
+        ],
+        [
+          14,
+          41,
+          16,
+          22942
+        ],
+        [
+          15,
+          41,
+          16,
+          22942
+        ],
+        [
+          14,
+          42,
+          16,
+          22942
+        ],
+        [
+          15,
+          42,
+          16,
+          22942
+        ]
+      ],
+      "image_sha256": "717496751a0f1062cecdd6201593c697e0846b72a203f8183689bd82fb146e9a",
+      "section_acquisitions": 2,
+      "section_releases": 2,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 213,
+      "event_counts": {
+        "acquire": 2,
+        "bulk_get": 40,
+        "chunk": 2,
+        "ensure": 41,
+        "height": 1,
+        "outside_y": 87,
+        "section_set": 40
+      },
+      "events_sha256": "7c2224a5ed09acceca06fdc62f5a73d286469daac7af9d0f8e60507dba1d8fc4",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          -20,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "air_plane",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "diamond_partial_air",
+        "feature": "minecraft:ore_diamond_large"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 36,
+      "random_state128": [
+        "5993646359082469",
+        "15172903856513677119"
+      ],
+      "config_size": 12,
+      "config_discard_bits": 1060320051,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          15,
+          -22,
+          15,
+          4275
+        ],
+        [
+          14,
+          -21,
+          13,
+          4275
+        ],
+        [
+          14,
+          -21,
+          14,
+          4275
+        ],
+        [
+          15,
+          -21,
+          14,
+          4275
+        ],
+        [
+          14,
+          -21,
+          15,
+          4275
+        ],
+        [
+          15,
+          -21,
+          15,
+          4275
+        ],
+        [
+          14,
+          -20,
+          14,
+          4275
+        ]
+      ],
+      "image_sha256": "d522e48a78ad9db6547589d8088094ba55f5f747723e19cb13e12e819bcf3e94",
+      "section_acquisitions": 3,
+      "section_releases": 3,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 93,
+      "event_counts": {
+        "acquire": 3,
+        "bulk_get": 39,
+        "chunk": 3,
+        "ensure": 10,
+        "height": 1,
+        "outside_y": 30,
+        "section_set": 7
+      },
+      "events_sha256": "8d5abdebb29ec8a6a26bbee85d2677a30fd42f8ae6cf90f2f5e033b8dc710acf",
+      "heightmaps_sha256": "13b5a53ff051516f8865824b7b3c9765bb53682f5708a49dd4ae6871911e325b"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          -20,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "air_plane",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "diamond_buried_air",
+        "feature": "minecraft:ore_diamond_buried"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 19,
+      "random_state128": [
+        "15757745535411731073",
+        "708900955149951294"
+      ],
+      "config_size": 8,
+      "config_discard_bits": 1065353216,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          14,
+          -21,
+          14,
+          4275
+        ],
+        [
+          14,
+          -21,
+          15,
+          4275
+        ],
+        [
+          14,
+          -20,
+          14,
+          4275
+        ]
+      ],
+      "image_sha256": "2474dc34868e71d7f2ba4a2ed12484b79ec10186efca4ca34063c26775f1e0f6",
+      "section_acquisitions": 3,
+      "section_releases": 3,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 74,
+      "event_counts": {
+        "acquire": 3,
+        "bulk_get": 42,
+        "chunk": 3,
+        "ensure": 7,
+        "height": 1,
+        "outside_y": 15,
+        "section_set": 3
+      },
+      "events_sha256": "42a742a7ff155fa22cf2717876f0d22b7eca85b4d6fbce5cfbe499adbaf8c0df",
+      "heightmaps_sha256": "13b5a53ff051516f8865824b7b3c9765bb53682f5708a49dd4ae6871911e325b"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          7,
+          -62,
+          7
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "diamond_bottom_air",
+        "feature": "minecraft:ore_diamond_buried"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 19,
+      "random_state128": [
+        "15757745535411731073",
+        "708900955149951294"
+      ],
+      "config_size": 8,
+      "config_discard_bits": 1065353216,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          6,
+          -63,
+          6,
+          4275
+        ],
+        [
+          7,
+          -63,
+          6,
+          4275
+        ],
+        [
+          6,
+          -63,
+          7,
+          4275
+        ],
+        [
+          7,
+          -63,
+          7,
+          4275
+        ],
+        [
+          6,
+          -62,
+          6,
+          4275
+        ]
+      ],
+      "image_sha256": "82a9c304d310bbe3362f4b55a7b0606129c0f0a175d710d15e60c20db6927f9e",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 67,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 36,
+        "bulk_null_y": 1,
+        "chunk": 1,
+        "ensure": 7,
+        "height": 1,
+        "outside_y": 15,
+        "section_set": 5
+      },
+      "events_sha256": "572bdc2e99bf12533989854a3f69b2f0482c2ffac30c558a5630316ffbdc8622",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "1",
+        "origin": [
+          7,
+          32,
+          7
+        ],
+        "min_y": 0,
+        "height": 128,
+        "top_y": 127,
+        "profile": "netherrack",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "ancient_large",
+        "feature": "minecraft:ore_ancient_debris_large"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 19,
+      "random_state128": [
+        "1763792149769640889",
+        "15961164107504035730"
+      ],
+      "config_size": 3,
+      "config_discard_bits": 1065353216,
+      "feature_type": "edh",
+      "changed": [
+        [
+          7,
+          32,
+          7,
+          19448
+        ],
+        [
+          7,
+          33,
+          7,
+          19448
+        ]
+      ],
+      "image_sha256": "adc9660b79b0076f70f6f0fca4797694296626e00a3f85af3dfff4c2d311e91f",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 20,
+      "event_counts": {
+        "ensure": 3,
+        "region_set": 2,
+        "world_get": 15
+      },
+      "events_sha256": "4bb34983f19a28b4947e108afe9e4d1921a871342ec5f704e2879fcd402530bc",
+      "heightmaps_sha256": "9bf6cfc0ba44752a773284999a0cb135ea2950c2c2527a687dc2f698232c7432"
+    },
+    {
+      "query": {
+        "rng_seed": "4",
+        "origin": [
+          7,
+          32,
+          7
+        ],
+        "min_y": 0,
+        "height": 128,
+        "top_y": 127,
+        "profile": "netherrack",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "ancient_small",
+        "feature": "minecraft:ore_ancient_debris_small"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 13,
+      "random_state128": [
+        "4884621075231484691",
+        "10423621540962960701"
+      ],
+      "config_size": 2,
+      "config_discard_bits": 1065353216,
+      "feature_type": "edh",
+      "changed": [
+        [
+          7,
+          31,
+          6,
+          19448
+        ],
+        [
+          7,
+          32,
+          7,
+          19448
+        ]
+      ],
+      "image_sha256": "92bc9db71b5098aada7a854ba730806854f62f1a51f549faac8bb91da840f771",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 19,
+      "event_counts": {
+        "ensure": 3,
+        "region_set": 2,
+        "world_get": 14
+      },
+      "events_sha256": "fd827d21f5d854f83854ca207981e32264b316c76a41cc139ec601efe5945a2e",
+      "heightmaps_sha256": "9bf6cfc0ba44752a773284999a0cb135ea2950c2c2527a687dc2f698232c7432"
+    },
+    {
+      "query": {
+        "rng_seed": "3",
+        "origin": [
+          15,
+          32,
+          15
+        ],
+        "min_y": 0,
+        "height": 128,
+        "top_y": 127,
+        "profile": "netherrack",
+        "available_radius": 1,
+        "write_radius": 0,
+        "id": "ancient_radius_veto",
+        "feature": "minecraft:ore_ancient_debris_large"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 19,
+      "random_state128": [
+        "8194757516848499616",
+        "7434424167332516446"
+      ],
+      "config_size": 3,
+      "config_discard_bits": 1065353216,
+      "feature_type": "edh",
+      "changed": [
+        [
+          15,
+          32,
+          15,
+          19448
+        ]
+      ],
+      "image_sha256": "a9bb4b17ec3e01e837974a37faa557d6bfe0ce9426fdd2b95ed08b2a1e48933b",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 20,
+      "event_counts": {
+        "ensure": 3,
+        "region_set": 2,
+        "world_get": 15
+      },
+      "events_sha256": "1004578cfe3ff259cae73d3a321992dd44484288a242fe15ee0fb80d6e56ada1",
+      "heightmaps_sha256": "9bf6cfc0ba44752a773284999a0cb135ea2950c2c2527a687dc2f698232c7432"
+    },
+    {
+      "query": {
+        "rng_seed": "2",
+        "origin": [
+          7,
+          32,
+          7
+        ],
+        "min_y": 0,
+        "height": 128,
+        "top_y": 127,
+        "profile": "netherrack",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "scattered_zero_attempts",
+        "feature": "minecraft:ore_ancient_debris_small"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 1,
+      "random_state128": [
+        "14516854354461681833",
+        "1336624152827826535"
+      ],
+      "config_size": 2,
+      "config_discard_bits": 1065353216,
+      "feature_type": "edh",
+      "changed": [],
+      "image_sha256": "8e2e51d8b9d3e1ddef34a5fcefdf728541ab0c8a1aa6a0ce5d21be1630010d9b",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 1,
+      "event_counts": {
+        "ensure": 1
+      },
+      "events_sha256": "190230c253166d781ced861f6d2cc92a2cdf9156a3c0b8529e318be36ff601f9",
+      "heightmaps_sha256": "9bf6cfc0ba44752a773284999a0cb135ea2950c2c2527a687dc2f698232c7432"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          7,
+          -64,
+          7
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "below_height_guard",
+        "feature": "minecraft:ore_iron"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 21,
+      "random_state128": [
+        "14846040511975416065",
+        "8256853601624023891"
+      ],
+      "config_size": 9,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          6,
+          -64,
+          6,
+          126
+        ]
+      ],
+      "image_sha256": "d64b56afe2e9aa86cdfd0b10ad2705f2fbc6adcc33f1d90ced8129c3d2f31110",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 20,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 1,
+        "chunk": 1,
+        "ensure": 2,
+        "height": 1,
+        "outside_y": 13,
+        "section_set": 1
+      },
+      "events_sha256": "43d331f63a250f2cde092a5e1385c18c2d17e14191ab5b703f35b0d6b3cb91e6",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          7,
+          330,
+          7
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 319,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": 1,
+        "id": "above_height_preflight",
+        "feature": "minecraft:ore_iron"
+      },
+      "placed": false,
+      "error": null,
+      "random_count": 3,
+      "random_state128": [
+        "8358181671748928246",
+        "4255850153927184243"
+      ],
+      "config_size": 9,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [],
+      "image_sha256": "9bbee8c1aaedba971287469ae4a7602a2a6d010d1e86c3355dcda91a267c0acf",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 82,
+      "event_counts": {
+        "ensure": 1,
+        "height": 81
+      },
+      "events_sha256": "c99f1eb77f6d26a84c85d0e03b6681347bf6a331cf0e0d57854aa30f5fe11816",
+      "heightmaps_sha256": "752311f36f84c142366f860ad2444cfd8b87081065a420185781b440fb19b1fb"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          -20,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": -1,
+        "id": "origin_rejected",
+        "feature": "minecraft:ore_iron"
+      },
+      "placed": false,
+      "error": null,
+      "random_count": 0,
+      "random_state128": [
+        "11168089023507084530",
+        "14777087788034466897"
+      ],
+      "config_size": 9,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [],
+      "image_sha256": "4e1af008b69a729c54de79f466efe63d7835a4fc1967c3b55cd919adba9b4dbc",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 1,
+      "event_counts": {
+        "ensure": 1
+      },
+      "events_sha256": "18481d3b0a37fa11733e222a96ea5456bbb8ef95201b5e204daf0091a63c9fcd",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "123456789",
+        "origin": [
+          15,
+          -20,
+          15
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "layered",
+        "available_radius": 1,
+        "write_radius": -1,
+        "id": "scattered_origin_rejected",
+        "feature": "minecraft:ore_ancient_debris_small"
+      },
+      "placed": false,
+      "error": null,
+      "random_count": 0,
+      "random_state128": [
+        "11168089023507084530",
+        "14777087788034466897"
+      ],
+      "config_size": 2,
+      "config_discard_bits": 1065353216,
+      "feature_type": "edh",
+      "changed": [],
+      "image_sha256": "4e1af008b69a729c54de79f466efe63d7835a4fc1967c3b55cd919adba9b4dbc",
+      "section_acquisitions": 0,
+      "section_releases": 0,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 1,
+      "event_counts": {
+        "ensure": 1
+      },
+      "events_sha256": "18481d3b0a37fa11733e222a96ea5456bbb8ef95201b5e204daf0091a63c9fcd",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "0",
+        "origin": [
+          14,
+          42,
+          14
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "stone",
+        "available_radius": 1,
+        "write_radius": 0,
+        "id": "regular_neighbor_write_guard",
+        "feature": "minecraft:ore_copper_large"
+      },
+      "placed": true,
+      "error": null,
+      "random_count": 43,
+      "random_state128": [
+        "6751091116321522490",
+        "7480534171809679350"
+      ],
+      "config_size": 20,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          12,
+          39,
+          12,
+          22942
+        ],
+        [
+          13,
+          39,
+          12,
+          22942
+        ],
+        [
+          12,
+          39,
+          13,
+          22942
+        ],
+        [
+          13,
+          39,
+          13,
+          22942
+        ],
+        [
+          14,
+          39,
+          13,
+          22942
+        ],
+        [
+          13,
+          39,
+          14,
+          22942
+        ],
+        [
+          12,
+          40,
+          11,
+          22942
+        ],
+        [
+          13,
+          40,
+          11,
+          22942
+        ],
+        [
+          12,
+          40,
+          12,
+          22942
+        ],
+        [
+          13,
+          40,
+          12,
+          22942
+        ],
+        [
+          14,
+          40,
+          12,
+          22942
+        ],
+        [
+          12,
+          40,
+          13,
+          22942
+        ],
+        [
+          13,
+          40,
+          13,
+          22942
+        ],
+        [
+          14,
+          40,
+          13,
+          22942
+        ],
+        [
+          12,
+          40,
+          14,
+          22942
+        ],
+        [
+          13,
+          40,
+          14,
+          22942
+        ],
+        [
+          14,
+          40,
+          14,
+          22942
+        ],
+        [
+          15,
+          40,
+          14,
+          22942
+        ],
+        [
+          14,
+          40,
+          15,
+          22942
+        ],
+        [
+          12,
+          41,
+          12,
+          22942
+        ],
+        [
+          13,
+          41,
+          12,
+          22942
+        ],
+        [
+          14,
+          41,
+          12,
+          22942
+        ],
+        [
+          12,
+          41,
+          13,
+          22942
+        ],
+        [
+          13,
+          41,
+          13,
+          22942
+        ],
+        [
+          14,
+          41,
+          13,
+          22942
+        ],
+        [
+          12,
+          41,
+          14,
+          22942
+        ],
+        [
+          13,
+          41,
+          14,
+          22942
+        ],
+        [
+          14,
+          41,
+          14,
+          22942
+        ],
+        [
+          15,
+          41,
+          14,
+          22942
+        ],
+        [
+          13,
+          41,
+          15,
+          22942
+        ],
+        [
+          14,
+          41,
+          15,
+          22942
+        ],
+        [
+          15,
+          41,
+          15,
+          22942
+        ],
+        [
+          13,
+          42,
+          13,
+          22942
+        ],
+        [
+          14,
+          42,
+          14,
+          22942
+        ],
+        [
+          14,
+          42,
+          15,
+          22942
+        ],
+        [
+          15,
+          42,
+          15,
+          22942
+        ]
+      ],
+      "image_sha256": "ff4a402fe8c328ae24c66206ec0573cb8b852f58fb6afe89793c32993ac2a9bd",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 203,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 36,
+        "chunk": 1,
+        "ensure": 41,
+        "height": 1,
+        "outside_y": 87,
+        "section_set": 36
+      },
+      "events_sha256": "e2c15a67e1654a2d844901c216253d6b4d8f144ae80d204f4c6a6f94d50fe8d4",
+      "heightmaps_sha256": "da93faf549382d8dc6c978b0fb134f1ecc8b1b613ae05a953d5fe318b35e37fd"
+    },
+    {
+      "query": {
+        "rng_seed": "1",
+        "origin": [
+          14,
+          42,
+          14
+        ],
+        "min_y": -64,
+        "height": 384,
+        "top_y": 95,
+        "profile": "stone",
+        "available_radius": 0,
+        "write_radius": 1,
+        "id": "missing_after_acquire",
+        "feature": "minecraft:ore_copper_large"
+      },
+      "placed": null,
+      "error": "missing_neighbor",
+      "random_count": 43,
+      "random_state128": [
+        "13139804133053641043",
+        "14686765708704410211"
+      ],
+      "config_size": 20,
+      "config_discard_bits": 0,
+      "feature_type": "ecz",
+      "changed": [
+        [
+          13,
+          40,
+          13,
+          22942
+        ],
+        [
+          14,
+          40,
+          13,
+          22942
+        ],
+        [
+          13,
+          40,
+          14,
+          22942
+        ],
+        [
+          14,
+          40,
+          14,
+          22942
+        ],
+        [
+          13,
+          40,
+          15,
+          22942
+        ],
+        [
+          14,
+          40,
+          15,
+          22942
+        ],
+        [
+          13,
+          41,
+          11,
+          22942
+        ],
+        [
+          14,
+          41,
+          11,
+          22942
+        ],
+        [
+          13,
+          41,
+          12,
+          22942
+        ],
+        [
+          14,
+          41,
+          12,
+          22942
+        ],
+        [
+          15,
+          41,
+          12,
+          22942
+        ],
+        [
+          13,
+          41,
+          13,
+          22942
+        ],
+        [
+          14,
+          41,
+          13,
+          22942
+        ],
+        [
+          15,
+          41,
+          13,
+          22942
+        ],
+        [
+          13,
+          41,
+          14,
+          22942
+        ],
+        [
+          14,
+          41,
+          14,
+          22942
+        ],
+        [
+          12,
+          41,
+          15,
+          22942
+        ],
+        [
+          13,
+          41,
+          15,
+          22942
+        ],
+        [
+          14,
+          41,
+          15,
+          22942
+        ],
+        [
+          14,
+          42,
+          11,
+          22942
+        ],
+        [
+          13,
+          42,
+          12,
+          22942
+        ],
+        [
+          14,
+          42,
+          12,
+          22942
+        ],
+        [
+          13,
+          42,
+          13,
+          22942
+        ],
+        [
+          14,
+          42,
+          13,
+          22942
+        ],
+        [
+          13,
+          42,
+          14,
+          22942
+        ],
+        [
+          14,
+          42,
+          14,
+          22942
+        ]
+      ],
+      "image_sha256": "48ced342b36343a31b4146cfd550043a6b98b8fe4b735615cd219b37ae61f060",
+      "section_acquisitions": 1,
+      "section_releases": 1,
+      "statuses_remain_empty": true,
+      "section_locks_restored": true,
+      "events_count": 172,
+      "event_counts": {
+        "acquire": 1,
+        "bulk_get": 26,
+        "chunk": 2,
+        "ensure": 28,
+        "height": 1,
+        "outside_y": 88,
+        "section_set": 26
+      },
+      "events_sha256": "814c9fb0dc9153a697dd3c362cd8883c3503c38410deb442924cbfc604cf9f33",
+      "heightmaps_sha256": "5381a50ba2e11cfbc382ae5cc63c022e7c158823bd27e5a7750772df716e340a"
+    }
+  ]
+}
