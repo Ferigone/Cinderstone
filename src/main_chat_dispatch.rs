@@ -54,8 +54,10 @@ impl Server {
     }
 
     pub(super) async fn handle_chat_packet(&self, entity_id: i32, packet: &Packet) -> Result<()> {
-        self.wait_first_chat_key_attempt().await?;
+        if packet.id == 0x07 { self.wait_first_chat_key_attempt().await?; }
+        else { self.wait_secure_chat_enforcement().await?; }
         let _sequence = self.chat_dispatch.lock().await;
+        let admission = self.player_admission.lock().await;
         let keys = Arc::clone(&self.chat_keys.borrow());
         let (context, permission) = self.actual_chat_context(entity_id)?;
         let (command, charge) = {
@@ -76,7 +78,7 @@ impl Server {
         // Source command parsing, profile resolution and side effects remain
         // owned by the actual administration host, outside the player lock.
         let result = if let Some(command) = command {
-            self.execute_administration(&command.command, Some(entity_id)).await
+            self.execute_administration_locked(&command.command, Some(entity_id), &admission)
         } else { Ok(()) };
         if charge {
             let (context, _) = self.actual_chat_context(entity_id)?;

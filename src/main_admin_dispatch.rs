@@ -8,12 +8,6 @@ use mc121_rust::{
     command_protocol::{self, SuggestionContext, SuggestionRequest},
 };
 
-#[derive(Clone)]
-pub(super) enum AdminConnectionEvent {
-    Packets { recipient: i32, packets: Vec<Packet> },
-    Disconnect { recipient: i32, reason: Vec<u8> },
-}
-
 pub(super) fn wall_time_ms() -> Result<i64> {
     Ok(SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis().try_into()?)
 }
@@ -137,9 +131,15 @@ impl Server {
     }
 
     pub(super) async fn execute_administration(&self, line: &str, source_id: Option<i32>) -> Result<()> {
+        let _sequence = self.chat_dispatch.lock().await;
         // Match the source server-thread serialization: a policy mutation must
         // not fit between final admission and publication of the actual actor.
-        let _admission = self.player_admission.lock().await;
+        let admission = self.player_admission.lock().await;
+        self.execute_administration_locked(line, source_id, &admission)
+    }
+
+    pub(super) fn execute_administration_locked(&self, line: &str, source_id: Option<i32>,
+        _admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
         if command_protocol::command_contains_illegal_characters(line) {
             bail!("illegal command characters");
         }
@@ -166,19 +166,19 @@ impl Server {
                 }
                 AdminEffect::PermissionLevel { entity_id, uuid, level } => {
                     if online.iter().any(|p| p.entity_id == entity_id && p.profile.uuid == uuid) {
-                        let _ = self.admin_events.send(AdminConnectionEvent::Packets { recipient: entity_id, packets: permission_packets(entity_id, level)? });
+                        let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![entity_id]), packets: Arc::new(permission_packets(entity_id, level)?) });
                     }
                 }
                 AdminEffect::Disconnect { entity_id, uuid, reason } => {
                     if online.iter().any(|p| p.entity_id == entity_id && p.profile.uuid == uuid) {
-                        let _ = self.admin_events.send(AdminConnectionEvent::Disconnect { recipient: entity_id, reason: reason.network_component()? });
+                        let _ = self.entity_events.send(PlayerEvent::AdminDisconnect { recipient: entity_id, reason: reason.network_component()? });
                     }
                 }
                 AdminEffect::Feedback { message, broadcast_to_ops } => {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
                     } else if send_feedback {
-                        let _ = self.admin_events.send(AdminConnectionEvent::Packets { recipient: source_id.unwrap(), packets: vec![system_message(message.network_component()?)] });
+                        let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(message.network_component()?)]) });
                     }
                     if broadcast_to_ops {
                         let source_display = source_id.and_then(|id| online.iter().find(|p| p.entity_id == id))
@@ -193,7 +193,7 @@ impl Server {
                             let packet=system_message(admission_commands::encode_component_json(&admin_message)?);
                             for player in &online {
                                 if Some(player.entity_id)!=source_id && owner.lists().operators.contains_key(&player.profile.uuid) {
-                                    let _=self.admin_events.send(AdminConnectionEvent::Packets { recipient:player.entity_id, packets:vec![packet.clone()] });
+                                    let _=self.entity_events.send(PlayerEvent::WorldAudience { recipients:Arc::new(vec![player.entity_id]), packets:Arc::new(vec![packet.clone()]) });
                                 }
                             }
                         }
@@ -210,7 +210,7 @@ impl Server {
                     _ => json!({"text":error.to_string(),"color":"red"}),
                 };
                 let packet=system_message(admission_commands::encode_component_json(&component)?);
-                let _=self.admin_events.send(AdminConnectionEvent::Packets {recipient:id, packets:vec![packet]});
+                let _=self.entity_events.send(PlayerEvent::WorldAudience {recipients:Arc::new(vec![id]), packets:Arc::new(vec![packet])});
             } else {
                 println!("{}",json!({"event":"administration_command_error","reason":error.to_string()}));
             }

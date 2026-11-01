@@ -107,7 +107,6 @@ mod main_admin_dispatch;
 mod main_chat;
 mod main_chat_dispatch;
 mod main_chat_keys;
-use main_admin_dispatch::AdminConnectionEvent;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -435,7 +434,6 @@ struct Server {
     save_lock: Mutex<()>,
     player_admission: Mutex<()>,
     administration: StdRwLock<main_administration::Administration>,
-    admin_events: broadcast::Sender<AdminConnectionEvent>,
     connection_ticks: watch::Sender<u64>,
     chat_keys: watch::Sender<Arc<mc121_rust::chat_crypto::ServiceKeySet>>,
     chat_keys_attempted: watch::Sender<bool>,
@@ -653,6 +651,7 @@ impl ClientTrackers {
 
 #[derive(Clone)]
 enum PlayerEvent {
+    AdminDisconnect { recipient: i32, reason: Vec<u8> },
     ChatDisconnect { recipient: i32, reason: &'static str },
     ChunksReady {
         recipient: i32,
@@ -2570,7 +2569,6 @@ async fn main() -> Result<()> {
         save_lock: Mutex::new(()),
         player_admission: Mutex::new(()),
         administration: StdRwLock::new(administration),
-        admin_events: broadcast::channel(256).0,
         connection_ticks: watch::channel(0).0,
         chat_keys: watch::channel(Arc::new(mc121_rust::chat_crypto::ServiceKeySet::empty())).0,
         chat_keys_attempted: watch::channel(false).0,
@@ -2664,7 +2662,10 @@ async fn main() -> Result<()> {
                 // XP and Item bodies share the actual level tick order above.
                 server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
-                server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.tick();
+                {
+                    let _chat_sequence=server.chat_dispatch.lock().await;
+                    server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.tick();
+                }
                 connection_tick_sequence=connection_tick_sequence.checked_add(1).context("connection tick counter exhausted")?;
                 server.connection_ticks.send_replace(connection_tick_sequence);
                 server.publish_pending_block_acknowledgments()?;
@@ -2917,7 +2918,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         if request.id != 0 || !request.payload.is_empty() {
             bail!("invalid status request");
         }
-        server.wait_first_chat_key_attempt().await?;
+        server.wait_secure_chat_enforcement().await?;
         let response = json!({"version":{"name":"1.21","protocol":PROTOCOL},
             "players":{"max":server.maximum_players()?,"online":server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?.registry.len(),"sample":[]},
             "description":{"text":"Rust compatibility checkpoint — creative fixture; vanilla parity incomplete"},
@@ -2991,7 +2992,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
     ).await?;
     loop {
-        server.wait_first_chat_key_attempt().await?;
+        server.wait_secure_chat_enforcement().await?;
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
             client_information, admission, address, &mut protocol, &mut packs,
@@ -3049,7 +3050,6 @@ async fn play(
     let mut configuration_requests = server.configuration_requests.subscribe();
     let mut current_information = client_information;
     let mut cookies = CookieConnection::new(CookiePhase::Play);
-    let mut admin_events = server.admin_events.subscribe();
     let admission_guard=server.player_admission.lock().await;
     ensure!(!server.shutting_down.load(Ordering::Acquire), "server shutting down");
     if let Some(rejection) = server.check_final_admission(&profile, address)? {
@@ -3390,20 +3390,6 @@ async fn play(
             return Ok(PlayExit::Disconnected);
         }
         tokio::select! {
-            event = admin_events.recv() => {
-                match event {
-                    Ok(AdminConnectionEvent::Packets { recipient, packets }) if recipient == entity_id => {
-                        send_packets(&codec, &mut writer, packets).await?;
-                    }
-                    Ok(AdminConnectionEvent::Disconnect { recipient, reason }) if recipient == entity_id => {
-                        send(&codec, &mut writer, 0x1d, reason).await?;
-                        return Ok(PlayExit::Disconnected);
-                    }
-                    Ok(_) => {},
-                    Err(broadcast::error::RecvError::Lagged(_)) => bail!("administration control history lost"),
-                    Err(broadcast::error::RecvError::Closed) => return Ok(PlayExit::Disconnected),
-                }
-            }
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
@@ -3713,6 +3699,12 @@ async fn play(
                     },
                     OrderedEntityInput::Event(PlayerEvent::Item(event)) => send_packets(&codec,&mut writer,tracker.item_event(entity_id,&event,&loaded)?).await?,
                     OrderedEntityInput::Event(PlayerEvent::State(update)) => send_packets(&codec, &mut writer, tracker.players.event(&update, &loaded)?).await?,
+                    OrderedEntityInput::Event(PlayerEvent::AdminDisconnect { recipient, reason }) => {
+                        if recipient == entity_id {
+                            send(&codec, &mut writer, 0x1d, reason).await?;
+                            return Ok(PlayExit::Disconnected);
+                        }
+                    },
                     OrderedEntityInput::Event(PlayerEvent::ChatDisconnect { recipient, reason }) => {
                         if recipient == entity_id {
                             play_disconnect(&codec, &mut writer, reason).await?;

@@ -39,6 +39,12 @@ impl Server {
             ready.changed().await.context("service-key owner closed before first attempt")?;
         }
     }
+    pub(super) async fn wait_secure_chat_enforcement(&self) -> Result<()> {
+        if self.options.enforce_secure_profile && self.options.online_mode {
+            self.wait_first_chat_key_attempt().await?;
+        }
+        Ok(())
+    }
 }
 
 /// Resolve the real minecraft:chat holder from the registry bytes sent to this
