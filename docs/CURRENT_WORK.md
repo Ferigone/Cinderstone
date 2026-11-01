@@ -5,6 +5,51 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native chat, sessions and signatures — bounded local flow passed
+
+Native chat/session code is connected to the actual production owners in source
+`b3a0d1dc0ed01de666c7bf56723ebfe30140e0be`, following core `66ebc57`, Main
+`1f56b98`, sequencing/key-wait fixes `cea8569` and cleanup `396b589`.
+The full Main build passed. The [local chat flow](validation/chat-flow.json)
+passed on **1 November 2026 at 17:53:46 Europe/Warsaw**
+(`2026-11-01T16:53:46.366Z`) on binary SHA-256
+`509a4dfb7d95ce7d05403b169b5f4922f0d3482713ab6f961a003be9e3c662f0`.
+
+- Actual offline players exchanged Unicode player-chat packets with their real
+  sender identities. Only FULL chat recipients received them; SYSTEM and HIDDEN
+  clients did not. HIDDEN senders received the source refusal without executing
+  their commands or broadcasting their messages.
+- Bounded unsigned commands remain connected. An empty-signature signed-command
+  envelope in offline/enforce-false mode executed a real ban with its original
+  reason, persisted the actual target profile and delivered its disconnect.
+  This is not proof of a trusted signed command or Mojang certificate.
+- Invalid acknowledgments and illegal characters produced their source
+  disconnect reasons. Nonoperator spam disconnected, actual operators were
+  exempt and the spam state recovered with observed native tick progress.
+- Trusted-service key refresh, profile certificate and message signature
+  verification, signed chains, acknowledgment windows, per-recipient signature
+  caches and actual session/PlayerInfo ownership now have native Main paths.
+  A separate [generated-key core smoke](validation/chat-crypto-smoke.json) passed
+  certificate binding, actual listener/session acceptance, signed-chain/cache
+  progression, tampering rejection and decoder-owned expiry. It uses generated
+  trust keys, not a Mojang-issued certificate or production Main authenticity.
+- Chat/session/administration output now shares the ordered entity-event stream.
+  Whole command validation and execution share the actual chat/admission owners.
+  Terminal connections retain the reader during write-half close and bounded
+  input draining, instead of dropping unread input and risking a TCP reset.
+
+The optimized code release reached **SUCCESS** and native offline listening at
+**17:56:46 Europe/Warsaw**, with one replica and the existing `/data` volume.
+The fresh external status probe failed DNS; public gameplay remains unverified.
+
+The [existing admission flow was rechecked](validation/admission-after-chat-flow.json)
+on `cea8569`; it passed after the shared-output/command changes.
+[Production contracts and remaining limits](reference/chat-production.md)
+include the default no-team/no-external-filter profile, bounded signed argument
+ranges, complete Components/selectors, real-account/public verification and exact
+asynchronous scheduling. **authentication.4 remains open**. Fixed checklist
+indicators stay **56/100 code**, **51/100 Main**, `scope_version: 1`.
+
 ## Dedicated admission and administration — bounded local flow passed
 
 Native access-list ownership and production admission checks are now connected.
@@ -37,7 +82,7 @@ The optimized code release reached **SUCCESS** and native offline listening at
 The fresh external status probe still failed DNS; public gameplay is unverified.
 
 See [production owners and configuration](reference/admission-production.md).
-Signed-command verification/execution, full Brigadier/selectors and remote
+Complete signed-command contexts, full Brigadier/selectors and remote
 profile-cache lookup, all Gson/date/locale compatibility, exact asynchronous
 LOGIN scheduling and packet-rate transport enforcement remain unfinished.
 A separate native 64-connection bound is explicit; it is not vanilla capacity.

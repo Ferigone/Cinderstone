@@ -1,0 +1,22 @@
+{
+  "certificate_algorithm": "SHA1withRSA",
+  "certificate_uuid_and_expiry_bound": true,
+  "empty_trust_set_rejected": true,
+  "expiry_checked_by_decoder_not_certificate_constructor": true,
+  "generated_trust_fixture": true,
+  "graphical_client": false,
+  "limits": "Private generated-root native-core smoke; simulated core delivery, not a Mojang certificate, production key fetch or Main gameplay/session test.",
+  "message_algorithm": "SHA256withRSA",
+  "mojang_issued_certificate_verified": false,
+  "ok": true,
+  "private_keys_memory_only": true,
+  "production_main_authenticity_verified": false,
+  "profile_fixture_key_bits": 2048,
+  "public_network": false,
+  "recipient_signature_cache_round_trip": true,
+  "service_fixture_key_bits": 2048,
+  "session_wire_and_real_listener_accepted_generated_certificate": true,
+  "signed_chain_links_and_acknowledged_body_accepted": true,
+  "source_commit": "cea8569394faf60a8f6dbbbe15f2b84e4a0c4522",
+  "tampered_message_rejected_and_chain_broken": true
+}

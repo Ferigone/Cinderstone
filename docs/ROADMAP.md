@@ -21,7 +21,11 @@ detailed roadmap does not add points to, rename or replace that checklist.
 - [x] Online-mode RSA/AES and official session verification implementation.
 - [x] Player tracking, metadata, equipment and chunk visibility.
 - [ ] Verify a complete login with a real account against the public deployment.
-- [ ] Finish secure chat, signed-message handling and chat lifecycle.
+- [x] Bounded native player chat, actual visibility, session/key ownership,
+      signature/chain/acknowledgment/cache primitives and signed administration
+      routing; Main build and [local chat flow](validation/chat-flow.json) passed.
+- [ ] Complete secure chat, remaining filter/team/component/selector contexts and
+      real-profile signed-message end-to-end verification.
 - [x] Complete the existing `network.5` reconfiguration/cookie/resource-pack
       delivery with native Main calls and the recorded local configuration flow.
 - [ ] Complete dynamic registry/datapack reload, general component handling,

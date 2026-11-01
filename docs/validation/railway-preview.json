@@ -1,8 +1,8 @@
 {
-  "observed_at": "2026-11-01T16:13:55.390913+00:00",
-  "source_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
-  "native_integration_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
-  "deployment_id": "cbb54cc1-ca8b-4674-b2ba-cf9f27f4ecf7",
+  "observed_at": "2026-11-01T16:58:18.442165+00:00",
+  "source_commit": "b3a0d1dc0ed01de666c7bf56723ebfe30140e0be",
+  "native_integration_commit": "b3a0d1dc0ed01de666c7bf56723ebfe30140e0be",
+  "deployment_id": "264a7b9e-ba51-4950-9edb-54439a3a3be2",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
@@ -12,17 +12,16 @@
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T16:12:58.911137306Z"
+    "event_timestamp": "2026-11-01T16:56:46.030735652Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
   "autodeploy_branch": "master",
   "external_status_probe": {
     "endpoint": "hopper.proxy.rlwy.net:24418",
-    "checked_at": "2026-11-01T16:13:16.162812+00:00",
+    "checked_at": "2026-11-01T16:57:38.341463+00:00",
     "ok": false,
-    "error": "[Errno -3] Temporary failure in name resolution",
-    "dns_resolved": false
+    "error": "gaierror: [Errno -3] Temporary failure in name resolution"
   },
   "real_account_public_login_verified": false,
   "public_player_data_redeploy_verified": false,
@@ -34,7 +33,7 @@
     "timestamp": "2026-11-01T02:33:31.721552847Z",
     "mode": "offline"
   },
-  "verification_scope": "Optimized native admission/administration source release SUCCESS and offline listening, one running replica and retained /data volume. Admission/command flows are local protocol-client observations. Current public PLAY and graphical gameplay remain unverified; fresh DNS resolution failed.",
+  "verification_scope": "Optimized native chat/session source release SUCCESS and offline listening, one replica and retained /data volume. Actual chat/command flow was local; generated-root cryptographic smoke is a separate native-core fixture, not Mojang trust or Main authenticity. Current public PLAY/graphical gameplay unverified; fresh DNS resolution failed.",
   "earlier_shared_menu_release": {
     "source_commit": "93438c6055ec755e85f528739a41073ef5563b5a",
     "deployment_id": "737cb031-94ce-45d0-9f15-cd3633b80b1a",
@@ -75,5 +74,29 @@
     "positive_rate_limit_transport_enforcement": false,
     "administration_directory": "MC_SERVER_DIRECTORY or MC_DATA_DIR",
     "existing_auth_mode_retained": true
+  },
+  "earlier_administration_release": {
+    "source_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
+    "deployment_id": "cbb54cc1-ca8b-4674-b2ba-cf9f27f4ecf7",
+    "native_listening": {
+      "address": "0.0.0.0:25565",
+      "minecraft": "1.21",
+      "protocol": 767,
+      "mode": "offline",
+      "event_timestamp": "2026-11-01T16:56:46.030735652Z"
+    },
+    "verification_scope": "Optimized native admission/administration source release SUCCESS and offline listening, one running replica and retained /data volume. Admission/command flows are local protocol-client observations. Current public PLAY and graphical gameplay remain unverified; fresh DNS resolution failed."
+  },
+  "chat_scope": {
+    "local_report": "docs/validation/chat-flow.json",
+    "crypto_fixture_report": "docs/validation/chat-crypto-smoke.json",
+    "native_session_signature_ack_cache_paths_connected": true,
+    "crypto_trust_fixture_generated": true,
+    "mojang_certificate_runtime_verified": false,
+    "full_authentication_4_complete": false,
+    "default_profile": "dedicated no-team/no-external-filter",
+    "configured_secure_profile_default": true,
+    "effective_hosted_enforcement": false,
+    "hosted_login_mode": "offline"
   }
 }

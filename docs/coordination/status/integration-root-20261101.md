@@ -15,25 +15,31 @@ without an actual issue or Git branch/status check-in.
 
 ## Current delivery
 
-Bounded native dedicated admission/administration is implemented in source
-`6c5401882c2cf2d454968455fa98b1e91b653aa5`, after core `76141a7` and Main
-integration `870349d`. The final Main build and
-[local admission flow](../../validation/admission-flow.json) passed at
-`2026-11-01T16:10:14.211Z` on binary
-`f5e29a9ecb012d4685c9358612e453189c28475cd2d9fb50624e85c6a0a55411`.
-Actual list/peer/profile owners feed ordered pre-success and final admission;
-commands mutate persistent access lists, update permissions/tree and disconnect
-actual connections. Policy changes serialize with admission. The source-review
-correction preserves compression-before-duplicate-eviction ordering. Scope and
-remaining native boundaries are in [admission-production.md](../../reference/admission-production.md).
+Bounded native player chat/session integration is published in source
+`b3a0d1dc0ed01de666c7bf56723ebfe30140e0be`, following core `66ebc57`, Main
+`1f56b98`, sequencing/key-wait fixes `cea8569` and registration cleanup `396b589`.
+The final Main build and [local chat flow](../../validation/chat-flow.json)
+passed at `2026-11-01T16:53:46.366Z` on binary
+`509a4dfb7d95ce7d05403b169b5f4922f0d3482713ab6f961a003be9e3c662f0`.
+Actual visibility, Unicode routing, ACK/character refusal, spam and tick recovery,
+and an offline empty-signature command envelope were exercised. The separate
+[crypto smoke](../../validation/chat-crypto-smoke.json) passed against the actual
+native library with generated trust keys; no Mojang certificate or production
+Main authenticity claim is made.
 
-This bounded stage does not complete authentication.5 or commands_data.1; the
-unchanged scope1 checklist remains56/100 code and51/100 Main. Earlier network.5
-remains complete with its own source and runtime evidence. The optimized code release reachedSUCCESS/offline listening at
-2026-11-01T16:12:58.911137306Z, with one replica and the retained volume. Public
-gameplay is unverified because the fresh external DNS probe failed. Hosted
-verification is recorded in docs/validation/railway-preview.json and the progress
-journal; a source push or build-in-progress is not itself deployment success.
+Production owners and limits are in
+[chat-production.md](../../reference/chat-production.md). Chat/session/admin
+output uses one ordered stream; whole chat-command execution and admission
+mutations share their sequence owner. Terminal output is half-closed while the
+actual reader drains late input with a declared native bound. Native service-key
+refresh and session verification are connected, without client-supplied roots.
+The earlier admission flow also passed on `cea8569` after its shared-output
+changes. The fixed scope1 checklist stays56/100 code and51/100 Main;
+authentication.4, authentication.5 and commands_data.1 remain incomplete.
+The optimized code release reachedSUCCESS/native offline listening at
+2026-11-01T16:56:46.030735652Z, with one replica and retained volume. Public
+PLAY remains unverified because fresh DNS resolution failed. Hosted evidence is
+in docs/validation/railway-preview.json and the persistent journal.
 
 ## Communication
 
