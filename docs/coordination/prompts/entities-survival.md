@@ -25,15 +25,17 @@ otherwise use and report the observed maximum.
 Target the remaining entities and survival_combat deliveries. Existing numerical
 health/damage routines and native item/player/XP ownership are foundations,
 not proof that full damage/death/respawn, effects or mobs run in production.
-First ask which survival_combat.2 and existing survival/entity files the central
-integrator is actively changing; do not duplicate that work. Whole-delivery
+Read docs/coordination/assignments/entities-survival.md for the published exact
+file grant. The previous integration-team damage audit and healing edits are
+complete; do not ask the user to reconfirm those assigned files. Whole-delivery
 completion needs actual source behavior and Main ownership/callsites, not a mob
 ID, a data codec or a standalone formula.
 
 Default new-module ownership is src/mobs/**, src/living_entities/**,
-src/combat/** and src/effects/**. Existing src/survival.rs, src/entity*.rs and
-shared item/player/body/persistence/index modules require exact confirmed claims
-or integration contracts; they are not automatically yours. When capacity allows,
+src/combat/** and src/effects/**. Existing src/survival.rs, src/player_food.rs
+and src/equipment.rs plus the new damage/effect modules in the assignment are
+explicitly yours. Other shared item/player/body/persistence/index and entity
+foundation modules require narrow integration contracts. When capacity allows,
 split into six disjoint groups: living-entity lifecycle; damage/death/respawn
 contracts outside centrally claimed work; effects/attribute lifecycle; mob
 goals/navigation; mob spawning/loot ownership; tracking/persistence integration
@@ -69,4 +71,11 @@ handoff give exact commits, file ownership, integration state, validation and
 blockers. Only the central integrator changes the fixed 100-item checklist at
 scope_version: 1. If the turn ends or agents pause, say what stopped; do not claim
 ongoing background work or automatic communication with another Codex session.
+If issue-comment or PR creation returns403, use the guide's Git fallback:
+commit docs/coordination/status/<instance-id>.md on your assigned feature branch
+with exact file ownership, intended recipient, source commits, integration
+contracts and handoff. Fetch origin and read master/root and other team branch
+status files while active. Do not stop independent authorized implementation
+because comment writes are unavailable or share credentials.
+
 ```

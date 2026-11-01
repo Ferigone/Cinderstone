@@ -12,9 +12,9 @@
     "Any scope change increments scope_version and invalidates direct cross-version delta comparisons",
     "Tests deferred per user; no test-count-derived percentages"
   ],
-  "baseline_commit": "b9e494e52e8a477b3e43a61703639a4aff3977b0",
-  "code_ported_points": 55,
-  "main_integrated_points": 50,
+  "baseline_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+  "code_ported_points": 56,
+  "main_integrated_points": 51,
   "note": "Public planning snapshot; the original named delivery definitions are preserved verbatim. Only the integration coordinator updates completion after actual source and Main evidence. Counts do not measure functional Minecraft compatibility.",
   "rows": [
     {
@@ -58,9 +58,21 @@
       "area": "network",
       "delivery": "Rekonfiguracja, cookies i resource packs",
       "points": 1,
-      "code_ported": false,
-      "main_integrated": false,
-      "verification": "final validation deferred"
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "Pinned source review, full Main build and actual local configuration/reconfiguration/resource-pack/cookie flow passed; exhaustive conformance deferred",
+      "closure_evidence": {
+        "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+        "binary_sha256": "d68f5c8de6c95cec4df4d28777c3e35f045890ac9a725181a29b38d0eb3690dd",
+        "runtime_completed_at": "2026-11-01T14:18:52.638Z",
+        "public_report": "https://github.com/Ferigone/Cinderstone/blob/master/docs/validation/configuration-flow.json",
+        "main_callsites": [
+          "connection/receive_login",
+          "main_configuration::configure",
+          "play: cookie/resource response handling and actual actor cleanup/readmission"
+        ],
+        "scope_unchanged": true
+      }
     },
     {
       "id": "authentication.1",

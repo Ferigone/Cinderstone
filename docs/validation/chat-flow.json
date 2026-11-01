@@ -1,0 +1,65 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "b3a0d1dc0ed01de666c7bf56723ebfe30140e0be",
+  "full_vanilla_parity": false,
+  "scope": "Actual local protocol clients and console: unsigned native player-chat content/sender routing; FULL versus SYSTEM/HIDDEN audience; hidden-source refusal; existing unsigned administration; empty-signature signed-command envelope in offline/enforce-false mode; exact invalid-ack/illegal-character disconnects; source chat-spam charging, actual-tick recovery and operator exemption. No trusted profile certificate, Mojang signature, signed-player-chat acceptance, graphical client, public network or whole-Minecraft claim.",
+  "checks": {
+    "actual_unsigned_unicode_player_chat_and_sender": true,
+    "full_audience_only_excludes_system_and_hidden": true,
+    "hidden_sender_gets_red_disabled_without_broadcast": true,
+    "hidden_source_does_not_execute_unsigned_command": true,
+    "existing_unsigned_administration_still_executes": true,
+    "offline_empty_signature_command_envelope_executes_real_reason": true,
+    "invalid_ack_offset_has_exact_disconnect": true,
+    "illegal_characters_have_exact_disconnect": true,
+    "nonoperator_chat_spam_disconnect": true,
+    "actual_operator_spam_exemption": true,
+    "chat_spam_state_recovers_with_actual_tick_progress": true
+  },
+  "observed": {
+    "unsignedWireContext": {
+      "signaturePresent": false,
+      "index": 0,
+      "salt": "0",
+      "lastSeenEntries": 0
+    },
+    "unsigned": {
+      "content": "Zażółć gęślą jaźń — native Rust 👋",
+      "senderMatchesActualProfile": true,
+      "index": 0,
+      "signaturePresent": false,
+      "lastSeenEntries": 0,
+      "fullSenderReceived": true,
+      "fullPeerReceived": true,
+      "systemReceived": false,
+      "hiddenReceived": false
+    },
+    "commandEnvelope": {
+      "mode": "offline/enforce-false",
+      "signatures": 0,
+      "reason": "plainReason",
+      "persistedActualProfile": true,
+      "targetDisconnected": true,
+      "trustedSignatureVerificationClaimed": false
+    },
+    "tickRecovery": {
+      "initialMessages": 10,
+      "ageAtInitialBurstDelivery": "241",
+      "freshBaselineAge": "259",
+      "afterRecoveryAge": "319",
+      "observedWorldTickDeltaAtLeast": 60,
+      "subsequentUnsignedChatDelivered": true,
+      "noWallClockTickSubstitution": true
+    }
+  },
+  "trusted_profile_certificate_runtime_exercised": false,
+  "signed_player_message_runtime_exercised": false,
+  "graphical_client": false,
+  "public_network": false,
+  "binary_sha256": "509a4dfb7d95ce7d05403b169b5f4922f0d3482713ab6f961a003be9e3c662f0",
+  "started_at": "2026-11-01T16:53:18.672Z",
+  "completed_at": "2026-11-01T16:53:46.366Z"
+}

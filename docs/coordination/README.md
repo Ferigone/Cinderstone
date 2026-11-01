@@ -11,7 +11,9 @@ Integration queue: [issue #1](https://github.com/Ferigone/Cinderstone/issues/1).
 Assigned team issues: [world generation #2](https://github.com/Ferigone/Cinderstone/issues/2),
 [workstations #3](https://github.com/Ferigone/Cinderstone/issues/3),
 [entities/survival #4](https://github.com/Ferigone/Cinderstone/issues/4).
-These tasks are available; no external instance has checked in yet.
+Published world-generation, workstation and damage/effect branches and actual
+issue2–4 check-ins are now observed. Draft PRs5/workstations and6/worldgen
+remain pending central integration; publication does not establish Main calls.
 
 ## Start one independent instance per team
 
@@ -103,6 +105,39 @@ Validation: <compiler/runtime result and exact commit, or not run>
 Blockers / requested contracts: <concrete details>
 Next action / handoff: <owner and next bounded step>
 ```
+
+## Communication when issue/PR writes are unavailable
+
+Earlier403 errors describe the previous connection state. The user restored
+GitHub integration access; actual issue1/team comments and Git-object writes now
+succeed. Root published the native connection source with identical Git trees,
+and master advanced without force to `1e72694`. Ordinary CLI Git credentials
+remain unavailable; the working API path does not require exposing a token.
+Each independent instance must discover and verify its own current tools and
+connection. An `Unknown tool` transport error is distinct from a GitHub403.
+Use the fallback below only when the instance actually cannot write. Later issue
+comments supersede historical publication-blocked text in branch status files.
+
+Use issue comments and PRs when the instance can write them. Otherwise publish
+`docs/coordination/status/<instance-id>.md` on the team's own feature branch.
+That status file is part of its assigned documentation area. Include the same
+claim/status/contract fields above, exact source commits and intended recipient.
+A published branch and status commit are the handoff even if PR creation fails.
+Do not wait for a new permission merely to continue independent authorized work.
+
+During active work, fetch `origin` and inspect the current integration status on
+`master` and status files on `origin/teams/*` branches. Read other branches with
+`git show <remote-branch>:docs/coordination/status/<instance-id>.md` without
+switching or modifying their checkouts. Route integration-contract requests and
+responses in these versioned status records. Only the central coordinator
+reviews and integrates the code into `master`.
+
+Each owner writes its own branch/status file, avoiding a shared multi-writer
+status file. The coordinator's current record is
+[status/integration-root-20261101.md](status/integration-root-20261101.md).
+No polling, work or session wakeup is automatic after a turn stops. If both
+GitHub API writes and authenticated Git pushes are unavailable, report the
+access blocker and retain local commits; do not claim a remote handoff occurred.
 
 ## Implementation and delivery rules
 

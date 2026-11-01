@@ -1,0 +1,56 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "cea8569394faf60a8f6dbbbe15f2b84e4a0c4522",
+  "full_vanilla_parity": false,
+  "scope": "Local protocol clients and actual console: configured player capacity/status; real operator permission/tree updates; unauthorized command rejection; persisted whitelist and player/IP bans with live disconnect/reconnect decisions; operator capacity bypass only from a true stored entry; admission policy recheck after a held configuration task. No full command engine, graphical client, public network, secure-chat or whole-Minecraft claim.",
+  "checks": {
+    "default_nonoperators_receive_permission_filtered_tree": true,
+    "configured_capacity_and_status_use_actual_admitted_count": true,
+    "nonoperator_cannot_mutate_player_bans": true,
+    "console_op_persists_actual_profile_and_refreshes_permission_and_tree": true,
+    "operator_status_alone_does_not_bypass_capacity": true,
+    "whitelist_persists_and_rejects_new_nonmembers_without_enforcement_kick": true,
+    "live_player_ban_pardon_and_reconnect_follow_persisted_policy_order": true,
+    "command_suggestions_read_current_access_list": true,
+    "actual_peer_ip_ban_and_console_pardon_control_reconnect": true,
+    "only_true_stored_operator_bypass_allows_admission_above_capacity": true,
+    "final_configuration_gate_rechecks_current_policy_before_creating_player": true
+  },
+  "observed": {
+    "statusAtCapacity": {
+      "max": 2,
+      "online": 2
+    },
+    "operatorEntry": {
+      "name": "Admin",
+      "level": 4,
+      "bypassesPlayerLimit": false
+    },
+    "playerBan": {
+      "name": "Guest",
+      "source": "Admin",
+      "reason": "Banned by an operator.",
+      "expires": "forever"
+    },
+    "explicitBypass": {
+      "online": 3,
+      "max": 2,
+      "fixtureProfileFromPreviousRealLogin": true,
+      "bypassesPlayerLimit": true
+    },
+    "configurationRecheck": {
+      "realOfferHeld": true,
+      "loginSuccessBeforeBan": true,
+      "nativePlayActorsCreated": 0,
+      "disconnectKeys": [
+        "multiplayer.disconnect.banned.reason"
+      ],
+      "resourceUrlFetched": false
+    }
+  },
+  "binary_sha256": "18d6211117a225c04e51b7da666b81a617d9b423983c7f8daa58dd856d828bcc",
+  "completed_at": "2026-11-01T16:46:05.307Z"
+}

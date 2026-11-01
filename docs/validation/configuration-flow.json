@@ -1,0 +1,118 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "full_vanilla_parity": false,
+  "scope": "Local protocol clients: initial known-pack negotiation, optional/required resource-pack responses, actual SIGHUP PLAY-to-CONFIGURATION readmission on the same admitted TCP connection without a second login handshake, retained inventory/position, and vanilla cookie-response disconnects in LOGIN/CONFIGURATION/PLAY. No resource URL is fetched; no graphical-client or public-network claim.",
+  "checks": {
+    "login_cookie_rejected_with_exact_reason": true,
+    "initial_server_brand_precedes_feature_flags": true,
+    "accepted_and_downloaded_keep_configuration_pending": true,
+    "optional_terminal_failure_with_unknown_uuid_allows_play": true,
+    "initial_known_pack_query_and_acknowledgement": true,
+    "return_to_world_does_not_repeat_initial_brand": true,
+    "same_admitted_tcp_connection_reconfigured_without_reauthentication": true,
+    "inventory_and_moved_position_retained_on_readmission": true,
+    "native_world_interaction_after_reconfiguration": true,
+    "play_cookie_rejected_with_exact_reason": true,
+    "configuration_cookie_rejected_with_exact_reason": true,
+    "required_declined_disconnects_before_play_with_exact_reason": true,
+    "require_flag_without_url_does_not_require_or_offer_pack": true,
+    "unsolicited_play_declined_ignored_without_configured_pack": true,
+    "malformed_prompt_json_warns_and_omits_prompt_without_blocking_play": true
+  },
+  "observed": {
+    "loginCookie": {
+      "reason": "multiplayer.disconnect.unexpected_query_response",
+      "reachedPlay": false
+    },
+    "optionalOffer": {
+      "uuid": "12345678-1234-4234-8234-123456789abc",
+      "url": "https://example.invalid/cinderstone-native-pack.zip",
+      "hash": "0123456789abcdef0123456789abcdef01234567",
+      "required": false,
+      "promptPresent": true
+    },
+    "reconfiguration": {
+      "entityIdBefore": 1,
+      "entityIdAfter": 2,
+      "loginSuccessPackets": 1,
+      "startConfigurationPackets": 1,
+      "finishConfigurationPackets": 2,
+      "positionBefore": {
+        "x": 9.5,
+        "y": 65,
+        "z": 9.5,
+        "yaw": 35,
+        "pitch": 10
+      },
+      "positionAfter": {
+        "x": 9.5,
+        "y": 65,
+        "z": 9.5,
+        "yaw": 35,
+        "pitch": 10
+      },
+      "emeraldSlot": 37,
+      "emeraldCount": 11,
+      "serverBrand": "Cinderstone",
+      "serverBrandPacketsDuringReturn": 0,
+      "registryPacketsDuringReturn": 0,
+      "knownPackQueriesDuringReturn": 0
+    },
+    "playCookie": {
+      "reason": "multiplayer.disconnect.unexpected_query_response",
+      "presentEmptyPayload": true
+    },
+    "configurationCookie": {
+      "reason": "multiplayer.disconnect.unexpected_query_response",
+      "reachedPlay": false
+    },
+    "requiredPack": {
+      "offer": {
+        "uuid": "12345678-1234-4234-8234-123456789abc",
+        "url": "https://example.invalid/cinderstone-native-pack.zip",
+        "hash": "0123456789abcdef0123456789abcdef01234567",
+        "required": true,
+        "promptPresent": true
+      },
+      "reason": "multiplayer.requiredTexturePrompt.disconnect",
+      "reachedPlay": false
+    },
+    "requireFlagWithoutUrl": {
+      "offers": 0,
+      "reachedPlay": true,
+      "subsequentAuthoritativeInventory": {
+        "slot": 38,
+        "item": "amethyst_shard",
+        "count": 4
+      }
+    },
+    "malformedPrompt": {
+      "offer": {
+        "uuid": "12345678-1234-4234-8234-123456789abc",
+        "url": "https://example.invalid/cinderstone-native-pack.zip",
+        "hash": "0123456789abcdef0123456789abcdef01234567",
+        "required": false,
+        "promptPresent": false
+      },
+      "warningObserved": true,
+      "reachedPlay": true
+    }
+  },
+  "binary_sha256": "d68f5c8de6c95cec4df4d28777c3e35f045890ac9a725181a29b38d0eb3690dd",
+  "completed_at": "2026-11-01T14:18:52.638Z",
+  "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+  "build_profile": "debug",
+  "graphical_client": false,
+  "public_network": false,
+  "resource_files_downloaded": false,
+  "limitations": [
+    "The operator SIGHUP transition returns the actual player to the world; it does not reload datapacks or regenerate registry contents.",
+    "Arbitrary Component payload coverage and every malformed late PLAY body are not complete.",
+    "The native dedicated-server profile is exercised; no integrated singleplayer-owner behavior or whole-Minecraft parity is claimed.",
+    "The probe sends resource-pack status messages without downloading/verifying/reloading client assets.",
+    "Movement water statistics and healing reuse are bounded Main changes; their aggregate checklist deliveries remain open."
+  ]
+}

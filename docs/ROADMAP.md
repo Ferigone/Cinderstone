@@ -8,8 +8,8 @@ bounded delivery has code connected to the current runtime; it is not a declarat
 of complete vanilla parity or comprehensive validation. **Partial** groups remain
 open even when individual subfeatures work.
 
-The separate fixed 100-item planning checklist currently records **55/100 code**
-and **50/100 main-server integration**, at `scope_version: 1`. These indicators do
+The separate fixed 100-item planning checklist currently records **56/100 code**
+and **51/100 main-server integration**, at `scope_version: 1`. These indicators do
 not measure behavioral coverage, engineering effort or remaining time. This more
 detailed roadmap does not add points to, rename or replace that checklist.
 
@@ -21,9 +21,41 @@ detailed roadmap does not add points to, rename or replace that checklist.
 - [x] Online-mode RSA/AES and official session verification implementation.
 - [x] Player tracking, metadata, equipment and chunk visibility.
 - [ ] Verify a complete login with a real account against the public deployment.
-- [ ] Finish secure chat, signed-message handling and chat lifecycle.
-- [ ] Complete reconfiguration, cookies, resource packs and custom payload handling.
-- [ ] Complete admission limits, bans and administration.
+- [x] Bounded native player chat, actual visibility, session/key ownership,
+      signature/chain/acknowledgment/cache primitives and signed administration
+      routing; Main build and [local chat flow](validation/chat-flow.json) passed.
+- [ ] Complete secure chat, remaining filter/team/component/selector contexts and
+      real-profile signed-message end-to-end verification.
+- [x] Complete the existing `network.5` reconfiguration/cookie/resource-pack
+      delivery with native Main calls and the recorded local configuration flow.
+- [ ] Complete dynamic registry/datapack reload, general component handling,
+      remaining custom payloads and malformed late-PLAY decoder equivalence.
+- [x] Bounded native access lists, ordered LOGIN/configuration admission gates,
+      real console/unsigned administration, operator permission/tree refresh and
+      configured capacity with explicit stored bypass. The local
+      [admission flow](validation/admission-flow.json) passed for source `6c54018`.
+- [x] Connect bounded packet-rate enforcement, raw read inactivity, typed
+      connection settings, configurable compression and common wire dispatch to
+      Main; [local flow](validation/connection-flow.json) passed for local `259e641` (identical published source `87dda91`).
+      Railway autodeployed master `1e72694` successfully.
+- [ ] Complete admission limits, bans and administration, including remaining
+      parser/profile/date contexts and full asynchronous transport equivalence.
+
+The [configuration flow](validation/configuration-flow.json) passed on 1 November
+2026 at 15:18:52 Europe/Warsaw for source
+`643106e8eb60d970a8df67eb9acf0ab5f107c788`, after a full Main build. Native
+SIGHUP moved an admitted connection PLAY → CONFIGURATION → actual new-player
+readmission on the same TCP connection without reauthentication. Eleven emeralds,
+position and subsequent world interaction were retained. Cookie rejection in
+all three phases, initial known-pack/brand ordering and optional/required pack
+task responses were exercised. Resource URLs were not fetched or applied.
+SIGHUP is the native `RETURN_TO_WORLD` operator path, not datapack reload.
+The optimized hosted release reached **SUCCESS**, with one instance, the existing
+volume and native offline listening at **15:25:08 Europe/Warsaw** on 1 November
+2026. Public gameplay remains unverified because the external status probe fails
+DNS resolution. The
+existing `network.5` row closes without changing scope or the 100-item denominator;
+this is not a full behavioral-compatibility or performance claim.
 
 ## 2. Native world lifecycle — Partial
 
@@ -52,6 +84,8 @@ detailed roadmap does not add points to, rename or replace that checklist.
 
 The current runtime profile is an alive, unmounted creative player without active
 status effects. Implemented numerical survival routines do not remove that limit.
+Narrow water-movement statistic updates and FoodData healing now reuse native
+core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
 
 ## 4. Inventories and crafting — Partial
 
@@ -136,8 +170,8 @@ listening at 14:23:02 Europe/Warsaw, with one instance and the existing volume.
 Current public gameplay remains unverified because of environment DNS failure;
 these observations do not verify the later container-removal stage. Full Java player-save
 ordering, integrated death/survival, mixed alive-return/overflow-drop packet
-interleaving and complete tick phases remain open. No fixed 100-item checklist
-row is closed by these additions: 55/100 code, 50/100 Main, `scope_version: 1`.
+interleaving and complete tick phases remain open. These bounded menu additions
+did not close a full checklist row; the current indicators are recorded above.
 
 The [active-viewer flow](validation/open-furnace-menu-flow.json) passed for an
 ordinary furnace with two viewers and an independent breaker. The old container

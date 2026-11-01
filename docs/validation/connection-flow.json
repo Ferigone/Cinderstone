@@ -1,0 +1,86 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "259e64175fb594c7e5b24b329d16e8021b8a3dde",
+  "binary_sha256": "ece5cbf3604c632b23c21e757a7095177ac1e80a1a8210168458662a2dd6d9ac",
+  "started_at": "2026-11-01T20:01:21.837500+00:00",
+  "scope": "Focused real native Main framing/compression, packet-rate ownership, configuration keepalive refusal and raw-byte idle transport. No graphical/public-network/authentic-account or full Minecraft compatibility claim.",
+  "checks": {
+    "unsolicited_configuration_keepalive_writes_source_disconnect": {
+      "ok": true,
+      "reason": {
+        "translate": "disconnect.timeout"
+      }
+    },
+    "actual_play_ping_request_pong_response_preserves_signed_i64": {
+      "ok": true,
+      "sent": -72623859790382856,
+      "received": -72623859790382856
+    },
+    "rate_zero_preserves_real_play_after_256_pongs_and_payload": {
+      "ok": true,
+      "compression_announced": [
+        8
+      ],
+      "received_frames": {
+        "compressed": 40,
+        "plain": 12
+      },
+      "actual_list_reply": {
+        "translate": "commands.list.players",
+        "online": 1,
+        "maximum": 20,
+        "profile_details_omitted": true
+      }
+    },
+    "configured_packet_rate_disconnects_actual_configuration_pongs": {
+      "ok": true,
+      "reason": {
+        "translate": "disconnect.exceeded_packet_rate"
+      },
+      "configured_limit": 20,
+      "burst_packets": 256
+    },
+    "negative_threshold_keeps_plain_actual_login_configuration_play": {
+      "ok": true,
+      "compression_announced": [],
+      "actual_list_reply": {
+        "translate": "commands.list.players",
+        "online": 1,
+        "maximum": 20,
+        "profile_details_omitted": true
+      }
+    },
+    "incomplete_frame_raw_read_idle_closes_at_30_seconds": {
+      "ok": true,
+      "elapsed_seconds": 30.002,
+      "expected_close_seconds": 30,
+      "raw_input_at_seconds": [
+        0
+      ],
+      "complete_packets_sent": 0,
+      "outbound_bytes_before_close_hex": ""
+    },
+    "partial_frame_raw_bytes_refresh_idle_deadline_beyond_30_seconds": {
+      "ok": true,
+      "elapsed_seconds": 50.002,
+      "expected_close_seconds": 50,
+      "raw_input_at_seconds": [
+        0,
+        20
+      ],
+      "complete_packets_sent": 0,
+      "outbound_bytes_before_close_hex": ""
+    }
+  },
+  "completed_at": "2026-11-01T20:02:11.997141+00:00",
+  "harness_sha256": "14f81108916913a825a7001d1a07ac9afcb07c3b92e28b20bc9de90f9ba17d94",
+  "synthetic_offline_profiles_only": true,
+  "full_vanilla_parity": false,
+  "validated_local_source_commit": "259e64175fb594c7e5b24b329d16e8021b8a3dde",
+  "published_source_commit": "87dda91054478098ba86eebaaf32869fa176f307",
+  "identical_source_tree_sha": "662339775d32cb25f48dc281d448babc314cf5bb",
+  "publication_method": "GitHub integration Git objects; exact source tree verified, commit metadata differs"
+}

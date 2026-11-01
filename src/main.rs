@@ -57,7 +57,7 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::{Path, PathBuf},
     sync::{
-        atomic::{AtomicBool, AtomicI32, AtomicU64, AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicI32, AtomicU64, Ordering},
         Arc, RwLock as StdRwLock,
     },
     time::{Duration, SystemTime, UNIX_EPOCH},
@@ -66,7 +66,7 @@ use tokio::{
     fs,
     io::AsyncWriteExt,
     net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        tcp::OwnedWriteHalf,
         TcpListener, TcpStream,
     },
     sync::{broadcast, mpsc, watch, Mutex, RwLock, Semaphore},
@@ -102,16 +102,23 @@ mod main_random_block_ticks;
 mod main_world_interactions;
 mod main_bucket_interactions;
 mod main_configuration;
+mod main_administration;
+mod main_admin_dispatch;
+mod main_chat;
+mod main_chat_dispatch;
+mod main_chat_keys;
+mod main_connection;
+mod main_connection_rate;
+mod main_connection_decode;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
 use main_item_gameplay::{GameplaySourceScope, MainItemGameplay};
 
 const PROTOCOL: i32 = 767;
-const MAX_PLAYERS: usize = 20;
 const CONFIGURATION_DEADLINE: Duration = Duration::from_secs(15);
 const WRITE_DEADLINE: Duration = Duration::from_secs(15);
-type NetworkReader = CryptoRead<OwnedReadHalf>;
+type NetworkReader = CryptoRead<mc121_rust::connection_transport::RawReadStream>;
 type NetworkWriter = CryptoWrite<OwnedWriteHalf>;
 
 #[derive(Clone)]
@@ -129,6 +136,14 @@ struct Options {
     max_chained_neighbor_updates: i32,
     resource_pack: Option<ResourcePackOffer>,
     resource_pack_required: bool,
+    server_directory: Option<PathBuf>,
+    max_players: i32,
+    enforce_whitelist: bool,
+    op_permission_level: i32,
+    enforce_secure_profile: bool,
+    secure_profile_override: Option<bool>,
+    rate_limit: Option<i32>,
+    compression_threshold: Option<i32>,
 }
 
 impl Options {
@@ -147,6 +162,14 @@ impl Options {
             max_chained_neighbor_updates: 1_000_000,
             resource_pack: None,
             resource_pack_required: false,
+            server_directory: None,
+            max_players: 20,
+            enforce_whitelist: false,
+            op_permission_level: 4,
+            enforce_secure_profile: true,
+            secure_profile_override: None,
+            rate_limit: None,
+            compression_threshold: None,
         };
         let mut pack_url = String::new();
         let mut pack_hash = String::new();
@@ -170,6 +193,10 @@ impl Options {
                 options.resource_pack_required = true;
                 continue;
             }
+            if argument == "--enforce-whitelist" {
+                options.enforce_whitelist = true;
+                continue;
+            }
             if argument == "--help" {
                 println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6]");
                 std::process::exit(0);
@@ -182,6 +209,12 @@ impl Options {
                 "--port" => options.port = value.parse().context("invalid port")?,
                 "--fixtures" => options.fixtures = value.into(),
                 "--world" => options.world = value.into(),
+                "--server-directory" => options.server_directory = Some(value.into()),
+                "--max-players" => options.max_players = value.parse().context("invalid maximum players")?,
+                "--op-permission-level" => options.op_permission_level = value.parse().context("invalid operator permission level")?,
+                "--enforce-secure-profile" => options.secure_profile_override = Some(value.parse().context("enforce-secure-profile must be true or false")?),
+                "--rate-limit" => options.rate_limit = Some(value.parse().context("invalid packet rate limit")?),
+                "--compression-threshold" => options.compression_threshold = Some(value.parse().context("invalid compression threshold")?),
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
                 "--resource-pack-url" => pack_url = value,
@@ -210,6 +243,7 @@ impl Options {
         if !(2..=6).contains(&options.view_distance) {
             bail!("view distance must be 2..=6");
         }
+        ensure!((0..=4).contains(&options.op_permission_level), "operator permission level must be 0..4");
         if !pack_url.is_empty() {
             options.resource_pack = Some(ResourcePackOffer::from_server_config(
                 pack_id, pack_url, pack_hash, options.resource_pack_required, pack_prompt,
@@ -246,6 +280,7 @@ struct Capture {
     packets: Vec<CapturedPacket>,
 }
 struct Fixtures {
+    chat_type: i32,
     configuration: Vec<Packet>,
     dimension: i32,
     dimension_facts: DimensionFacts,
@@ -254,6 +289,8 @@ struct Fixtures {
 
 #[derive(Clone, Copy)]
 struct ClientInformation {
+    chat_visibility: i32,
+    text_filtering: bool,
     view_distance: i32,
     skin_parts: u8,
     main_hand: u8,
@@ -366,7 +403,9 @@ async fn fixtures(path: &Path) -> Result<Fixtures> {
             .context("invalid seed hash low word")?,
     )?;
     let seed_hash = ((u64::from(high as u32) << 32) | u64::from(low as u32)) as i64;
+    let chat_type = main_chat_keys::captured_chat_type(&configuration)?;
     Ok(Fixtures {
+        chat_type,
         configuration,
         dimension,
         dimension_facts,
@@ -400,12 +439,18 @@ struct SavedWorld {
 }
 struct Server {
     options: Options,
+    connection_settings: mc121_rust::connection_settings::DedicatedConnectionSettings,
+    connection_rates: StdRwLock<BTreeMap<u64, main_connection_rate::ConnectionRate>>,
     fixtures: Fixtures,
     seed_hash: i64,
     world: RwLock<WorldBackend>,
     save_lock: Mutex<()>,
     player_admission: Mutex<()>,
-    online: Arc<AtomicUsize>,
+    administration: StdRwLock<main_administration::Administration>,
+    connection_ticks: watch::Sender<u64>,
+    chat_keys: watch::Sender<Arc<mc121_rust::chat_crypto::ServiceKeySet>>,
+    chat_keys_attempted: watch::Sender<bool>,
+    chat_dispatch: Mutex<()>,
     entities: AtomicI32,
     connection_sequence: AtomicU64,
     configuration_requests: broadcast::Sender<i32>,
@@ -441,6 +486,9 @@ struct LivePlayers {
     redstone_runtime: main_redstone::MainRedstoneRuntime,
     containers: BTreeMap<i32, SharedContainer>,
     disconnects: BTreeMap<i32, watch::Sender<Option<&'static str>>>,
+    connection_addresses: BTreeMap<i32, SocketAddr>,
+    chat: main_chat::MainChatRuntime,
+    player_last_actions: BTreeMap<i32, i64>,
     pending_block_acks: BTreeMap<i32, i32>,
     flying: BTreeSet<i32>,
     unavailable_pose: BTreeMap<i32, String>,
@@ -616,6 +664,8 @@ impl ClientTrackers {
 
 #[derive(Clone)]
 enum PlayerEvent {
+    AdminDisconnect { recipient: i32, reason: Vec<u8> },
+    ChatDisconnect { recipient: i32, reason: &'static str },
     ChunksReady {
         recipient: i32,
         cutoff: u64,
@@ -697,6 +747,9 @@ impl LivePlayers {
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
             containers: BTreeMap::new(),
             disconnects: BTreeMap::new(),
+            connection_addresses: BTreeMap::new(),
+            chat: main_chat::MainChatRuntime::default(),
+            player_last_actions: BTreeMap::new(),
             pending_block_acks: BTreeMap::new(),
             flying: BTreeSet::new(),
             unavailable_pose: BTreeMap::new(),
@@ -2153,31 +2206,6 @@ impl Server {
     }
 }
 
-struct PlayerGuard(Arc<AtomicUsize>);
-impl PlayerGuard {
-    fn reserve(count: Arc<AtomicUsize>) -> Result<Self> {
-        let mut current = count.load(Ordering::Acquire);
-        loop {
-            if current >= MAX_PLAYERS {
-                bail!("fixture server is full");
-            }
-            match count.compare_exchange_weak(
-                current,
-                current + 1,
-                Ordering::AcqRel,
-                Ordering::Acquire,
-            ) {
-                Ok(_) => return Ok(Self(count)),
-                Err(updated) => current = updated,
-            }
-        }
-    }
-}
-impl Drop for PlayerGuard {
-    fn drop(&mut self) {
-        self.0.fetch_sub(1, Ordering::AcqRel);
-    }
-}
 struct ReaderGuard(JoinHandle<()>);
 impl Drop for ReaderGuard {
     fn drop(&mut self) {
@@ -2232,6 +2260,9 @@ impl Server {
             players.pending_metadata.remove(&id);
             players.containers.remove(&id);
             players.disconnects.remove(&id);
+            players.connection_addresses.remove(&id);
+            players.chat.remove(id);
+            players.player_last_actions.remove(&id);
             players.pending_block_acks.remove(&id);
             players.flying.remove(&id);
             players.unavailable_pose.remove(&id);
@@ -2274,7 +2305,7 @@ async fn shutdown_signal() -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let options = Options::parse()?;
+    let mut options = Options::parse()?;
     let fixtures = fixtures(&options.fixtures).await?;
     // Exact 1.21 minecraft-data defaults: air=0, stone=1, dirt=10,
     // grass_block=9 and minecraft:plains biome=39. This is a flat fixture.
@@ -2466,6 +2497,37 @@ async fn main() -> Result<()> {
         .transpose()?
         .map(world::obfuscate_biome_seed)
         .unwrap_or(fixtures.seed_hash);
+    let administration_directory = options.server_directory.clone()
+        .unwrap_or_else(|| options.world.parent().unwrap_or_else(|| Path::new(".")).to_path_buf());
+    let property_bytes = match fs::read(administration_directory.join("server.properties")).await {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{}",json!({"event":"connection_properties_load_failed","file":administration_directory.join("server.properties"),"reason":error.to_string(),"using_defaults":true}));
+            Vec::new()
+        }
+    };
+    let mut connection_settings = mc121_rust::connection_settings::DedicatedConnectionSettings::try_from_lookup(
+        |key| main_administration::property_value_from_bytes(&property_bytes, key),
+    )?;
+    if let Some(value) = options.rate_limit { connection_settings.rate_limit = value; }
+    if let Some(value) = options.compression_threshold { connection_settings.network_compression_threshold = value; }
+    if let Some(value) = options.secure_profile_override { connection_settings.enforce_secure_profile = value; }
+    options.enforce_secure_profile = connection_settings.enforce_secure_profile;
+    let mut administration = main_administration::Administration::load(
+        administration_directory,
+        main_administration::AdminSettings {
+            max_players: options.max_players,
+            whitelist_enabled: false,
+            enforce_whitelist: options.enforce_whitelist,
+            op_permission_level: options.op_permission_level,
+        },
+        main_admin_dispatch::wall_time_ms()?,
+    )?;
+    for warning in administration.take_startup_warnings() {
+        if let main_administration::AdminEffect::PersistenceWarning { file, message } = warning {
+            eprintln!("{}", json!({"event":"administration_persistence_warning","file":file,"reason":message}));
+        }
+    }
     let listener = TcpListener::bind(SocketAddr::new(options.bind, options.port)).await?;
     let (changes, _) = broadcast::channel(4096);
     let (entity_events, _) = broadcast::channel(512);
@@ -2528,12 +2590,18 @@ async fn main() -> Result<()> {
         )?)?;
     let server = Arc::new(Server {
         options,
+        connection_settings,
+        connection_rates: StdRwLock::new(BTreeMap::new()),
         fixtures,
         seed_hash,
         world: RwLock::new(world),
         save_lock: Mutex::new(()),
         player_admission: Mutex::new(()),
-        online: Arc::new(AtomicUsize::new(0)),
+        administration: StdRwLock::new(administration),
+        connection_ticks: watch::channel(0).0,
+        chat_keys: watch::channel(Arc::new(mc121_rust::chat_crypto::ServiceKeySet::empty())).0,
+        chat_keys_attempted: watch::channel(false).0,
+        chat_dispatch: Mutex::new(()),
         entities: AtomicI32::new(next_entity_id),
         connection_sequence: AtomicU64::new(1),
         configuration_requests: broadcast::channel(64).0,
@@ -2551,12 +2619,16 @@ async fn main() -> Result<()> {
         entity_store,
         shutting_down: AtomicBool::new(false),
     });
+    main_chat_keys::start_key_refresh(Arc::clone(&server));
     let permits = Arc::new(Semaphore::new(64));
     println!(
         "{}",
         json!({"event":"listening","address":listener.local_addr()?.to_string(),
         "minecraft":"1.21","protocol":PROTOCOL,"mode":if server.options.online_mode {"online"} else if server.options.bind.is_loopback() {"offline-loopback"} else {"offline"}})
     );
+    let mut console = main_admin_dispatch::console_input();
+    let mut console_open = true;
+    let mut connection_tick_sequence = 0_u64;
     let mut ticks = main_server_timing::NativeServerTiming::new()?;
     let mut latency_clock = LatencyUpdateClock::default();
     let mut autosave_ticks = 0_u32;
@@ -2570,6 +2642,16 @@ async fn main() -> Result<()> {
     let mut reconfigure_signal = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())?;
     loop {
         tokio::select! {
+            line = console.recv(), if console_open => {
+                match line {
+                    Some(line) => {
+                        if let Err(error) = server.execute_administration(&line, None).await {
+                            eprintln!("{}", json!({"event":"administration_command_failed","reason":error.to_string()}));
+                        }
+                    }
+                    None => console_open = false,
+                }
+            }
             _ = async {
                 #[cfg(unix)]
                 { reconfigure_signal.recv().await; }
@@ -2609,6 +2691,19 @@ async fn main() -> Result<()> {
                 // XP and Item bodies share the actual level tick order above.
                 server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
+                // Sample actual connection ticks without replaying coalesced
+                // watch updates into the wrong packet-count window.
+                for (connection, rate) in server.connection_rates.read().map_err(|_|anyhow!("connection registry poisoned"))?.iter() {
+                    if let Some(action) = rate.tick_connection()? {
+                        eprintln!("{}",json!({"event":"packet_rate_exceeded","connection":connection,"average_received_packets":action.average_received_packets,"configured_limit":action.configured_limit}));
+                    }
+                }
+                {
+                    let _chat_sequence=server.chat_dispatch.lock().await;
+                    server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.tick();
+                }
+                connection_tick_sequence=connection_tick_sequence.checked_add(1).context("connection tick counter exhausted")?;
+                server.connection_ticks.send_replace(connection_tick_sequence);
                 server.publish_pending_block_acknowledgments()?;
                 server.send_chunk_phase().await?;
                 server.tick_events.send_replace(server.epoch.elapsed().as_millis() as i64);
@@ -2648,6 +2743,12 @@ async fn send(
     id: i32,
     payload: impl AsRef<[u8]> + Send + Sync,
 ) -> Result<()> {
+    if main_connection::terminal().is_some() {
+        main_connection::disconnect_rate(codec, stream).await?;
+        bail!("{}", mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+    }
+    main_connection::rate().packet_send_dispatched()?;
+    let _write = main_connection::begin_write();
     time::timeout(WRITE_DEADLINE, async {
         codec.write(stream, id, payload.as_ref()).await?;
         stream.flush().await?;
@@ -2678,11 +2779,17 @@ async fn play_disconnect(
     send(codec, writer, 0x1d, reason).await
 }
 
-async fn receive(codec: &FrameCodec, stream: &mut NetworkReader) -> Result<Packet> {
-    time::timeout(CONFIGURATION_DEADLINE, codec.read(stream))
-        .await
-        .context("handshake/configuration deadline")??
-        .ok_or_else(|| anyhow!("connection closed during negotiation"))
+async fn receive_optional(codec: &FrameCodec, stream: &mut NetworkReader, writer: &mut NetworkWriter) -> Result<Option<Packet>> {
+    tokio::select! {
+        result = codec.read(stream) => result,
+        _ = main_connection::wait_terminal() => {
+            main_connection::disconnect_rate(codec,writer).await?;
+            bail!("{}",mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+        }
+    }
+}
+async fn receive(codec: &FrameCodec, stream: &mut NetworkReader, writer: &mut NetworkWriter) -> Result<Packet> {
+    receive_optional(codec,stream,writer).await?.context("connection closed during negotiation")
 }
 async fn receive_login(
     codec: &FrameCodec,
@@ -2690,8 +2797,15 @@ async fn receive_login(
     writer: &mut NetworkWriter,
     cookies: &mut CookieConnection,
 ) -> Result<Packet> {
-    let packet = receive(codec, reader).await?;
+    let packet = tokio::select! {
+        result = codec.read(reader) => result?.context("connection closed during login")?,
+        _ = main_connection::wait_terminal() => {
+            main_connection::disconnect_rate(codec, writer).await?;
+            bail!("{}",mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+        }
+    };
     if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
+        main_connection::accepted()?;
         let reason = json!({"translate":UNEXPECTED_COOKIE_RESPONSE_REASON}).to_string();
         send(codec, writer, 0x00, encoded(|w| { w.string(&reason); })).await?;
         bail!("{UNEXPECTED_COOKIE_RESPONSE_REASON}");
@@ -2702,11 +2816,10 @@ fn start_packet_reader(mut reader: NetworkReader, codec: FrameCodec) -> (ReaderG
     let (tx, rx) = mpsc::channel(32);
     let guard = ReaderGuard(tokio::spawn(async move {
         loop {
-            let packet = match time::timeout(Duration::from_secs(60), codec.read(&mut reader)).await {
-                Ok(Ok(Some(packet))) => Ok(packet),
-                Ok(Ok(None)) => break,
-                Ok(Err(error)) => Err(error),
-                Err(_) => Err(anyhow!("connection read deadline")),
+            let packet = match codec.read(&mut reader).await {
+                Ok(Some(packet)) => Ok(packet),
+                Ok(None) => break,
+                Err(error) => Err(error),
             };
             let failed = packet.is_err();
             if tx.send(packet).await.is_err() || failed { break; }
@@ -2720,66 +2833,13 @@ fn encoded(build: impl FnOnce(&mut Writer)) -> Vec<u8> {
     writer.into_inner()
 }
 
-async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> Result<()> {
-    socket.set_nodelay(true)?;
-    let (reader, writer) = socket.into_split();
-    let mut reader = CryptoRead::plain(reader);
-    let mut writer = CryptoWrite::plain(writer);
-    let mut codec = FrameCodec::default();
-    let hello = receive(&codec, &mut reader).await?;
-    if hello.id != 0 {
-        bail!("expected handshake");
-    }
-    let mut fields = Reader::new(&hello.payload);
-    let protocol = fields.varint()?;
-    let _host = fields.string(255)?;
-    let _port = fields.u16()?;
-    let intent = fields.varint()?;
-    fields.finish()?;
-    if intent == 1 {
-        let request = receive(&codec, &mut reader).await?;
-        if request.id != 0 || !request.payload.is_empty() {
-            bail!("invalid status request");
-        }
-        let response = json!({"version":{"name":"1.21","protocol":PROTOCOL},
-            "players":{"max":MAX_PLAYERS,"online":server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?.registry.len(),"sample":[]},
-            "description":{"text":"Rust compatibility checkpoint — creative fixture; vanilla parity incomplete"},
-            "enforcesSecureChat":false});
-        send(
-            &codec,
-            &mut writer,
-            0,
-            encoded(|w| {
-                w.string(&response.to_string());
-            }),
-        )
-        .await?;
-        if let Some(ping) = time::timeout(Duration::from_secs(5), codec.read(&mut reader)).await?? {
-            if ping.id != 1 || ping.payload.len() != 8 {
-                bail!("invalid status ping");
-            }
-            send(&codec, &mut writer, 1, ping.payload).await?;
-        }
-        return Ok(());
-    }
-    if intent != 2 {
-        bail!("only status and login handshakes are implemented");
-    }
-    if protocol != PROTOCOL {
-        send(
-            &codec,
-            &mut writer,
-            0,
-            encoded(|w| {
-                w.string(
-                    &json!({"text":"This checkpoint requires Minecraft Java 1.21 (protocol 767)"})
-                        .to_string(),
-                );
-            }),
-        )
-        .await?;
-        bail!("unsupported client protocol {protocol}");
-    }
+async fn negotiate_login(
+    mut reader: &mut NetworkReader,
+    mut writer: &mut NetworkWriter,
+    codec: &mut FrameCodec,
+    server: &Server,
+    address: SocketAddr,
+) -> Result<Option<PlayerProfile>> {
     let mut login_cookies = CookieConnection::new(CookiePhase::Login);
     let start = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
     if start.id != 0 {
@@ -2787,12 +2847,12 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     }
     let mut fields = Reader::new(&start.payload);
     let username = fields.string(16)?;
+    let _claimed_uuid = fields.uuid()?;
+    fields.finish()?;
+    main_connection::accepted()?;
     if !valid_login_name(&username) {
         bail!("invalid login username");
     }
-    let _claimed_uuid = fields.uuid()?;
-    fields.finish()?;
-    let _player = PlayerGuard::reserve(Arc::clone(&server.online))?;
     let profile = if let Some(authenticator) = &server.authenticator {
         let challenge = authenticator.challenge();
         send(
@@ -2806,6 +2866,8 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         if response.id != 1 {
             bail!("expected encrypted login response");
         }
+        main_connection_decode::validate_login_key(&response.payload)?;
+        main_connection::accepted()?;
         let secret = authenticator.accept_response(&challenge, &response.payload)?;
         let session_hash = authenticator.session_hash(&secret);
         reader.enable(&secret)?;
@@ -2848,16 +2910,16 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     } else {
         PlayerProfile::offline(&username)?
     };
-    send(
-        &codec,
-        &mut writer,
-        3,
-        encoded(|w| {
-            w.varint(256);
-        }),
-    )
-    .await?;
-    codec.compression = Some(256);
+    let admission_guard = server.player_admission.lock().await;
+    if !server.check_initial_admission(&profile, address, &codec, &mut writer, &admission_guard).await? {
+        return Ok(None);
+    }
+    let threshold = server.connection_settings.network_compression_threshold;
+    if threshold >= 0 {
+        send(&codec, &mut writer, 3, encoded(|w| { w.varint(threshold); })).await?;
+        codec.compression = Some(threshold);
+    }
+    server.evict_duplicate_for_login(&profile, &admission_guard).await?;
     send(
         &codec,
         &mut writer,
@@ -2878,24 +2940,161 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         }),
     )
     .await?;
+    drop(admission_guard);
     let acknowledged = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
     if acknowledged.id != 3 || !acknowledged.payload.is_empty() {
         bail!("expected Login Acknowledged");
     }
+    main_connection::accepted()?;
+    Ok(Some(profile))
+}
+
+async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> Result<()> {
+    socket.set_nodelay(true)?;
+    let address = socket.peer_addr()?;
+    let (reader, writer) = socket.into_split();
+    let (raw_pump, reader, mut idle) = mc121_rust::connection_transport::spawn_raw_read_transport(reader);
+    let rate = main_connection_rate::ConnectionRate::new(server.connection_settings.rate_limit);
+    server.connection_rates.write().map_err(|_|anyhow!("connection registry poisoned"))?.insert(admission, rate.clone());
+    let _registration = main_connection::ConnectionRegistration { server: Arc::clone(&server), admission };
+    let context = main_connection::ConnectionContext::new(rate, raw_pump.abort_handle());
+    let session = main_connection::CONNECTION.scope(context, connection_session(
+        CryptoRead::plain(reader), CryptoWrite::plain(writer), server, admission, address,
+    ));
+    tokio::pin!(session);
+    tokio::select! {
+        result = &mut session => result,
+        timeout = idle.wait() => Err(timeout.into()),
+    }
+}
+
+async fn connection_session(
+    mut reader: NetworkReader,
+    mut writer: NetworkWriter,
+    server: Arc<Server>,
+    admission: u64,
+    address: SocketAddr,
+) -> Result<()> {
+    let mut codec = FrameCodec::default();
+    let hello = receive(&codec, &mut reader, &mut writer).await?;
+    if hello.id != 0 {
+        bail!("expected handshake");
+    }
+    let mut fields = Reader::new(&hello.payload);
+    let protocol = fields.varint()?;
+    let _host = fields.string(255)?;
+    let _port = fields.u16()?;
+    let intent = fields.varint()?;
+    fields.finish()?;
+    main_connection::accepted()?;
+    if intent == 1 {
+        main_connection::phase(main_connection::OutboundPhase::Status);
+        let request = receive(&codec, &mut reader, &mut writer).await?;
+        if request.id != 0 || !request.payload.is_empty() {
+            bail!("invalid status request");
+        }
+        main_connection::accepted()?;
+        server.wait_secure_chat_enforcement().await?;
+        let response = json!({"version":{"name":"1.21","protocol":PROTOCOL},
+            "players":{"max":server.maximum_players()?,"online":server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?.registry.len(),"sample":[]},
+            "description":{"text":"Rust compatibility checkpoint — creative fixture; vanilla parity incomplete"},
+            "enforcesSecureChat":server.current_secure_chat_enforcement()});
+        send(
+            &codec,
+            &mut writer,
+            0,
+            encoded(|w| {
+                w.string(&response.to_string());
+            }),
+        )
+        .await?;
+        if let Some(ping) = receive_optional(&codec, &mut reader, &mut writer).await? {
+            if ping.id != 1 || ping.payload.len() != 8 {
+                bail!("invalid status ping");
+            }
+            main_connection::accepted()?;
+            send(&codec, &mut writer, 1, ping.payload).await?;
+        }
+        return Ok(());
+    }
+    if intent != 2 {
+        bail!("only status and login handshakes are implemented");
+    }
+    main_connection::phase(main_connection::OutboundPhase::Login);
+    if protocol != PROTOCOL {
+        send(
+            &codec,
+            &mut writer,
+            0,
+            encoded(|w| {
+                w.string(
+                    &json!({"text":"This checkpoint requires Minecraft Java 1.21 (protocol 767)"})
+                        .to_string(),
+                );
+            }),
+        )
+        .await?;
+        bail!("unsupported client protocol {protocol}");
+    }
+    let outcome = {
+        let mut ticks = server.connection_ticks.subscribe();
+        let mut timeout = mc121_rust::login_limits::ObservedLoginTimeout::new(*ticks.borrow_and_update());
+        let negotiation = negotiate_login(&mut reader, &mut writer, &mut codec, &server, address);
+        tokio::pin!(negotiation);
+        let mut expired = false;
+        loop {
+            tokio::select! {
+                biased;
+                result = &mut negotiation => break if expired { None } else { Some(result) },
+                changed = ticks.changed() => {
+                    changed?;
+                    let current=*ticks.borrow_and_update();
+                    expired |= timeout.observe(current).is_some();
+                    // Keep the terminal action while an already-dispatched
+                    // packet finishes; cancel-then-append could corrupt a
+                    // partial frame and its advanced encryption stream.
+                    if expired && !main_connection::writing() { break None; }
+                }
+            }
+        }
+    };
+    let profile = match outcome {
+        Some(result) => match result? { Some(profile) => profile, None => return Ok(()) },
+        None => {
+            let reason=json!({"translate":mc121_rust::login_limits::SLOW_LOGIN_REASON}).to_string();
+            send(&codec, &mut writer, 0x00, encoded(|w| { w.string(&reason); })).await?;
+            return Ok(());
+        }
+    };
     // One raw framing reader owns the encrypted stream through every listener
     // transition. Aborting/restarting a reader could discard a partial frame.
     let (_packet_reader, mut packets) = start_packet_reader(reader, codec.clone());
+    main_connection::phase(main_connection::OutboundPhase::Configuration);
     let mut protocol = Reconfiguration::initial_configuration(server.epoch.elapsed().as_millis() as i64, 0);
     let mut packs = ResourcePackSession::new(server.options.resource_pack_required);
     let mut client_information = main_configuration::configure(
         &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
     ).await?;
     loop {
+        server.wait_secure_chat_enforcement().await?;
+        main_connection::phase(main_connection::OutboundPhase::Play);
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
-            client_information, admission, &mut protocol, &mut packs,
+            client_information, admission, address, &mut protocol, &mut packs,
         ).await? {
-            PlayExit::Disconnected => return Ok(()),
+            PlayExit::Disconnected => {
+                // Retain the actual framing reader while half-closing output.
+                // Dropping a socket with unread client input can turn an already
+                // written disconnect reason into TCP RST. Late packets are
+                // drained here without dispatching any more gameplay callbacks.
+                let _ = time::timeout(WRITE_DEADLINE, writer.shutdown()).await;
+                let _ = time::timeout(Duration::from_secs(1), async {
+                    while let Some(packet) = packets.recv().await {
+                        if packet.is_err() { break; }
+                    }
+                }).await;
+                return Ok(());
+            },
             PlayExit::Reconfigure(info) => {
                 client_information = main_configuration::configure(
                     &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, info, false,
@@ -2913,13 +3112,15 @@ fn read_client_information(payload: &[u8]) -> Result<ClientInformation> {
     fields.bool()?;
     let skin = fields.u8()?;
     let hand = fields.varint()?;
-    fields.bool()?;
+    let text_filtering = fields.bool()?;
     fields.bool()?;
     fields.finish()?;
     if !(0..=2).contains(&chat) || !(0..=1).contains(&hand) {
         bail!("invalid client information enum");
     }
     Ok(ClientInformation {
+        chat_visibility: chat,
+        text_filtering,
         view_distance,
         skin_parts: skin,
         main_hand: hand as u8,
@@ -2934,6 +3135,7 @@ async fn play(
     profile: PlayerProfile,
     client_information: Option<ClientInformation>,
     admission: u64,
+    address: SocketAddr,
     protocol: &mut Reconfiguration,
     packs: &mut ResourcePackSession,
 ) -> Result<PlayExit> {
@@ -2945,6 +3147,12 @@ async fn play(
     let mut configuration_requests = server.configuration_requests.subscribe();
     let mut current_information = client_information;
     let mut cookies = CookieConnection::new(CookiePhase::Play);
+    let admission_guard=server.player_admission.lock().await;
+    ensure!(!server.shutting_down.load(Ordering::Acquire), "server shutting down");
+    if let Some(rejection) = server.check_final_admission(&profile, address)? {
+        send(&codec, &mut writer, 0x1d, rejection.network_component()?).await?;
+        return Ok(PlayExit::Disconnected);
+    }
     let (entity_id, player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
@@ -2977,16 +3185,6 @@ async fn play(
         server.options.view_distance,
     );
     let _presence=PresenceGuard { entity_id, server:Arc::clone(&server) };
-    let admission_guard=server.player_admission.lock().await;
-    ensure!(!server.shutting_down.load(Ordering::Acquire), "server shutting down");
-    let previous={
-        let players=server.players.read().map_err(|_|anyhow!("player registry lock poisoned"))?;
-        players.registry.get_by_uuid(&profile.uuid).map(|p|p.entity_id)
-    };
-    if let Some(previous)=previous {
-        server.cleanup_player_admitted(previous,Some("multiplayer.disconnect.duplicate_login"),&admission_guard).await?;
-    }
-    ensure!(!server.shutting_down.load(Ordering::Acquire), "server shutting down");
     {
         let mut players = server
             .players
@@ -3060,7 +3258,14 @@ async fn play(
             players.item_use_runtime.register_native(&player)?;
         }
         native_motion = players.player_motion_runtime.contains(entity_id);
+        let chat_profile = player.profile.clone();
         let event = players.registry.register(player)?;
+        let chat_settings = match client_information {
+            Some(info) => main_chat::MainChatSettings::from_client_information(info.chat_visibility, info.text_filtering)?,
+            None => main_chat::MainChatSettings::default(),
+        };
+        players.chat.register(entity_id, &chat_profile, chat_settings)?;
+        players.player_last_actions.insert(entity_id, server.epoch.elapsed().as_millis() as i64);
         let uuid = players
             .registry
             .get(entity_id)
@@ -3071,6 +3276,8 @@ async fn play(
             players.register_runtime_player(entity_id, position, admission, player_random, uuid)
         {
             players.registry.remove(entity_id);
+            players.chat.remove(entity_id);
+            players.player_last_actions.remove(&entity_id);
             return Err(error);
         }
         players.gameplay.install_player_stats(uuid, stats)?;
@@ -3089,6 +3296,7 @@ async fn play(
         }
         players.containers.insert(entity_id, container.clone());
         players.disconnects.insert(entity_id, disconnect);
+        players.connection_addresses.insert(entity_id, address);
         let observer = players.observer_for(
             entity_id,
             position,
@@ -3106,6 +3314,8 @@ async fn play(
         requested_view_distance,
     )?)?;
     let view = server.options.view_distance;
+    let maximum_players = server.maximum_players()?;
+    let enforce_secure_chat = server.current_secure_chat_enforcement();
     send(
         &codec,
         &mut writer,
@@ -3115,7 +3325,7 @@ async fn play(
                 .bool(false)
                 .varint(1)
                 .string("minecraft:overworld")
-                .varint(MAX_PLAYERS as i32)
+                .varint(maximum_players)
                 .varint(view)
                 .varint(view)
                 .bool(false)
@@ -3130,13 +3340,14 @@ async fn play(
                 .bool(true)
                 .bool(false)
                 .varint(0)
-                .bool(false);
+                .bool(enforce_secure_chat);
         }),
     )
     .await?;
     if server.options.anvil_world.is_none() {
         send(&codec,&mut writer,0x0b,encoded(|w| {w.u8(server.options.difficulty as u8).bool(false);})).await?;
     }
+    send_packets(&codec, &mut writer, server.administration_permission_packets(entity_id)?).await?;
     let initial_inventory = container.snapshot()?;
     let mut container_revision = initial_inventory.revision;
     send_packets(&codec, &mut writer, vec![initial_inventory.packet]).await?;
@@ -3278,6 +3489,10 @@ async fn play(
             return Ok(PlayExit::Disconnected);
         }
         tokio::select! {
+            _ = main_connection::wait_terminal() => {
+                main_connection::disconnect_rate(&codec, &mut writer).await?;
+                return Ok(PlayExit::Disconnected);
+            }
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
@@ -3316,13 +3531,29 @@ async fn play(
                 let Some(packet) = packet else { return Ok(PlayExit::Disconnected); };
                 let packet = packet?;
                 if server.shutting_down.load(Ordering::Acquire) { return Ok(PlayExit::Disconnected); }
+                main_connection_decode::validate_play(&packet)?;
+                main_connection::accepted()?;
                 if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
                     play_disconnect(&codec, &mut writer, UNEXPECTED_COOKIE_RESPONSE_REASON).await?;
                     return Ok(PlayExit::Disconnected);
                 }
                 let mut fields = Reader::new(&packet.payload);
                 match packet.id {
+                    0x03..=0x07 => {
+                        server.handle_chat_packet(entity_id, &packet).await?;
+                    },
+                    0x0b => {
+                        let request=mc121_rust::command_protocol::decode_suggestion_request(&packet.payload)?;
+                        let packet=server.administration_suggestions(entity_id, &request)?;
+                        send(&codec, &mut writer, packet.id, packet.payload).await?;
+                    },
                     0x0c => bail!("client acknowledged configuration, but none was requested"),
+                    0x12 => { let _ = mc121_rust::connection_payload::decode_custom_payload(&packet.payload)?; },
+                    0x27 => { let _ = mc121_rust::connection_payload::decode_pong(&packet.payload)?; },
+                    0x21 => {
+                        let time = fields.i64()?; fields.finish()?;
+                        send(&codec,&mut writer,0x36,encoded(|out| { out.i64(time); })).await?;
+                    },
                     0x2b => {
                         let outcome = packs.handle_response(ResourcePackPhase::Play, &packet.payload)?;
                         if let Some(reason) = outcome.disconnect_reason {
@@ -3411,6 +3642,9 @@ async fn play(
                     0x0a => {
                         let info=read_client_information(&packet.payload)?;
                         current_information=Some(info);
+                        server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.update_client_information(
+                            entity_id, main_chat::MainChatSettings::from_client_information(info.chat_visibility, info.text_filtering)?
+                        )?;
                         requested_view_distance=info.view_distance;
                         let radius=entity_tracking::player_view_distance(requested_view_distance,server.options.view_distance);
                         let view=(radius!=chunk_radius).then_some((center,radius,false));
@@ -3576,6 +3810,18 @@ async fn play(
                     },
                     OrderedEntityInput::Event(PlayerEvent::Item(event)) => send_packets(&codec,&mut writer,tracker.item_event(entity_id,&event,&loaded)?).await?,
                     OrderedEntityInput::Event(PlayerEvent::State(update)) => send_packets(&codec, &mut writer, tracker.players.event(&update, &loaded)?).await?,
+                    OrderedEntityInput::Event(PlayerEvent::AdminDisconnect { recipient, reason }) => {
+                        if recipient == entity_id {
+                            send(&codec, &mut writer, 0x1d, reason).await?;
+                            return Ok(PlayExit::Disconnected);
+                        }
+                    },
+                    OrderedEntityInput::Event(PlayerEvent::ChatDisconnect { recipient, reason }) => {
+                        if recipient == entity_id {
+                            play_disconnect(&codec, &mut writer, reason).await?;
+                            return Ok(PlayExit::Disconnected);
+                        }
+                    },
                     OrderedEntityInput::Event(PlayerEvent::Motion{revision,entity_id,position,packets}) => send_packets(&codec, &mut writer, tracker.players.motion(revision, entity_id, position, &packets)?).await?,
                     OrderedEntityInput::Event(PlayerEvent::Latency(players))=>send_packets(&codec,&mut writer,vec![entity::player_info_update(&players,0x10)?]).await?,
                     OrderedEntityInput::Event(PlayerEvent::Container{recipient,update}) if recipient==entity_id && update.revision>container_revision => {

@@ -65,4 +65,11 @@ proof. Only the central integrator changes scope_version: 1's fixed 100-item
 checklist. An isolated menu or recipe implementation is not full functional
 Minecraft compatibility. If agents stop or a turn ends, record that honestly;
 there is no automatic cross-chat communication or guaranteed background coding.
+If issue-comment or PR creation returns403, use the guide's Git fallback:
+commit docs/coordination/status/<instance-id>.md on your assigned feature branch
+with exact file ownership, intended recipient, source commits, integration
+contracts and handoff. Fetch origin and read master/root and other team branch
+status files while active. Do not stop independent authorized implementation
+because comment writes are unavailable or share credentials.
+
 ```

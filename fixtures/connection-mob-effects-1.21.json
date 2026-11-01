@@ -1,0 +1,176 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "registry": "minecraft:mob_effect",
+  "source": {
+    "server_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+    "inner_server_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "official_mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+    "method": "Execution of unchanged original SharedConstants.tryDetectVersion, Bootstrap.bootStrap, BuiltInRegistries.MOB_EFFECT iteration, Registry.getId and Registry.getKey",
+    "generator_source_sha256": "4183143c12d886a54bbe55925f39399b8141cf774026a79be002b9dd5a2b7aaa",
+    "rea_mcp_used": false
+  },
+  "beacon_holder_wire": {
+    "optional": "one boolean; any nonzero byte means present",
+    "present_value": "direct signed VarInt registry ID; no ID+1 or inline form",
+    "id_zero_primary_wire_hex": "010000"
+  },
+  "entries": [
+    {
+      "id": 0,
+      "name": "minecraft:speed"
+    },
+    {
+      "id": 1,
+      "name": "minecraft:slowness"
+    },
+    {
+      "id": 2,
+      "name": "minecraft:haste"
+    },
+    {
+      "id": 3,
+      "name": "minecraft:mining_fatigue"
+    },
+    {
+      "id": 4,
+      "name": "minecraft:strength"
+    },
+    {
+      "id": 5,
+      "name": "minecraft:instant_health"
+    },
+    {
+      "id": 6,
+      "name": "minecraft:instant_damage"
+    },
+    {
+      "id": 7,
+      "name": "minecraft:jump_boost"
+    },
+    {
+      "id": 8,
+      "name": "minecraft:nausea"
+    },
+    {
+      "id": 9,
+      "name": "minecraft:regeneration"
+    },
+    {
+      "id": 10,
+      "name": "minecraft:resistance"
+    },
+    {
+      "id": 11,
+      "name": "minecraft:fire_resistance"
+    },
+    {
+      "id": 12,
+      "name": "minecraft:water_breathing"
+    },
+    {
+      "id": 13,
+      "name": "minecraft:invisibility"
+    },
+    {
+      "id": 14,
+      "name": "minecraft:blindness"
+    },
+    {
+      "id": 15,
+      "name": "minecraft:night_vision"
+    },
+    {
+      "id": 16,
+      "name": "minecraft:hunger"
+    },
+    {
+      "id": 17,
+      "name": "minecraft:weakness"
+    },
+    {
+      "id": 18,
+      "name": "minecraft:poison"
+    },
+    {
+      "id": 19,
+      "name": "minecraft:wither"
+    },
+    {
+      "id": 20,
+      "name": "minecraft:health_boost"
+    },
+    {
+      "id": 21,
+      "name": "minecraft:absorption"
+    },
+    {
+      "id": 22,
+      "name": "minecraft:saturation"
+    },
+    {
+      "id": 23,
+      "name": "minecraft:glowing"
+    },
+    {
+      "id": 24,
+      "name": "minecraft:levitation"
+    },
+    {
+      "id": 25,
+      "name": "minecraft:luck"
+    },
+    {
+      "id": 26,
+      "name": "minecraft:unluck"
+    },
+    {
+      "id": 27,
+      "name": "minecraft:slow_falling"
+    },
+    {
+      "id": 28,
+      "name": "minecraft:conduit_power"
+    },
+    {
+      "id": 29,
+      "name": "minecraft:dolphins_grace"
+    },
+    {
+      "id": 30,
+      "name": "minecraft:bad_omen"
+    },
+    {
+      "id": 31,
+      "name": "minecraft:hero_of_the_village"
+    },
+    {
+      "id": 32,
+      "name": "minecraft:darkness"
+    },
+    {
+      "id": 33,
+      "name": "minecraft:trial_omen"
+    },
+    {
+      "id": 34,
+      "name": "minecraft:raid_omen"
+    },
+    {
+      "id": 35,
+      "name": "minecraft:wind_charged"
+    },
+    {
+      "id": 36,
+      "name": "minecraft:weaving"
+    },
+    {
+      "id": 37,
+      "name": "minecraft:oozing"
+    },
+    {
+      "id": 38,
+      "name": "minecraft:infested"
+    }
+  ]
+}
