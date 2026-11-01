@@ -22,6 +22,12 @@ pub enum WorkstationKind {
     Smithing,
     Cartography,
     Stonecutter,
+    Enchanting,
+    Crafter,
+    Merchant,
+    Hopper,
+    Dispenser,
+    Shulker,
 }
 impl WorkstationKind {
     /// Original 1.21 MenuType registration IDs (protocol 767).
@@ -33,20 +39,49 @@ impl WorkstationKind {
             Self::Smithing => 21,
             Self::Cartography => 23,
             Self::Stonecutter => 24,
+            Self::Enchanting => 13,
+            Self::Crafter => 7,
+            Self::Merchant => 19,
+            Self::Hopper => 16,
+            Self::Dispenser => 6,
+            Self::Shulker => 20,
         }
     }
     pub fn top_slots(self) -> usize {
         match self {
             Self::Loom | Self::Smithing => 4,
-            Self::Stonecutter => 2,
+            Self::Stonecutter | Self::Enchanting => 2,
+            // Nine actual inputs plus the noninteractive preview appended
+            // AFTER the player inventory in CrafterMenu's slot list.
+            Self::Crafter => 10,
+            Self::Hopper => 5,
+            Self::Dispenser => 9,
+            Self::Shulker => 27,
             _ => 3,
         }
     }
     pub fn data_slots(self) -> usize {
         match self {
             Self::Anvil | Self::Loom | Self::Stonecutter => 1,
+            Self::Enchanting | Self::Crafter => 10,
             _ => 0,
         }
+    }
+    /// Actual player slot positions in this menu, not a presumed contiguous
+    /// top-container offset. CrafterMenu appends its preview at slot45.
+    pub fn player_slots(self) -> std::ops::Range<usize> {
+        let start = if self == Self::Crafter {
+            9
+        } else {
+            self.top_slots()
+        };
+        start..start + 36
+    }
+    pub fn player_inventory_slot(self, menu_slot: usize) -> Option<usize> {
+        let slots = self.player_slots();
+        slots
+            .contains(&menu_slot)
+            .then(|| 9 + menu_slot - slots.start)
     }
 }
 
@@ -164,8 +199,16 @@ impl MenuSync {
             top.len() == self.kind.top_slots(),
             "workstation slot count changed"
         );
-        let mut slots = top.iter().map(copy).collect::<Vec<_>>();
+        let input_count = if self.kind == WorkstationKind::Crafter {
+            9
+        } else {
+            top.len()
+        };
+        let mut slots = top[..input_count].iter().map(copy).collect::<Vec<_>>();
         slots.extend((9..45).map(|i| copy(inventory.slot(i).expect("canonical player slot"))));
+        if self.kind == WorkstationKind::Crafter {
+            slots.push(copy(&top[9]));
+        }
         Ok(slots)
     }
     fn check_data(&self, data: &[i32]) -> Result<()> {
@@ -205,8 +248,7 @@ impl MenuSync {
             self.last[slot] = copy(stack);
             out.push(SyncEvent::SlotListener {
                 menu_slot: slot,
-                player_slot: (slot >= self.kind.top_slots())
-                    .then(|| 9 + slot - self.kind.top_slots()),
+                player_slot: self.kind.player_inventory_slot(slot),
                 stack: copy(stack),
             });
         }
@@ -412,7 +454,7 @@ impl MenuSync {
     /// inventory slots. Top slots, preview, data and cursor are never transferred.
     pub fn transfer_inventory_state(&self, player: &mut PlayerContainer) -> Result<()> {
         for offset in 0..36 {
-            let slot = self.kind.top_slots() + offset;
+            let slot = self.kind.player_slots().start + offset;
             player.transfer_external_slot_state(
                 9 + offset,
                 &self.last[slot],
@@ -530,6 +572,50 @@ mod tests {
         assert_eq!(inv.slot(10).unwrap().count, 64);
         assert!(sync.carried().is_empty());
         assert!(inputs[0].is_empty());
+        Ok(())
+    }
+    #[test]
+    fn crafter_preview_follows_actual_player_slots_and_has_no_player_listener_owner() -> Result<()>
+    {
+        let mut inv = PlayerInventory::default();
+        let coal = ItemStack::new(RecipeBook::vanilla().item_id("coal").unwrap(), 1)?;
+        inv.set_slot_authoritative(9, coal.clone());
+        inv.set_slot_authoritative(44, stone(4));
+        let mut top = vec![ItemStack::empty(); 10];
+        top[0] = stone(1);
+        top[9] = stone(2);
+        let mut sync = MenuSync::new(3, WorkstationKind::Crafter)?;
+        let snapshot = sync.snapshot(&top, &inv)?;
+        assert_eq!(snapshot.len(), 46);
+        assert_eq!(snapshot[9], coal);
+        assert_eq!(snapshot[44], stone(4));
+        assert_eq!(snapshot[45], stone(2));
+        let events = sync.initialize(&top, &inv, &[0; 10])?;
+        assert!(events.iter().any(|event| matches!(
+            event,
+            SyncEvent::SlotListener {
+                menu_slot: 9,
+                player_slot: Some(9),
+                ..
+            }
+        )));
+        assert!(events.iter().any(|event| matches!(
+            event,
+            SyncEvent::SlotListener {
+                menu_slot: 44,
+                player_slot: Some(44),
+                ..
+            }
+        )));
+        assert!(events.iter().any(|event| matches!(
+            event,
+            SyncEvent::SlotListener {
+                menu_slot: 45,
+                player_slot: None,
+                ..
+            }
+        )));
+        assert_eq!(WorkstationKind::Crafter.protocol_id(), 7);
         Ok(())
     }
 }
