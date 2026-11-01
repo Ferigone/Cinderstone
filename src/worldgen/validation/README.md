@@ -33,3 +33,16 @@ The report compares entire canonical block arrays, surface WG heightmaps and
 surface-only postprocessing deltas. It also exercises native rejection of
 unavailable surface context and a repeated SURFACE stage. These selected cases
 do not prove Main integration, FULL chunks, every branch or full vanilla parity.
+
+The selected cases also include the original default-namespace `:overworld`
+alias and seed `0` with a fixed eroded-badlands biome, where original pillar
+generation adds blocks and raises columns. The report records those original
+growth observations alongside the complete state/heightmap comparison.
+
+`WorldgenNoCellsOracle` invokes the original `fillFromNoise` entry point with
+real sentinel-bearing ProtoChunks and unavailable generation dependencies.
+For zero or negative clamped cell counts, the original future returns the same
+unchanged chunk without constructing NoiseChunk state. `no_cells_probe.rs`
+checks `NoiseFillOutcome::NoCells`, the exact clamped metadata and dependency
+boundaries. These two helpers emit one JSON object without files or arguments.
+An unchanged-input outcome is not a generated terrain image or FULL status.

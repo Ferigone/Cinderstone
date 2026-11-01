@@ -1,9 +1,11 @@
 # Native generation stage validation
 
-Implementation source commit:
+Initial pipeline implementation source commit:
 `6c0b18c50abcee153705675e8d900757400b1e72`, based on
 `643106e8eb60d970a8df67eb9acf0ab5f107c788`.
-The checked-in generator-only report records exact source and probe hashes:
+The subsequent arithmetic, settings-alias and no-cell corrections are listed in
+the [team handoff](../coordination/status/worldgen-20261101-c4e7.md).
+The checked-in generator-only report records the current exact source and probe hashes:
 [`world-generation-stage-validation.json`](../../fixtures/world-generation-stage-validation.json).
 
 Reference inspection used direct `javap` through Java 21's `jdk.jdeps` module.
@@ -32,6 +34,8 @@ The NOISE comparison constructs the original NoiseChunk and calls its real
 interpolation/block-state methods in source `doFill` order. It compares complete
 canonical state arrays for seed `123456789` in all seven built-in noise settings,
 plus an Overworld chunk at negative X. Each selected original/native array agrees.
+The current replay also checks the original `:overworld` default-namespace alias
+and seed `0` for the selected active badlands case.
 This is direct original-class runtime execution, not execution of the original
 server's generation scheduler or `doFill` itself.
 
@@ -42,10 +46,24 @@ are plains, eroded badlands, frozen ocean, swamp, nether wastes and the End.
 Native NOISE-to-SURFACE output agrees on complete state arrays, both WG
 heightmaps and surface postprocessing deltas. Native unavailable-biome rejection
 preserves the NOISE image/stage; repeated SURFACE application is rejected.
-Frozen-ocean terrain includes active iceberg growth. The eroded-badlands case
-does not demonstrate positive pillar filling; its source water guard applies.
+Frozen-ocean terrain includes active iceberg growth. The additional seed `0`
+eroded-badlands case demonstrates positive pillar filling: the original adds
+321 non-air voxels and raises 37 columns, matching the native output.
 Thermal callbacks replay actual original biome observations and reject unknown
 coordinates, rather than assuming a constant temperature.
+
+The original `fillFromNoise` entry-point probe covers zero, negative and sub-cell
+clamped heights. It uses actual stone-bearing ProtoChunks, with generation
+dependencies unavailable, and verifies completed-future identity, untouched
+blocks/status and no NoiseChunk allocation. Native `fill_from_noise` agrees on
+clamped metadata and returns `NoCells` without a replacement terrain image.
+Positive overlap still requires the real dependency observations.
+
+The focused density fixture separately records the original visitor's ADD/MUL
+reconstruction after holder removal. It preserves scalar/fill signed zeros and
+input lifecycle errors that a stale raw multiply-by-zero could hide. The raw
+pre-NoiseChunk evaluator remains unchanged. The aquifer quantization fixture
+records Java's narrow-then-wrap conversion at ordinary and extreme inputs.
 
 Separate source notes describe the
 [density router](world-generation-density.md),
