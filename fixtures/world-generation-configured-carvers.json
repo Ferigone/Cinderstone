@@ -1,0 +1,800 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "official_mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+  "evidence": "Unchanged pinned original packaged configured-carver and biome JSON resources; resolved default debug block identities checked against direct javap CarverDebugSettings.<clinit>. No REA execution is claimed.",
+  "source_sha256": {
+    "data/minecraft/worldgen/biome/badlands.json": "373aa165aeada618c912ae54a2e22224a0a8efab9145b29f035f9c9fb18fe95c",
+    "data/minecraft/worldgen/biome/bamboo_jungle.json": "c18db96464ed3d577af1c37f06744ed73a13b71ed450bf8cf84796bc45f3290f",
+    "data/minecraft/worldgen/biome/basalt_deltas.json": "a4c1a53a0608b17bb5dd81b0fa2c307185c53374422851ac90109b32c957ca54",
+    "data/minecraft/worldgen/biome/beach.json": "8e8edd1f0288a5a5b7b2561882563ff1f6dc1885decb9732c09fb098d24b38f3",
+    "data/minecraft/worldgen/biome/birch_forest.json": "a365e4eb36cbf67bdb95924464930541fbd1bf22aad1c785e9fb981a9066da9e",
+    "data/minecraft/worldgen/biome/cherry_grove.json": "f60bd32176414e4b5349588a7e3fb3cdcaa1d6c672d49d4eb9b19125a85739c8",
+    "data/minecraft/worldgen/biome/cold_ocean.json": "83fdec10ea5cc2f005e7690044e1f0cb137b5c0fa73fba107b286e4b1c9de5d9",
+    "data/minecraft/worldgen/biome/crimson_forest.json": "50f92721ba5717727514c27ee6eceee2da4b516eb2073123035ee30b3f016df9",
+    "data/minecraft/worldgen/biome/dark_forest.json": "834970f84d9e0010dade6e411d6ca79eff365ceaf8c2f61c03874c25274e49b6",
+    "data/minecraft/worldgen/biome/deep_cold_ocean.json": "f6e3a79dd753955b4952ab749052fd530f3ca1eac45851c7f23de7160c3e02a0",
+    "data/minecraft/worldgen/biome/deep_dark.json": "5e9d424a54330759a69a60261a4cd2db41d6f3e01d3dbb643c882a29c1996b38",
+    "data/minecraft/worldgen/biome/deep_frozen_ocean.json": "d99aed7a37103f7c16c672870edd2caca86ccab523699050edab2e61942f9669",
+    "data/minecraft/worldgen/biome/deep_lukewarm_ocean.json": "597871dc9f2e93280150c9262b948b15371ba04a20d4552175353ec643f4b09e",
+    "data/minecraft/worldgen/biome/deep_ocean.json": "384396da252b3e28ea629cbf11dc9c2787656e1d1e7f77717ac9a31716e93619",
+    "data/minecraft/worldgen/biome/desert.json": "e28798c892b9b4aead076344db226c3b4aaef25ba34a5c4c600c035a81a1633c",
+    "data/minecraft/worldgen/biome/dripstone_caves.json": "792a86b2e3448238331afa9a309990af89a7e2aa5fae6862d369074441582b54",
+    "data/minecraft/worldgen/biome/end_barrens.json": "ecfefbbc830e6a38a2e477d9150e03239dab02fce4855f95ab83c6eb21a7f8d5",
+    "data/minecraft/worldgen/biome/end_highlands.json": "edafe2f82e25c9b072120d70c7956cbf74c4425a19395d5c4bf71682e70785ad",
+    "data/minecraft/worldgen/biome/end_midlands.json": "ecfefbbc830e6a38a2e477d9150e03239dab02fce4855f95ab83c6eb21a7f8d5",
+    "data/minecraft/worldgen/biome/eroded_badlands.json": "373aa165aeada618c912ae54a2e22224a0a8efab9145b29f035f9c9fb18fe95c",
+    "data/minecraft/worldgen/biome/flower_forest.json": "cb0d8381772a2940546eee51bbd886d5e8f3baab78aee23b51c231d1c49d96b5",
+    "data/minecraft/worldgen/biome/forest.json": "4bf2b58955a4ac49f9c97c9c1a934f6f1d84f50fe909e6e22f3e82acaa8cdd9f",
+    "data/minecraft/worldgen/biome/frozen_ocean.json": "48c356f7d5be949f140dcc322ffba7dbadc58720453f3ddf2055933b1cb57634",
+    "data/minecraft/worldgen/biome/frozen_peaks.json": "7b6974aa09f3fd84963cede9b5855b9b346841f0cc3da7010aaec38b38150c5b",
+    "data/minecraft/worldgen/biome/frozen_river.json": "033382f4a03fb81f52436fffd19b219549e190b44297ce8063fb1d207cfe8f31",
+    "data/minecraft/worldgen/biome/grove.json": "242e101f8ff49913a53363915137b2707a18e83c04b9cf34fa309a0228c59717",
+    "data/minecraft/worldgen/biome/ice_spikes.json": "19a85db0edb87d537387fbb41aa048d6f451dc8d5d013d14dbb871418a07bbfb",
+    "data/minecraft/worldgen/biome/jagged_peaks.json": "d083e41b9699fa0325941064a93d70152fff9271fc4a804b75d25bb80cb29ef1",
+    "data/minecraft/worldgen/biome/jungle.json": "555189749fcc4ffbaa2d0a2f7b9601262181642fafd31c375e3b96ee63c49ead",
+    "data/minecraft/worldgen/biome/lukewarm_ocean.json": "888462469b249c0597a2d07e8bbf2a8106858fe4f88ae82eeeb4e818a3b6f6eb",
+    "data/minecraft/worldgen/biome/lush_caves.json": "6c4f4cb13a88485839c314643fceb572a3a408bbe8c3d8b2044d84b87d5d4937",
+    "data/minecraft/worldgen/biome/mangrove_swamp.json": "ca3be9c37269f50b06c6c953fdffaae358c2e698a8d9a83eab0af362147c5655",
+    "data/minecraft/worldgen/biome/meadow.json": "b0ad4574db395f964566d4f03ce69b58d7ddddc59979ff96b0ea85ccf6d68ee2",
+    "data/minecraft/worldgen/biome/mushroom_fields.json": "42545af64b745dfa8ac3b19924b4d1e81b5aa2f3d4ae416f3046812629e92c9f",
+    "data/minecraft/worldgen/biome/nether_wastes.json": "5dbbb2b273d16d420f94cdf7ed33e8be2f657ced6eceea29450a06b812e8be57",
+    "data/minecraft/worldgen/biome/ocean.json": "6b957856ebee154078dcb3e99d043d3c44bfe35f9108f570a5bffc785fd234c8",
+    "data/minecraft/worldgen/biome/old_growth_birch_forest.json": "6a185f786804b7ae5aa930a0147706f678cafe78957ee37ccb07f07afe47077c",
+    "data/minecraft/worldgen/biome/old_growth_pine_taiga.json": "6dc623973119ff3f7115509acee2a89c4b93f46c01400a11e1b34de41cf755cc",
+    "data/minecraft/worldgen/biome/old_growth_spruce_taiga.json": "4b5cd3b6f0e1921947f4e4fa7a4a246477dd162d9189e81b55130be29d8da2f5",
+    "data/minecraft/worldgen/biome/plains.json": "aac994b2d16d30c0a2fb9145dba9720c07a86fbe36cb0ad337563c1ee94d4351",
+    "data/minecraft/worldgen/biome/river.json": "44cba28de5eaee598e155cf070eac7030ef1ae2f9ba50f202ef455b6a5eb6fb7",
+    "data/minecraft/worldgen/biome/savanna.json": "e5cb6398277b79c3d79eb42b34c184f7d55cd2e50eae205c43abd77ed7137ab5",
+    "data/minecraft/worldgen/biome/savanna_plateau.json": "aa74b9fd941ca09df514f477b98f6ef03bb01bdf0c912505df51a4d52831ab79",
+    "data/minecraft/worldgen/biome/small_end_islands.json": "286c65a4a3ed56eb254ae4cfdae92e0fbc85e02a8e13397680b82c57b587c7fb",
+    "data/minecraft/worldgen/biome/snowy_beach.json": "2c8df5e6ca6fbd2821001c233d1accaa06719ad18bcfa8bd7c5e007f5ebfef26",
+    "data/minecraft/worldgen/biome/snowy_plains.json": "1a953a142a293b3bbe638bfb812d0347dc68885ce8a8a9f082630edf5ac68046",
+    "data/minecraft/worldgen/biome/snowy_slopes.json": "120bedd93b1ad8573fead2c40db6b74bcc80fe01268dbc835663438880c2bb4d",
+    "data/minecraft/worldgen/biome/snowy_taiga.json": "899eb59aa770491ef0935307d9d8579aefa244c63dbe8519fa18bfb31d81653f",
+    "data/minecraft/worldgen/biome/soul_sand_valley.json": "e5d8584c8b379da2df74ca5798fd5fa91d0ef0df124ca81c57977f678df1b781",
+    "data/minecraft/worldgen/biome/sparse_jungle.json": "56f9e0ba206b4aee3de25270cd90bbf2680ffa2a456f46b86b32394355eae55e",
+    "data/minecraft/worldgen/biome/stony_peaks.json": "0ff6b25e3e7bb1df24da82a3f20636e9f263481d0047909d1db0b3a8f91d979f",
+    "data/minecraft/worldgen/biome/stony_shore.json": "4fd9568b5deb17cdcf0510da6a47b4450fef1495130bca6bb94b5bfd6795d28f",
+    "data/minecraft/worldgen/biome/sunflower_plains.json": "ab9201138a7bf3a6382100018364c61af7f7089ed50712245a0e6f84147411a7",
+    "data/minecraft/worldgen/biome/swamp.json": "f19a5ef4d49550bac51dc7b50acc13b9897889e6f9080574afb17a2f1d2f5d7d",
+    "data/minecraft/worldgen/biome/taiga.json": "ca2e7354708c1da4eea039785dd6157a92c122bf1ee3b6abeea0058cccfd4d62",
+    "data/minecraft/worldgen/biome/the_end.json": "1ba929bff4c4c2456dcab29f902d195bb48e7dc0c1d92c449d47560e3bb162cd",
+    "data/minecraft/worldgen/biome/the_void.json": "9638a0d920ec2a12a7ad9e112503399d81550a70971e3c7c062ffdfafa21111e",
+    "data/minecraft/worldgen/biome/warm_ocean.json": "cd7818096ffae8657f3195b32d55206edb74687131ad3abff1f9a3d6d1a81810",
+    "data/minecraft/worldgen/biome/warped_forest.json": "96b9607dc5c678183f7c53e033644e953e31491e0d49decbee53ced71126de61",
+    "data/minecraft/worldgen/biome/windswept_forest.json": "de516ad1404104f2893e03f1a0fa9aef953bbb9ce54419f720ea18e49a0e9ac0",
+    "data/minecraft/worldgen/biome/windswept_gravelly_hills.json": "7abc2b5372b60d6d43163d07ba1491a2601b9af87ad21c8f1cc519df3ea55e8e",
+    "data/minecraft/worldgen/biome/windswept_hills.json": "7abc2b5372b60d6d43163d07ba1491a2601b9af87ad21c8f1cc519df3ea55e8e",
+    "data/minecraft/worldgen/biome/windswept_savanna.json": "df58fb7ca2087bb87104cc05d51d699799aefe76b979cc76517ad960159a1c32",
+    "data/minecraft/worldgen/biome/wooded_badlands.json": "91c40c1d0ec4a94d1b46f5ae0b8054cc4c555dbb7285562b9aec26650044cc3c",
+    "data/minecraft/worldgen/configured_carver/canyon.json": "008350df01ff588afc6ab1b8f9651bf677fade8a5a34499e099374a5a3ccb882",
+    "data/minecraft/worldgen/configured_carver/cave.json": "06cb232b7cd3ed6d56f6049a39d47824ae26d5d11e4e4cad819b42832982d5ea",
+    "data/minecraft/worldgen/configured_carver/cave_extra_underground.json": "2225b5b0cb1e244117cb88da286be862cef0005d4bb40abdc4264d67635e8133",
+    "data/minecraft/worldgen/configured_carver/nether_cave.json": "b183cf5635372e8085abf0c7e2eeaa13247eafd8beb63d76a56dc3c82fe87e49"
+  },
+  "configured_carvers": {
+    "minecraft:canyon": {
+      "type": "minecraft:canyon",
+      "config": {
+        "debug_settings": {
+          "air_state": {
+            "Name": "minecraft:warped_button",
+            "Properties": {
+              "face": "wall",
+              "facing": "north",
+              "powered": "false"
+            }
+          },
+          "barrier_state": {
+            "Name": "minecraft:glass"
+          },
+          "lava_state": {
+            "Name": "minecraft:orange_stained_glass"
+          },
+          "water_state": {
+            "Name": "minecraft:candle",
+            "Properties": {
+              "candles": "1",
+              "lit": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        "lava_level": {
+          "above_bottom": 8
+        },
+        "probability": 0.01,
+        "replaceable": "#minecraft:overworld_carver_replaceables",
+        "shape": {
+          "distance_factor": {
+            "type": "minecraft:uniform",
+            "max_exclusive": 1.0,
+            "min_inclusive": 0.75
+          },
+          "horizontal_radius_factor": {
+            "type": "minecraft:uniform",
+            "max_exclusive": 1.0,
+            "min_inclusive": 0.75
+          },
+          "thickness": {
+            "type": "minecraft:trapezoid",
+            "max": 6.0,
+            "min": 0.0,
+            "plateau": 2.0
+          },
+          "vertical_radius_center_factor": 0.0,
+          "vertical_radius_default_factor": 1.0,
+          "width_smoothness": 3
+        },
+        "vertical_rotation": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 0.125,
+          "min_inclusive": -0.125
+        },
+        "y": {
+          "type": "minecraft:uniform",
+          "max_inclusive": {
+            "absolute": 67
+          },
+          "min_inclusive": {
+            "absolute": 10
+          }
+        },
+        "yScale": 3.0
+      }
+    },
+    "minecraft:cave": {
+      "type": "minecraft:cave",
+      "config": {
+        "debug_settings": {
+          "air_state": {
+            "Name": "minecraft:crimson_button",
+            "Properties": {
+              "face": "wall",
+              "facing": "north",
+              "powered": "false"
+            }
+          },
+          "barrier_state": {
+            "Name": "minecraft:glass"
+          },
+          "lava_state": {
+            "Name": "minecraft:orange_stained_glass"
+          },
+          "water_state": {
+            "Name": "minecraft:candle",
+            "Properties": {
+              "candles": "1",
+              "lit": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        "floor_level": {
+          "type": "minecraft:uniform",
+          "max_exclusive": -0.4,
+          "min_inclusive": -1.0
+        },
+        "horizontal_radius_multiplier": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 1.4,
+          "min_inclusive": 0.7
+        },
+        "lava_level": {
+          "above_bottom": 8
+        },
+        "probability": 0.15,
+        "replaceable": "#minecraft:overworld_carver_replaceables",
+        "vertical_radius_multiplier": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 1.3,
+          "min_inclusive": 0.8
+        },
+        "y": {
+          "type": "minecraft:uniform",
+          "max_inclusive": {
+            "absolute": 180
+          },
+          "min_inclusive": {
+            "above_bottom": 8
+          }
+        },
+        "yScale": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 0.9,
+          "min_inclusive": 0.1
+        }
+      }
+    },
+    "minecraft:cave_extra_underground": {
+      "type": "minecraft:cave",
+      "config": {
+        "debug_settings": {
+          "air_state": {
+            "Name": "minecraft:oak_button",
+            "Properties": {
+              "face": "wall",
+              "facing": "north",
+              "powered": "false"
+            }
+          },
+          "barrier_state": {
+            "Name": "minecraft:glass"
+          },
+          "lava_state": {
+            "Name": "minecraft:orange_stained_glass"
+          },
+          "water_state": {
+            "Name": "minecraft:candle",
+            "Properties": {
+              "candles": "1",
+              "lit": "false",
+              "waterlogged": "false"
+            }
+          }
+        },
+        "floor_level": {
+          "type": "minecraft:uniform",
+          "max_exclusive": -0.4,
+          "min_inclusive": -1.0
+        },
+        "horizontal_radius_multiplier": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 1.4,
+          "min_inclusive": 0.7
+        },
+        "lava_level": {
+          "above_bottom": 8
+        },
+        "probability": 0.07,
+        "replaceable": "#minecraft:overworld_carver_replaceables",
+        "vertical_radius_multiplier": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 1.3,
+          "min_inclusive": 0.8
+        },
+        "y": {
+          "type": "minecraft:uniform",
+          "max_inclusive": {
+            "absolute": 47
+          },
+          "min_inclusive": {
+            "above_bottom": 8
+          }
+        },
+        "yScale": {
+          "type": "minecraft:uniform",
+          "max_exclusive": 0.9,
+          "min_inclusive": 0.1
+        }
+      }
+    },
+    "minecraft:nether_cave": {
+      "type": "minecraft:nether_cave",
+      "config": {
+        "floor_level": -0.7,
+        "horizontal_radius_multiplier": 1.0,
+        "lava_level": {
+          "above_bottom": 10
+        },
+        "probability": 0.2,
+        "replaceable": "#minecraft:nether_carver_replaceables",
+        "vertical_radius_multiplier": 1.0,
+        "y": {
+          "type": "minecraft:uniform",
+          "max_inclusive": {
+            "below_top": 1
+          },
+          "min_inclusive": {
+            "absolute": 0
+          }
+        },
+        "yScale": 0.5
+      }
+    }
+  },
+  "biome_carvers": {
+    "minecraft:badlands": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:bamboo_jungle": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:basalt_deltas": [
+      "minecraft:nether_cave"
+    ],
+    "minecraft:beach": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:birch_forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:cherry_grove": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:cold_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:crimson_forest": [
+      "minecraft:nether_cave"
+    ],
+    "minecraft:dark_forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:deep_cold_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:deep_dark": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:deep_frozen_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:deep_lukewarm_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:deep_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:desert": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:dripstone_caves": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:end_barrens": [],
+    "minecraft:end_highlands": [],
+    "minecraft:end_midlands": [],
+    "minecraft:eroded_badlands": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:flower_forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:frozen_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:frozen_peaks": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:frozen_river": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:grove": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:ice_spikes": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:jagged_peaks": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:jungle": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:lukewarm_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:lush_caves": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:mangrove_swamp": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:meadow": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:mushroom_fields": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:nether_wastes": [
+      "minecraft:nether_cave"
+    ],
+    "minecraft:ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:old_growth_birch_forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:old_growth_pine_taiga": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:old_growth_spruce_taiga": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:plains": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:river": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:savanna": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:savanna_plateau": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:small_end_islands": [],
+    "minecraft:snowy_beach": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:snowy_plains": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:snowy_slopes": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:snowy_taiga": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:soul_sand_valley": [
+      "minecraft:nether_cave"
+    ],
+    "minecraft:sparse_jungle": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:stony_peaks": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:stony_shore": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:sunflower_plains": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:swamp": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:taiga": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:the_end": [],
+    "minecraft:the_void": [],
+    "minecraft:warm_ocean": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:warped_forest": [
+      "minecraft:nether_cave"
+    ],
+    "minecraft:windswept_forest": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:windswept_gravelly_hills": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:windswept_hills": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:windswept_savanna": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ],
+    "minecraft:wooded_badlands": [
+      "minecraft:cave",
+      "minecraft:cave_extra_underground",
+      "minecraft:canyon"
+    ]
+  },
+  "debug_defaults": {
+    "debug_mode": false,
+    "air_state": {
+      "Name": "minecraft:acacia_button"
+    },
+    "water_state": {
+      "Name": "minecraft:candle"
+    },
+    "lava_state": {
+      "Name": "minecraft:orange_stained_glass"
+    },
+    "barrier_state": {
+      "Name": "minecraft:glass"
+    }
+  },
+  "resolved_debug_states": {
+    "minecraft:cave": {
+      "debug_mode": false,
+      "air_state": 19109,
+      "water_state": 20728,
+      "lava_state": 5946,
+      "barrier_state": 519,
+      "uses_default_owner": false
+    },
+    "minecraft:cave_extra_underground": {
+      "debug_mode": false,
+      "air_state": 8620,
+      "water_state": 20728,
+      "lava_state": 5946,
+      "barrier_state": 519,
+      "uses_default_owner": false
+    },
+    "minecraft:canyon": {
+      "debug_mode": false,
+      "air_state": 19133,
+      "water_state": 20728,
+      "lava_state": 5946,
+      "barrier_state": 519,
+      "uses_default_owner": false
+    },
+    "minecraft:nether_cave": {
+      "debug_mode": false,
+      "air_state": 8716,
+      "water_state": 20728,
+      "lava_state": 5946,
+      "barrier_state": 519,
+      "uses_default_owner": true
+    }
+  },
+  "provider_vectors": [
+    {
+      "kind": "float",
+      "provider": 0.375,
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        1052770304,
+        1052770304,
+        1052770304,
+        1052770304,
+        1052770304,
+        1052770304,
+        1052770304,
+        1052770304
+      ],
+      "next_i64": -6197403153606331135
+    },
+    {
+      "kind": "float",
+      "provider": {
+        "type": "minecraft:uniform",
+        "min_inclusive": 0.1,
+        "max_exclusive": 0.9
+      },
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        1059166289,
+        1060498781,
+        1055809039,
+        1050384438,
+        1054025412,
+        1049357054,
+        1062243943,
+        1054964494
+      ],
+      "next_i64": -4618295442963808721
+    },
+    {
+      "kind": "float",
+      "provider": {
+        "type": "minecraft:trapezoid",
+        "min": 0.0,
+        "max": 6.0,
+        "plateau": 2.0
+      },
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        1082513760,
+        1075157595,
+        1073701717,
+        1083020347,
+        1081545635,
+        1075497590,
+        1073183664,
+        1077539042
+      ],
+      "next_i64": 2115867195944107995
+    },
+    {
+      "kind": "height",
+      "provider": {
+        "absolute": 10
+      },
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10,
+        10
+      ],
+      "next_i64": -6197403153606331135
+    },
+    {
+      "kind": "height",
+      "provider": {
+        "type": "minecraft:uniform",
+        "min_inclusive": {
+          "above_bottom": 8
+        },
+        "max_inclusive": {
+          "absolute": 180
+        }
+      },
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        158,
+        -8,
+        60,
+        14,
+        -17,
+        113,
+        109,
+        107
+      ],
+      "next_i64": -4618295442963808721
+    },
+    {
+      "kind": "height",
+      "provider": {
+        "type": "minecraft:uniform",
+        "min_inclusive": {
+          "absolute": 7
+        },
+        "max_inclusive": {
+          "absolute": 7
+        }
+      },
+      "seed": 123456789,
+      "min_gen_y": -64,
+      "gen_depth": 384,
+      "samples": [
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7,
+        7
+      ],
+      "next_i64": -4618295442963808721
+    },
+    {
+      "kind": "height",
+      "provider": {
+        "type": "minecraft:uniform",
+        "min_inclusive": {
+          "above_bottom": 20
+        },
+        "max_inclusive": {
+          "below_top": 1
+        }
+      },
+      "seed": 123456789,
+      "min_gen_y": 0,
+      "gen_depth": 16,
+      "samples": [
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20,
+        20
+      ],
+      "next_i64": -6197403153606331135
+    }
+  ],
+  "provider_observation_sha256": "e51db5c34fd5d09f0ca984c598489ea9bbe4a5e4c09af0d296699b3a7f540300",
+  "provider_evidence": "Actual original configured registry debug states and original FloatProvider/HeightProvider codec sampling with LegacyRandomSource; WorldgenCarverOracle providers mode. Runtime source is the pinned unchanged original 1.21 server."
+}
