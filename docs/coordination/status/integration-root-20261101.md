@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: blocked_publication; local native connection stage completed
+State: completed_stage; published connection release verified
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -13,22 +13,33 @@ accounting, persistent journal and Railway. External teams own unused default
 areas in the coordination guide. No separate external instance is assumed active
 without an actual issue or Git branch/status check-in.
 
-## Latest local delivery
+## Latest published delivery
 
-Core `f8c8c72` and Main `259e64175fb594c7e5b24b329d16e8021b8a3dde` implement
-connection-owned packet-rate enforcement, thirty-second raw ingress inactivity,
-typed settings/compression and common body validation/dispatch. Full Main build
-and [local flow](../../validation/connection-flow.json) passed at
-`2026-11-01T20:02:11.997141+00:00` on binary
+Published core `894a3cc9358144f967489018069396ac97c6db70`, Main
+`87dda91054478098ba86eebaaf32869fa176f307` and docs
+`1e726940db75ea1bd9c6ece3f03f4886ef1b3a90` have exactly the Git trees of
+local `f8c8c72`, `259e641` and `d0759cf`, respectively. GitHub integration
+Git-object writes preserved normal source files and parent order; commit
+metadata assigned new IDs. Original local commits remain retained.
+
+Full Main build and [local flow](../../validation/connection-flow.json) passed on
+the identical local source at `2026-11-01T20:02:11.997141+00:00`, binary
 `ece5cbf3604c632b23c21e757a7095177ac1e80a1a8210168458662a2dd6d9ac`.
-Source contracts: [connection-production.md](../../reference/connection-production.md).
-All six delegated groups finished. No background coding is claimed at handoff.
+[Source contracts](../../reference/connection-production.md) cover actual
+packet-rate ownership, raw inactivity, typed settings/compression and common
+wire dispatch. Railway master `1e72694` reached SUCCESS and native offline
+listening at `2026-11-01T20:19:15.460728572Z`, one replica, retained volume and
+no pending work. Public gameplay remains unverified after fresh DNS failure.
 
-This newer source is local only. The recovered environment has no available
-Git credential; push authentication failed, and connected issue/blob writes
-returned 403. The latest fetch still shows public master `f40d8bf` and no team
-branch handoff. No new Railway deployment is claimed. Existing Team2/3/4
-ownership is unchanged. The fixed checklist stays 56/100 code and 51/100 Main at `scope_version: 1`.
+Six delegated read-only reviews completed for the incoming team handoffs and
+source/configuration stability. Candidate library checks passed for exact
+worldgen `d9a77ed`, workstations `ab08813` and damage `1c8648a`; no Main callsites
+were inferred. Actual handoff responses were posted to
+[issue2](https://github.com/Ferigone/Cinderstone/issues/2#issuecomment-6563365274),
+[issue3](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6563366511)
+and [issue4](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6563368061).
+All existing team ownership remains unchanged. The fixed scope1 checklist stays
+56/100 code and51/100 Main. No background coding is claimed at handoff.
 
 ## Previous published delivery
 
@@ -60,16 +71,14 @@ in docs/validation/railway-preview.json and the persistent journal.
 
 ## Communication
 
-The user-approved Issues and Pull requests read/write permissions are saved for
-the existing coordinator token, restricted to Ferigone/Cinderstone. A real
-[Team4 handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
-was created through that token and read back at2026-11-01T15:16:38Z. PR creation
-has not been exercised. The GitHub integration still returns403 for writes;
-this permission change does not alter another instance's GitHub App or token.
-Git pushes worked in the earlier environment; its private credential is not
-available after recovery. The current local status has not been published.
-Retain the per-instance branch/status fallback when authenticated writes are
-available; do not infer access in another session.
+The user restored this instance's GitHub integration write access. Root created
+an issue1 publishing check-in and the team handoff replies, published Git objects
+and advanced master without force. Earlier403 text describes the previous
+connection state; current writes succeeded and master was read back. Ordinary
+CLI Git credentials remain unavailable and are not required by this API path.
+Other instances must discover and verify their own current tool connection;
+`Unknown tool` is a client/tool-surface failure, not a GitHub repository403.
+Retain the branch/status fallback when an instance actually cannot write.
 
 ## Integration contracts
 
@@ -88,7 +97,12 @@ owners and actual blockers for the entities/survival team.
 
 ## Next handoff
 
-Publish team feature branches and per-instance status files or writable PRs.
-No external team check-in was observed in issues2–4 or teams/* branches during
-this stage; an external effects worker was reported by the user. The coordinator reads those records while its session is active;
-no automatic wakeup, polling or continuing background coding is claimed.
+Draft PR5/workstations and PR6/worldgen, published damage/effects branches and
+actual issue2–4 check-ins are observed. Older branch status statements about
+publication failure are superseded by their later issue comments. The next
+central candidate is bounded stonecutter Main integration, followed separately
+by smithing, after the actual recipe order/features/callback contract is pinned.
+Worldgen still needs genuine ProtoChunk/BIOMES/staged readiness and owned job
+lifetime contracts; damage/effects still need canonical actor/timer/lethal owners.
+These are pending integration requirements, not completed or active Main work.
+No polling, cross-chat wakeup or coding continues automatically after a turn.

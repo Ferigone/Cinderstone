@@ -78,5 +78,9 @@
   "completed_at": "2026-11-01T20:02:11.997141+00:00",
   "harness_sha256": "14f81108916913a825a7001d1a07ac9afcb07c3b92e28b20bc9de90f9ba17d94",
   "synthetic_offline_profiles_only": true,
-  "full_vanilla_parity": false
+  "full_vanilla_parity": false,
+  "validated_local_source_commit": "259e64175fb594c7e5b24b329d16e8021b8a3dde",
+  "published_source_commit": "87dda91054478098ba86eebaaf32869fa176f307",
+  "identical_source_tree_sha": "662339775d32cb25f48dc281d448babc314cf5bb",
+  "publication_method": "GitHub integration Git objects; exact source tree verified, commit metadata differs"
 }

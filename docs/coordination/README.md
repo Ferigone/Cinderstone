@@ -11,8 +11,9 @@ Integration queue: [issue #1](https://github.com/Ferigone/Cinderstone/issues/1).
 Assigned team issues: [world generation #2](https://github.com/Ferigone/Cinderstone/issues/2),
 [workstations #3](https://github.com/Ferigone/Cinderstone/issues/3),
 [entities/survival #4](https://github.com/Ferigone/Cinderstone/issues/4).
-No external issue/branch check-in has been observed. The user has reported an
-external effects worker; its unpublished branch and actual capacity are unknown.
+Published world-generation, workstation and damage/effect branches and actual
+issue2–4 check-ins are now observed. Draft PRs5/workstations and6/worldgen
+remain pending central integration; publication does not establish Main calls.
 
 ## Start one independent instance per team
 
@@ -107,17 +108,15 @@ Next action / handoff: <owner and next bounded step>
 
 ## Communication when issue/PR writes are unavailable
 
-The coordinator previously received HTTP403 for issue comments/updates. The
-user-approved Issues and Pull requests read/write permissions are now saved for
-its existing token, restricted to Ferigone/Cinderstone. A real token-authenticated
-[issue4 handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
-was created and read back at2026-11-01T15:16:38Z. PR creation has not been exercised.
-The GitHub integration still rejects writes with403; another instance's GitHub
-App or token permissions are unchanged. Git pushes worked in the earlier
-environment. After recovery, the coordinator's private credential is unavailable
-and its newer connection stage is committed locally only; current issue/blob
-writes also returned 403. Retain the per-instance branch/status fallback when
-authenticated Git access is available. Do not infer another session's access.
+Earlier403 errors describe the previous connection state. The user restored
+GitHub integration access; actual issue1/team comments and Git-object writes now
+succeed. Root published the native connection source with identical Git trees,
+and master advanced without force to `1e72694`. Ordinary CLI Git credentials
+remain unavailable; the working API path does not require exposing a token.
+Each independent instance must discover and verify its own current tools and
+connection. An `Unknown tool` transport error is distinct from a GitHub403.
+Use the fallback below only when the instance actually cannot write. Later issue
+comments supersede historical publication-blocked text in branch status files.
 
 Use issue comments and PRs when the instance can write them. Otherwise publish
 `docs/coordination/status/<instance-id>.md` on the team's own feature branch.

@@ -1,9 +1,10 @@
 # Native connection transport integration
 
 This bounded stage targets Java 1.21, protocol 767, using the unchanged pinned
-original server and official mappings in `fixtures/source-lock.json`. The core
-commit is `f8c8c72`; Main integration is
-`259e64175fb594c7e5b24b329d16e8021b8a3dde`. Source inspection used direct JDK21
+original server and official mappings in `fixtures/source-lock.json`. The published core
+commit is `894a3cc`; Main integration is
+`87dda91054478098ba86eebaaf32869fa176f307`. Their Git trees are identical to
+locally validated `f8c8c72` and `259e641`, respectively. Source inspection used direct JDK21
 `javap` and bounded execution of original codecs/registries. REA MCP tools were
 not exposed. No proprietary binaries or raw disassembly are published.
 
@@ -65,8 +66,8 @@ owners. This stage does not change the hosted offline setting.
 
 ## Evidence and remaining boundaries
 
-The Main build passed. The focused local runtime result is recorded separately
-in `docs/validation/connection-flow.json` after completion. Source ledgers:
+The Main build passed. The completed focused local runtime result is recorded in
+`docs/validation/connection-flow.json`. Source ledgers:
 [packet rate](connection-packet-rate.md), [raw transport](connection-transport.md),
 [properties](connection-settings.md), [common payloads](connection-common-payload.md)
 and [UTF-8 replacement](connection-utf8.md).
@@ -82,8 +83,9 @@ Java Properties lifecycle. Full profile cache, Gson/date/locale/selector and
 Brigadier contexts remain unfinished.
 
 This stage does not complete `authentication.5` or another aggregate checklist
-delivery. Scope 1 remains 100 items, with 56 code and 51 Main integrations. GitHub
-publication and the resulting Railway release are blocked in this environment:
-Git has no available credential and connected GitHub writes returned 403. The
-public/deployed source remains the last actually published commit, not this
-newer local stage.
+delivery. Scope 1 remains 100 items, with 56 code and 51 Main integrations.
+The GitHub integration now accepts issue and Git-object writes. Normal source
+files were published with identical trees; commit metadata changed their IDs.
+Railway master `1e72694` reached SUCCESS/native offline listening at
+`2026-11-01T20:19:15.460728572Z`. Hosted evidence retains the public DNS failure,
+one-replica and existing-volume boundaries. No public gameplay is claimed.

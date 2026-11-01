@@ -5,36 +5,43 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Native connection transport — local flow passed, publication blocked
+## Native connection transport — published and hosted
 
-Core `f8c8c72` and Main integration
-`259e64175fb594c7e5b24b329d16e8021b8a3dde` are committed locally. The full Main
-build and [actual local protocol flow](validation/connection-flow.json) passed
-on **1 November 2026 at 21:02:11 Europe/Warsaw**
-(`2026-11-01T20:02:11.997141+00:00`), binary SHA-256
+Native core `894a3cc` and Main `87dda91054478098ba86eebaaf32869fa176f307`
+are published. They have exactly the same Git trees as locally validated
+`f8c8c72` and `259e641`, respectively. The full Main build and
+[local protocol flow](validation/connection-flow.json) passed at
+`2026-11-01T20:02:11.997141+00:00` on binary SHA-256
 `ece5cbf3604c632b23c21e757a7095177ac1e80a1a8210168458662a2dd6d9ac`.
 
-Main now invokes real per-TCP packet counters across listener changes, positive
-configured packet-rate enforcement, a raw-byte read-inactivity owner before
-decryption/framing, typed connection settings and configurable compression.
-Pure supported wire decoding precedes accepted dispatch; registered PLAY shapes
-include actual exported beacon holders without adding beacon gameplay. Shared
-custom payload/Pong, PLAY Ping Request echo, Java-compatible UTF-8 replacement
-and the CONFIGURATION keepalive refusal are connected. Pending LOGIN timeout
-writes use a safe frame boundary.
+Real per-TCP counters, positive configured packet-rate refusal, raw-byte
+read inactivity before decryption/framing, typed settings and configurable
+compression now have Main paths. Pure supported wire decoding precedes counted
+dispatch. Actual built-in beacon holders validate packet bodies without adding
+beacon gameplay. Shared custom payload/Pong, signed-long PLAY Ping Request echo,
+Java-compatible UTF-8 replacement, CONFIGURATION keepalive refusal and safe
+pending LOGIN-timeout writes are connected.
 
-The flow observed actual rate refusal, rate-zero survival with real `/list`,
-compression threshold 8 versus disabled −1, timeout reasons and signed-long echo.
-An incomplete frame closed after 30.002 seconds; a second byte at 20 seconds kept
-another connection alive beyond 32 seconds and moved closure to 50.002 seconds.
-It is not graphical, public-network or real-account verification. Detailed
-owners and remaining limits are in [connection-production.md](reference/connection-production.md).
+The local flow observed actual rate refusal, rate-zero survival with real
+`/list`, compression threshold 8 versus disabled −1, proper timeout reasons and
+signed-long echo. An incomplete frame closed after 30.002 seconds; a second raw
+byte at 20 seconds moved another connection's closure to 50.002 seconds.
+It is not graphical, public-network or real-account verification.
 
-The six delegated groups finished their assignments. GitHub issue/blob writes
-returned 403 and Git push authentication is unavailable after environment
-recovery. No source push or new Railway deployment is claimed; the last
-observed public/deployed commit remains `f40d8bf`. The unchanged fixed checklist
-is **56/100 code** and **51/100 Main**, `scope_version: 1`. Full `authentication.5` remains open.
+Railway deployment `df1e57c7-3ea6-407c-ba6f-fa21f6e2d026` for master `1e72694`
+reached **SUCCESS**; native offline listening was observed at
+`2026-11-01T20:19:15.460728572Z` (**21:19:15 Europe/Warsaw**). The environment
+reported one running replica, zero crashed replicas, retained volume and no
+pending work. The fresh external status attempt failed DNS resolution.
+[Production scope](reference/connection-production.md) and
+[hosted evidence](validation/railway-preview.json) preserve those limits.
+
+All six delegated review assignments completed. Published world-generation,
+workstation and damage/effect handoffs are now observed in issues #2–#4 and draft
+PRs #5/#6. Independent candidate library checks passed for the three reviewed
+source commits; no candidate Main integration or checklist increment is claimed.
+The fixed scope1 checklist remains **56/100 code**, **51/100 Main**;
+`authentication.5` remains incomplete.
 
 ## Native chat, sessions and signatures — bounded local flow passed
 

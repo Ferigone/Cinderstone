@@ -36,8 +36,8 @@ detailed roadmap does not add points to, rename or replace that checklist.
       [admission flow](validation/admission-flow.json) passed for source `6c54018`.
 - [x] Connect bounded packet-rate enforcement, raw read inactivity, typed
       connection settings, configurable compression and common wire dispatch to
-      Main; [local flow](validation/connection-flow.json) passed for `259e641`.
-      This newer local source awaits authenticated publication/autodeployment.
+      Main; [local flow](validation/connection-flow.json) passed for local `259e641` (identical published source `87dda91`).
+      Railway autodeployed master `1e72694` successfully.
 - [ ] Complete admission limits, bans and administration, including remaining
       parser/profile/date contexts and full asynchronous transport equivalence.
 
