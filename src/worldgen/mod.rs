@@ -12,6 +12,7 @@ pub mod carver;
 pub mod biome_temperature;
 pub mod biome_zoom;
 pub mod generator;
+pub mod feature;
 pub mod noise_chunk;
 pub mod random_state;
 pub mod surface;
