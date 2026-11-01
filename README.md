@@ -70,9 +70,18 @@ recorded binary; hosted deployment verification is separate. The newer
 ordinary furnace with two viewers during creative destruction. It preserves the
 removed container until later player-phase closure, returns cursor contents once
 and keeps a same-position replacement independent. Item and XP totals survived
-cold restart. This covers the alive-player inventory-return branch; the
-disconnected/dead cursor-drop branch remains unported and full-inventory overflow
-is not covered by that flow.
+cold restart. That recorded flow covers the alive-player inventory-return branch;
+full-inventory overflow is not covered by it.
+
+The newer [disconnected-cursor flow](docs/validation/disconnected-furnace-flow.json)
+passed locally for source `07e290cc66411d0d1ededfae69a592899a2e5d10`.
+With two protocol clients, disconnecting a player carrying five quartz in a
+furnace menu created one real item entity observed by the remaining client.
+The saved cursor and inventory contained no quartz, and the same item ID and
+five quartz survived cold restart exactly once. Normal live menu closure still
+returns the cursor to inventory. Hosted startup for this newer source remains
+unverified. Player-death handling, full-inventory overflow conformance and the
+complete Java `PlayerList.remove` persistence order remain incomplete.
 
 Comparator receivers, Mending repairs, custom datapacks and survival furnace
 breaking remain unsupported. Menu actions combining output XP with item drops

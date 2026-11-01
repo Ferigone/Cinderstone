@@ -68,8 +68,11 @@ status effects. Implemented numerical survival routines do not remove that limit
       XP, with a recorded local item/experience-conservation and cold-restart flow.
 - [x] Bounded active-viewer furnace-container lifetime, later player-phase close
       and independent same-position replacement, with a local two-viewer flow.
-- [ ] Disconnected/dead cursor dropping, full-inventory overflow conformance,
-      survival breaking and remaining world-removal contexts.
+- [x] Bounded disconnected furnace-menu cursor drop through actual item ownership,
+      with a local two-client observation and exact item conservation on restart.
+- [ ] Player-death cursor handling, full-inventory overflow conformance, complete
+      `PlayerList.remove` persistence ordering, survival breaking and remaining
+      world-removal contexts.
 - [ ] Comparator receivers, Mending repairs and combined menu output-XP/item-drop paths.
 - [ ] Custom cooking datapacks and dynamic recipe reload.
 - [ ] Hoppers and inventory transfer between block entities.
@@ -84,9 +87,19 @@ retains its identity and counters after its slots are dropped; a replacement at
 the same coordinates does not become that container. The actual later Level
 player phase broadcasts, validates and closes each old menu, with the close
 packet before cursor return. Item and XP totals survived cold restart without
-new replacement entity IDs. The recorded path covers alive creative players;
-disconnected/dead cursor dropping and full-inventory overflow are not established.
-Hosted verification of this new source remains pending at this update.
+new replacement entity IDs. That recorded path covers alive creative players;
+the newer disconnect result below has its own source and binary scope.
+
+The [disconnected-cursor flow](validation/disconnected-furnace-flow.json) passed
+locally for source `07e290cc66411d0d1ededfae69a592899a2e5d10` on 1 November
+2026 at 13:55:31 Europe/Warsaw. After an actual disconnect with five quartz on a
+furnace cursor, the remaining protocol client observed one real item entity.
+The saved player cursor and inventory contained zero quartz, and item ID 3 with
+five quartz survived cold restart exactly once. Normal live closure retains the
+inventory-return branch. Hosted startup for this newer source remains
+unverified; death handling, full-inventory overflow conformance and the complete
+Java `PlayerList.remove` persistence order remain open. This bounded subitem
+does not change the fixed checklist denominator or `scope_version: 1`.
 
 The earlier creative block-removal implementation requires every furnace menu viewer
 to close first. It stages actual container contents and stored recipe XP without

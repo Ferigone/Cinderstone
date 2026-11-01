@@ -5,6 +5,33 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Disconnected furnace cursor — bounded local flow passed
+
+Furnace menu closure now distinguishes an alive, connected owner from a dead or
+disconnected owner. Main's actual disconnect and duplicate-login cleanup select
+the disconnected context: the carried stack enters the real player-drop path
+without first returning to inventory. Normal live closure and save cleanup keep
+their inventory-return context. This does not implement the player-death or full
+survival lifecycle.
+
+The [focused local disconnected-cursor flow](validation/disconnected-furnace-flow.json)
+**passed** on 1 November 2026 at 13:55:31 Europe/Warsaw
+(`2026-11-01T12:55:31.284Z`), for source commit
+`07e290cc66411d0d1ededfae69a592899a2e5d10` and debug binary SHA-256
+`cea142d01922dca01f548bec76f430ac07e4faac6872876ff825a622a01a437d`.
+Two protocol clients exercised an actual disconnect with five quartz on the
+furnace cursor. The remaining client observed the real item entity. The saved
+player cursor and inventory contained zero quartz; exactly one item entity,
+ID 3 carrying five quartz, retained the same ID and count through cold restart.
+
+This result covers that local protocol flow, not a graphical vanilla-client
+session, public-network gameplay or every disconnection race. Deployment of
+this source is pending verification; the older hosted observation below retains
+its original scope. Full player-death handling, full-inventory overflow
+conformance and the complete Java `PlayerList.remove` persistence order remain
+incomplete. The fixed checklist indicators remain 55/100 code and 50/100 Main
+integration at `scope_version: 1`.
+
 ## Furnace menu lifetime after removal — bounded local flow passed
 
 The removed furnace container now remains owned by its existing menus after
@@ -39,8 +66,9 @@ result for the recorded path. The optimized hosted release and native offline
 startup are verified separately below. It does not establish graphical-client or public-network
 validation, full vanilla compatibility, or a performance advantage.
 
-The disconnected/dead-player cursor-drop branch remains unported, and the
-full-inventory overflow path is not covered by this flow. Survival breaking,
+That flow does not cover disconnected-player cursor drops; the newer bounded
+result above records that path separately. Player-death handling and
+full-inventory overflow conformance remain incomplete. Survival breaking,
 comparator receivers, Mending repairs and other menu families remain incomplete.
 The earlier processing and closed-menu results below retain their exact recorded
 versions and scopes.
@@ -128,10 +156,11 @@ evidence boundaries are described in the
 
 Remaining furnace limits are explicit:
 
-- The bounded closed-menu and alive-creative active-viewer removal paths passed
-  their recorded local flows above. Disconnected/dead cursor dropping, survival
-  and other removal contexts remain incomplete; full-inventory overflow is not
-  covered by the new flow.
+- The bounded closed-menu, alive-creative active-viewer removal and disconnected
+  cursor paths passed their separate recorded local flows above. Player death,
+  survival and other removal contexts remain incomplete; full-inventory
+  overflow conformance and complete `PlayerList.remove` persistence ordering
+  remain open.
 - Comparator receivers and Mending experience repairs are unsupported.
 - Menu actions combining furnace output experience and item drops are rejected
   before commit. The new block-removal transaction is a separate path.

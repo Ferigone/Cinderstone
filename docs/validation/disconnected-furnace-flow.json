@@ -1,0 +1,63 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "full_vanilla_parity": false,
+  "scope": "Two local protocol clients: disconnect an owner carrying quartz in an open furnace, observe an actual dropped Item from another client, then verify saved cursor/inventory/entity conservation across a cold restart. No graphical-client or public-network claim.",
+  "checks": {
+    "two_native_clients_joined": true,
+    "actual_furnace_cursor_owns_quartz5": true,
+    "disconnected_cursor_published_real_item": true,
+    "saved_cursor_empty_and_item_conserved": true,
+    "cold_restart_preserves_exact_item_identity_and_conservation": true
+  },
+  "observed": {
+    "drop": {
+      "id": 3,
+      "position": {
+        "x": 8.5,
+        "y": 66.31999999284744,
+        "z": 8.5
+      },
+      "stack": {
+        "id": 808,
+        "count": 5
+      }
+    },
+    "beforeRestart": {
+      "quartzTotal": 5,
+      "playerItems": 0,
+      "playerCarriedItems": 0,
+      "itemId": 3,
+      "itemStack": {
+        "id": 808,
+        "count": 5
+      },
+      "savedPlayers": 2
+    },
+    "afterRestart": {
+      "quartzTotal": 5,
+      "playerItems": 0,
+      "playerCarriedItems": 0,
+      "itemId": 3,
+      "itemStack": {
+        "id": 808,
+        "count": 5
+      },
+      "savedPlayers": 2
+    }
+  },
+  "binary_sha256": "cea142d01922dca01f548bec76f430ac07e4faac6872876ff825a622a01a437d",
+  "completed_at": "2026-11-01T12:55:31.284Z",
+  "source_commit": "07e290cc66411d0d1ededfae69a592899a2e5d10",
+  "build_profile": "debug",
+  "graphical_client": false,
+  "public_network": false,
+  "shutdown_signal": "SIGTERM",
+  "limitations": [
+    "Player-death/survival integration remains unfinished.",
+    "Complete PlayerList.remove persistence/callback order is not established.",
+    "Full-inventory overflow, all workstation families and packet races are outside this flow.",
+    "This local protocol-client result does not establish full vanilla parity or a performance advantage."
+  ]
+}
