@@ -13,6 +13,7 @@ pub enum ChunkDensityError {
     SampleOutsideInterpolation,
     ArrayIndex { index: usize, length: usize },
     UnregisteredMarker,
+    MissingDensityRoot(&'static str),
 }
 impl fmt::Display for ChunkDensityError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -30,6 +31,7 @@ impl fmt::Display for ChunkDensityError {
             Self::UnregisteredMarker => {
                 f.write_str("density marker was not wrapped for this chunk")
             }
+            Self::MissingDensityRoot(name) => write!(f, "missing density root {name}"),
         }
     }
 }
@@ -103,6 +105,7 @@ pub struct ChunkDensity {
     first_quart_z: i32,
     quart_count: usize,
     canonical: Vec<usize>,
+    rewritten_arithmetic: Vec<Option<(NodeId, f64)>>,
     canonical_keys: HashMap<String, usize>,
     registered: HashSet<usize>,
     caches: Vec<Option<MarkerCache>>,
@@ -112,6 +115,7 @@ pub struct ChunkDensity {
     owner_context: bool,
     provider: Provider,
     external_points: Vec<DensityPoint>,
+    preliminary_surface_levels: HashMap<i64, i32>,
 }
 fn pack_xz(x: i32, z: i32) -> i64 {
     ((x as u32 as u64) | ((z as u32 as u64) << 32)) as i64
@@ -144,6 +148,7 @@ impl ChunkDensity {
             first_quart_z: origin_z >> 2,
             quart_count: ((cell_count_xz as i32).wrapping_mul(width) >> 2) as usize,
             canonical: Vec::new(),
+            rewritten_arithmetic: Vec::new(),
             canonical_keys: HashMap::new(),
             registered: HashSet::new(),
             caches: Vec::new(),
@@ -165,6 +170,7 @@ impl ChunkDensity {
             owner_context: false,
             provider: Provider::External,
             external_points: Vec::new(),
+            preliminary_surface_levels: HashMap::new(),
         })
     }
     pub fn state(&self) -> ChunkDensityState {
@@ -177,10 +183,75 @@ impl ChunkDensity {
             self.state.base_z.wrapping_add(self.state.in_z),
         )
     }
+    /// The vertical extent used by this chunk's interpolation and preliminary
+    /// surface queries, after the generator settings have been clamped to the
+    /// level height accessor.
+    pub fn grid(&self) -> NoiseGrid {
+        self.grid
+    }
+
+    /// NoiseChunk.preliminarySurfaceLevel, including quart-block quantization,
+    /// its per-chunk cache and the original no-surface sentinel (i32::MAX).
+    ///
+    /// The sampled function is the wrapped initial-density root, evaluated with
+    /// a SinglePointContext. It must not use the current interpolation point:
+    /// aquifer queries can ask about columns outside the chunk being filled.
+    pub fn preliminary_surface_level(
+        &mut self,
+        graph: &DensityGraph,
+        x: i32,
+        z: i32,
+    ) -> ChunkResult<i32> {
+        let x = (x >> 2).wrapping_shl(2);
+        let z = (z >> 2).wrapping_shl(2);
+        let key = pack_xz(x, z);
+        if let Some(level) = self.preliminary_surface_levels.get(&key) {
+            return Ok(*level);
+        }
+        let input = graph.root("initial_density_without_jaggedness").ok_or(
+            ChunkDensityError::MissingDensityRoot("initial_density_without_jaggedness"),
+        )?;
+        let was_owner = self.owner_context;
+        self.owner_context = false;
+        let sampled: ChunkResult<i32> = (|| {
+            let mut y = self.grid.min_y.wrapping_add(self.grid.height);
+            while y >= self.grid.min_y {
+                if graph.eval_sampled(input, DensityPoint::new(x, y, z), self)? > 0.390625 {
+                    return Ok(y);
+                }
+                // Vanilla dimensions cannot underflow here. Avoid a wrapped,
+                // nonterminating loop for an out-of-domain custom grid.
+                let Some(next_y) = y.checked_sub(self.grid.cell_height) else {
+                    break;
+                };
+                y = next_y;
+            }
+            Ok(i32::MAX)
+        })();
+        self.owner_context = was_owner;
+        let level = sampled?;
+        self.preliminary_surface_levels.insert(key, level);
+        Ok(level)
+    }
+
     fn update_canonical(&mut self, graph: &DensityGraph) {
         while self.canonical.len() < graph.nodes.len() {
             let id = self.canonical.len();
-            let mut node = graph.nodes[id].clone();
+            let rewritten = graph.wrapped_constant_argument(NodeId(id));
+            self.rewritten_arithmetic.push(rewritten);
+            if let DensityNode::Reference(input) = graph.nodes[id] {
+                // HolderHolder.mapAll visits the held function first, then
+                // NoiseChunk.wrapNew returns holder.value(). Parent equality
+                // therefore sees the wrapped child, not another holder layer.
+                self.canonical.push(self.canonical[input.0]);
+                continue;
+            }
+            let mut node = match (rewritten, &graph.nodes[id]) {
+                (Some((input, argument)), DensityNode::Binary(kind, _, _)) => {
+                    DensityNode::ConstantArgument(*kind, input, argument)
+                }
+                _ => graph.nodes[id].clone(),
+            };
             map_children(&mut node, &mut |child| NodeId(self.canonical[child.0]));
             // Debug floats round-trip uniquely, including signed zero. This key is an
             // in-memory structural equality key, never a persisted format or hash ID.
@@ -230,6 +301,11 @@ impl ChunkDensity {
         Ok(())
     }
     fn register(&mut self, graph: &DensityGraph, id: NodeId) -> ChunkResult<()> {
+        if let DensityNode::Reference(input) = graph.nodes[id.0] {
+            // A reference shares its child's canonical identity. Register the
+            // child before marking that identity, or its marker would be lost.
+            return self.register(graph, input);
+        }
         let canonical = self.canonical[id.0];
         if !self.registered.insert(canonical) {
             return Ok(());
@@ -515,6 +591,9 @@ impl ChunkDensity {
 }
 impl DensityContext for ChunkDensity {
     type Error = ChunkDensityError;
+    fn rewritten_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {
+        self.rewritten_arithmetic.get(id.0).copied().flatten()
+    }
     fn marker(
         &mut self,
         graph: &DensityGraph,
@@ -880,5 +959,206 @@ fn map_children(node: &mut DensityNode, map: &mut impl FnMut(NodeId) -> NodeId) 
         }
         DensityNode::Spline(spline) => map_spline(spline, map),
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn rewrite_fixture() -> Value {
+        serde_json::from_str(include_str!(
+            "../../fixtures/world-generation-density-rewrite.json"
+        ))
+        .unwrap()
+    }
+
+    fn rewrite_chunk() -> ChunkDensity {
+        ChunkDensity::new(
+            NoiseGrid {
+                min_y: -64,
+                height: 384,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+        )
+        .unwrap()
+    }
+
+    fn observed_bits(value: &Value) -> Vec<u64> {
+        value
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap().parse().unwrap())
+            .collect()
+    }
+
+    #[test]
+    fn chunk_arithmetic_rewrite_preserves_original_scalar_and_fill_bits() {
+        let fixture = rewrite_fixture();
+        for case in fixture["cases"].as_array().unwrap() {
+            let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+            let id = graph.parse(&case["expression"]).unwrap();
+            let points: Vec<_> = case["points"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|p| {
+                    DensityPoint::new(
+                        p[0].as_i64().unwrap() as i32,
+                        p[1].as_i64().unwrap() as i32,
+                        p[2].as_i64().unwrap() as i32,
+                    )
+                })
+                .collect();
+            let raw = observed_bits(&case["raw_fill_bits"]);
+            let wrapped = observed_bits(&case["wrapped_fill_bits"]);
+            let bits = |values: Vec<f64>| values.into_iter().map(f64::to_bits).collect::<Vec<_>>();
+            assert_eq!(bits(graph.eval_many(id, &points)), raw);
+            assert_eq!(bits(graph.fill_many(id, &points)), raw);
+            let bounds = graph.bounds(id);
+            assert_eq!(
+                vec![bounds.min.to_bits(), bounds.max.to_bits()],
+                observed_bits(&case["raw_bounds_bits"])
+            );
+            // Empty-context holder erasure preserves these bounds exactly;
+            // MIN/MAX may retain the graph's original short-circuit metadata.
+            assert_eq!(case["raw_bounds_bits"], case["wrapped_bounds_bits"]);
+            let mut chunk = rewrite_chunk();
+            chunk.wrap(&graph, id).unwrap();
+            let sampled = points
+                .iter()
+                .map(|point| chunk.sample_external(&graph, id, *point).unwrap().to_bits())
+                .collect::<Vec<_>>();
+            assert_eq!(sampled, wrapped);
+            assert_eq!(
+                bits(chunk.fill_external(&graph, id, &points).unwrap()),
+                wrapped
+            );
+        }
+    }
+
+    #[test]
+    fn zero_coefficient_keeps_wrapped_input_lifecycle_errors() {
+        let fixture = rewrite_fixture();
+        let case = &fixture["lifecycle"];
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let id = graph.parse(&case["expression"]).unwrap();
+        assert_eq!(graph.eval(id, DensityPoint::new(0, -64, 0)).to_bits(), 0);
+        let mut chunk = rewrite_chunk();
+        chunk.wrap(&graph, id).unwrap();
+        let error = chunk.sample(&graph, id).unwrap_err();
+        assert_eq!(error, ChunkDensityError::SampleOutsideInterpolation);
+        assert_eq!(error.to_string(), case["error"].as_str().unwrap());
+    }
+
+    #[test]
+    fn rewritten_arithmetic_keeps_the_original_marker_owner() {
+        let fixture = rewrite_fixture();
+        assert_eq!(fixture["marker_identity"]["same_owner"], true);
+        let expression = &fixture["cases"][0]["expression"];
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let held = graph.parse(expression).unwrap();
+        let constant = graph.parse(&expression["argument1"]).unwrap();
+        let input = graph.parse(&expression["argument2"]).unwrap();
+        let direct = graph.binary(Binary::Mul, constant, input);
+        let held_marker = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, held),
+            graph.bounds(held),
+        );
+        let direct_marker = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, direct),
+            graph.bounds(direct),
+        );
+        let mut chunk = rewrite_chunk();
+        chunk.wrap(&graph, held_marker).unwrap();
+        chunk.wrap(&graph, direct_marker).unwrap();
+        assert_eq!(chunk.interpolators.len(), 1);
+        assert_eq!(
+            chunk.canonical[held_marker.0],
+            chunk.canonical[direct_marker.0]
+        );
+    }
+
+    #[test]
+    fn empty_namespace_uses_the_original_default_namespace() {
+        let canonical = DensityGraph::builtin(123456789, "minecraft:overworld").unwrap();
+        let alias = DensityGraph::builtin(123456789, ":overworld").unwrap();
+        assert_eq!(
+            canonical.positional_random_factory(),
+            alias.positional_random_factory()
+        );
+        assert_eq!(
+            canonical.sample_climate(-3, 17, 2).unwrap(),
+            alias.sample_climate(-3, 17, 2).unwrap()
+        );
+    }
+
+    #[test]
+    fn holder_indirection_preserves_the_interpolator_owner() {
+        // The original HolderHolder.mapAll + NoiseChunk.wrap produced one
+        // identical owner for these direct/held arguments; see the source note.
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let value = graph.push(DensityNode::Constant(0.25), DensityBounds::constant(0.25));
+        let held = graph.push(DensityNode::Reference(value), graph.bounds(value));
+        let direct = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, value),
+            graph.bounds(value),
+        );
+        let indirect = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, held),
+            graph.bounds(value),
+        );
+        let mut chunk = ChunkDensity::new(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+        )
+        .unwrap();
+        chunk.wrap(&graph, direct).unwrap();
+        chunk.wrap(&graph, indirect).unwrap();
+        assert_eq!(chunk.interpolators.len(), 1);
+        assert_eq!(chunk.canonical[direct.0], chunk.canonical[indirect.0]);
+        chunk.initialize_first_cell_x(&graph).unwrap();
+        chunk.advance_cell_x(&graph, 0).unwrap();
+        chunk.select_cell_yz(&graph, 0, 0).unwrap();
+        chunk.update_for_y(3, 3.0 / 8.0);
+        chunk.update_for_x(2, 2.0 / 4.0);
+        chunk.update_for_z(1, 1.0 / 4.0);
+        assert_eq!(
+            chunk.sample(&graph, direct).unwrap().to_bits(),
+            0.25_f64.to_bits()
+        );
+        assert_eq!(
+            chunk.sample(&graph, indirect).unwrap().to_bits(),
+            0.25_f64.to_bits()
+        );
+        chunk.stop_interpolation().unwrap();
+    }
+
+    #[test]
+    fn builtin_cache_owner_counts_match_the_original_constructor() {
+        for (settings, expected) in [("overworld", (8, 1)), ("nether", (1, 1)), ("end", (1, 1))] {
+            let graph = DensityGraph::builtin(123456789, settings).unwrap();
+            let grid = graph.grid().unwrap();
+            let mut chunk =
+                ChunkDensity::new(grid, -32, 48, (16 / grid.cell_width) as usize).unwrap();
+            chunk.wrap_router(&graph).unwrap();
+            assert_eq!(
+                (chunk.interpolators.len(), chunk.cell_caches.len()),
+                expected,
+                "{settings}"
+            );
+        }
     }
 }

@@ -109,3 +109,4 @@ pub mod world_rules;
 pub mod connection_payload;
 pub mod connection_settings;
 pub mod connection_transport;
+pub mod worldgen;

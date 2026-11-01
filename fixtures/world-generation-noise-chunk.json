@@ -1,0 +1,115 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+  "evidence_kind": "direct Java runtime calls to the unchanged NoiseChunk constructor and methods; direct javap inspection",
+  "oracle_probe_sha256": "b09e1fc592ab72f12dacb75a241a027ec4a4304ea4a59075a37379d350315cf0",
+  "preliminary_coordinates": "keys are block offsets (dx,dz) from chunk origin; queried before and after full NOISE traversal",
+  "cases": [
+    {
+      "settings": "minecraft:overworld",
+      "seed": 123456789,
+      "x": 0,
+      "z": 0,
+      "min_y": -64,
+      "height": 384,
+      "preliminary": {
+        "-17,17": 48,
+        "-16,16": 48,
+        "-1,1": 40,
+        "0,0": 40,
+        "3,-3": 40,
+        "4,-4": 48,
+        "15,-15": 48,
+        "16,-16": 48,
+        "31,-31": 48
+      },
+      "cache_owners": {
+        "i": 8,
+        "j": 1
+      }
+    },
+    {
+      "settings": "minecraft:overworld",
+      "seed": 123456789,
+      "x": -2,
+      "z": 3,
+      "min_y": -64,
+      "height": 384,
+      "preliminary": {
+        "-17,17": 48,
+        "-16,16": 48,
+        "-1,1": 48,
+        "0,0": 40,
+        "3,-3": 40,
+        "4,-4": 40,
+        "15,-15": 40,
+        "16,-16": 40,
+        "31,-31": 40
+      },
+      "cache_owners": {
+        "i": 8,
+        "j": 1
+      }
+    },
+    {
+      "settings": "minecraft:nether",
+      "seed": 123456789,
+      "x": 0,
+      "z": 0,
+      "min_y": 0,
+      "height": 128,
+      "preliminary": {
+        "-17,17": 2147483647,
+        "-16,16": 2147483647,
+        "-1,1": 2147483647,
+        "0,0": 2147483647,
+        "3,-3": 2147483647,
+        "4,-4": 2147483647,
+        "15,-15": 2147483647,
+        "16,-16": 2147483647,
+        "31,-31": 2147483647
+      },
+      "cache_owners": {
+        "i": 1,
+        "j": 1
+      }
+    },
+    {
+      "settings": "minecraft:end",
+      "seed": 123456789,
+      "x": 0,
+      "z": 0,
+      "min_y": 0,
+      "height": 128,
+      "preliminary": {
+        "-17,17": 2147483647,
+        "-16,16": 2147483647,
+        "-1,1": 2147483647,
+        "0,0": 2147483647,
+        "3,-3": 2147483647,
+        "4,-4": 2147483647,
+        "15,-15": 2147483647,
+        "16,-16": 2147483647,
+        "31,-31": 2147483647
+      },
+      "cache_owners": {
+        "i": 1,
+        "j": 1
+      }
+    }
+  ],
+  "holder_identity": {
+    "expected_same_interpolator": true,
+    "expected_interpolator_count": 1,
+    "probe_sha256": "ad2a0457fd7777bac53971b95778af3bc4b6ef9914ec5f87867adfdf6a5f0df8",
+    "scope": "Original HolderHolder.mapAll plus NoiseChunk.wrap on interpolated constant versus interpolated held constant. Only wrapper-state fields allocated with Unsafe; this is not a generated chunk."
+  },
+  "not_verified": [
+    "Production Main invocation, persistence, chunk scheduling and FULL status.",
+    "Nonempty blending and structure beardifier.",
+    "All custom partial-cell height accessors.",
+    "Comprehensive conformance or biome/feature generation."
+  ]
+}

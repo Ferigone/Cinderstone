@@ -78,6 +78,29 @@ pub struct NoiseGrid {
     pub cell_width: i32,
     pub cell_height: i32,
 }
+/// The fifteen functions of the seeded `NoiseRouter`, in its record order.
+///
+/// Node IDs belong to the graph that returned this router. They retain marker
+/// nodes: chunk owners must sample through `ChunkDensity` for interpolation and
+/// caches, rather than treating raw graph evaluation as generated terrain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DensityRouter {
+    pub barrier: NodeId,
+    pub fluid_level_floodedness: NodeId,
+    pub fluid_level_spread: NodeId,
+    pub lava: NodeId,
+    pub temperature: NodeId,
+    pub vegetation: NodeId,
+    pub continents: NodeId,
+    pub erosion: NodeId,
+    pub depth: NodeId,
+    pub ridges: NodeId,
+    pub initial_density_without_jaggedness: NodeId,
+    pub final_density: NodeId,
+    pub vein_toggle: NodeId,
+    pub vein_ridged: NodeId,
+    pub vein_gap: NodeId,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MarkerKind {
     Interpolated,
@@ -330,10 +353,10 @@ fn rarity(kind: Rarity, value: f64) -> f64 {
     }
 }
 fn canonical(name: &str) -> String {
-    if name.contains(':') {
-        name.to_owned()
-    } else {
-        format!("minecraft:{name}")
+    match name.split_once(':') {
+        Some(("", path)) => format!("minecraft:{path}"),
+        Some(_) => name.to_owned(),
+        None => format!("minecraft:{name}"),
     }
 }
 fn number(value: &Value, key: &str) -> Result<f64> {
@@ -357,6 +380,14 @@ fn name<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
 /// contexts delegate markers; chunk contexts own their cache/counter state.
 pub trait DensityContext: Sized {
     type Error;
+    /// A visitor may replace an ADD/MUL node with MulOrAdd after erasing its
+    /// holder arguments. The input is evaluated before applying the constant,
+    /// even when that constant is zero. Raw RandomState contexts do not perform
+    /// this NoiseChunk rewrite. This describes the wrapped function, regardless
+    /// of whether its sampling FunctionContext belongs to the chunk.
+    fn rewritten_constant_argument(&self, _id: NodeId) -> Option<(NodeId, f64)> {
+        None
+    }
     fn marker(
         &mut self,
         graph: &DensityGraph,
@@ -583,6 +614,45 @@ impl DensityGraph {
     }
     pub fn roots(&self) -> &BTreeMap<String, NodeId> {
         &self.roots
+    }
+    /// Return all original router fields, rejecting a partial/custom graph.
+    /// This does not wrap its functions for any chunk or supply biome,
+    /// structure-beardifier or nonempty Blender state.
+    pub fn router(&self) -> Result<DensityRouter> {
+        let required = |name: &str| {
+            self.root(name)
+                .ok_or_else(|| anyhow!("missing noise router field {name}"))
+        };
+        Ok(DensityRouter {
+            barrier: required("barrier")?,
+            fluid_level_floodedness: required("fluid_level_floodedness")?,
+            fluid_level_spread: required("fluid_level_spread")?,
+            lava: required("lava")?,
+            temperature: required("temperature")?,
+            vegetation: required("vegetation")?,
+            continents: required("continents")?,
+            erosion: required("erosion")?,
+            depth: required("depth")?,
+            ridges: required("ridges")?,
+            initial_density_without_jaggedness: required("initial_density_without_jaggedness")?,
+            final_density: required("final_density")?,
+            vein_toggle: required("vein_toggle")?,
+            vein_ridged: required("vein_ridged")?,
+            vein_gap: required("vein_gap")?,
+        })
+    }
+    /// World seed used to bind the graph's noise holders and terrain noise.
+    pub fn seed(&self) -> i64 {
+        self.seed
+    }
+    pub fn uses_legacy_random_source(&self) -> bool {
+        self.legacy
+    }
+    /// RandomState's positional root after the algorithm(seed) positional fork.
+    /// Copying this immutable factory consumes no sequential random state.
+    /// Aquifer, ore and surface owners derive their own named streams from it.
+    pub fn positional_random_factory(&self) -> PositionalRandomFactory {
+        self.factory
     }
     pub fn root(&self, name: &str) -> Option<NodeId> {
         self.roots.get(name).copied()
@@ -955,6 +1025,26 @@ impl DensityGraph {
         };
         self.push(node, bounds)
     }
+    /// NoiseChunk.wrapNew erases HolderHolder after visiting its contents.
+    /// Ap2.mapAll then re-runs the two-argument factory: only a resulting direct
+    /// Constant permits MulOrAdd, not a marker or other function over a constant.
+    fn wrapped_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {
+        let DensityNode::Binary(Binary::Add | Binary::Mul, a, b) = self.nodes[id.0] else {
+            return None;
+        };
+        let constant = |mut id: NodeId| loop {
+            match self.nodes[id.0] {
+                DensityNode::Reference(input) => id = input,
+                DensityNode::Constant(value) => break Some(value),
+                _ => break None,
+            }
+        };
+        if let Some(value) = constant(a) {
+            Some((b, value))
+        } else {
+            constant(b).map(|value| (a, value))
+        }
+    }
     fn parse_spline(&mut self, value: &Value) -> Result<Spline> {
         if let Some(value) = value.as_f64() {
             return Ok(Spline::Constant(value as f32));
@@ -1063,6 +1153,14 @@ impl DensityGraph {
             DensityNode::BlendAlpha => 1.0,
             DensityNode::BlendOffset | DensityNode::Beardifier => 0.0,
             DensityNode::Binary(kind, a, b) => {
+                if let Some((input, argument)) = context.rewritten_constant_argument(id) {
+                    let value = self.eval_sampled(input, point, context)?;
+                    return Ok(match kind {
+                        Binary::Add => value + argument,
+                        Binary::Mul => value * argument,
+                        _ => unreachable!("wrapped constant optimization is add/mul only"),
+                    });
+                }
                 let a = self.eval_sampled(*a, point, context)?;
                 match kind {
                     Binary::Add => a + self.eval_sampled(*b, point, context)?,
@@ -1257,6 +1355,17 @@ impl DensityGraph {
                 }
             }
             DensityNode::Binary(kind, a, b) => {
+                if let Some((input, argument)) = context.rewritten_constant_argument(id) {
+                    self.fill_sampled(input, values, context)?;
+                    for value in values {
+                        *value = match kind {
+                            Binary::Add => *value + argument,
+                            Binary::Mul => *value * argument,
+                            _ => unreachable!("wrapped constant optimization is add/mul only"),
+                        };
+                    }
+                    return Ok(());
+                }
                 self.fill_sampled(*a, values, context)?;
                 match kind {
                     Binary::Add => {

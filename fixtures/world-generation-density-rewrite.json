@@ -1,0 +1,136 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "mappings_sha256": "c9d9fda3143c100fa0566099074fc5d912b8b7ef3cb5b84c87eab411bd5bfb51",
+  "evidence_kind": "Runtime observation of unchanged original DensityFunction codecs and a constructed NoiseChunk; no Unsafe allocation",
+  "probe_source_sha256": "90819dcab7b93e0cc50db9ebf288a4435a5157fc49d29868fd4cddf087d18d8d",
+  "cases": [
+    {
+      "expression": {
+        "type": "minecraft:mul",
+        "argument1": 0.0,
+        "argument2": {
+          "type": "minecraft:y_clamped_gradient",
+          "from_y": -64,
+          "to_y": 320,
+          "from_value": -1.0,
+          "to_value": 1.0
+        }
+      },
+      "raw_class": "dys$j",
+      "wrapped_class": "dys$n",
+      "raw_bits": "0",
+      "wrapped_bits": "9223372036854775808",
+      "points": [
+        [
+          0,
+          -64,
+          0
+        ],
+        [
+          0,
+          128,
+          0
+        ],
+        [
+          0,
+          320,
+          0
+        ]
+      ],
+      "raw_fill_bits": [
+        "0",
+        "0",
+        "0"
+      ],
+      "wrapped_fill_bits": [
+        "9223372036854775808",
+        "0",
+        "0"
+      ],
+      "raw_bounds_bits": [
+        "9223372036854775808",
+        "0"
+      ],
+      "wrapped_bounds_bits": [
+        "9223372036854775808",
+        "0"
+      ]
+    },
+    {
+      "expression": {
+        "type": "minecraft:mul",
+        "argument1": -0.0,
+        "argument2": {
+          "type": "minecraft:y_clamped_gradient",
+          "from_y": -64,
+          "to_y": 320,
+          "from_value": 1.0,
+          "to_value": -1.0
+        }
+      },
+      "raw_class": "dys$j",
+      "wrapped_class": "dys$n",
+      "raw_bits": "0",
+      "wrapped_bits": "9223372036854775808",
+      "points": [
+        [
+          0,
+          -64,
+          0
+        ],
+        [
+          0,
+          128,
+          0
+        ],
+        [
+          0,
+          320,
+          0
+        ]
+      ],
+      "raw_fill_bits": [
+        "0",
+        "0",
+        "0"
+      ],
+      "wrapped_fill_bits": [
+        "9223372036854775808",
+        "9223372036854775808",
+        "0"
+      ],
+      "raw_bounds_bits": [
+        "9223372036854775808",
+        "0"
+      ],
+      "wrapped_bounds_bits": [
+        "9223372036854775808",
+        "0"
+      ]
+    }
+  ],
+  "marker_identity": {
+    "same_owner": true,
+    "case": "rewritten-marker-identity"
+  },
+  "lifecycle": {
+    "error": "Trying to sample interpolator outside the interpolation loop",
+    "case": "owner-before-interpolation",
+    "expression": {
+      "type": "minecraft:mul",
+      "argument1": 0.0,
+      "argument2": {
+        "type": "minecraft:interpolated",
+        "argument": {
+          "type": "minecraft:y_clamped_gradient",
+          "from_y": -64,
+          "to_y": 320,
+          "from_value": -1.0,
+          "to_value": 1.0
+        }
+      }
+    }
+  }
+}

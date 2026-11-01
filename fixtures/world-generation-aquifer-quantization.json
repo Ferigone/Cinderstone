@@ -1,0 +1,91 @@
+{
+  "minecraft": "1.21",
+  "inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "evidence": "Actual unchanged original Mth.quantize(double,3), mapped ayo.a(double,int), invoked by reflection. Inputs include signed zero, one-ULP boundaries, saturated conversion, NaN and infinities; input_bits encodes every input exactly without nonfinite JSON numbers.",
+  "source_method": "NoiseBasedAquifer.computeRandomizedFluidSurfaceLevel -> Mth.quantize -> Mth.floor",
+  "divisor": 3,
+  "oracle_source_sha256": "59c6bbf061da822375b6b7c448074493a72fef7fe9148e98dbb816f970f89711",
+  "oracle_stdout_sha256": "4831979fe111971cecb4a70bf315b76fd406242693da5385e2a6ff4dcb2f14c1",
+  "rows": [
+    {
+      "name": "-Infinity",
+      "input_bits": "18442240474082181120",
+      "quantized": 2147483645
+    },
+    {
+      "name": "-1.0E20",
+      "input_bits": "14129391947058875456",
+      "quantized": 2147483645
+    },
+    {
+      "name": "-6.442450947E9",
+      "input_bits": "13976921443547480064",
+      "quantized": 2147483645
+    },
+    {
+      "name": "-6.442450944000001E9",
+      "input_bits": "13976921443544334337",
+      "quantized": 2147483645
+    },
+    {
+      "name": "-6.442450944E9",
+      "input_bits": "13976921443544334336",
+      "quantized": -2147483648
+    },
+    {
+      "name": "-6.442450943999999E9",
+      "input_bits": "13976921443544334335",
+      "quantized": -2147483648
+    },
+    {
+      "name": "-9.0",
+      "input_bits": "13844628204490326016",
+      "quantized": -9
+    },
+    {
+      "name": "-8.999999999999998",
+      "input_bits": "13844628204490326015",
+      "quantized": -9
+    },
+    {
+      "name": "-0.0",
+      "input_bits": "9223372036854775808",
+      "quantized": 0
+    },
+    {
+      "name": "0.0",
+      "input_bits": "0",
+      "quantized": 0
+    },
+    {
+      "name": "2.9999999999999996",
+      "input_bits": "4613937818241073151",
+      "quantized": 0
+    },
+    {
+      "name": "3.0",
+      "input_bits": "4613937818241073152",
+      "quantized": 3
+    },
+    {
+      "name": "6.442450941E9",
+      "input_bits": "4753549406686412800",
+      "quantized": 2147483645
+    },
+    {
+      "name": "6.442450944E9",
+      "input_bits": "4753549406689558528",
+      "quantized": 2147483645
+    },
+    {
+      "name": "NaN",
+      "input_bits": "9221120237041090560",
+      "quantized": 0
+    },
+    {
+      "name": "Infinity",
+      "input_bits": "9218868437227405312",
+      "quantized": 2147483645
+    }
+  ]
+}
