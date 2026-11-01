@@ -106,6 +106,55 @@ unavailable context leaves the NOISE block image intact. Successful completion
 changes only the native terrain stage to `Surface`. It does not perform carving,
 features, structures, lighting, final heightmap conversion or runtime publication.
 
+## Owned NOISE-to-SURFACE stage handoff
+
+The additive owned APIs address a native lifetime constraint: the borrowed
+`NoiseTerrain` cannot be stored beside its own generator in a self-referential
+scheduler entry. The actual generator remains a separate `Arc<NoiseGenerator>`;
+`retain_terrain(self: &Arc<Self>, terrain: NoiseTerrain<'_>)` verifies that the
+terrain refers to that exact graph and returns `OwnedNoiseTerrain`. Equal seed
+and settings on a different generator do not satisfy this identity check.
+
+Conversion consumes the existing `NoiseChunk` through `into_density()` and
+moves its actual `ChunkDensity`, image, heights, fluid-post positions, coordinates
+and stage. The private owned fields contain no references into the owned value.
+No RNG is reseeded, density function is rewrapped, cache is cloned or preliminary
+surface map is reconstructed. Only the generator's Arc reference count changes.
+The owned stage can outlive the local Arc binding and move into an ordinary
+scheduler-owned map or another thread without `unsafe` code.
+
+`fill_from_noise_owned(self: &Arc<Self>, ...) -> Result<OwnedNoiseFillOutcome>`
+is a convenience entry point over the existing fill and conversion APIs. Its
+`Generated` variant contains the owned stage. Its `NoCells` variant contains
+only the original clamp metadata and retains no Arc, image or dummy NoiseChunk;
+the caller retains the actual original ProtoChunk. Borrowed fill and surface
+entry points remain available.
+
+`OwnedNoiseTerrain::build_surface(&mut self, &mut SurfaceContext)` uses its
+captured generator and the retained density owner. Both borrowed and owned
+surface entry points call one private application helper, with the same
+transactional block image, WG-heightmap and fluid-post updates. Unavailable
+context leaves those outputs and the stage intact. Successful application
+advances only from `Noise` to `Surface`; duplicate application is rejected.
+Read-only block, heightmap, postprocessing and stage accessors expose the same
+layout as the borrowed API.
+
+Focused native ownership checks cover moving a stage beyond its local binding
+and across a thread, rejecting a different equal-seed graph, and preserving
+warmed cache/preliminary-map allocation identities and image allocations across
+conversion. A controlled fixed-nether-wastes profile compares borrowed and
+owned surface outputs, including heights and posts, and exercises failure after
+a processed column and duplicate rejection. Its thermal callbacks deliberately
+fail if unexpectedly queried; it is a test fixture, never a production BIOMES
+default. Allocation observations use only a test-only density helper and do not
+add a production density API.
+
+This handoff covers an existing **NOISE-to-SURFACE** owner. A future BIOMES stage
+must start from and retain the same earlier chunk/cache owner; this API does not
+create that earlier owner or establish biome selection, status scheduling,
+persistence, FULL readiness or a Main generation callsite. The central owner
+must still bind the actual world/dimension identity and dependency phases.
+
 ## Main integration contract still required
 
 The inspected base is `643106e8eb60d970a8df67eb9acf0ab5f107c788`.

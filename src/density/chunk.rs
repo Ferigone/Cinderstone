@@ -176,6 +176,23 @@ impl ChunkDensity {
     pub fn state(&self) -> ChunkDensityState {
         self.state
     }
+
+    /// Opaque allocation identities for tests of moving an existing owner.
+    /// This neither samples nor mutates its caches and has no production API.
+    #[cfg(test)]
+    pub(crate) fn allocation_fingerprint(&self) -> (usize, usize, Vec<(i64, usize)>) {
+        let mut preliminary = self
+            .preliminary_surface_levels
+            .iter()
+            .map(|(key, value)| (*key, value as *const i32 as usize))
+            .collect::<Vec<_>>();
+        preliminary.sort_unstable_by_key(|entry| entry.0);
+        (
+            self.caches.as_ptr() as usize,
+            self.canonical.as_ptr() as usize,
+            preliminary,
+        )
+    }
     pub fn point(&self) -> DensityPoint {
         DensityPoint::new(
             self.state.base_x.wrapping_add(self.state.in_x),

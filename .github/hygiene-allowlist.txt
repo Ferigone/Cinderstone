@@ -1,0 +1,5 @@
+# Intentional exceptions to .github/scripts/repo_hygiene.py, one per line:
+#   <glob> <reason>
+# Keep this empty unless a sanitized, public, non-secret file truly needs an
+# otherwise forbidden type. AGENTS.md still forbids saves, credentials,
+# proprietary Java binaries and source archives.

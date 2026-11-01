@@ -1,0 +1,3764 @@
+{
+  "schema_version": 1,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "provenance": {
+    "inner_server_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "server_mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+    "recipe_catalog_sha256": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e",
+    "item_catalog_sha256": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "configuration_fixture_sha256": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+    "java_version": "21.0.12.1",
+    "helper_source_sha256": "707a145b64e0fc6dfb05de9053bfc49b64aba7cf89a93a3494224596f742f98a",
+    "helper_observation_sha256": "cf412f3dd747ab47aca6bf73948e99f53a84af3ddd4018b757f51fb8d31a0f19",
+    "methods": [
+      "Direct javap inspection of the pinned original Java 1.21 classes, identified with the official mappings; no REA.",
+      "Outside-repository reflection helper executed unchanged ServerPacksSource.createVanillaPackSource, MultiPackResourceManager(SERVER_DATA, singleton vanilla pack), TagLoader.loadAndBuild and item Registry.bindTags, followed by the actual built-in registry lookup provider.",
+      "The helper invoked unchanged SimpleJsonResourceReloadListener.prepare and RecipeManager.apply, then observed RecipeManager.getAllRecipesFor encounter order, Recipe.getResultItem, ItemStack.getDescriptionId, actual item registry numeric IDs/keys, Item.requiredFeatures and FeatureFlagRegistry.toNames.",
+      "Original prepare returned java.util.HashMap with 1290 recipes; original item tag loading bound 147 item tags. Two independent helper JVM runs produced byte-identical observations.",
+      "For each of 57 actual default stonecutting ingredient items, original recipe.matches(SingleRecipeInput, null) was called and actual output description IDs checked. No same-input description ties occurred; maximum matching recipes was 16.",
+      "For each of 27 smithing recipes, an input from its actual Ingredient.getItems was passed to unchanged RecipeManager.getRecipesFor(type, input, null); each returned exactly the expected singleton. These matches and singleton comparator paths do not access the null Level argument.",
+      "Every recorded numeric item ID/name and stonecutting result was checked against the existing item and recipe catalogs; all smithing ingredient sets and transform outputs were checked against the recipe catalog. The catalogs do not supply the captured Java recipe order."
+    ],
+    "result_order_method": "smithing_input_order is the actual unchanged RecipeManager.getAllRecipesFor encounter order. smithing_result_order is a stable Java Stream.sorted(Comparator.comparing(actual Recipe.getResultItem(actual lookup).getDescriptionId)) of that captured list, the comparator used by getRecipesFor. Filtering commutes with this stable key sort. All 18 trim previews tie at item.minecraft.iron_chestplate and retain captured encounter order. This is not a direct getRecipesFor query matching all 27 recipes.",
+    "scope": "Pinned unchanged default vanilla pack, item tags and recipe/catalog snapshot only. This metadata does not certify custom packs, resource reloads, alternate enabled-feature owners, or a production Level. Production must bind the actual recipe snapshot and Level enabled-feature state.",
+    "no_server_or_world": true
+  },
+  "feature_flags": {
+    "vanilla": [
+      "minecraft:vanilla"
+    ],
+    "default": [
+      "minecraft:vanilla"
+    ],
+    "air_required": [
+      "minecraft:vanilla"
+    ],
+    "empty_stack_enabled_with_empty_flags": true
+  },
+  "stonecutting": [
+    {
+      "recipe_id": "minecraft:diorite_wall_from_diorite_stonecutting",
+      "result_item_id": 411,
+      "result_item": "minecraft:diorite_wall",
+      "description_id": "block.minecraft.diorite_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_stairs_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 637,
+      "result_item": "minecraft:deepslate_brick_stairs",
+      "description_id": "block.minecraft.deepslate_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_copper_from_copper_block_stonecutting",
+      "result_item_id": 96,
+      "result_item": "minecraft:chiseled_copper",
+      "description_id": "block.minecraft.chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_slab_from_tuff_stonecutting",
+      "result_item_id": 18,
+      "result_item": "minecraft:polished_tuff_slab",
+      "description_id": "block.minecraft.polished_tuff_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_slab_from_blackstone_stonecutting",
+      "result_item_id": 1237,
+      "result_item": "minecraft:polished_blackstone_brick_slab",
+      "description_id": "block.minecraft.polished_blackstone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_cut_copper_from_weathered_copper_stonecutting",
+      "result_item_id": 102,
+      "result_item": "minecraft:weathered_cut_copper",
+      "description_id": "block.minecraft.weathered_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_wall_from_polished_blackstone_stonecutting",
+      "result_item_id": 414,
+      "result_item": "minecraft:polished_blackstone_brick_wall",
+      "description_id": "block.minecraft.polished_blackstone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_sandstone_slab_from_cut_sandstone_stonecutting",
+      "result_item_id": 267,
+      "result_item": "minecraft:cut_sandstone_slab",
+      "description_id": "block.minecraft.cut_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:nether_brick_slab_from_nether_bricks_stonecutting",
+      "result_item_id": 273,
+      "result_item": "minecraft:nether_brick_slab",
+      "description_id": "block.minecraft.nether_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_cut_copper_slab_from_waxed_cut_copper_stonecutting",
+      "result_item_id": 128,
+      "result_item": "minecraft:waxed_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_copper_slab_from_copper_block_stonecutting",
+      "result_item_id": 108,
+      "result_item": "minecraft:cut_copper_slab",
+      "description_id": "block.minecraft.cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_granite_from_granite_stonecutting",
+      "result_item_id": 3,
+      "result_item": "minecraft:polished_granite",
+      "description_id": "block.minecraft.polished_granite",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_stone_bricks_from_stone_bricks_stonecutting",
+      "result_item_id": 343,
+      "result_item": "minecraft:chiseled_stone_bricks",
+      "description_id": "block.minecraft.chiseled_stone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_bricks_from_blackstone_stonecutting",
+      "result_item_id": 1236,
+      "result_item": "minecraft:polished_blackstone_bricks",
+      "description_id": "block.minecraft.polished_blackstone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:copper_grate_from_copper_block_stonecutting",
+      "result_item_id": 1311,
+      "result_item": "minecraft:copper_grate",
+      "description_id": "block.minecraft.copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_cut_copper_stairs_from_oxidized_copper_stonecutting",
+      "result_item_id": 107,
+      "result_item": "minecraft:oxidized_cut_copper_stairs",
+      "description_id": "block.minecraft.oxidized_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_slab_from_end_stone_brick_stonecutting",
+      "result_item_id": 644,
+      "result_item": "minecraft:end_stone_brick_slab",
+      "description_id": "block.minecraft.end_stone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_wall_from_polished_blackstone_stonecutting",
+      "result_item_id": 413,
+      "result_item": "minecraft:polished_blackstone_wall",
+      "description_id": "block.minecraft.polished_blackstone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:sandstone_slab_from_sandstone_stonecutting",
+      "result_item_id": 266,
+      "result_item": "minecraft:sandstone_slab",
+      "description_id": "block.minecraft.sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_sandstone_from_sandstone_stonecutting",
+      "result_item_id": 192,
+      "result_item": "minecraft:chiseled_sandstone",
+      "description_id": "block.minecraft.chiseled_sandstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_chiseled_copper_from_weathered_copper_stonecutting",
+      "result_item_id": 98,
+      "result_item": "minecraft:weathered_chiseled_copper",
+      "description_id": "block.minecraft.weathered_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_stairs_from_stone_bricks_stonecutting",
+      "result_item_id": 362,
+      "result_item": "minecraft:stone_brick_stairs",
+      "description_id": "block.minecraft.stone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_copper_stairs_from_cut_copper_stonecutting",
+      "result_item_id": 104,
+      "result_item": "minecraft:cut_copper_stairs",
+      "description_id": "block.minecraft.cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:prismarine_brick_stairs_from_prismarine_stonecutting",
+      "result_item_id": 507,
+      "result_item": "minecraft:prismarine_brick_stairs",
+      "description_id": "block.minecraft.prismarine_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_wall_from_deepslate_bricks_stonecutting",
+      "result_item_id": 417,
+      "result_item": "minecraft:deepslate_brick_wall",
+      "description_id": "block.minecraft.deepslate_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:andesite_wall_from_andesite_stonecutting",
+      "result_item_id": 407,
+      "result_item": "minecraft:andesite_wall",
+      "description_id": "block.minecraft.andesite_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_cut_copper_slab_from_exposed_copper_stonecutting",
+      "result_item_id": 109,
+      "result_item": "minecraft:exposed_cut_copper_slab",
+      "description_id": "block.minecraft.exposed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:nether_brick_wall_from_nether_bricks_stonecutting",
+      "result_item_id": 406,
+      "result_item": "minecraft:nether_brick_wall",
+      "description_id": "block.minecraft.nether_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_cut_copper_slab_from_oxidized_cut_copper_stonecutting",
+      "result_item_id": 111,
+      "result_item": "minecraft:oxidized_cut_copper_slab",
+      "description_id": "block.minecraft.oxidized_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_red_sandstone_slab_from_smooth_red_sandstone_stonecutting",
+      "result_item_id": 640,
+      "result_item": "minecraft:smooth_red_sandstone_slab",
+      "description_id": "block.minecraft.smooth_red_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_copper_grate_from_waxed_oxidized_copper_stonecutting",
+      "result_item_id": 1318,
+      "result_item": "minecraft:waxed_oxidized_copper_grate",
+      "description_id": "block.minecraft.waxed_oxidized_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_copper_stairs_from_copper_block_stonecutting",
+      "result_item_id": 104,
+      "result_item": "minecraft:cut_copper_stairs",
+      "description_id": "block.minecraft.cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_stairs_from_polished_deepslate_stonecutting",
+      "result_item_id": 636,
+      "result_item": "minecraft:polished_deepslate_stairs",
+      "description_id": "block.minecraft.polished_deepslate_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_basalt_from_basalt_stonecutting",
+      "result_item_id": 329,
+      "result_item": "minecraft:polished_basalt",
+      "description_id": "block.minecraft.polished_basalt",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_sandstone_stairs_from_smooth_sandstone_stonecutting",
+      "result_item_id": 628,
+      "result_item": "minecraft:smooth_sandstone_stairs",
+      "description_id": "block.minecraft.smooth_sandstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:granite_wall_from_granite_stonecutting",
+      "result_item_id": 403,
+      "result_item": "minecraft:granite_wall",
+      "description_id": "block.minecraft.granite_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_granite_slab_from_polished_granite_stonecutting",
+      "result_item_id": 639,
+      "result_item": "minecraft:polished_granite_slab",
+      "description_id": "block.minecraft.polished_granite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_stairs_from_tuff_stonecutting",
+      "result_item_id": 19,
+      "result_item": "minecraft:polished_tuff_stairs",
+      "description_id": "block.minecraft.polished_tuff_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 10,
+      "result_item": "minecraft:polished_deepslate",
+      "description_id": "block.minecraft.polished_deepslate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_nether_brick_wall_from_red_nether_bricks_stonecutting",
+      "result_item_id": 408,
+      "result_item": "minecraft:red_nether_brick_wall",
+      "description_id": "block.minecraft.red_nether_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_cut_copper_stairs_from_waxed_weathered_cut_copper_stonecutting",
+      "result_item_id": 126,
+      "result_item": "minecraft:waxed_weathered_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_weathered_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:andesite_slab_from_andesite_stonecutting",
+      "result_item_id": 648,
+      "result_item": "minecraft:andesite_slab",
+      "description_id": "block.minecraft.andesite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_stairs_from_polished_deepslate_stonecutting",
+      "result_item_id": 637,
+      "result_item": "minecraft:deepslate_brick_stairs",
+      "description_id": "block.minecraft.deepslate_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_cut_copper_slab_from_exposed_cut_copper_stonecutting",
+      "result_item_id": 109,
+      "result_item": "minecraft:exposed_cut_copper_slab",
+      "description_id": "block.minecraft.exposed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobblestone_wall_from_cobblestone_stonecutting",
+      "result_item_id": 397,
+      "result_item": "minecraft:cobblestone_wall",
+      "description_id": "block.minecraft.cobblestone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_andesite_from_andesite_stonecutting",
+      "result_item_id": 7,
+      "result_item": "minecraft:polished_andesite",
+      "description_id": "block.minecraft.polished_andesite",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mud_brick_slab_from_mud_bricks_stonecutting",
+      "result_item_id": 272,
+      "result_item": "minecraft:mud_brick_slab",
+      "description_id": "block.minecraft.mud_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_red_sandstone_from_red_sandstone_stonecutting",
+      "result_item_id": 512,
+      "result_item": "minecraft:cut_red_sandstone",
+      "description_id": "block.minecraft.cut_red_sandstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_cut_copper_slab_from_waxed_weathered_copper_stonecutting",
+      "result_item_id": 130,
+      "result_item": "minecraft:waxed_weathered_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_weathered_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_wall_from_blackstone_stonecutting",
+      "result_item_id": 413,
+      "result_item": "minecraft:polished_blackstone_wall",
+      "description_id": "block.minecraft.polished_blackstone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_stone_slab_from_smooth_stone_stonecutting",
+      "result_item_id": 265,
+      "result_item": "minecraft:smooth_stone_slab",
+      "description_id": "block.minecraft.smooth_stone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:blackstone_wall_from_blackstone_stonecutting",
+      "result_item_id": 412,
+      "result_item": "minecraft:blackstone_wall",
+      "description_id": "block.minecraft.blackstone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_slab_from_polished_deepslate_stonecutting",
+      "result_item_id": 653,
+      "result_item": "minecraft:polished_deepslate_slab",
+      "description_id": "block.minecraft.polished_deepslate_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:granite_slab_from_granite_stonecutting",
+      "result_item_id": 647,
+      "result_item": "minecraft:granite_slab",
+      "description_id": "block.minecraft.granite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_chiseled_copper_from_waxed_oxidized_cut_copper_stonecutting",
+      "result_item_id": 119,
+      "result_item": "minecraft:waxed_oxidized_chiseled_copper",
+      "description_id": "block.minecraft.waxed_oxidized_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:granite_stairs_from_granite_stonecutting",
+      "result_item_id": 630,
+      "result_item": "minecraft:granite_stairs",
+      "description_id": "block.minecraft.granite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_slab_from_polished_blackstone_stonecutting",
+      "result_item_id": 1233,
+      "result_item": "minecraft:polished_blackstone_slab",
+      "description_id": "block.minecraft.polished_blackstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_cut_copper_stairs_from_oxidized_cut_copper_stonecutting",
+      "result_item_id": 107,
+      "result_item": "minecraft:oxidized_cut_copper_stairs",
+      "description_id": "block.minecraft.oxidized_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_andesite_slab_from_andesite_stonecutting",
+      "result_item_id": 650,
+      "result_item": "minecraft:polished_andesite_slab",
+      "description_id": "block.minecraft.polished_andesite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_diorite_slab_from_diorite_stonecutting",
+      "result_item_id": 642,
+      "result_item": "minecraft:polished_diorite_slab",
+      "description_id": "block.minecraft.polished_diorite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_nether_bricks_from_nether_bricks_stonecutting",
+      "result_item_id": 368,
+      "result_item": "minecraft:chiseled_nether_bricks",
+      "description_id": "block.minecraft.chiseled_nether_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_copper_from_cut_copper_stonecutting",
+      "result_item_id": 96,
+      "result_item": "minecraft:chiseled_copper",
+      "description_id": "block.minecraft.chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:sandstone_wall_from_sandstone_stonecutting",
+      "result_item_id": 409,
+      "result_item": "minecraft:sandstone_wall",
+      "description_id": "block.minecraft.sandstone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:brick_slab_from_bricks_stonecutting",
+      "result_item_id": 270,
+      "result_item": "minecraft:brick_slab",
+      "description_id": "block.minecraft.brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_bricks_from_polished_blackstone_stonecutting",
+      "result_item_id": 1236,
+      "result_item": "minecraft:polished_blackstone_bricks",
+      "description_id": "block.minecraft.polished_blackstone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:quartz_slab_from_stonecutting",
+      "result_item_id": 274,
+      "result_item": "minecraft:quartz_slab",
+      "description_id": "block.minecraft.quartz_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_slab_from_blackstone_stonecutting",
+      "result_item_id": 1233,
+      "result_item": "minecraft:polished_blackstone_slab",
+      "description_id": "block.minecraft.polished_blackstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_nether_brick_slab_from_red_nether_bricks_stonecutting",
+      "result_item_id": 649,
+      "result_item": "minecraft:red_nether_brick_slab",
+      "description_id": "block.minecraft.red_nether_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:dark_prismarine_slab_from_dark_prismarine_stonecutting",
+      "result_item_id": 280,
+      "result_item": "minecraft:dark_prismarine_slab",
+      "description_id": "block.minecraft.dark_prismarine_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_slab_from_polished_deepslate_stonecutting",
+      "result_item_id": 654,
+      "result_item": "minecraft:deepslate_brick_slab",
+      "description_id": "block.minecraft.deepslate_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_stone_bricks_stone_from_stonecutting",
+      "result_item_id": 343,
+      "result_item": "minecraft:chiseled_stone_bricks",
+      "description_id": "block.minecraft.chiseled_stone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_wall_from_blackstone_stonecutting",
+      "result_item_id": 414,
+      "result_item": "minecraft:polished_blackstone_brick_wall",
+      "description_id": "block.minecraft.polished_blackstone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_tuff_bricks_from_tuff_bricks_stonecutting",
+      "result_item_id": 25,
+      "result_item": "minecraft:chiseled_tuff_bricks",
+      "description_id": "block.minecraft.chiseled_tuff_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_slab_from_polished_deepslate_stonecutting",
+      "result_item_id": 655,
+      "result_item": "minecraft:deepslate_tile_slab",
+      "description_id": "block.minecraft.deepslate_tile_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_wall_from_tuff_stonecutting",
+      "result_item_id": 20,
+      "result_item": "minecraft:polished_tuff_wall",
+      "description_id": "block.minecraft.polished_tuff_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_granite_stairs_from_granite_stonecutting",
+      "result_item_id": 621,
+      "result_item": "minecraft:polished_granite_stairs",
+      "description_id": "block.minecraft.polished_granite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_sandstone_slab_from_red_sandstone_stonecutting",
+      "result_item_id": 275,
+      "result_item": "minecraft:red_sandstone_slab",
+      "description_id": "block.minecraft.red_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_stairs_from_polished_blackstone_stonecutting",
+      "result_item_id": 1238,
+      "result_item": "minecraft:polished_blackstone_brick_stairs",
+      "description_id": "block.minecraft.polished_blackstone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_nether_brick_stairs_from_red_nether_bricks_stonecutting",
+      "result_item_id": 632,
+      "result_item": "minecraft:red_nether_brick_stairs",
+      "description_id": "block.minecraft.red_nether_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tiles_from_deepslate_bricks_stonecutting",
+      "result_item_id": 348,
+      "result_item": "minecraft:deepslate_tiles",
+      "description_id": "block.minecraft.deepslate_tiles",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_slab_from_deepslate_tiles_stonecutting",
+      "result_item_id": 655,
+      "result_item": "minecraft:deepslate_tile_slab",
+      "description_id": "block.minecraft.deepslate_tile_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:prismarine_brick_slab_from_prismarine_stonecutting",
+      "result_item_id": 279,
+      "result_item": "minecraft:prismarine_brick_slab",
+      "description_id": "block.minecraft.prismarine_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_cut_copper_stairs_from_waxed_oxidized_cut_copper_stonecutting",
+      "result_item_id": 127,
+      "result_item": "minecraft:waxed_oxidized_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_oxidized_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_slab_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 654,
+      "result_item": "minecraft:deepslate_brick_slab",
+      "description_id": "block.minecraft.deepslate_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_wall_from_deepslate_tiles_stonecutting",
+      "result_item_id": 418,
+      "result_item": "minecraft:deepslate_tile_wall",
+      "description_id": "block.minecraft.deepslate_tile_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_bricks_from_end_stone_stonecutting",
+      "result_item_id": 378,
+      "result_item": "minecraft:end_stone_bricks",
+      "description_id": "block.minecraft.end_stone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_chiseled_copper_from_waxed_weathered_copper_stonecutting",
+      "result_item_id": 118,
+      "result_item": "minecraft:waxed_weathered_chiseled_copper",
+      "description_id": "block.minecraft.waxed_weathered_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_stone_brick_slab_from_mossy_stone_brick_stonecutting",
+      "result_item_id": 641,
+      "result_item": "minecraft:mossy_stone_brick_slab",
+      "description_id": "block.minecraft.mossy_stone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_bricks_from_stone_stonecutting",
+      "result_item_id": 340,
+      "result_item": "minecraft:stone_bricks",
+      "description_id": "block.minecraft.stone_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_quartz_slab_from_smooth_quartz_stonecutting",
+      "result_item_id": 646,
+      "result_item": "minecraft:smooth_quartz_slab",
+      "description_id": "block.minecraft.smooth_quartz_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_copper_grate_from_exposed_copper_stonecutting",
+      "result_item_id": 1312,
+      "result_item": "minecraft:exposed_copper_grate",
+      "description_id": "block.minecraft.exposed_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:purpur_stairs_from_purpur_block_stonecutting",
+      "result_item_id": 297,
+      "result_item": "minecraft:purpur_stairs",
+      "description_id": "block.minecraft.purpur_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_bricks_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 346,
+      "result_item": "minecraft:deepslate_bricks",
+      "description_id": "block.minecraft.deepslate_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_cut_copper_slab_from_waxed_oxidized_copper_stonecutting",
+      "result_item_id": 131,
+      "result_item": "minecraft:waxed_oxidized_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_oxidized_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_cut_copper_slab_from_oxidized_copper_stonecutting",
+      "result_item_id": 111,
+      "result_item": "minecraft:oxidized_cut_copper_slab",
+      "description_id": "block.minecraft.oxidized_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:brick_wall_from_bricks_stonecutting",
+      "result_item_id": 399,
+      "result_item": "minecraft:brick_wall",
+      "description_id": "block.minecraft.brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_slab_from_end_stone_stonecutting",
+      "result_item_id": 644,
+      "result_item": "minecraft:end_stone_brick_slab",
+      "description_id": "block.minecraft.end_stone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_cut_copper_slab_from_waxed_exposed_cut_copper_stonecutting",
+      "result_item_id": 129,
+      "result_item": "minecraft:waxed_exposed_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_exposed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_from_blackstone_stonecutting",
+      "result_item_id": 1232,
+      "result_item": "minecraft:polished_blackstone",
+      "description_id": "block.minecraft.polished_blackstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_wall_from_tuff_stonecutting",
+      "result_item_id": 15,
+      "result_item": "minecraft:tuff_wall",
+      "description_id": "block.minecraft.tuff_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_deepslate_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 350,
+      "result_item": "minecraft:chiseled_deepslate",
+      "description_id": "block.minecraft.chiseled_deepslate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_stairs_from_polished_blackstone_bricks_stonecutting",
+      "result_item_id": 1238,
+      "result_item": "minecraft:polished_blackstone_brick_stairs",
+      "description_id": "block.minecraft.polished_blackstone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:prismarine_stairs_from_prismarine_stonecutting",
+      "result_item_id": 506,
+      "result_item": "minecraft:prismarine_stairs",
+      "description_id": "block.minecraft.prismarine_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:quartz_stairs_from_quartz_block_stonecutting",
+      "result_item_id": 426,
+      "result_item": "minecraft:quartz_stairs",
+      "description_id": "block.minecraft.quartz_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_cut_copper_stairs_from_exposed_copper_stonecutting",
+      "result_item_id": 105,
+      "result_item": "minecraft:exposed_cut_copper_stairs",
+      "description_id": "block.minecraft.exposed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_sandstone_stairs_from_red_sandstone_stonecutting",
+      "result_item_id": 513,
+      "result_item": "minecraft:red_sandstone_stairs",
+      "description_id": "block.minecraft.red_sandstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_slab_from_polished_blackstone_bricks_stonecutting",
+      "result_item_id": 1237,
+      "result_item": "minecraft:polished_blackstone_brick_slab",
+      "description_id": "block.minecraft.polished_blackstone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_chiseled_copper_from_waxed_oxidized_copper_stonecutting",
+      "result_item_id": 119,
+      "result_item": "minecraft:waxed_oxidized_chiseled_copper",
+      "description_id": "block.minecraft.waxed_oxidized_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_sandstone_slab_from_smooth_sandstone_stonecutting",
+      "result_item_id": 645,
+      "result_item": "minecraft:smooth_sandstone_slab",
+      "description_id": "block.minecraft.smooth_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_red_sandstone_slab_from_red_sandstone_stonecutting",
+      "result_item_id": 276,
+      "result_item": "minecraft:cut_red_sandstone_slab",
+      "description_id": "block.minecraft.cut_red_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_bricks_from_tuff_stonecutting",
+      "result_item_id": 21,
+      "result_item": "minecraft:tuff_bricks",
+      "description_id": "block.minecraft.tuff_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_stairs_from_polished_tuff_stonecutting",
+      "result_item_id": 23,
+      "result_item": "minecraft:tuff_brick_stairs",
+      "description_id": "block.minecraft.tuff_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_wall_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 418,
+      "result_item": "minecraft:deepslate_tile_wall",
+      "description_id": "block.minecraft.deepslate_tile_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:prismarine_slab_from_prismarine_stonecutting",
+      "result_item_id": 278,
+      "result_item": "minecraft:prismarine_slab",
+      "description_id": "block.minecraft.prismarine_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_slab_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 653,
+      "result_item": "minecraft:polished_deepslate_slab",
+      "description_id": "block.minecraft.polished_deepslate_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_slab_from_polished_tuff_stonecutting",
+      "result_item_id": 22,
+      "result_item": "minecraft:tuff_brick_slab",
+      "description_id": "block.minecraft.tuff_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_wall_from_deepslate_bricks_stonecutting",
+      "result_item_id": 418,
+      "result_item": "minecraft:deepslate_tile_wall",
+      "description_id": "block.minecraft.deepslate_tile_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_wall_from_polished_tuff_stonecutting",
+      "result_item_id": 20,
+      "result_item": "minecraft:polished_tuff_wall",
+      "description_id": "block.minecraft.polished_tuff_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_cut_copper_from_waxed_oxidized_copper_stonecutting",
+      "result_item_id": 123,
+      "result_item": "minecraft:waxed_oxidized_cut_copper",
+      "description_id": "block.minecraft.waxed_oxidized_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mud_brick_stairs_from_mud_bricks_stonecutting",
+      "result_item_id": 363,
+      "result_item": "minecraft:mud_brick_stairs",
+      "description_id": "block.minecraft.mud_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_cut_copper_stairs_from_weathered_cut_copper_stonecutting",
+      "result_item_id": 106,
+      "result_item": "minecraft:weathered_cut_copper_stairs",
+      "description_id": "block.minecraft.weathered_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_diorite_slab_from_polished_diorite_stonecutting",
+      "result_item_id": 642,
+      "result_item": "minecraft:polished_diorite_slab",
+      "description_id": "block.minecraft.polished_diorite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_cut_copper_stairs_from_waxed_weathered_copper_stonecutting",
+      "result_item_id": 126,
+      "result_item": "minecraft:waxed_weathered_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_weathered_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:blackstone_stairs_from_blackstone_stonecutting",
+      "result_item_id": 1230,
+      "result_item": "minecraft:blackstone_stairs",
+      "description_id": "block.minecraft.blackstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_cut_copper_from_waxed_weathered_copper_stonecutting",
+      "result_item_id": 122,
+      "result_item": "minecraft:waxed_weathered_cut_copper",
+      "description_id": "block.minecraft.waxed_weathered_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_cut_copper_slab_from_weathered_copper_stonecutting",
+      "result_item_id": 110,
+      "result_item": "minecraft:weathered_cut_copper_slab",
+      "description_id": "block.minecraft.weathered_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_copper_grate_from_waxed_exposed_copper_stonecutting",
+      "result_item_id": 1316,
+      "result_item": "minecraft:waxed_exposed_copper_grate",
+      "description_id": "block.minecraft.waxed_exposed_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_red_sandstone_slab_from_cut_red_sandstone_stonecutting",
+      "result_item_id": 276,
+      "result_item": "minecraft:cut_red_sandstone_slab",
+      "description_id": "block.minecraft.cut_red_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_cobblestone_stairs_from_mossy_cobblestone_stonecutting",
+      "result_item_id": 625,
+      "result_item": "minecraft:mossy_cobblestone_stairs",
+      "description_id": "block.minecraft.mossy_cobblestone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_polished_blackstone_from_blackstone_stonecutting",
+      "result_item_id": 1235,
+      "result_item": "minecraft:chiseled_polished_blackstone",
+      "description_id": "block.minecraft.chiseled_polished_blackstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:diorite_stairs_from_diorite_stonecutting",
+      "result_item_id": 634,
+      "result_item": "minecraft:diorite_stairs",
+      "description_id": "block.minecraft.diorite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_sandstone_from_sandstone_stonecutting",
+      "result_item_id": 193,
+      "result_item": "minecraft:cut_sandstone",
+      "description_id": "block.minecraft.cut_sandstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_stairs_from_stone_stonecutting",
+      "result_item_id": 627,
+      "result_item": "minecraft:stone_stairs",
+      "description_id": "block.minecraft.stone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_cut_copper_slab_from_waxed_copper_block_stonecutting",
+      "result_item_id": 128,
+      "result_item": "minecraft:waxed_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_andesite_stairs_from_andesite_stonecutting",
+      "result_item_id": 633,
+      "result_item": "minecraft:polished_andesite_stairs",
+      "description_id": "block.minecraft.polished_andesite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:blackstone_slab_from_blackstone_stonecutting",
+      "result_item_id": 1229,
+      "result_item": "minecraft:blackstone_slab",
+      "description_id": "block.minecraft.blackstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_chiseled_copper_from_weathered_cut_copper_stonecutting",
+      "result_item_id": 98,
+      "result_item": "minecraft:weathered_chiseled_copper",
+      "description_id": "block.minecraft.weathered_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:brick_stairs_from_bricks_stonecutting",
+      "result_item_id": 361,
+      "result_item": "minecraft:brick_stairs",
+      "description_id": "block.minecraft.brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_stairs_from_deepslate_bricks_stonecutting",
+      "result_item_id": 637,
+      "result_item": "minecraft:deepslate_brick_stairs",
+      "description_id": "block.minecraft.deepslate_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_stairs_from_tuff_stonecutting",
+      "result_item_id": 14,
+      "result_item": "minecraft:tuff_stairs",
+      "description_id": "block.minecraft.tuff_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_from_tuff_stonecutting",
+      "result_item_id": 17,
+      "result_item": "minecraft:polished_tuff",
+      "description_id": "block.minecraft.polished_tuff",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_andesite_slab_from_polished_andesite_stonecutting",
+      "result_item_id": 650,
+      "result_item": "minecraft:polished_andesite_slab",
+      "description_id": "block.minecraft.polished_andesite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:red_sandstone_wall_from_red_sandstone_stonecutting",
+      "result_item_id": 401,
+      "result_item": "minecraft:red_sandstone_wall",
+      "description_id": "block.minecraft.red_sandstone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_slab_from_tuff_stonecutting",
+      "result_item_id": 22,
+      "result_item": "minecraft:tuff_brick_slab",
+      "description_id": "block.minecraft.tuff_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mud_brick_wall_from_mud_bricks_stonecutting",
+      "result_item_id": 405,
+      "result_item": "minecraft:mud_brick_wall",
+      "description_id": "block.minecraft.mud_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_cut_copper_stairs_from_waxed_exposed_copper_stonecutting",
+      "result_item_id": 125,
+      "result_item": "minecraft:waxed_exposed_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_exposed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tiles_from_polished_deepslate_stonecutting",
+      "result_item_id": 348,
+      "result_item": "minecraft:deepslate_tiles",
+      "description_id": "block.minecraft.deepslate_tiles",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_wall_from_end_stone_brick_stonecutting",
+      "result_item_id": 410,
+      "result_item": "minecraft:end_stone_brick_wall",
+      "description_id": "block.minecraft.end_stone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_wall_from_tuff_bricks_stonecutting",
+      "result_item_id": 24,
+      "result_item": "minecraft:tuff_brick_wall",
+      "description_id": "block.minecraft.tuff_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_wall_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 417,
+      "result_item": "minecraft:deepslate_brick_wall",
+      "description_id": "block.minecraft.deepslate_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_copper_from_copper_block_stonecutting",
+      "result_item_id": 100,
+      "result_item": "minecraft:cut_copper",
+      "description_id": "block.minecraft.cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:diorite_slab_from_diorite_stonecutting",
+      "result_item_id": 651,
+      "result_item": "minecraft:diorite_slab",
+      "description_id": "block.minecraft.diorite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_andesite_stairs_from_polished_andesite_stonecutting",
+      "result_item_id": 633,
+      "result_item": "minecraft:polished_andesite_stairs",
+      "description_id": "block.minecraft.polished_andesite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_stairs_from_deepslate_tiles_stonecutting",
+      "result_item_id": 638,
+      "result_item": "minecraft:deepslate_tile_stairs",
+      "description_id": "block.minecraft.deepslate_tile_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_stone_brick_wall_from_mossy_stone_brick_stonecutting",
+      "result_item_id": 402,
+      "result_item": "minecraft:mossy_stone_brick_wall",
+      "description_id": "block.minecraft.mossy_stone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_cut_copper_from_oxidized_copper_stonecutting",
+      "result_item_id": 103,
+      "result_item": "minecraft:oxidized_cut_copper",
+      "description_id": "block.minecraft.oxidized_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_wall_from_end_stone_stonecutting",
+      "result_item_id": 410,
+      "result_item": "minecraft:end_stone_brick_wall",
+      "description_id": "block.minecraft.end_stone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobbled_deepslate_slab_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 652,
+      "result_item": "minecraft:cobbled_deepslate_slab",
+      "description_id": "block.minecraft.cobbled_deepslate_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_cut_copper_slab_from_waxed_exposed_copper_stonecutting",
+      "result_item_id": 129,
+      "result_item": "minecraft:waxed_exposed_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_exposed_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_copper_grate_from_weathered_copper_stonecutting",
+      "result_item_id": 1313,
+      "result_item": "minecraft:weathered_copper_grate",
+      "description_id": "block.minecraft.weathered_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_chiseled_copper_from_exposed_cut_copper_stonecutting",
+      "result_item_id": 97,
+      "result_item": "minecraft:exposed_chiseled_copper",
+      "description_id": "block.minecraft.exposed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_stairs_from_polished_tuff_stonecutting",
+      "result_item_id": 19,
+      "result_item": "minecraft:polished_tuff_stairs",
+      "description_id": "block.minecraft.polished_tuff_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_slab_from_stone_stonecutting",
+      "result_item_id": 264,
+      "result_item": "minecraft:stone_slab",
+      "description_id": "block.minecraft.stone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_slab_from_stone_stonecutting",
+      "result_item_id": 271,
+      "result_item": "minecraft:stone_brick_slab",
+      "description_id": "block.minecraft.stone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_quartz_stairs_from_smooth_quartz_stonecutting",
+      "result_item_id": 629,
+      "result_item": "minecraft:smooth_quartz_stairs",
+      "description_id": "block.minecraft.smooth_quartz_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_polished_blackstone_from_polished_blackstone_stonecutting",
+      "result_item_id": 1235,
+      "result_item": "minecraft:chiseled_polished_blackstone",
+      "description_id": "block.minecraft.chiseled_polished_blackstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_stairs_from_stone_stonecutting",
+      "result_item_id": 362,
+      "result_item": "minecraft:stone_brick_stairs",
+      "description_id": "block.minecraft.stone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_diorite_stairs_from_diorite_stonecutting",
+      "result_item_id": 624,
+      "result_item": "minecraft:polished_diorite_stairs",
+      "description_id": "block.minecraft.polished_diorite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_tuff_bricks_from_tuff_stonecutting",
+      "result_item_id": 25,
+      "result_item": "minecraft:chiseled_tuff_bricks",
+      "description_id": "block.minecraft.chiseled_tuff_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_cut_copper_stairs_from_weathered_copper_stonecutting",
+      "result_item_id": 106,
+      "result_item": "minecraft:weathered_cut_copper_stairs",
+      "description_id": "block.minecraft.weathered_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_diorite_from_diorite_stonecutting",
+      "result_item_id": 5,
+      "result_item": "minecraft:polished_diorite",
+      "description_id": "block.minecraft.polished_diorite",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_cut_copper_stairs_from_waxed_exposed_cut_copper_stonecutting",
+      "result_item_id": 125,
+      "result_item": "minecraft:waxed_exposed_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_exposed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:prismarine_wall_from_prismarine_stonecutting",
+      "result_item_id": 400,
+      "result_item": "minecraft:prismarine_wall",
+      "description_id": "block.minecraft.prismarine_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_tuff_slab_from_polished_tuff_stonecutting",
+      "result_item_id": 18,
+      "result_item": "minecraft:polished_tuff_slab",
+      "description_id": "block.minecraft.polished_tuff_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_slab_from_polished_blackstone_stonecutting",
+      "result_item_id": 1237,
+      "result_item": "minecraft:polished_blackstone_brick_slab",
+      "description_id": "block.minecraft.polished_blackstone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_cut_copper_slab_from_waxed_oxidized_cut_copper_stonecutting",
+      "result_item_id": 131,
+      "result_item": "minecraft:waxed_oxidized_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_oxidized_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_wall_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 416,
+      "result_item": "minecraft:polished_deepslate_wall",
+      "description_id": "block.minecraft.polished_deepslate_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_slab_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 655,
+      "result_item": "minecraft:deepslate_tile_slab",
+      "description_id": "block.minecraft.deepslate_tile_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_cut_copper_from_exposed_copper_stonecutting",
+      "result_item_id": 101,
+      "result_item": "minecraft:exposed_cut_copper",
+      "description_id": "block.minecraft.exposed_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_cobblestone_slab_from_mossy_cobblestone_stonecutting",
+      "result_item_id": 643,
+      "result_item": "minecraft:mossy_cobblestone_slab",
+      "description_id": "block.minecraft.mossy_cobblestone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_chiseled_copper_from_waxed_cut_copper_stonecutting",
+      "result_item_id": 116,
+      "result_item": "minecraft:waxed_chiseled_copper",
+      "description_id": "block.minecraft.waxed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:andesite_stairs_from_andesite_stonecutting",
+      "result_item_id": 631,
+      "result_item": "minecraft:andesite_stairs",
+      "description_id": "block.minecraft.andesite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_slab_from_stone_bricks_stonecutting",
+      "result_item_id": 271,
+      "result_item": "minecraft:stone_brick_slab",
+      "description_id": "block.minecraft.stone_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_cut_copper_slab_from_waxed_weathered_cut_copper_stonecutting",
+      "result_item_id": 130,
+      "result_item": "minecraft:waxed_weathered_cut_copper_slab",
+      "description_id": "block.minecraft.waxed_weathered_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_granite_stairs_from_polished_granite_stonecutting",
+      "result_item_id": 621,
+      "result_item": "minecraft:polished_granite_stairs",
+      "description_id": "block.minecraft.polished_granite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_chiseled_copper_from_waxed_weathered_cut_copper_stonecutting",
+      "result_item_id": 118,
+      "result_item": "minecraft:waxed_weathered_chiseled_copper",
+      "description_id": "block.minecraft.waxed_weathered_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_copper_grate_from_waxed_copper_block_stonecutting",
+      "result_item_id": 1315,
+      "result_item": "minecraft:waxed_copper_grate",
+      "description_id": "block.minecraft.waxed_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_stairs_from_blackstone_stonecutting",
+      "result_item_id": 1234,
+      "result_item": "minecraft:polished_blackstone_stairs",
+      "description_id": "block.minecraft.polished_blackstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_wall_from_polished_tuff_stonecutting",
+      "result_item_id": 24,
+      "result_item": "minecraft:tuff_brick_wall",
+      "description_id": "block.minecraft.tuff_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_stairs_from_tuff_stonecutting",
+      "result_item_id": 23,
+      "result_item": "minecraft:tuff_brick_stairs",
+      "description_id": "block.minecraft.tuff_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:sandstone_stairs_from_sandstone_stonecutting",
+      "result_item_id": 380,
+      "result_item": "minecraft:sandstone_stairs",
+      "description_id": "block.minecraft.sandstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_wall_from_polished_blackstone_bricks_stonecutting",
+      "result_item_id": 414,
+      "result_item": "minecraft:polished_blackstone_brick_wall",
+      "description_id": "block.minecraft.polished_blackstone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:smooth_red_sandstone_stairs_from_smooth_red_sandstone_stonecutting",
+      "result_item_id": 622,
+      "result_item": "minecraft:smooth_red_sandstone_stairs",
+      "description_id": "block.minecraft.smooth_red_sandstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobbled_deepslate_wall_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 415,
+      "result_item": "minecraft:cobbled_deepslate_wall",
+      "description_id": "block.minecraft.cobbled_deepslate_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_copper_grate_from_oxidized_copper_stonecutting",
+      "result_item_id": 1314,
+      "result_item": "minecraft:oxidized_copper_grate",
+      "description_id": "block.minecraft.oxidized_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_chiseled_copper_from_oxidized_copper_stonecutting",
+      "result_item_id": 99,
+      "result_item": "minecraft:oxidized_chiseled_copper",
+      "description_id": "block.minecraft.oxidized_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_slab_from_deepslate_bricks_stonecutting",
+      "result_item_id": 655,
+      "result_item": "minecraft:deepslate_tile_slab",
+      "description_id": "block.minecraft.deepslate_tile_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_stairs_from_deepslate_bricks_stonecutting",
+      "result_item_id": 638,
+      "result_item": "minecraft:deepslate_tile_stairs",
+      "description_id": "block.minecraft.deepslate_tile_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_oxidized_cut_copper_stairs_from_waxed_oxidized_copper_stonecutting",
+      "result_item_id": 127,
+      "result_item": "minecraft:waxed_oxidized_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_oxidized_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:purpur_slab_from_purpur_block_stonecutting",
+      "result_item_id": 277,
+      "result_item": "minecraft:purpur_slab",
+      "description_id": "block.minecraft.purpur_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_brick_stairs_from_blackstone_stonecutting",
+      "result_item_id": 1238,
+      "result_item": "minecraft:polished_blackstone_brick_stairs",
+      "description_id": "block.minecraft.polished_blackstone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_chiseled_copper_from_waxed_exposed_copper_stonecutting",
+      "result_item_id": 117,
+      "result_item": "minecraft:waxed_exposed_chiseled_copper",
+      "description_id": "block.minecraft.waxed_exposed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobbled_deepslate_stairs_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 635,
+      "result_item": "minecraft:cobbled_deepslate_stairs",
+      "description_id": "block.minecraft.cobbled_deepslate_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_stairs_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 636,
+      "result_item": "minecraft:polished_deepslate_stairs",
+      "description_id": "block.minecraft.polished_deepslate_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_bricks_from_polished_tuff_stonecutting",
+      "result_item_id": 21,
+      "result_item": "minecraft:tuff_bricks",
+      "description_id": "block.minecraft.tuff_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_granite_slab_from_granite_stonecutting",
+      "result_item_id": 639,
+      "result_item": "minecraft:polished_granite_slab",
+      "description_id": "block.minecraft.polished_granite_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_weathered_copper_grate_from_waxed_weathered_copper_stonecutting",
+      "result_item_id": 1317,
+      "result_item": "minecraft:waxed_weathered_copper_grate",
+      "description_id": "block.minecraft.waxed_weathered_copper_grate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_deepslate_wall_from_polished_deepslate_stonecutting",
+      "result_item_id": 416,
+      "result_item": "minecraft:polished_deepslate_wall",
+      "description_id": "block.minecraft.polished_deepslate_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_stairs_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 638,
+      "result_item": "minecraft:deepslate_tile_stairs",
+      "description_id": "block.minecraft.deepslate_tile_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobblestone_slab_from_cobblestone_stonecutting",
+      "result_item_id": 269,
+      "result_item": "minecraft:cobblestone_slab",
+      "description_id": "block.minecraft.cobblestone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_stone_brick_stairs_from_mossy_stone_brick_stonecutting",
+      "result_item_id": 623,
+      "result_item": "minecraft:mossy_stone_brick_stairs",
+      "description_id": "block.minecraft.mossy_stone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:quartz_bricks_from_quartz_block_stonecutting",
+      "result_item_id": 424,
+      "result_item": "minecraft:quartz_bricks",
+      "description_id": "block.minecraft.quartz_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_wall_from_tuff_stonecutting",
+      "result_item_id": 24,
+      "result_item": "minecraft:tuff_brick_wall",
+      "description_id": "block.minecraft.tuff_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_tuff_bricks_from_polished_tuff_stonecutting",
+      "result_item_id": 25,
+      "result_item": "minecraft:chiseled_tuff_bricks",
+      "description_id": "block.minecraft.chiseled_tuff_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_chiseled_copper_from_waxed_copper_block_stonecutting",
+      "result_item_id": 116,
+      "result_item": "minecraft:waxed_chiseled_copper",
+      "description_id": "block.minecraft.waxed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_tuff_from_tuff_stonecutting",
+      "result_item_id": 16,
+      "result_item": "minecraft:chiseled_tuff",
+      "description_id": "block.minecraft.chiseled_tuff",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_slab_from_tuff_bricks_stonecutting",
+      "result_item_id": 22,
+      "result_item": "minecraft:tuff_brick_slab",
+      "description_id": "block.minecraft.tuff_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_cut_copper_stairs_from_exposed_cut_copper_stonecutting",
+      "result_item_id": 105,
+      "result_item": "minecraft:exposed_cut_copper_stairs",
+      "description_id": "block.minecraft.exposed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_bricks_from_polished_deepslate_stonecutting",
+      "result_item_id": 346,
+      "result_item": "minecraft:deepslate_bricks",
+      "description_id": "block.minecraft.deepslate_bricks",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_slab_from_deepslate_bricks_stonecutting",
+      "result_item_id": 654,
+      "result_item": "minecraft:deepslate_brick_slab",
+      "description_id": "block.minecraft.deepslate_brick_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cobblestone_stairs_from_cobblestone_stonecutting",
+      "result_item_id": 304,
+      "result_item": "minecraft:cobblestone_stairs",
+      "description_id": "block.minecraft.cobblestone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_stairs_from_end_stone_brick_stonecutting",
+      "result_item_id": 626,
+      "result_item": "minecraft:end_stone_brick_stairs",
+      "description_id": "block.minecraft.end_stone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_quartz_block_from_quartz_block_stonecutting",
+      "result_item_id": 422,
+      "result_item": "minecraft:chiseled_quartz_block",
+      "description_id": "block.minecraft.chiseled_quartz_block",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:exposed_chiseled_copper_from_exposed_copper_stonecutting",
+      "result_item_id": 97,
+      "result_item": "minecraft:exposed_chiseled_copper",
+      "description_id": "block.minecraft.exposed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_chiseled_copper_from_waxed_exposed_cut_copper_stonecutting",
+      "result_item_id": 117,
+      "result_item": "minecraft:waxed_exposed_chiseled_copper",
+      "description_id": "block.minecraft.waxed_exposed_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_wall_from_stone_bricks_stonecutting",
+      "result_item_id": 404,
+      "result_item": "minecraft:stone_brick_wall",
+      "description_id": "block.minecraft.stone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_cut_copper_stairs_from_waxed_copper_block_stonecutting",
+      "result_item_id": 124,
+      "result_item": "minecraft:waxed_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_copper_slab_from_cut_copper_stonecutting",
+      "result_item_id": 108,
+      "result_item": "minecraft:cut_copper_slab",
+      "description_id": "block.minecraft.cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_brick_stairs_from_tuff_bricks_stonecutting",
+      "result_item_id": 23,
+      "result_item": "minecraft:tuff_brick_stairs",
+      "description_id": "block.minecraft.tuff_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:dark_prismarine_stairs_from_dark_prismarine_stonecutting",
+      "result_item_id": 508,
+      "result_item": "minecraft:dark_prismarine_stairs",
+      "description_id": "block.minecraft.dark_prismarine_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:purpur_pillar_from_purpur_block_stonecutting",
+      "result_item_id": 296,
+      "result_item": "minecraft:purpur_pillar",
+      "description_id": "block.minecraft.purpur_pillar",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_diorite_stairs_from_polished_diorite_stonecutting",
+      "result_item_id": 624,
+      "result_item": "minecraft:polished_diorite_stairs",
+      "description_id": "block.minecraft.polished_diorite_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_brick_wall_from_polished_deepslate_stonecutting",
+      "result_item_id": 417,
+      "result_item": "minecraft:deepslate_brick_wall",
+      "description_id": "block.minecraft.deepslate_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:weathered_cut_copper_slab_from_weathered_cut_copper_stonecutting",
+      "result_item_id": 110,
+      "result_item": "minecraft:weathered_cut_copper_slab",
+      "description_id": "block.minecraft.weathered_cut_copper_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_exposed_cut_copper_from_waxed_exposed_copper_stonecutting",
+      "result_item_id": 121,
+      "result_item": "minecraft:waxed_exposed_cut_copper",
+      "description_id": "block.minecraft.waxed_exposed_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:end_stone_brick_stairs_from_end_stone_stonecutting",
+      "result_item_id": 626,
+      "result_item": "minecraft:end_stone_brick_stairs",
+      "description_id": "block.minecraft.end_stone_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_wall_from_polished_deepslate_stonecutting",
+      "result_item_id": 418,
+      "result_item": "minecraft:deepslate_tile_wall",
+      "description_id": "block.minecraft.deepslate_tile_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:quartz_pillar_from_quartz_block_stonecutting",
+      "result_item_id": 425,
+      "result_item": "minecraft:quartz_pillar",
+      "description_id": "block.minecraft.quartz_pillar",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_cut_copper_stairs_from_waxed_cut_copper_stonecutting",
+      "result_item_id": 124,
+      "result_item": "minecraft:waxed_cut_copper_stairs",
+      "description_id": "block.minecraft.waxed_cut_copper_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tile_stairs_from_polished_deepslate_stonecutting",
+      "result_item_id": 638,
+      "result_item": "minecraft:deepslate_tile_stairs",
+      "description_id": "block.minecraft.deepslate_tile_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:deepslate_tiles_from_cobbled_deepslate_stonecutting",
+      "result_item_id": 348,
+      "result_item": "minecraft:deepslate_tiles",
+      "description_id": "block.minecraft.deepslate_tiles",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:mossy_cobblestone_wall_from_mossy_cobblestone_stonecutting",
+      "result_item_id": 398,
+      "result_item": "minecraft:mossy_cobblestone_wall",
+      "description_id": "block.minecraft.mossy_cobblestone_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:nether_brick_stairs_from_nether_bricks_stonecutting",
+      "result_item_id": 370,
+      "result_item": "minecraft:nether_brick_stairs",
+      "description_id": "block.minecraft.nether_brick_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:oxidized_chiseled_copper_from_oxidized_cut_copper_stonecutting",
+      "result_item_id": 99,
+      "result_item": "minecraft:oxidized_chiseled_copper",
+      "description_id": "block.minecraft.oxidized_chiseled_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:cut_sandstone_slab_from_sandstone_stonecutting",
+      "result_item_id": 267,
+      "result_item": "minecraft:cut_sandstone_slab",
+      "description_id": "block.minecraft.cut_sandstone_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tuff_slab_from_tuff_stonecutting",
+      "result_item_id": 13,
+      "result_item": "minecraft:tuff_slab",
+      "description_id": "block.minecraft.tuff_slab",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:polished_blackstone_stairs_from_polished_blackstone_stonecutting",
+      "result_item_id": 1234,
+      "result_item": "minecraft:polished_blackstone_stairs",
+      "description_id": "block.minecraft.polished_blackstone_stairs",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:stone_brick_walls_from_stone_stonecutting",
+      "result_item_id": 404,
+      "result_item": "minecraft:stone_brick_wall",
+      "description_id": "block.minecraft.stone_brick_wall",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:waxed_cut_copper_from_waxed_copper_block_stonecutting",
+      "result_item_id": 120,
+      "result_item": "minecraft:waxed_cut_copper",
+      "description_id": "block.minecraft.waxed_cut_copper",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "recipe_id": "minecraft:chiseled_red_sandstone_from_red_sandstone_stonecutting",
+      "result_item_id": 511,
+      "result_item": "minecraft:chiseled_red_sandstone",
+      "description_id": "block.minecraft.chiseled_red_sandstone",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    }
+  ],
+  "stonecutting_match_domain": {
+    "input_item_ids": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      10,
+      12,
+      17,
+      21,
+      35,
+      89,
+      93,
+      94,
+      95,
+      100,
+      101,
+      102,
+      103,
+      112,
+      113,
+      114,
+      115,
+      120,
+      121,
+      122,
+      123,
+      191,
+      193,
+      281,
+      282,
+      283,
+      284,
+      285,
+      289,
+      295,
+      328,
+      340,
+      341,
+      345,
+      346,
+      348,
+      366,
+      377,
+      378,
+      423,
+      503,
+      504,
+      505,
+      510,
+      512,
+      519,
+      1228,
+      1232,
+      1236
+    ],
+    "same_input_description_ties": 0,
+    "max_matching_recipes": 16
+  },
+  "smithing_input_order": [
+    "minecraft:sentry_armor_trim_smithing_template_smithing_trim",
+    "minecraft:spire_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_shovel_smithing",
+    "minecraft:wild_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_boots_smithing",
+    "minecraft:dune_armor_trim_smithing_template_smithing_trim",
+    "minecraft:bolt_armor_trim_smithing_template_smithing_trim",
+    "minecraft:snout_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_axe_smithing",
+    "minecraft:netherite_sword_smithing",
+    "minecraft:raiser_armor_trim_smithing_template_smithing_trim",
+    "minecraft:shaper_armor_trim_smithing_template_smithing_trim",
+    "minecraft:ward_armor_trim_smithing_template_smithing_trim",
+    "minecraft:eye_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_hoe_smithing",
+    "minecraft:netherite_chestplate_smithing",
+    "minecraft:wayfinder_armor_trim_smithing_template_smithing_trim",
+    "minecraft:flow_armor_trim_smithing_template_smithing_trim",
+    "minecraft:rib_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_pickaxe_smithing",
+    "minecraft:tide_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_leggings_smithing",
+    "minecraft:coast_armor_trim_smithing_template_smithing_trim",
+    "minecraft:vex_armor_trim_smithing_template_smithing_trim",
+    "minecraft:host_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_helmet_smithing",
+    "minecraft:silence_armor_trim_smithing_template_smithing_trim"
+  ],
+  "smithing_result_order": [
+    "minecraft:sentry_armor_trim_smithing_template_smithing_trim",
+    "minecraft:spire_armor_trim_smithing_template_smithing_trim",
+    "minecraft:wild_armor_trim_smithing_template_smithing_trim",
+    "minecraft:dune_armor_trim_smithing_template_smithing_trim",
+    "minecraft:bolt_armor_trim_smithing_template_smithing_trim",
+    "minecraft:snout_armor_trim_smithing_template_smithing_trim",
+    "minecraft:raiser_armor_trim_smithing_template_smithing_trim",
+    "minecraft:shaper_armor_trim_smithing_template_smithing_trim",
+    "minecraft:ward_armor_trim_smithing_template_smithing_trim",
+    "minecraft:eye_armor_trim_smithing_template_smithing_trim",
+    "minecraft:wayfinder_armor_trim_smithing_template_smithing_trim",
+    "minecraft:flow_armor_trim_smithing_template_smithing_trim",
+    "minecraft:rib_armor_trim_smithing_template_smithing_trim",
+    "minecraft:tide_armor_trim_smithing_template_smithing_trim",
+    "minecraft:coast_armor_trim_smithing_template_smithing_trim",
+    "minecraft:vex_armor_trim_smithing_template_smithing_trim",
+    "minecraft:host_armor_trim_smithing_template_smithing_trim",
+    "minecraft:silence_armor_trim_smithing_template_smithing_trim",
+    "minecraft:netherite_axe_smithing",
+    "minecraft:netherite_boots_smithing",
+    "minecraft:netherite_chestplate_smithing",
+    "minecraft:netherite_helmet_smithing",
+    "minecraft:netherite_hoe_smithing",
+    "minecraft:netherite_leggings_smithing",
+    "minecraft:netherite_pickaxe_smithing",
+    "minecraft:netherite_shovel_smithing",
+    "minecraft:netherite_sword_smithing"
+  ],
+  "smithing_recipes": [
+    {
+      "recipe_id": "minecraft:sentry_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1270
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:spire_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1280
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_shovel_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 844,
+      "preview_result_item": "minecraft:netherite_shovel",
+      "preview_description_id": "item.minecraft.netherite_shovel",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        839
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:wild_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1273
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_boots_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 879,
+      "preview_result_item": "minecraft:netherite_boots",
+      "preview_description_id": "item.minecraft.netherite_boots",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        871
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:dune_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1271
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:bolt_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1287
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:snout_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1278
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_axe_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 846,
+      "preview_result_item": "minecraft:netherite_axe",
+      "preview_description_id": "item.minecraft.netherite_axe",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        841
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_sword_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 843,
+      "preview_result_item": "minecraft:netherite_sword",
+      "preview_description_id": "item.minecraft.netherite_sword",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        838
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:raiser_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1284
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:shaper_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1282
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:ward_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1274
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:eye_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1275
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_hoe_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 847,
+      "preview_result_item": "minecraft:netherite_hoe",
+      "preview_description_id": "item.minecraft.netherite_hoe",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        842
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_chestplate_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 877,
+      "preview_result_item": "minecraft:netherite_chestplate",
+      "preview_description_id": "item.minecraft.netherite_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        869
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:wayfinder_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1281
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:flow_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1286
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:rib_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1279
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_pickaxe_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 845,
+      "preview_result_item": "minecraft:netherite_pickaxe",
+      "preview_description_id": "item.minecraft.netherite_pickaxe",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        840
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:tide_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1277
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_leggings_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 878,
+      "preview_result_item": "minecraft:netherite_leggings",
+      "preview_description_id": "item.minecraft.netherite_leggings",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        870
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:coast_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1272
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:vex_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1276
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:host_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1285
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    },
+    {
+      "recipe_id": "minecraft:netherite_helmet_smithing",
+      "recipe_kind": "smithing_transform",
+      "preview_result_item_id": 876,
+      "preview_result_item": "minecraft:netherite_helmet",
+      "preview_description_id": "item.minecraft.netherite_helmet",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        868
+      ],
+      "template_item_ids": [
+        1269
+      ],
+      "addition_item_ids": [
+        816
+      ]
+    },
+    {
+      "recipe_id": "minecraft:silence_armor_trim_smithing_template_smithing_trim",
+      "recipe_kind": "smithing_trim",
+      "preview_result_item_id": 865,
+      "preview_result_item": "minecraft:iron_chestplate",
+      "preview_description_id": "item.minecraft.iron_chestplate",
+      "preview_required_features": [
+        "minecraft:vanilla"
+      ],
+      "base_item_ids": [
+        859,
+        863,
+        875,
+        867,
+        871,
+        879,
+        858,
+        862,
+        874,
+        866,
+        870,
+        878,
+        857,
+        861,
+        873,
+        865,
+        869,
+        877,
+        856,
+        860,
+        872,
+        864,
+        868,
+        876,
+        794
+      ],
+      "template_item_ids": [
+        1283
+      ],
+      "addition_item_ids": [
+        811,
+        813,
+        815,
+        807,
+        806,
+        805,
+        816,
+        657,
+        808,
+        809
+      ]
+    }
+  ],
+  "smithing_base_items": [
+    {
+      "item_id": 794,
+      "item": "minecraft:turtle_helmet",
+      "description_id": "item.minecraft.turtle_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 838,
+      "item": "minecraft:diamond_sword",
+      "description_id": "item.minecraft.diamond_sword",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 839,
+      "item": "minecraft:diamond_shovel",
+      "description_id": "item.minecraft.diamond_shovel",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 840,
+      "item": "minecraft:diamond_pickaxe",
+      "description_id": "item.minecraft.diamond_pickaxe",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 841,
+      "item": "minecraft:diamond_axe",
+      "description_id": "item.minecraft.diamond_axe",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 842,
+      "item": "minecraft:diamond_hoe",
+      "description_id": "item.minecraft.diamond_hoe",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 856,
+      "item": "minecraft:leather_helmet",
+      "description_id": "item.minecraft.leather_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 857,
+      "item": "minecraft:leather_chestplate",
+      "description_id": "item.minecraft.leather_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 858,
+      "item": "minecraft:leather_leggings",
+      "description_id": "item.minecraft.leather_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 859,
+      "item": "minecraft:leather_boots",
+      "description_id": "item.minecraft.leather_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 860,
+      "item": "minecraft:chainmail_helmet",
+      "description_id": "item.minecraft.chainmail_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 861,
+      "item": "minecraft:chainmail_chestplate",
+      "description_id": "item.minecraft.chainmail_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 862,
+      "item": "minecraft:chainmail_leggings",
+      "description_id": "item.minecraft.chainmail_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 863,
+      "item": "minecraft:chainmail_boots",
+      "description_id": "item.minecraft.chainmail_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 864,
+      "item": "minecraft:iron_helmet",
+      "description_id": "item.minecraft.iron_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 865,
+      "item": "minecraft:iron_chestplate",
+      "description_id": "item.minecraft.iron_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 866,
+      "item": "minecraft:iron_leggings",
+      "description_id": "item.minecraft.iron_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 867,
+      "item": "minecraft:iron_boots",
+      "description_id": "item.minecraft.iron_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 868,
+      "item": "minecraft:diamond_helmet",
+      "description_id": "item.minecraft.diamond_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 869,
+      "item": "minecraft:diamond_chestplate",
+      "description_id": "item.minecraft.diamond_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 870,
+      "item": "minecraft:diamond_leggings",
+      "description_id": "item.minecraft.diamond_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 871,
+      "item": "minecraft:diamond_boots",
+      "description_id": "item.minecraft.diamond_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 872,
+      "item": "minecraft:golden_helmet",
+      "description_id": "item.minecraft.golden_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 873,
+      "item": "minecraft:golden_chestplate",
+      "description_id": "item.minecraft.golden_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 874,
+      "item": "minecraft:golden_leggings",
+      "description_id": "item.minecraft.golden_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 875,
+      "item": "minecraft:golden_boots",
+      "description_id": "item.minecraft.golden_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 876,
+      "item": "minecraft:netherite_helmet",
+      "description_id": "item.minecraft.netherite_helmet",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 877,
+      "item": "minecraft:netherite_chestplate",
+      "description_id": "item.minecraft.netherite_chestplate",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 878,
+      "item": "minecraft:netherite_leggings",
+      "description_id": "item.minecraft.netherite_leggings",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    },
+    {
+      "item_id": 879,
+      "item": "minecraft:netherite_boots",
+      "description_id": "item.minecraft.netherite_boots",
+      "required_features": [
+        "minecraft:vanilla"
+      ]
+    }
+  ],
+  "get_recipes_for_singleton_queries": 27
+}

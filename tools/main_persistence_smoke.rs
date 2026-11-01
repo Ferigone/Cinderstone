@@ -1,5 +1,19 @@
 use super::*;
 
+/// `PresenceGuard::drop` now schedules `cleanup_player` on the runtime instead
+/// of saving inline, so the test must wait for the real cleanup to finish
+/// before it reads durable state. The wait is bounded and polls the actual
+/// authoritative registry; it never substitutes a save of its own.
+async fn wait_for_cleanup(server: &Arc<Server>, entity_id: i32) {
+    for _ in 0..400 {
+        if server.players.read().unwrap().registry.get(entity_id).is_none() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    panic!("player cleanup for entity {entity_id} did not finish");
+}
+
 #[tokio::test]
 async fn native_main_save_rejoin_and_stale_presence_smoke() {
     let directory = std::env::temp_dir().join(format!(
@@ -16,12 +30,39 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         bind: IpAddr::V4(Ipv4Addr::LOCALHOST),
         port: 0,
         allow_offline: true,
+        allow_public_offline: false,
         online_mode: false,
         fixtures: PathBuf::new(),
         world: directory.join("world.json"),
         anvil_world: None,
         view_distance: 2,
+        resource_pack: None,
+        resource_pack_required: false,
+        server_directory: Some(directory.clone()),
+        max_players: 20,
+        enforce_whitelist: false,
+        op_permission_level: 4,
+        enforce_secure_profile: false,
+        secure_profile_override: None,
+        rate_limit: None,
+        compression_threshold: None,
     };
+    // Reuse the production constructors so this fixture follows future fields.
+    let connection_settings = mc121_rust::connection_settings::DedicatedConnectionSettings {
+        enforce_secure_profile: false,
+        ..Default::default()
+    };
+    let administration = main_administration::Administration::load(
+        directory.clone(),
+        main_administration::AdminSettings {
+            max_players: options.max_players,
+            whitelist_enabled: false,
+            enforce_whitelist: options.enforce_whitelist,
+            op_permission_level: options.op_permission_level,
+        },
+        main_admin_dispatch::wall_time_ms().unwrap(),
+    )
+    .unwrap();
     let facts = DimensionFacts {
         min_y: -64,
         height: 384,
@@ -48,7 +89,10 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
     players.entity_source = Some(source);
     let server = Arc::new(Server {
         options,
+        connection_settings,
+        connection_rates: StdRwLock::new(BTreeMap::new()),
         fixtures: Fixtures {
+            chat_type: 0,
             configuration: vec![],
             dimension: 0,
             dimension_facts: facts,
@@ -58,9 +102,14 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         world: RwLock::new(world),
         save_lock: Mutex::new(()),
         player_admission: Mutex::new(()),
-        online: Arc::new(AtomicUsize::new(0)),
+        administration: StdRwLock::new(administration),
+        connection_ticks: watch::channel(0).0,
+        chat_keys: watch::channel(Arc::new(mc121_rust::chat_crypto::ServiceKeySet::empty())).0,
+        chat_keys_attempted: watch::channel(false).0,
+        chat_dispatch: Mutex::new(()),
         entities: AtomicI32::new(100),
         connection_sequence: AtomicU64::new(1),
+        configuration_requests: broadcast::channel(64).0,
         changes,
         authenticator: None,
         session_verifier: None,
@@ -135,6 +184,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         entity_id: 7,
         server: Arc::clone(&server),
     });
+    wait_for_cleanup(&server, 7).await;
     let mut saved = server.player_store.load(uuid).unwrap().unwrap();
     assert_eq!(saved.position, position);
     assert_eq!(saved.lifecycle.food.level, 9);
@@ -172,6 +222,9 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         entity_id: 7,
         server: Arc::clone(&server),
     });
+    // Entity 7 is already gone, so there is no registry change to await; give
+    // the scheduled duplicate cleanup time to run before the assertion below.
+    tokio::time::sleep(Duration::from_millis(100)).await;
     assert_eq!(
         server
             .player_store
@@ -188,6 +241,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         entity_id: 8,
         server: Arc::clone(&server),
     });
+    wait_for_cleanup(&server, 8).await;
     server.save().await.unwrap();
     let checkpoint = server.entity_store.load().unwrap().unwrap();
     let world = WorldBackend::Fixture(FlatWorld::new(0, 1, 10, 9, 39));

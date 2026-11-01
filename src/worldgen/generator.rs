@@ -5,19 +5,25 @@
 //! defaults. This does not select biomes, carve, place features or return FULL.
 use super::{
     aquifer::{Aquifer, AquiferBlock, AquiferContext, AquiferNoise, FluidStatus},
-    noise_chunk::NoiseChunk,
+    noise_chunk::{NoiseChunk, RetainedNoiseChunk},
     random_state::RandomStateRandoms,
     surface::{self, SurfaceHost, SurfaceReport, SurfaceSystem},
 };
 use crate::{
-    density::{ChunkDensity, DensityGraph, DensityPoint, DensityRouter},
+    density::{
+        quantize_climate_coord, ChunkDensity, ClimateTargetPoint, DensityGraph, DensityPoint,
+        DensityRouter,
+    },
     inventory::{block_state_name, block_state_with_properties},
     random::RandomSource,
 };
 use anyhow::{bail, ensure, Context, Result};
 use serde::Deserialize;
 use serde_json::Value;
-use std::{collections::BTreeMap, sync::OnceLock};
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, OnceLock},
+};
 
 /// Observations supplied by the actual generation dependency owner. This enum
 /// has no default: absence of an owner is not evidence of empty input.
@@ -67,6 +73,18 @@ pub enum NoiseFillOutcome<'g> {
         /// Original clamped height, which may be negative for disjoint ranges.
         height: i32,
         /// floorDiv(clamped height, cell height), preserving negative results.
+        cell_count_y: i32,
+    },
+}
+
+/// Owned counterpart of `NoiseFillOutcome`. A skipped fill retains no
+/// generator owner or terrain image; the actual input chunk stays with its
+/// caller. The generated variant can outlive the caller's local Arc binding.
+pub enum OwnedNoiseFillOutcome {
+    Generated(OwnedNoiseTerrain),
+    NoCells {
+        min_y: i32,
+        height: i32,
         cell_count_y: i32,
     },
 }
@@ -163,6 +181,30 @@ impl NoiseGenerator {
         &self.settings_name
     }
 
+    /// Prepare the actual empty-context density and aquifer owners before
+    /// climate sampling. This strict API requires positive, aligned supported
+    /// cells; it does not create a block image or assert a BIOMES status.
+    pub fn prepare_chunk(
+        self: &Arc<Self>,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: FreshGenerationContext,
+    ) -> Result<PreparedGeneration> {
+        let (noise, aquifer) =
+            self.begin_noise(chunk_x, chunk_z, level_min_y, level_height, context)?;
+        Ok(PreparedGeneration {
+            generator: Arc::clone(self),
+            noise: noise.into_retained(),
+            aquifer,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+        })
+    }
+
     /// Mirror fillFromNoise's early no-cell return without inventing a terrain
     /// image. Clamping and the floor division happen before querying Blender,
     /// structures or block contents. A skipped result leaves the caller's
@@ -192,6 +234,69 @@ impl NoiseGenerator {
             .map(NoiseFillOutcome::Generated)
     }
 
+    /// Own a fill result without rebuilding any random or density-cache owner.
+    /// `NoCells` keeps the source early-return behavior and retains no Arc.
+    pub fn fill_from_noise_owned(
+        self: &Arc<Self>,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: FreshGenerationContext,
+    ) -> Result<OwnedNoiseFillOutcome> {
+        match self.fill_from_noise(chunk_x, chunk_z, level_min_y, level_height, context)? {
+            NoiseFillOutcome::Generated(terrain) => self
+                .retain_terrain(terrain)
+                .map(OwnedNoiseFillOutcome::Generated),
+            NoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            } => Ok(OwnedNoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            }),
+        }
+    }
+
+    /// Retain this exact generator with an already generated stage. Equal seed
+    /// and settings on another generator are insufficient: the node IDs and
+    /// mutable caches belong to the graph that produced the borrowed terrain.
+    /// The existing density owner and block image are moved, never cloned,
+    /// reseeded or wrapped again. No reference points inside the returned value.
+    pub fn retain_terrain(
+        self: &Arc<Self>,
+        terrain: NoiseTerrain<'_>,
+    ) -> Result<OwnedNoiseTerrain> {
+        ensure!(
+            std::ptr::eq(terrain.graph, &self.graph),
+            "terrain belongs to a different seeded generator"
+        );
+        let NoiseTerrain {
+            noise,
+            aquifer,
+            graph: _,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            image,
+            stage,
+        } = terrain;
+        Ok(OwnedNoiseTerrain {
+            generator: Arc::clone(self),
+            density: noise.into_density(),
+            _aquifer: aquifer,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            image,
+            stage,
+        })
+    }
+
     /// Fill a privately owned new terrain image in original doFill order. The
     /// returned image is only NOISE, irrespective of whether its blocks look
     /// ready to send. Clipped/custom partial noise cells stay unsupported.
@@ -203,6 +308,35 @@ impl NoiseGenerator {
         level_height: i32,
         context: FreshGenerationContext,
     ) -> Result<NoiseTerrain<'_>> {
+        let (mut noise, mut aquifer) =
+            self.begin_noise(chunk_x, chunk_z, level_min_y, level_height, context)?;
+        let image = self.fill_noise_image(
+            &mut noise,
+            aquifer.as_mut(),
+            (chunk_x, chunk_z),
+            (level_min_y, level_height),
+        )?;
+        Ok(NoiseTerrain {
+            noise,
+            aquifer,
+            graph: &self.graph,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            image,
+            stage: TerrainStage::Noise,
+        })
+    }
+
+    fn begin_noise(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: FreshGenerationContext,
+    ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
         context.validate()?;
         validate_level_height(level_min_y, level_height)?;
         let origin_x = chunk_x.checked_mul(16).context("chunk X overflows")?;
@@ -212,10 +346,9 @@ impl NoiseGenerator {
                 && (-33_554_384..=33_554_383).contains(&origin_z),
             "chunk lies outside representable generation BlockPos range"
         );
-        let mut noise = NoiseChunk::new(&self.graph, chunk_x, chunk_z, level_min_y, level_height)?;
+        let noise = NoiseChunk::new(&self.graph, chunk_x, chunk_z, level_min_y, level_height)?;
         let grid = noise.grid();
-        let mut image = TerrainImage::new(level_min_y, level_height, self.palette.air)?;
-        let mut aquifer = if self.aquifers_enabled {
+        let aquifer = if self.aquifers_enabled {
             Aquifer::noise_based(
                 chunk_x,
                 chunk_z,
@@ -226,6 +359,21 @@ impl NoiseGenerator {
         } else {
             Aquifer::Disabled
         };
+        Ok((noise, Box::new(aquifer)))
+    }
+
+    // One material traversal for the borrowed fill and the prepared owned fill.
+    // The caller supplies the already created density and aquifer owners.
+    fn fill_noise_image(
+        &self,
+        noise: &mut NoiseChunk<'_>,
+        aquifer: &mut Aquifer,
+        chunk: (i32, i32),
+        level: (i32, i32),
+    ) -> Result<TerrainImage> {
+        let origin_x = chunk.0.checked_mul(16).context("chunk X overflows")?;
+        let origin_z = chunk.1.checked_mul(16).context("chunk Z overflows")?;
+        let mut image = TerrainImage::new(level.0, level.1, self.palette.air)?;
         let block_density = self
             .graph
             .block_density()
@@ -255,16 +403,53 @@ impl NoiseGenerator {
             }
             Ok(())
         })?;
-        Ok(NoiseTerrain {
-            noise,
-            graph: &self.graph,
-            chunk_x,
-            chunk_z,
-            level_min_y,
-            level_height,
-            image,
-            stage: TerrainStage::Noise,
+        Ok(image)
+    }
+
+    // Climate.Sampler.sample: wrapped roots, SinglePointContext, double->float,
+    // then float multiplication and narrowing. No biome selection or spawn
+    // search is implied by the six climate coordinates.
+    fn sample_climate_from(
+        &self,
+        density: &mut ChunkDensity,
+        quart_x: i32,
+        quart_y: i32,
+        quart_z: i32,
+    ) -> Result<ClimateTargetPoint> {
+        let point = DensityPoint::new(
+            quart_x.wrapping_shl(2),
+            quart_y.wrapping_shl(2),
+            quart_z.wrapping_shl(2),
+        );
+        let mut values = [0; 6];
+        for (index, root) in [
+            self.router.temperature,
+            self.router.vegetation,
+            self.router.continents,
+            self.router.erosion,
+            self.router.depth,
+            self.router.ridges,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            values[index] =
+                quantize_climate_coord(density.sample_external(&self.graph, root, point)? as f32);
+        }
+        Ok(ClimateTargetPoint {
+            temperature: values[0],
+            humidity: values[1],
+            continentalness: values[2],
+            erosion: values[3],
+            depth: values[4],
+            weirdness: values[5],
         })
+    }
+
+    // The End source compares the erosion function's raw double at an already
+    // converted block position. This is not the quantized climate coordinate.
+    fn sample_erosion_from(&self, density: &mut ChunkDensity, point: DensityPoint) -> Result<f64> {
+        Ok(density.sample_external(&self.graph, self.router.erosion, point)?)
     }
 
     /// Stage surface replacements privately. An unavailable biome query leaves
@@ -279,30 +464,49 @@ impl NoiseGenerator {
             std::ptr::eq(terrain.graph, &self.graph),
             "terrain belongs to a different seeded generator"
         );
+        self.apply_surface(
+            terrain.noise.density_mut(),
+            &mut terrain.image,
+            &mut terrain.stage,
+            (terrain.chunk_x, terrain.chunk_z),
+            context,
+        )
+    }
+
+    // Both borrowed and owned stage APIs use the same source application and
+    // transaction. Ownership conversion does not create another SurfaceSystem.
+    fn apply_surface(
+        &self,
+        density: &mut ChunkDensity,
+        image: &mut TerrainImage,
+        stage: &mut TerrainStage,
+        chunk: (i32, i32),
+        context: &mut impl SurfaceContext,
+    ) -> Result<SurfaceReport> {
         ensure!(
-            terrain.stage == TerrainStage::Noise,
+            *stage == TerrainStage::Noise,
             "surface stage already completed"
         );
-        let mut staged = terrain.image.clone();
+        let mut staged = image.clone();
         let grid = self.graph.grid().context("missing noise settings")?;
         let mut host = TerrainSurfaceHost {
+            min_gen_y: image.min_y.max(grid.min_y),
+            gen_depth: image.height.min(grid.height),
             image: &mut staged,
-            density: terrain.noise.density_mut(),
+            density,
             graph: &self.graph,
             context,
-            chunk_x: terrain.chunk_x,
-            chunk_z: terrain.chunk_z,
-            min_gen_y: terrain.level_min_y.max(grid.min_y),
-            gen_depth: terrain.level_height.min(grid.height),
+            chunk_x: chunk.0,
+            chunk_z: chunk.1,
             void_air: self.palette.void_air,
         };
         // NoiseBasedChunkGenerator.buildSurface supplies false. This is not the
         // old blending-height biome path, which requires its own dependencies.
-        let report =
-            self.surface
-                .build_surface(&mut host, terrain.chunk_x, terrain.chunk_z, false)?;
-        terrain.image = staged;
-        terrain.stage = TerrainStage::Surface;
+        let report = self
+            .surface
+            .build_surface(&mut host, chunk.0, chunk.1, false)?;
+        *image = staged;
+        *stage = TerrainStage::Surface;
         Ok(report)
     }
 
@@ -367,6 +571,7 @@ impl NoiseGenerator {
 /// caches used for its NOISE phase. No status/readiness conversion is implied.
 pub struct NoiseTerrain<'g> {
     noise: NoiseChunk<'g>,
+    aquifer: Box<Aquifer>,
     graph: &'g DensityGraph,
     chunk_x: i32,
     chunk_z: i32,
@@ -404,6 +609,167 @@ impl NoiseTerrain<'_> {
     /// Original markPosForPostprocessing order, including repeated positions.
     pub fn postprocessing(&self) -> &[DensityPoint] {
         &self.image.postprocessing
+    }
+}
+
+/// An Arc-bound prepared density/aquifer owner, before the first NOISE fill.
+/// Sampling climate uses its existing wrapped roots and caches. It owns no block
+/// image and represents no completed BIOMES status. Consuming `fill_noise`
+/// continues this exact owner's one-shot traversal and produces owned NOISE.
+pub struct PreparedGeneration {
+    generator: Arc<NoiseGenerator>,
+    noise: RetainedNoiseChunk,
+    aquifer: Box<Aquifer>,
+    chunk_x: i32,
+    chunk_z: i32,
+    level_min_y: i32,
+    level_height: i32,
+}
+impl PreparedGeneration {
+    pub fn chunk(&self) -> (i32, i32) {
+        (self.chunk_x, self.chunk_z)
+    }
+    pub fn min_y(&self) -> i32 {
+        self.level_min_y
+    }
+    pub fn height(&self) -> i32 {
+        self.level_height
+    }
+
+    /// Accept quart coordinates with the original wrapping shift to blocks,
+    /// wrapped single-point evaluation and float32 climate quantization.
+    pub fn sample_climate(
+        &mut self,
+        quart_x: i32,
+        quart_y: i32,
+        quart_z: i32,
+    ) -> Result<ClimateTargetPoint> {
+        let density = self.noise.density_mut_for(self.generator.graph())?;
+        self.generator
+            .sample_climate_from(density, quart_x, quart_y, quart_z)
+    }
+
+    /// Sample retained wrapped erosion at block coordinates without climate
+    /// float narrowing or quantization, as required by End source thresholds.
+    pub fn sample_erosion(&mut self, point: DensityPoint) -> Result<f64> {
+        let density = self.noise.density_mut_for(self.generator.graph())?;
+        self.generator.sample_erosion_from(density, point)
+    }
+
+    /// Consume the prepared owner and run its only material traversal. No
+    /// density or aquifer cache is rebuilt, cloned or rebound to another graph.
+    pub fn fill_noise(self) -> Result<OwnedNoiseTerrain> {
+        let Self {
+            generator,
+            noise,
+            mut aquifer,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+        } = self;
+        let mut noise = NoiseChunk::restore(generator.graph(), noise)?;
+        let image = generator.fill_noise_image(
+            &mut noise,
+            aquifer.as_mut(),
+            (chunk_x, chunk_z),
+            (level_min_y, level_height),
+        )?;
+        let density = noise.into_density();
+        Ok(OwnedNoiseTerrain {
+            generator,
+            density,
+            _aquifer: aquifer,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            image,
+            stage: TerrainStage::Noise,
+        })
+    }
+}
+
+/// A movable NOISE or SURFACE stage with its exact immutable generator owner.
+/// The original `ChunkDensity` is retained after interpolation stops, including
+/// canonical cache owners and the preliminary-surface map. There is no borrowed
+/// field or self-reference. This is not a BIOMES owner, scheduler or FULL chunk.
+pub struct OwnedNoiseTerrain {
+    generator: Arc<NoiseGenerator>,
+    density: ChunkDensity,
+    // The original per-chunk aquifer remains alive with its caches even though
+    // SURFACE does not query it. This is not a carver-context implementation.
+    _aquifer: Box<Aquifer>,
+    chunk_x: i32,
+    chunk_z: i32,
+    level_min_y: i32,
+    level_height: i32,
+    image: TerrainImage,
+    stage: TerrainStage,
+}
+impl OwnedNoiseTerrain {
+    pub fn stage(&self) -> TerrainStage {
+        self.stage
+    }
+    pub fn chunk(&self) -> (i32, i32) {
+        (self.chunk_x, self.chunk_z)
+    }
+    pub fn min_y(&self) -> i32 {
+        self.level_min_y
+    }
+    pub fn height(&self) -> i32 {
+        self.level_height
+    }
+    /// Canonical states in ascending Y, then local Z, then local X order.
+    pub fn states(&self) -> &[u32] {
+        &self.image.states
+    }
+    pub fn block(&self, local_x: i32, y: i32, local_z: i32) -> Result<u32> {
+        self.image.block(local_x, y, local_z)
+    }
+    /// Absolute first-available heights, indexed by local Z * 16 + local X.
+    pub fn world_surface_wg(&self) -> &[i32; 256] {
+        &self.image.world_surface
+    }
+    pub fn ocean_floor_wg(&self) -> &[i32; 256] {
+        &self.image.ocean_floor
+    }
+    pub fn postprocessing(&self) -> &[DensityPoint] {
+        &self.image.postprocessing
+    }
+
+    /// Sample the same retained wrapped climate functions after NOISE. This is
+    /// not biome lookup/storage, spawn search or a generation-status transition.
+    pub fn sample_climate(
+        &mut self,
+        quart_x: i32,
+        quart_y: i32,
+        quart_z: i32,
+    ) -> Result<ClimateTargetPoint> {
+        self.generator
+            .sample_climate_from(&mut self.density, quart_x, quart_y, quart_z)
+    }
+
+    /// Sample the same retained erosion function at block coordinates and
+    /// preserve its raw double, without climate float narrowing/quantization.
+    pub fn sample_erosion(&mut self, point: DensityPoint) -> Result<f64> {
+        self.generator.sample_erosion_from(&mut self.density, point)
+    }
+
+    /// Apply SURFACE using the captured generator and existing density owner.
+    /// Failed dependencies leave block image, heights, posts and stage intact;
+    /// successful application advances only to `TerrainStage::Surface`.
+    pub fn build_surface(&mut self, context: &mut impl SurfaceContext) -> Result<SurfaceReport> {
+        // Cloning an Arc retains identity without borrowing a field of `self`
+        // across the mutable stage operation; no RNG or cache is reconstructed.
+        let generator = Arc::clone(&self.generator);
+        generator.apply_surface(
+            &mut self.density,
+            &mut self.image,
+            &mut self.stage,
+            (self.chunk_x, self.chunk_z),
+            context,
+        )
     }
 }
 
@@ -732,6 +1098,515 @@ fn clamped_map(value: f64, from_min: f64, from_max: f64, to_min: f64, to_max: f6
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn observed_empty() -> FreshGenerationContext {
+        FreshGenerationContext {
+            initial_blocks: GenerationInfluence::ObservedEmpty,
+            blender: GenerationInfluence::ObservedEmpty,
+            structure_beardifier: GenerationInfluence::ObservedEmpty,
+        }
+    }
+
+    fn unavailable() -> FreshGenerationContext {
+        FreshGenerationContext {
+            initial_blocks: GenerationInfluence::Unavailable,
+            blender: GenerationInfluence::Unavailable,
+            structure_beardifier: GenerationInfluence::Unavailable,
+        }
+    }
+
+    fn nether_generator() -> Result<Arc<NoiseGenerator>> {
+        Ok(Arc::new(NoiseGenerator::builtin(123456789, "nether")?))
+    }
+
+    fn nether_terrain(generator: &NoiseGenerator) -> Result<NoiseTerrain<'_>> {
+        generator.fill_noise(0, 0, 0, 128, observed_empty())
+    }
+
+    fn generated(outcome: OwnedNoiseFillOutcome) -> OwnedNoiseTerrain {
+        match outcome {
+            OwnedNoiseFillOutcome::Generated(terrain) => terrain,
+            OwnedNoiseFillOutcome::NoCells { .. } => panic!("expected a positive-cell stage"),
+        }
+    }
+
+    fn assert_same_image(a: &TerrainImage, b: &TerrainImage) {
+        assert_eq!(a.min_y, b.min_y);
+        assert_eq!(a.height, b.height);
+        assert_eq!(a.states, b.states);
+        assert_eq!(a.world_surface, b.world_surface);
+        assert_eq!(a.ocean_floor, b.ocean_floor);
+        assert_eq!(a.postprocessing, b.postprocessing);
+    }
+
+    /// Controlled fixed-nether-wastes profile used by the retained original
+    /// SurfaceSystem observations. This test fixture supplies only that biome
+    /// identity; thermal callbacks are deliberately unavailable because this
+    /// profile's original rule path must not query them. It is not a runtime
+    /// BIOMES implementation or a default production context.
+    #[derive(Default)]
+    struct NetherBiomeFixture {
+        columns: std::collections::BTreeSet<(i32, i32)>,
+        fail_after_first_column: bool,
+    }
+    impl SurfaceContext for NetherBiomeFixture {
+        fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+            ensure!((0..16).contains(&x) && (0..16).contains(&z));
+            ensure!((0..=128).contains(&y));
+            self.columns.insert((x, z));
+            if self.fail_after_first_column && self.columns.len() > 1 {
+                bail!("controlled biome dependency becomes unavailable after one column");
+            }
+            Ok("minecraft:nether_wastes".to_owned())
+        }
+        fn cold_enough_to_snow(&mut self, _: &str, _: i32, _: i32, _: i32) -> Result<bool> {
+            bail!("unexpected thermal query in fixed nether-wastes profile")
+        }
+        fn should_melt_frozen_ocean_iceberg_slightly(
+            &mut self,
+            _: &str,
+            _: i32,
+            _: i32,
+            _: i32,
+        ) -> Result<bool> {
+            bail!("unexpected iceberg query in fixed nether-wastes profile")
+        }
+    }
+
+    #[test]
+    fn retained_stage_outlives_its_local_arc_and_moves_between_threads() -> Result<()> {
+        fn send_static<T: Send + 'static>() {}
+        send_static::<OwnedNoiseTerrain>();
+        send_static::<OwnedNoiseFillOutcome>();
+        let (terrain, weak) = {
+            let generator = nether_generator()?;
+            let weak = Arc::downgrade(&generator);
+            let terrain =
+                generated(generator.fill_from_noise_owned(0, 0, 0, 128, observed_empty())?);
+            assert_eq!(Arc::strong_count(&generator), 2);
+            (terrain, weak)
+        };
+        assert_eq!(weak.strong_count(), 1);
+        let terrain = std::thread::spawn(move || -> Result<OwnedNoiseTerrain> {
+            let mut terrain = terrain;
+            assert_eq!(terrain.stage(), TerrainStage::Noise);
+            let report = terrain.build_surface(&mut NetherBiomeFixture::default())?;
+            assert!(report.rule_replacements > 0);
+            assert_eq!(terrain.stage(), TerrainStage::Surface);
+            Ok(terrain)
+        })
+        .join()
+        .expect("owned generation job panicked")?;
+        assert_eq!(weak.strong_count(), 1);
+        drop(terrain);
+        assert!(weak.upgrade().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn retention_rejects_an_equal_seed_but_different_graph_owner() -> Result<()> {
+        let generator = nether_generator()?;
+        let other = nether_generator()?;
+        assert_eq!(generator.seed(), other.seed());
+        assert_eq!(generator.settings_name(), other.settings_name());
+        let terrain = nether_terrain(&generator)?;
+        let error = match other.retain_terrain(terrain) {
+            Err(error) => error,
+            Ok(_) => panic!("distinct graph owners must not share live density caches"),
+        };
+        assert!(error.to_string().contains("different seeded generator"));
+        assert_eq!(Arc::strong_count(&other), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn retention_moves_the_existing_cache_and_image_allocations() -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(123456789, "overworld")?);
+        let mut terrain = generator.fill_noise(0, 0, -64, 384, observed_empty())?;
+        let first =
+            terrain
+                .noise
+                .density_mut()
+                .preliminary_surface_level(generator.graph(), -17, 21)?;
+        let second =
+            terrain
+                .noise
+                .density_mut()
+                .preliminary_surface_level(generator.graph(), 35, -29)?;
+        let allocations = terrain.noise.density().allocation_fingerprint();
+        assert!(
+            !allocations.2.is_empty(),
+            "preliminary-map pointer evidence must be nonempty"
+        );
+        let cache_values = format!("{:?}", terrain.noise.density());
+        let state = terrain.noise.density().state();
+        let states_pointer = terrain.states().as_ptr();
+        let posts_pointer = terrain.postprocessing().as_ptr();
+        let image = terrain.image.clone();
+        let mut owned = generator.retain_terrain(terrain)?;
+        assert_eq!(owned.density.allocation_fingerprint(), allocations);
+        assert_eq!(format!("{:?}", owned.density), cache_values);
+        assert_eq!(owned.density.state(), state);
+        assert_eq!(owned.states().as_ptr(), states_pointer);
+        assert_eq!(owned.postprocessing().as_ptr(), posts_pointer);
+        assert_same_image(&owned.image, &image);
+        assert_eq!(
+            owned
+                .density
+                .preliminary_surface_level(generator.graph(), -17, 21)?,
+            first
+        );
+        assert_eq!(
+            owned
+                .density
+                .preliminary_surface_level(generator.graph(), 35, -29)?,
+            second
+        );
+        assert_eq!(owned.density.allocation_fingerprint(), allocations);
+        assert_eq!(owned.density.state(), state);
+        Ok(())
+    }
+
+    #[test]
+    fn owned_and_borrowed_surface_stages_produce_the_same_material_effects() -> Result<()> {
+        let generator = nether_generator()?;
+        let mut borrowed = nether_terrain(&generator)?;
+        let mut owned =
+            generated(generator.fill_from_noise_owned(0, 0, 0, 128, observed_empty())?);
+        assert_same_image(&borrowed.image, &owned.image);
+        let before = owned.states().to_vec();
+        let borrowed_report =
+            generator.build_surface(&mut borrowed, &mut NetherBiomeFixture::default())?;
+        let owned_report = owned.build_surface(&mut NetherBiomeFixture::default())?;
+        assert_eq!(borrowed_report, owned_report);
+        assert!(owned_report.rule_replacements > 0);
+        assert_ne!(owned.states(), before);
+        assert_eq!(owned.stage(), TerrainStage::Surface);
+        assert_eq!(borrowed.stage(), owned.stage());
+        assert_eq!(borrowed.chunk(), owned.chunk());
+        assert_eq!(borrowed.min_y(), owned.min_y());
+        assert_eq!(borrowed.height(), owned.height());
+        assert_same_image(&borrowed.image, &owned.image);
+        assert_eq!(borrowed.states(), owned.states());
+        assert_eq!(borrowed.world_surface_wg(), owned.world_surface_wg());
+        assert_eq!(borrowed.ocean_floor_wg(), owned.ocean_floor_wg());
+        assert_eq!(borrowed.postprocessing(), owned.postprocessing());
+        assert_eq!(borrowed.block(3, 64, 7)?, owned.block(3, 64, 7)?);
+        // Retaining an already surfaced stage must not reset its phase.
+        let surfaced_pointer = borrowed.states().as_ptr();
+        let mut retained_surface = generator.retain_terrain(borrowed)?;
+        assert_eq!(retained_surface.stage(), TerrainStage::Surface);
+        assert_eq!(retained_surface.states().as_ptr(), surfaced_pointer);
+        assert_same_image(&retained_surface.image, &owned.image);
+        assert!(retained_surface
+            .build_surface(&mut NetherBiomeFixture::default())
+            .is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn owned_surface_failure_is_transactional_and_duplicate_application_is_rejected() -> Result<()>
+    {
+        let generator = nether_generator()?;
+        let mut owned = generator.retain_terrain(nether_terrain(&generator)?)?;
+        let before = owned.image.clone();
+        let states_pointer = owned.states().as_ptr();
+        let posts_pointer = owned.postprocessing().as_ptr();
+        let mut failing = NetherBiomeFixture {
+            fail_after_first_column: true,
+            ..Default::default()
+        };
+        assert!(owned.build_surface(&mut failing).is_err());
+        assert!(
+            failing.columns.len() > 1,
+            "failure must follow a processed column"
+        );
+        assert_eq!(owned.stage(), TerrainStage::Noise);
+        assert_same_image(&owned.image, &before);
+        assert_eq!(owned.states().as_ptr(), states_pointer);
+        assert_eq!(owned.postprocessing().as_ptr(), posts_pointer);
+        owned.build_surface(&mut NetherBiomeFixture::default())?;
+        let surfaced = owned.image.clone();
+        let cache = owned.density.allocation_fingerprint();
+        let mut unused = NetherBiomeFixture::default();
+        let error = owned.build_surface(&mut unused).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("surface stage already completed"));
+        assert!(unused.columns.is_empty());
+        assert_eq!(owned.stage(), TerrainStage::Surface);
+        assert_same_image(&owned.image, &surfaced);
+        assert_eq!(owned.density.allocation_fingerprint(), cache);
+        Ok(())
+    }
+
+    #[test]
+    fn owned_no_cells_retains_neither_a_generator_owner_nor_a_terrain_image() -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(1, "overworld")?);
+        let weak = Arc::downgrade(&generator);
+        let outcome =
+            generator.fill_from_noise_owned(i32::MAX, i32::MIN, 384, 16, unavailable())?;
+        assert!(matches!(
+            outcome,
+            OwnedNoiseFillOutcome::NoCells {
+                min_y: 384,
+                height: -64,
+                cell_count_y: -8,
+            }
+        ));
+        assert_eq!(Arc::strong_count(&generator), 1);
+        assert!(generator
+            .fill_from_noise_owned(0, 0, -64, 384, unavailable())
+            .is_err());
+        drop(generator);
+        assert!(weak.upgrade().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_climate_and_noise_keep_the_actual_density_and_aquifer_owners() -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(123456789, "overworld")?);
+        let mut prepared = generator.prepare_chunk(0, 0, -64, 384, observed_empty())?;
+        let aquifer_pointer = prepared.aquifer.as_ref() as *const Aquifer;
+        assert!(matches!(prepared.aquifer.as_ref(), Aquifer::NoiseBased(_)));
+        let level = prepared
+            .noise
+            .density_mut_for(generator.graph())?
+            .preliminary_surface_level(generator.graph(), -17, 21)?;
+        let allocations = prepared
+            .noise
+            .density_for(generator.graph())?
+            .allocation_fingerprint();
+        assert!(!allocations.2.is_empty());
+        let state = prepared.noise.density_for(generator.graph())?.state();
+        let points = [
+            (0, -16, 0),
+            (-1, 20, 7),
+            (4, 40, -5),
+            (i32::MAX, 0, i32::MIN),
+        ];
+        let before = points
+            .iter()
+            .map(|&(x, y, z)| prepared.sample_climate(x, y, z))
+            .collect::<Result<Vec<_>>>()?;
+        assert_eq!(
+            prepared.noise.density_for(generator.graph())?.state(),
+            state
+        );
+        assert_eq!(
+            prepared
+                .noise
+                .density_for(generator.graph())?
+                .allocation_fingerprint(),
+            allocations
+        );
+        assert_eq!(prepared.aquifer.as_ref() as *const Aquifer, aquifer_pointer);
+        assert_eq!(prepared.chunk(), (0, 0));
+        assert_eq!((prepared.min_y(), prepared.height()), (-64, 384));
+        let mut owned = prepared.fill_noise()?;
+        assert_eq!(owned._aquifer.as_ref() as *const Aquifer, aquifer_pointer);
+        let after_allocations = owned.density.allocation_fingerprint();
+        assert_eq!(
+            (after_allocations.0, after_allocations.1),
+            (allocations.0, allocations.1)
+        );
+        assert_eq!(
+            owned
+                .density
+                .preliminary_surface_level(generator.graph(), -17, 21)?,
+            level
+        );
+        assert!(!owned.density.state().interpolating);
+        assert!(owned.density.state().array_counter > state.array_counter);
+        let after = points
+            .iter()
+            .map(|&(x, y, z)| owned.sample_climate(x, y, z))
+            .collect::<Result<Vec<_>>>()?;
+        assert_eq!(before, after);
+        let direct = generator.fill_noise(0, 0, -64, 384, observed_empty())?;
+        assert_same_image(&owned.image, &direct.image);
+        assert_eq!(owned.stage(), TerrainStage::Noise);
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_owner_moves_out_of_scope_and_through_surface_without_replacement() -> Result<()> {
+        fn send_static<T: Send + 'static>() {}
+        send_static::<PreparedGeneration>();
+        let (prepared, weak, aquifer_pointer) = {
+            let generator = nether_generator()?;
+            let weak = Arc::downgrade(&generator);
+            let prepared = generator.prepare_chunk(0, 0, 0, 128, observed_empty())?;
+            let pointer = prepared.aquifer.as_ref() as *const Aquifer as usize;
+            (prepared, weak, pointer)
+        };
+        assert_eq!(weak.strong_count(), 1);
+        let mut owned = std::thread::spawn(move || -> Result<OwnedNoiseTerrain> {
+            let mut prepared = prepared;
+            let sample = prepared.sample_climate(-1, 4, 7)?;
+            let mut owned = prepared.fill_noise()?;
+            assert_eq!(owned.sample_climate(-1, 4, 7)?, sample);
+            assert_eq!(
+                owned._aquifer.as_ref() as *const Aquifer as usize,
+                aquifer_pointer
+            );
+            let report = owned.build_surface(&mut NetherBiomeFixture::default())?;
+            assert!(report.rule_replacements > 0);
+            assert_eq!(
+                owned._aquifer.as_ref() as *const Aquifer as usize,
+                aquifer_pointer
+            );
+            assert_eq!(owned.sample_climate(-1, 4, 7)?, sample);
+            Ok(owned)
+        })
+        .join()
+        .expect("prepared generation job panicked")?;
+        assert_eq!(owned.stage(), TerrainStage::Surface);
+        assert_eq!(weak.strong_count(), 1);
+        assert!(owned
+            .build_surface(&mut NetherBiomeFixture::default())
+            .is_err());
+        drop(owned);
+        assert!(weak.upgrade().is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_fill_and_direct_fill_share_material_and_surface_semantics() -> Result<()> {
+        let generator = nether_generator()?;
+        let mut direct =
+            generated(generator.fill_from_noise_owned(0, 0, 0, 128, observed_empty())?);
+        let mut prepared = generator.prepare_chunk(0, 0, 0, 128, observed_empty())?;
+        for (x, y, z) in [(0, 0, 0), (-1, 8, 4), (15, 31, 15)] {
+            let _ = prepared.sample_climate(x, y, z)?;
+        }
+        let mut resumed = prepared.fill_noise()?;
+        assert_same_image(&direct.image, &resumed.image);
+        let mut failing = NetherBiomeFixture {
+            fail_after_first_column: true,
+            ..Default::default()
+        };
+        let before = resumed.image.clone();
+        let aquifer_pointer = resumed._aquifer.as_ref() as *const Aquifer;
+        assert!(resumed.build_surface(&mut failing).is_err());
+        assert!(failing.columns.len() > 1);
+        assert_eq!(resumed.stage(), TerrainStage::Noise);
+        assert_same_image(&resumed.image, &before);
+        assert_eq!(resumed._aquifer.as_ref() as *const Aquifer, aquifer_pointer);
+        let direct_report = direct.build_surface(&mut NetherBiomeFixture::default())?;
+        let resumed_report = resumed.build_surface(&mut NetherBiomeFixture::default())?;
+        assert_eq!(direct_report, resumed_report);
+        assert_same_image(&direct.image, &resumed.image);
+        assert_eq!(direct.stage(), resumed.stage());
+        Ok(())
+    }
+
+    #[test]
+    fn prepared_setup_is_strict_and_private_restore_rejects_another_graph() -> Result<()> {
+        let generator = nether_generator()?;
+        assert!(generator
+            .prepare_chunk(0, 0, 0, 128, unavailable())
+            .is_err());
+        assert!(generator
+            .prepare_chunk(0, 0, 128, 16, observed_empty())
+            .is_err());
+        assert!(generator
+            .prepare_chunk(0, 0, 1, 127, observed_empty())
+            .is_err());
+        assert!(generator
+            .prepare_chunk(i32::MAX, 0, 0, 128, observed_empty())
+            .is_err());
+        assert_eq!(Arc::strong_count(&generator), 1);
+        assert!(matches!(
+            generator.fill_from_noise_owned(i32::MAX, i32::MIN, 128, 16, unavailable(),)?,
+            OwnedNoiseFillOutcome::NoCells {
+                min_y: 128,
+                height: 0,
+                cell_count_y: 0
+            }
+        ));
+        let other = nether_generator()?;
+        let mut prepared = generator.prepare_chunk(0, 0, 0, 128, observed_empty())?;
+        // Only this module can replace the private captured Arc. The internal
+        // graph identity guard must still reject an accidental reassociation.
+        prepared.generator = Arc::clone(&other);
+        assert!(prepared.sample_climate(0, 0, 0).is_err());
+        assert!(prepared.fill_noise().is_err());
+        assert_eq!(Arc::strong_count(&other), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn retained_raw_erosion_matches_original_end_observations_before_and_after_noise() -> Result<()>
+    {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../fixtures/world-generation-biome-source-vectors.json"
+        ))?;
+        for sequence in fixture["end_sequences"]
+            .as_array()
+            .context("End source sequences")?
+        {
+            let seed = sequence["seed"].as_str().context("seed")?.parse::<i64>()?;
+            let settings = sequence["settings"].as_str().context("settings")?;
+            let chunk = sequence["chunk"].as_array().context("chunk")?;
+            let chunk_x = chunk[0].as_i64().context("chunk X")?.try_into()?;
+            let chunk_z = chunk[1].as_i64().context("chunk Z")?.try_into()?;
+            let generator = Arc::new(NoiseGenerator::builtin(seed, settings)?);
+            let mut prepared =
+                generator.prepare_chunk(chunk_x, chunk_z, 0, 128, observed_empty())?;
+            let state_before = prepared.noise.density_for(generator.graph())?.state();
+            let allocations = prepared
+                .noise
+                .density_for(generator.graph())?
+                .allocation_fingerprint();
+            let mut observations = Vec::new();
+            for query in sequence["queries"]
+                .as_array()
+                .context("End source queries")?
+            {
+                let Some(point) = query["erosion_point"].as_array() else {
+                    continue;
+                };
+                let point = DensityPoint::new(
+                    point[0].as_i64().context("erosion X")?.try_into()?,
+                    point[1].as_i64().context("erosion Y")?.try_into()?,
+                    point[2].as_i64().context("erosion Z")?.try_into()?,
+                );
+                let expected = query["erosion_bits"]
+                    .as_str()
+                    .context("original erosion bits")?
+                    .parse::<u64>()?;
+                assert_eq!(prepared.sample_erosion(point)?.to_bits(), expected);
+                observations.push((point, expected));
+            }
+            assert!(!observations.is_empty());
+            assert_eq!(
+                prepared.noise.density_for(generator.graph())?.state(),
+                state_before
+            );
+            assert_eq!(
+                prepared
+                    .noise
+                    .density_for(generator.graph())?
+                    .allocation_fingerprint(),
+                allocations
+            );
+            let mut owned = prepared.fill_noise()?;
+            let state_after = owned.density.state();
+            let after_allocations = owned.density.allocation_fingerprint();
+            assert_eq!(
+                (after_allocations.0, after_allocations.1),
+                (allocations.0, allocations.1)
+            );
+            for (point, expected) in observations {
+                assert_eq!(owned.sample_erosion(point)?.to_bits(), expected);
+            }
+            assert_eq!(owned.density.state(), state_after);
+            assert_eq!(owned.density.allocation_fingerprint(), after_allocations);
+            assert_eq!(owned.stage(), TerrainStage::Noise);
+        }
+        Ok(())
+    }
 
     #[test]
     fn positive_fill_requires_the_actual_dependency_owners() -> Result<()> {

@@ -711,11 +711,13 @@ fn fixture_source_requires_observed_facts_and_rejects_null_factory_states() {
             .initial,
         ChunkOutcome::Pending
     );
-    assert!(backend
-        .sources
-        .pending_reason((0, 0))
-        .unwrap()
-        .contains("block-entity"));
+    // The pending reason names the unavailable block entity; the wording moved
+    // from "block-entity" to "native block entity unavailable", same outcome.
+    let reason = backend.sources.pending_reason((0, 0)).unwrap();
+    assert!(
+        reason.contains("block-entity") || reason.contains("block entity"),
+        "{reason}"
+    );
     assert!(backend.sources.data.is_empty());
     let RuntimeWorld::Fixture(flat) = &mut world else {
         unreachable!()
