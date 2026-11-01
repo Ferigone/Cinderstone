@@ -3,8 +3,9 @@
 //! Main owns this persistent map. The source profile is the native player
 //! constructor with no active-effect producer; imported player state cannot
 //! acquire it from missing effect particles. Equipment is checked on every
-//! operation. Network-listener bookkeeping is a separate explicit capability
-//! from LivingEntity/Player body simulation, which this host does not implement.
+//! operation. Network-listener bookkeeping remains a separate capability from
+//! body simulation; the production connection phase composes the real native
+//! body through main_player_body::BodyHooks rather than an empty callback here.
 use super::*;
 use mc121_rust::{
     entity_move::{BlockPos, ProfileEvent},
@@ -503,8 +504,9 @@ impl PlayerMotionHooks for MainMotionHooks<'_> {
         })
     }
 }
-// Deliberately no PlayerBodyTickHooks implementation: full body simulation is
-// unavailable as a type capability, not a successful empty callback.
+// This storage/effect adapter deliberately has no PlayerBodyTickHooks impl.
+// The production body composition lives in main_player_body::BodyHooks; an
+// independently embedded movement-only host cannot substitute an empty tick.
 
 enum MotionOperation {
     Move(MovePacket),

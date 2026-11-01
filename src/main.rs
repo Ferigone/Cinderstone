@@ -6,6 +6,7 @@ use mc121_rust::{
     auth::{valid_login_name, Authenticator, CryptoRead, CryptoWrite, SessionVerifier},
     border::WorldBorder,
     chunk_lifecycle::FullStatus,
+    connection_cookies::{CookieAction, CookieConnection, CookiePhase, UNEXPECTED_COOKIE_RESPONSE_REASON},
     container::{ClickOutcome, ContainerClick, PlayerContainer},
     crafting::RecipeContext,
     creative_drop::CreativeDropGate,
@@ -30,6 +31,8 @@ use mc121_rust::{
     player_physics,
     player_stats::PlayerStats,
     protocol::{FrameCodec, Packet, Reader, Writer},
+    reconfiguration::Reconfiguration,
+    resource_packs::{ResourcePackOffer, ResourcePackPhase, ResourcePackSession},
     random::LegacyRandomSource,
     random_seed,
     replication::{EntitySnapshot, EntityUpdate, GenericEntityTracker, PlayerTracker},
@@ -98,6 +101,7 @@ mod main_rain_context;
 mod main_random_block_ticks;
 mod main_world_interactions;
 mod main_bucket_interactions;
+mod main_configuration;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -123,6 +127,8 @@ struct Options {
     view_distance: i32,
     difficulty: i32,
     max_chained_neighbor_updates: i32,
+    resource_pack: Option<ResourcePackOffer>,
+    resource_pack_required: bool,
 }
 
 impl Options {
@@ -139,7 +145,13 @@ impl Options {
             view_distance: 2,
             difficulty: 1,
             max_chained_neighbor_updates: 1_000_000,
+            resource_pack: None,
+            resource_pack_required: false,
         };
+        let mut pack_url = String::new();
+        let mut pack_hash = String::new();
+        let mut pack_id = None;
+        let mut pack_prompt = None;
         let mut args = std::env::args().skip(1);
         while let Some(argument) = args.next() {
             if argument == "--allow-offline" {
@@ -152,6 +164,10 @@ impl Options {
             }
             if argument == "--online-mode" {
                 options.online_mode = true;
+                continue;
+            }
+            if argument == "--require-resource-pack" {
+                options.resource_pack_required = true;
                 continue;
             }
             if argument == "--help" {
@@ -168,6 +184,10 @@ impl Options {
                 "--world" => options.world = value.into(),
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
+                "--resource-pack-url" => pack_url = value,
+                "--resource-pack-sha1" => pack_hash = value,
+                "--resource-pack-id" => pack_id = Some(parse_pack_id(&value)?),
+                "--resource-pack-prompt" => pack_prompt = Some(value),
                 "--difficulty" => options.difficulty = match value.as_str() {
                     "peaceful"|"0"=>0,"easy"|"1"=>1,"normal"|"2"=>2,"hard"|"3"=>3,
                     _=>bail!("difficulty must be peaceful, easy, normal or hard"),
@@ -190,8 +210,26 @@ impl Options {
         if !(2..=6).contains(&options.view_distance) {
             bail!("view distance must be 2..=6");
         }
+        if !pack_url.is_empty() {
+            options.resource_pack = Some(ResourcePackOffer::from_server_config(
+                pack_id, pack_url, pack_hash, options.resource_pack_required, pack_prompt,
+            )?);
+        }
+        // MinecraftServer.isResourcePackRequired filters the actual optional
+        // offer; a required property without a URL does not require a pack.
+        options.resource_pack_required = options.resource_pack.as_ref().is_some_and(|pack| pack.required);
         Ok(options)
     }
+}
+
+fn parse_pack_id(value: &str) -> Result<[u8; 16]> {
+    let compact = value.replace('-', "");
+    ensure!(compact.len() == 32 && compact.bytes().all(|b| b.is_ascii_hexdigit()), "invalid resource-pack UUID");
+    let mut uuid = [0; 16];
+    for (index, byte) in uuid.iter_mut().enumerate() {
+        *byte = u8::from_str_radix(&compact[index * 2..index * 2 + 2], 16)?;
+    }
+    Ok(uuid)
 }
 
 #[derive(Deserialize)]
@@ -219,6 +257,11 @@ struct ClientInformation {
     view_distance: i32,
     skin_parts: u8,
     main_hand: u8,
+}
+
+enum PlayExit {
+    Disconnected,
+    Reconfigure(Option<ClientInformation>),
 }
 
 async fn fixtures(path: &Path) -> Result<Fixtures> {
@@ -365,6 +408,7 @@ struct Server {
     online: Arc<AtomicUsize>,
     entities: AtomicI32,
     connection_sequence: AtomicU64,
+    configuration_requests: broadcast::Sender<i32>,
     changes: broadcast::Sender<WorldUpdate>,
     authenticator: Option<Authenticator>,
     session_verifier: Option<SessionVerifier>,
@@ -2492,6 +2536,7 @@ async fn main() -> Result<()> {
         online: Arc::new(AtomicUsize::new(0)),
         entities: AtomicI32::new(next_entity_id),
         connection_sequence: AtomicU64::new(1),
+        configuration_requests: broadcast::channel(64).0,
         changes,
         authenticator,
         session_verifier,
@@ -2521,8 +2566,22 @@ async fn main() -> Result<()> {
     // branch and could lose SIGINT delivered during the branch body.
     let shutdown = shutdown_signal();
     tokio::pin!(shutdown);
+    #[cfg(unix)]
+    let mut reconfigure_signal = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())?;
     loop {
         tokio::select! {
+            _ = async {
+                #[cfg(unix)]
+                { reconfigure_signal.recv().await; }
+                #[cfg(not(unix))]
+                { std::future::pending::<()>().await; }
+            } => {
+                // An explicit native operator transport reconfiguration. This
+                // does not claim to reload datapacks or regenerate registries.
+                let ids = server.players.read().map_err(|_|anyhow!("players poisoned"))?
+                    .registry.snapshot().into_iter().map(|p|p.entity_id).collect::<Vec<_>>();
+                for id in ids { let _ = server.configuration_requests.send(id); }
+            }
             overload = ticks.next_tick() => {
                 if let Some(overload) = overload? {
                     eprintln!("{}", json!({"event":"server_tick_overload", "behind_ms":overload.behind_ms, "skipped_deadline_ticks":overload.skipped_ticks}));
@@ -2625,6 +2684,36 @@ async fn receive(codec: &FrameCodec, stream: &mut NetworkReader) -> Result<Packe
         .context("handshake/configuration deadline")??
         .ok_or_else(|| anyhow!("connection closed during negotiation"))
 }
+async fn receive_login(
+    codec: &FrameCodec,
+    reader: &mut NetworkReader,
+    writer: &mut NetworkWriter,
+    cookies: &mut CookieConnection,
+) -> Result<Packet> {
+    let packet = receive(codec, reader).await?;
+    if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
+        let reason = json!({"translate":UNEXPECTED_COOKIE_RESPONSE_REASON}).to_string();
+        send(codec, writer, 0x00, encoded(|w| { w.string(&reason); })).await?;
+        bail!("{UNEXPECTED_COOKIE_RESPONSE_REASON}");
+    }
+    Ok(packet)
+}
+fn start_packet_reader(mut reader: NetworkReader, codec: FrameCodec) -> (ReaderGuard, mpsc::Receiver<Result<Packet>>) {
+    let (tx, rx) = mpsc::channel(32);
+    let guard = ReaderGuard(tokio::spawn(async move {
+        loop {
+            let packet = match time::timeout(Duration::from_secs(60), codec.read(&mut reader)).await {
+                Ok(Ok(Some(packet))) => Ok(packet),
+                Ok(Ok(None)) => break,
+                Ok(Err(error)) => Err(error),
+                Err(_) => Err(anyhow!("connection read deadline")),
+            };
+            let failed = packet.is_err();
+            if tx.send(packet).await.is_err() || failed { break; }
+        }
+    }));
+    (guard, rx)
+}
 fn encoded(build: impl FnOnce(&mut Writer)) -> Vec<u8> {
     let mut writer = Writer::new();
     build(&mut writer);
@@ -2691,7 +2780,8 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         .await?;
         bail!("unsupported client protocol {protocol}");
     }
-    let start = receive(&codec, &mut reader).await?;
+    let mut login_cookies = CookieConnection::new(CookiePhase::Login);
+    let start = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
     if start.id != 0 {
         bail!("expected Login Start");
     }
@@ -2712,7 +2802,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
             authenticator.encryption_request(&challenge),
         )
         .await?;
-        let response = receive(&codec, &mut reader).await?;
+        let response = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
         if response.id != 1 {
             bail!("expected encrypted login response");
         }
@@ -2788,52 +2878,31 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         }),
     )
     .await?;
-    let acknowledged = receive(&codec, &mut reader).await?;
+    let acknowledged = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
     if acknowledged.id != 3 || !acknowledged.payload.is_empty() {
         bail!("expected Login Acknowledged");
     }
-    for packet in &server.fixtures.configuration {
-        send(&codec, &mut writer, packet.id, packet.payload.clone()).await?;
-    }
-    send(&codec, &mut writer, 3, Vec::new()).await?;
-    let configuration_started = Instant::now();
-    let mut client_information = None;
-    let mut complete = false;
-    for _ in 0..32 {
-        if configuration_started.elapsed() > CONFIGURATION_DEADLINE {
-            bail!("configuration negotiation deadline exceeded");
-        }
-        let packet = time::timeout_at(
-            configuration_started + CONFIGURATION_DEADLINE,
-            receive(&codec, &mut reader),
-        )
-        .await
-        .context("configuration negotiation deadline exceeded")??;
-        match packet.id {
-            3 if packet.payload.is_empty() => {
-                complete = true;
-                break;
+    // One raw framing reader owns the encrypted stream through every listener
+    // transition. Aborting/restarting a reader could discard a partial frame.
+    let (_packet_reader, mut packets) = start_packet_reader(reader, codec.clone());
+    let mut protocol = Reconfiguration::initial_configuration(server.epoch.elapsed().as_millis() as i64, 0);
+    let mut packs = ResourcePackSession::new(server.options.resource_pack_required);
+    let mut client_information = main_configuration::configure(
+        &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
+    ).await?;
+    loop {
+        match play(
+            &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
+            client_information, admission, &mut protocol, &mut packs,
+        ).await? {
+            PlayExit::Disconnected => return Ok(()),
+            PlayExit::Reconfigure(info) => {
+                client_information = main_configuration::configure(
+                    &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, info, false,
+                ).await?;
             }
-            0 => {
-                client_information = Some(read_client_information(&packet.payload)?);
-            }
-            2 if packet.payload.len() <= 32_768 => {} // brand/custom payload
-            _ => bail!("unsupported configuration response {}", packet.id),
         }
     }
-    if !complete {
-        bail!("configuration was not acknowledged");
-    }
-    play(
-        reader,
-        writer,
-        codec,
-        server,
-        profile,
-        client_information,
-        admission,
-    )
-    .await
 }
 
 fn read_client_information(payload: &[u8]) -> Result<ClientInformation> {
@@ -2858,19 +2927,24 @@ fn read_client_information(payload: &[u8]) -> Result<ClientInformation> {
 }
 
 async fn play(
-    mut reader: NetworkReader,
-    mut writer: NetworkWriter,
+    rx: &mut mpsc::Receiver<Result<Packet>>,
+    mut writer: &mut NetworkWriter,
     codec: FrameCodec,
     server: Arc<Server>,
     profile: PlayerProfile,
     client_information: Option<ClientInformation>,
     admission: u64,
-) -> Result<()> {
+    protocol: &mut Reconfiguration,
+    packs: &mut ResourcePackSession,
+) -> Result<PlayExit> {
     // Queue updates before the first snapshot. A concurrent player may edit an
     // already-sent chunk while the rest of this player's window is streaming.
     let mut changes = server.changes.subscribe();
     let mut entity_events = server.entity_events.subscribe();
     let mut tick_events = server.tick_events.subscribe();
+    let mut configuration_requests = server.configuration_requests.subscribe();
+    let mut current_information = client_information;
+    let mut cookies = CookieConnection::new(CookiePhase::Play);
     let (entity_id, player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
@@ -3184,32 +3258,10 @@ async fn play(
     )
     .await?;
 
-    let (tx, mut rx) = mpsc::channel::<Result<Packet>>(32);
     if native_motion {
         server.players.write().map_err(|_|anyhow!("player registry lock poisoned"))?.native_body_ready.insert(entity_id);
     }
-    let read_codec = codec.clone();
-    let _reader = ReaderGuard(tokio::spawn(async move {
-        loop {
-            let packet =
-                match time::timeout(Duration::from_secs(60), read_codec.read(&mut reader)).await {
-                    Ok(Ok(Some(packet))) => Ok(packet),
-                    Ok(Ok(None)) => break,
-                    Ok(Err(error)) => {
-                        let _ = tx.send(Err(error)).await;
-                        break;
-                    }
-                    Err(_) => {
-                        let _ = tx.send(Err(anyhow!("play read deadline"))).await;
-                        break;
-                    }
-                };
-            if tx.send(packet).await.is_err() {
-                break;
-            }
-        }
-    }));
-    let mut keepalive = KeepAlive::new(server.epoch.elapsed().as_millis() as i64);
+    protocol.complete_play_admission(server.epoch.elapsed().as_millis() as i64)?;
     let mut teleport_confirmed = false;
     let teleport_deadline = Instant::now() + Duration::from_secs(15);
     let mut center = login_center;
@@ -3223,34 +3275,61 @@ async fn play(
         let cancellation = *disconnect_events.borrow_and_update();
         if let Some(reason) = cancellation {
             play_disconnect(&codec, &mut writer, reason).await?;
-            return Ok(());
+            return Ok(PlayExit::Disconnected);
         }
         tokio::select! {
+            request = configuration_requests.recv() => {
+                match request {
+                    Ok(requested) if requested == entity_id => {
+                        // switchToConfig removes the actual old ServerPlayer.
+                        // Re-entry uses the normal saved-player admission path.
+                        server.cleanup_player(entity_id, None).await?;
+                        let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
+                        send(&codec, &mut writer, terminal.id, terminal.payload).await?;
+                        return Ok(PlayExit::Reconfigure(current_information));
+                    }
+                    Ok(_) => {},
+                    Err(broadcast::error::RecvError::Lagged(_)) => bail!("configuration control history lost"),
+                    Err(broadcast::error::RecvError::Closed) => return Ok(PlayExit::Disconnected),
+                }
+            }
             changed = disconnect_events.changed() => {
                 changed?;
                 let reason=*disconnect_events.borrow_and_update();
                 if let Some(reason)=reason {
                     play_disconnect(&codec,&mut writer,reason).await?;
-                    return Ok(());
+                    return Ok(PlayExit::Disconnected);
                 }
             }
             tick = tick_events.changed() => {
                 tick?;
                 if !teleport_confirmed && Instant::now() >= teleport_deadline { bail!("initial teleport was not acknowledged"); }
                 let now=*tick_events.borrow_and_update();
-                if let Some(action)=keepalive.tick(now) {
+                if let Some(action)=protocol.keep_alive_mut().tick(now) {
                     match action {
                         KeepAliveAction::Challenge(id)=>send(&codec, &mut writer, 0x26, encoded(|w| { w.i64(id); })).await?,
-                        KeepAliveAction::Timeout=>{ play_disconnect(&codec,&mut writer,"disconnect.timeout").await?; return Ok(()); },
+                        KeepAliveAction::Timeout=>{ play_disconnect(&codec,&mut writer,"disconnect.timeout").await?; return Ok(PlayExit::Disconnected); },
                     }
                 }
             }
             packet = rx.recv() => {
-                let Some(packet) = packet else { return Ok(()); };
+                let Some(packet) = packet else { return Ok(PlayExit::Disconnected); };
                 let packet = packet?;
-                if server.shutting_down.load(Ordering::Acquire) { return Ok(()); }
+                if server.shutting_down.load(Ordering::Acquire) { return Ok(PlayExit::Disconnected); }
+                if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
+                    play_disconnect(&codec, &mut writer, UNEXPECTED_COOKIE_RESPONSE_REASON).await?;
+                    return Ok(PlayExit::Disconnected);
+                }
                 let mut fields = Reader::new(&packet.payload);
                 match packet.id {
+                    0x0c => bail!("client acknowledged configuration, but none was requested"),
+                    0x2b => {
+                        let outcome = packs.handle_response(ResourcePackPhase::Play, &packet.payload)?;
+                        if let Some(reason) = outcome.disconnect_reason {
+                            play_disconnect(&codec, &mut writer, reason).await?;
+                            return Ok(PlayExit::Disconnected);
+                        }
+                    },
                     0 => {
                         let ack=fields.varint()?; fields.finish()?;
                         if native_motion {
@@ -3267,10 +3346,10 @@ async fn play(
                     0x29 => server.recipe_seen(entity_id, &packet.payload)?,
                     0x18 => {
                         let id = fields.i64()?; fields.finish()?;
-                        match keepalive.receive(server.epoch.elapsed().as_millis() as i64,id) {
+                        match protocol.keep_alive_mut().receive(server.epoch.elapsed().as_millis() as i64,id) {
                             Ok(Some(latency))=>server.update_latency(entity_id,latency)?,
                             Ok(None)=>{},
-                            Err(_)=>{ play_disconnect(&codec,&mut writer,"disconnect.timeout").await?; return Ok(()); },
+                            Err(_)=>{ play_disconnect(&codec,&mut writer,"disconnect.timeout").await?; return Ok(PlayExit::Disconnected); },
                         }
                     },
                     0x1a | 0x1b => {
@@ -3290,7 +3369,7 @@ async fn play(
                         let (yaw,pitch)=angles.unwrap_or((0.0,0.0));
                         if player_physics::contains_invalid_values(candidate,yaw,pitch) {
                             play_disconnect(&codec,&mut writer,"multiplayer.disconnect.invalid_player_movement").await?;
-                            return Ok(());
+                            return Ok(PlayExit::Disconnected);
                         }
                         let candidate=player_physics::clamp_position(candidate);
                         if teleport_confirmed {
@@ -3314,7 +3393,7 @@ async fn play(
                         }
                         if player_physics::contains_invalid_values(Vec3::ZERO,yaw,pitch) {
                             play_disconnect(&codec,&mut writer,"multiplayer.disconnect.invalid_player_movement").await?;
-                            return Ok(());
+                            return Ok(PlayExit::Disconnected);
                         }
                         if teleport_confirmed { position.yaw=player_physics::wrap_rotation(yaw); position.pitch=player_physics::wrap_rotation(pitch); position.on_ground=on_ground; server.move_player(entity_id, position)?; }
                     },
@@ -3331,6 +3410,7 @@ async fn play(
                     },
                     0x0a => {
                         let info=read_client_information(&packet.payload)?;
+                        current_information=Some(info);
                         requested_view_distance=info.view_distance;
                         let radius=entity_tracking::player_view_distance(requested_view_distance,server.options.view_distance);
                         let view=(radius!=chunk_radius).then_some((center,radius,false));
@@ -3481,7 +3561,7 @@ async fn play(
                     Ok(WorldUpdate::Acknowledge{player,sequence}) if player==entity_id => send(&codec,&mut writer,0x05,encoded(|w|{w.varint(sequence);})).await?,
                     Ok(_) => {},
                     Err(broadcast::error::RecvError::Lagged(_)) => bail!("client fell behind fixture world changes"),
-                    Err(broadcast::error::RecvError::Closed) => return Ok(()),
+                    Err(broadcast::error::RecvError::Closed) => return Ok(PlayExit::Disconnected),
                 }
             }
             update = entity_events.recv() => {
@@ -3508,9 +3588,9 @@ async fn play(
                         // Stop explicitly rather than send Destroy before it.
                         eprintln!("{}",json!({"event":"ordered_entity_history_lost","entity_id":entity_id,"skipped":skipped}));
                         play_disconnect(&codec,&mut writer,"disconnect.disconnected").await?;
-                        return Ok(());
+                        return Ok(PlayExit::Disconnected);
                     },
-                    OrderedEntityInput::Closed => return Ok(()),
+                    OrderedEntityInput::Closed => return Ok(PlayExit::Disconnected),
                 }
             }
         }

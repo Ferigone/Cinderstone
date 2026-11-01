@@ -7,6 +7,25 @@ set -eu
 : "${MC_VIEW_DISTANCE:=2}"
 : "${MC_DIFFICULTY:=easy}"
 : "${MC_ONLINE_MODE:=true}"
+: "${MC_RESOURCE_PACK_REQUIRED:=false}"
+
+case "$MC_RESOURCE_PACK_REQUIRED" in
+    true) set -- --require-resource-pack "$@" ;;
+    false) ;;
+    *) echo "MC_RESOURCE_PACK_REQUIRED must be true or false" >&2; exit 1 ;;
+esac
+if [ -n "${MC_RESOURCE_PACK_URL:-}" ]; then
+    set -- --resource-pack-url "$MC_RESOURCE_PACK_URL" "$@"
+fi
+if [ -n "${MC_RESOURCE_PACK_SHA1:-}" ]; then
+    set -- --resource-pack-sha1 "$MC_RESOURCE_PACK_SHA1" "$@"
+fi
+if [ -n "${MC_RESOURCE_PACK_ID:-}" ]; then
+    set -- --resource-pack-id "$MC_RESOURCE_PACK_ID" "$@"
+fi
+if [ -n "${MC_RESOURCE_PACK_PROMPT:-}" ]; then
+    set -- --resource-pack-prompt "$MC_RESOURCE_PACK_PROMPT" "$@"
+fi
 
 case "$MC_ONLINE_MODE" in
     true) set -- --online-mode "$@" ;;

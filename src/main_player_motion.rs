@@ -474,6 +474,51 @@ impl PlayerMotion {
     }
     fn movement_statistics(&self, origin: Vec3, host: &mut impl PlayerMotionHooks) -> Result<()> {
         let delta = self.physical.position_vec().subtract(origin);
+        // ServerPlayer.checkMovementStatistics first ignores passengers and an
+        // exactly unchanged position, then samples the live post-move water
+        // flags before onGround. The eyes flag is the actual Entity base-tick
+        // fluid tag cache, not a new sample at the packet's destination.
+        if self.physical.vehicle.is_some()
+            || (delta.x == 0. && delta.y == 0. && delta.z == 0.)
+        {
+            return Ok(());
+        }
+        let full_distance = || {
+            java_round(
+                ((delta.x * delta.x + delta.y * delta.y + delta.z * delta.z).sqrt() as f32)
+                    * 100f32,
+            )
+        };
+        // Player.isSwimming additionally gates the shared bit by current
+        // abilities.flying and isSpectator; a flying toggle can precede the
+        // next body tick that clears the underlying bit.
+        let swimming = !self.controls.flying
+            && !self.physical.is_spectator
+            && self.physical.is_swimming();
+        let water_stat = if swimming {
+            Some(("minecraft:swim_one_cm", full_distance()))
+        } else if self.physical.fluid_on_eyes & 1 != 0 {
+            Some(("minecraft:walk_under_water_one_cm", full_distance()))
+        } else if self.physical.was_touching_water {
+            Some((
+                "minecraft:walk_on_water_one_cm",
+                java_round(
+                    ((delta.x * delta.x + delta.z * delta.z).sqrt() as f32) * 100f32,
+                ),
+            ))
+        } else {
+            None
+        };
+        if let Some((key, amount)) = water_stat {
+            if amount > 0 {
+                Self::stat(host, self.physical.entity_id, key, amount)?;
+            }
+            // The currently certified creative player is invulnerable, so
+            // Player.causeFoodExhaustion returns without changing food state.
+            // Survival's real exhaustion/damage owner remains a prerequisite
+            // before broadening that admission profile.
+            return Ok(());
+        }
         let distance = ((delta.x * delta.x + delta.z * delta.z).sqrt() as f32) * 100f32;
         let amount = java_round(distance);
         if self.physical.on_ground() {

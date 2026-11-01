@@ -14,7 +14,7 @@ use mc121_rust::{
         PlayerFoodFrame, PlayerFoodHost, PlayerFoodState, PlayerHealthSync, PlayerHealthUpdate,
     },
     player_stats::StatKey,
-    survival::{Difficulty, FoodData, SurvivalAbilities},
+    survival::{Difficulty, FoodData, HealthState, SurvivalAbilities},
 };
 use std::{collections::BTreeMap, sync::Arc};
 use tokio::sync::broadcast;
@@ -230,20 +230,22 @@ impl PlayerFoodHost for NativeFoodHost<'_> {
     fn heal(&mut self, amount: f32) -> Result<()> {
         let current = self.health()?;
         if current > 0. {
-            let increased = current + amount;
-            let next = if increased < 0. {
-                0.
-            } else if increased > self.max_health {
-                self.max_health
-            } else {
-                increased
+            // Reuse the ported LivingEntity.heal/setHealth arithmetic with
+            // the actual synchronized health and checked current attribute.
+            // heal reads only these two fields. Absorption stays owned by
+            // entity metadata and no absorption/default field is published.
+            let mut state = HealthState {
+                health: current,
+                max_health: self.max_health,
+                ..HealthState::default()
             };
+            state.heal(amount);
             // Queue the actual health field for the normal metadata sender;
             // private SetHealth delivery is a separate later doTick call site.
             self.services.registry.set_entity_data(
                 self.id,
                 9,
-                MetadataValue::Float(next),
+                MetadataValue::Float(state.health),
                 false,
             )?;
         }
