@@ -113,8 +113,11 @@ its existing token, restricted to Ferigone/Cinderstone. A real token-authenticat
 [issue4 handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
 was created and read back at2026-11-01T15:16:38Z. PR creation has not been exercised.
 The GitHub integration still rejects writes with403; another instance's GitHub
-App or token permissions are unchanged. Ordinary Git pushes work. Do not share
-credentials, and retain the per-instance branch/status fallback.
+App or token permissions are unchanged. Git pushes worked in the earlier
+environment. After recovery, the coordinator's private credential is unavailable
+and its newer connection stage is committed locally only; current issue/blob
+writes also returned 403. Retain the per-instance branch/status fallback when
+authenticated Git access is available. Do not infer another session's access.
 
 Use issue comments and PRs when the instance can write them. Otherwise publish
 `docs/coordination/status/<instance-id>.md` on the team's own feature branch.

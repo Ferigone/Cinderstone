@@ -10,6 +10,21 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native connection transport — local stage verified
+
+Source `259e641` connects the configured packet-rate owner, thirty-second raw
+read inactivity, shared common-packet decoding and configurable compression to
+Main. The [focused local flow](docs/validation/connection-flow.json) passed:
+actual rate refusal, compression enabled/disabled, keepalive refusal, signed
+long ping echo and incomplete-frame timeout refresh. Java-compatible UTF-8
+replacement and original built-in beacon-holder validation are included.
+See [production contracts and limits](docs/reference/connection-production.md).
+
+This stage is committed locally; publication and autodeployment are blocked by
+unavailable Git credentials and 403 responses from the connected GitHub write
+path. It is not yet present in the public/hosted release. The fixed checklist
+remains **56/100 code** and **51/100 Main** at `scope_version: 1`.
+
 ## Native chat preview
 
 Native player chat now uses actual session, signature, acknowledgment and

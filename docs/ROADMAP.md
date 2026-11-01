@@ -34,8 +34,12 @@ detailed roadmap does not add points to, rename or replace that checklist.
       real console/unsigned administration, operator permission/tree refresh and
       configured capacity with explicit stored bypass. The local
       [admission flow](validation/admission-flow.json) passed for source `6c54018`.
+- [x] Connect bounded packet-rate enforcement, raw read inactivity, typed
+      connection settings, configurable compression and common wire dispatch to
+      Main; [local flow](validation/connection-flow.json) passed for `259e641`.
+      This newer local source awaits authenticated publication/autodeployment.
 - [ ] Complete admission limits, bans and administration, including remaining
-      parser/profile/date contexts and transport-owned packet-rate enforcement.
+      parser/profile/date contexts and full asynchronous transport equivalence.
 
 The [configuration flow](validation/configuration-flow.json) passed on 1 November
 2026 at 15:18:52 Europe/Warsaw for source

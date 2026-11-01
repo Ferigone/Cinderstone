@@ -5,6 +5,37 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native connection transport — local flow passed, publication blocked
+
+Core `f8c8c72` and Main integration
+`259e64175fb594c7e5b24b329d16e8021b8a3dde` are committed locally. The full Main
+build and [actual local protocol flow](validation/connection-flow.json) passed
+on **1 November 2026 at 21:02:11 Europe/Warsaw**
+(`2026-11-01T20:02:11.997141+00:00`), binary SHA-256
+`ece5cbf3604c632b23c21e757a7095177ac1e80a1a8210168458662a2dd6d9ac`.
+
+Main now invokes real per-TCP packet counters across listener changes, positive
+configured packet-rate enforcement, a raw-byte read-inactivity owner before
+decryption/framing, typed connection settings and configurable compression.
+Pure supported wire decoding precedes accepted dispatch; registered PLAY shapes
+include actual exported beacon holders without adding beacon gameplay. Shared
+custom payload/Pong, PLAY Ping Request echo, Java-compatible UTF-8 replacement
+and the CONFIGURATION keepalive refusal are connected. Pending LOGIN timeout
+writes use a safe frame boundary.
+
+The flow observed actual rate refusal, rate-zero survival with real `/list`,
+compression threshold 8 versus disabled −1, timeout reasons and signed-long echo.
+An incomplete frame closed after 30.002 seconds; a second byte at 20 seconds kept
+another connection alive beyond 32 seconds and moved closure to 50.002 seconds.
+It is not graphical, public-network or real-account verification. Detailed
+owners and remaining limits are in [connection-production.md](reference/connection-production.md).
+
+The six delegated groups finished their assignments. GitHub issue/blob writes
+returned 403 and Git push authentication is unavailable after environment
+recovery. No source push or new Railway deployment is claimed; the last
+observed public/deployed commit remains `f40d8bf`. The unchanged fixed checklist
+is **56/100 code** and **51/100 Main**, `scope_version: 1`. Full `authentication.5` remains open.
+
 ## Native chat, sessions and signatures — bounded local flow passed
 
 Native chat/session code is connected to the actual production owners in source
