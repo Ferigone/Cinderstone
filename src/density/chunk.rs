@@ -13,6 +13,7 @@ pub enum ChunkDensityError {
     SampleOutsideInterpolation,
     ArrayIndex { index: usize, length: usize },
     UnregisteredMarker,
+    MissingDensityRoot(&'static str),
 }
 impl fmt::Display for ChunkDensityError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -30,6 +31,7 @@ impl fmt::Display for ChunkDensityError {
             Self::UnregisteredMarker => {
                 f.write_str("density marker was not wrapped for this chunk")
             }
+            Self::MissingDensityRoot(name) => write!(f, "missing density root {name}"),
         }
     }
 }
@@ -112,6 +114,7 @@ pub struct ChunkDensity {
     owner_context: bool,
     provider: Provider,
     external_points: Vec<DensityPoint>,
+    preliminary_surface_levels: HashMap<i64, i32>,
 }
 fn pack_xz(x: i32, z: i32) -> i64 {
     ((x as u32 as u64) | ((z as u32 as u64) << 32)) as i64
@@ -165,6 +168,7 @@ impl ChunkDensity {
             owner_context: false,
             provider: Provider::External,
             external_points: Vec::new(),
+            preliminary_surface_levels: HashMap::new(),
         })
     }
     pub fn state(&self) -> ChunkDensityState {
@@ -177,9 +181,67 @@ impl ChunkDensity {
             self.state.base_z.wrapping_add(self.state.in_z),
         )
     }
+    /// The vertical extent used by this chunk's interpolation and preliminary
+    /// surface queries, after the generator settings have been clamped to the
+    /// level height accessor.
+    pub fn grid(&self) -> NoiseGrid {
+        self.grid
+    }
+
+    /// NoiseChunk.preliminarySurfaceLevel, including quart-block quantization,
+    /// its per-chunk cache and the original no-surface sentinel (i32::MAX).
+    ///
+    /// The sampled function is the wrapped initial-density root, evaluated with
+    /// a SinglePointContext. It must not use the current interpolation point:
+    /// aquifer queries can ask about columns outside the chunk being filled.
+    pub fn preliminary_surface_level(
+        &mut self,
+        graph: &DensityGraph,
+        x: i32,
+        z: i32,
+    ) -> ChunkResult<i32> {
+        let x = (x >> 2).wrapping_shl(2);
+        let z = (z >> 2).wrapping_shl(2);
+        let key = pack_xz(x, z);
+        if let Some(level) = self.preliminary_surface_levels.get(&key) {
+            return Ok(*level);
+        }
+        let input = graph.root("initial_density_without_jaggedness").ok_or(
+            ChunkDensityError::MissingDensityRoot("initial_density_without_jaggedness"),
+        )?;
+        let was_owner = self.owner_context;
+        self.owner_context = false;
+        let sampled: ChunkResult<i32> = (|| {
+            let mut y = self.grid.min_y.wrapping_add(self.grid.height);
+            while y >= self.grid.min_y {
+                if graph.eval_sampled(input, DensityPoint::new(x, y, z), self)? > 0.390625 {
+                    return Ok(y);
+                }
+                // Vanilla dimensions cannot underflow here. Avoid a wrapped,
+                // nonterminating loop for an out-of-domain custom grid.
+                let Some(next_y) = y.checked_sub(self.grid.cell_height) else {
+                    break;
+                };
+                y = next_y;
+            }
+            Ok(i32::MAX)
+        })();
+        self.owner_context = was_owner;
+        let level = sampled?;
+        self.preliminary_surface_levels.insert(key, level);
+        Ok(level)
+    }
+
     fn update_canonical(&mut self, graph: &DensityGraph) {
         while self.canonical.len() < graph.nodes.len() {
             let id = self.canonical.len();
+            if let DensityNode::Reference(input) = graph.nodes[id] {
+                // HolderHolder.mapAll visits the held function first, then
+                // NoiseChunk.wrapNew returns holder.value(). Parent equality
+                // therefore sees the wrapped child, not another holder layer.
+                self.canonical.push(self.canonical[input.0]);
+                continue;
+            }
             let mut node = graph.nodes[id].clone();
             map_children(&mut node, &mut |child| NodeId(self.canonical[child.0]));
             // Debug floats round-trip uniquely, including signed zero. This key is an
@@ -230,6 +292,11 @@ impl ChunkDensity {
         Ok(())
     }
     fn register(&mut self, graph: &DensityGraph, id: NodeId) -> ChunkResult<()> {
+        if let DensityNode::Reference(input) = graph.nodes[id.0] {
+            // A reference shares its child's canonical identity. Register the
+            // child before marking that identity, or its marker would be lost.
+            return self.register(graph, input);
+        }
         let canonical = self.canonical[id.0];
         if !self.registered.insert(canonical) {
             return Ok(());
@@ -880,5 +947,74 @@ fn map_children(node: &mut DensityNode, map: &mut impl FnMut(NodeId) -> NodeId) 
         }
         DensityNode::Spline(spline) => map_spline(spline, map),
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn holder_indirection_preserves_the_interpolator_owner() {
+        // The original HolderHolder.mapAll + NoiseChunk.wrap produced one
+        // identical owner for these direct/held arguments; see the source note.
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let value = graph.push(DensityNode::Constant(0.25), DensityBounds::constant(0.25));
+        let held = graph.push(DensityNode::Reference(value), graph.bounds(value));
+        let direct = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, value),
+            graph.bounds(value),
+        );
+        let indirect = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, held),
+            graph.bounds(value),
+        );
+        let mut chunk = ChunkDensity::new(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+        )
+        .unwrap();
+        chunk.wrap(&graph, direct).unwrap();
+        chunk.wrap(&graph, indirect).unwrap();
+        assert_eq!(chunk.interpolators.len(), 1);
+        assert_eq!(chunk.canonical[direct.0], chunk.canonical[indirect.0]);
+        chunk.initialize_first_cell_x(&graph).unwrap();
+        chunk.advance_cell_x(&graph, 0).unwrap();
+        chunk.select_cell_yz(&graph, 0, 0).unwrap();
+        chunk.update_for_y(3, 3.0 / 8.0);
+        chunk.update_for_x(2, 2.0 / 4.0);
+        chunk.update_for_z(1, 1.0 / 4.0);
+        assert_eq!(
+            chunk.sample(&graph, direct).unwrap().to_bits(),
+            0.25_f64.to_bits()
+        );
+        assert_eq!(
+            chunk.sample(&graph, indirect).unwrap().to_bits(),
+            0.25_f64.to_bits()
+        );
+        chunk.stop_interpolation().unwrap();
+    }
+
+    #[test]
+    fn builtin_cache_owner_counts_match_the_original_constructor() {
+        for (settings, expected) in [("overworld", (8, 1)), ("nether", (1, 1)), ("end", (1, 1))] {
+            let graph = DensityGraph::builtin(123456789, settings).unwrap();
+            let grid = graph.grid().unwrap();
+            let mut chunk =
+                ChunkDensity::new(grid, -32, 48, (16 / grid.cell_width) as usize).unwrap();
+            chunk.wrap_router(&graph).unwrap();
+            assert_eq!(
+                (chunk.interpolators.len(), chunk.cell_caches.len()),
+                expected,
+                "{settings}"
+            );
+        }
     }
 }
