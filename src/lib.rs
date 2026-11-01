@@ -117,3 +117,5 @@ pub mod connection_payload;
 pub mod connection_settings;
 pub mod connection_transport;
 pub mod worldgen;
+
+compile_error!("CI red demonstration (WP-P1, issue #17): intentional, do not merge");
