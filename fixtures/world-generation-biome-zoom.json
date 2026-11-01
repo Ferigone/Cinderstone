@@ -1,0 +1,2555 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+  "observation": "actual unchanged BiomeManager.getBiome/getFiddledDistance/getFiddle and LinearCongruentialGenerator.next",
+  "provider_scope": "Controlled coordinate-identifying test NoiseBiomeSource returns an actual Holder.direct containing a coordinate token. It observes source query selection only and does not select real world biomes or establish BIOMES chunk status.",
+  "oracle_source_sha256": "1055ee39d40f145122f70cdb26de8a52f674c5743633b1c95dd8eb25ffcf3d76",
+  "oracle_output_sha256": "f7610562665a3623dc28b908512ff1934bf7ae17d546f8ee2cdf4fbbc9f055b6",
+  "tie_rule": "Source bytecode updates only for a strictly smaller distance, retaining the first corner on exact ties. The controlled runtime inputs do not claim an observed natural exact tie.",
+  "fiddle_probes": [
+    {
+      "bits": "13825150136101948621",
+      "seed": "0"
+    },
+    {
+      "bits": "13825150136101948621",
+      "seed": "1"
+    },
+    {
+      "bits": "4601762266279732839",
+      "seed": "-1"
+    },
+    {
+      "bits": "13825150136101948621",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "bits": "4601762266279732839",
+      "seed": "9223372036854775807"
+    },
+    {
+      "bits": "13825134303134508647",
+      "seed": "16777216"
+    },
+    {
+      "bits": "4601762266279732839",
+      "seed": "-16777216"
+    }
+  ],
+  "provider_failure": {
+    "provider_calls": 1,
+    "propagated": true
+  },
+  "lcg_probes": [
+    {
+      "next": "-1",
+      "salt": "-1",
+      "seed": "0"
+    },
+    {
+      "next": "0",
+      "salt": "0",
+      "seed": "0"
+    },
+    {
+      "next": "1",
+      "salt": "1",
+      "seed": "0"
+    },
+    {
+      "next": "-9223372036854775808",
+      "salt": "-9223372036854775808",
+      "seed": "0"
+    },
+    {
+      "next": "9223372036854775807",
+      "salt": "9223372036854775807",
+      "seed": "0"
+    },
+    {
+      "next": "7806831264735756411",
+      "salt": "-1",
+      "seed": "1"
+    },
+    {
+      "next": "7806831264735756412",
+      "salt": "0",
+      "seed": "1"
+    },
+    {
+      "next": "7806831264735756413",
+      "salt": "1",
+      "seed": "1"
+    },
+    {
+      "next": "-1416540772119019396",
+      "salt": "-9223372036854775808",
+      "seed": "1"
+    },
+    {
+      "next": "-1416540772119019397",
+      "salt": "9223372036854775807",
+      "seed": "1"
+    },
+    {
+      "next": "4921441182957829597",
+      "salt": "-1",
+      "seed": "-1"
+    },
+    {
+      "next": "4921441182957829598",
+      "salt": "0",
+      "seed": "-1"
+    },
+    {
+      "next": "4921441182957829599",
+      "salt": "1",
+      "seed": "-1"
+    },
+    {
+      "next": "-4301930853896946210",
+      "salt": "-9223372036854775808",
+      "seed": "-1"
+    },
+    {
+      "next": "-4301930853896946211",
+      "salt": "9223372036854775807",
+      "seed": "-1"
+    },
+    {
+      "next": "9223372036854775807",
+      "salt": "-1",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "next": "-9223372036854775808",
+      "salt": "0",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "next": "-9223372036854775807",
+      "salt": "1",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "next": "0",
+      "salt": "-9223372036854775808",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "next": "-1",
+      "salt": "9223372036854775807",
+      "seed": "-9223372036854775808"
+    },
+    {
+      "next": "-4301930853896946211",
+      "salt": "-1",
+      "seed": "9223372036854775807"
+    },
+    {
+      "next": "-4301930853896946210",
+      "salt": "0",
+      "seed": "9223372036854775807"
+    },
+    {
+      "next": "-4301930853896946209",
+      "salt": "1",
+      "seed": "9223372036854775807"
+    },
+    {
+      "next": "4921441182957829598",
+      "salt": "-9223372036854775808",
+      "seed": "9223372036854775807"
+    },
+    {
+      "next": "4921441182957829597",
+      "salt": "9223372036854775807",
+      "seed": "9223372036854775807"
+    }
+  ],
+  "cases": [
+    {
+      "world_seed": "0",
+      "zoom_seed": "8794265229978523055",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            0,
+            1,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            3,
+            79,
+            8
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499995,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499997,
+            -508,
+            7499995
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870912,
+            536870912,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870911
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "world_seed": "1",
+      "zoom_seed": "-6467378160175308932",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -17,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            3,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            507,
+            -7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "world_seed": "-1",
+      "zoom_seed": "6759447113877070610",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            0,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            3
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499995,
+            507,
+            -7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499997,
+            -508,
+            7499995
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "world_seed": "123456789",
+      "zoom_seed": "-5458710421630621949",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -4,
+            79,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -17,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            79,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            508,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870912,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "world_seed": "-9223372036854775808",
+      "zoom_seed": "6374347445474471398",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            0,
+            1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            0,
+            -1,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            80,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -17,
+            -4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            508,
+            -7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "world_seed": "9223372036854775807",
+      "zoom_seed": "7179146226492139882",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            0,
+            -1,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            0,
+            1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -4,
+            80,
+            3
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            8
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            507,
+            -7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -509,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870912,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870911
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "zoom_seed": "0",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            3
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -509,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870911
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "zoom_seed": "1",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            0,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            1,
+            1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -4,
+            79,
+            3
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -17,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499997,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870912,
+            536870912,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870910,
+            -536870911
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "zoom_seed": "-1",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            3,
+            79,
+            8
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499995,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870912,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "zoom_seed": "-9223372036854775808",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            3
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            4,
+            80,
+            7
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499996,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -509,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870911,
+            536870911,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870911
+          ],
+          "provider_calls": 1
+        }
+      ]
+    },
+    {
+      "zoom_seed": "9223372036854775807",
+      "queries": [
+        {
+          "block": [
+            0,
+            0,
+            0
+          ],
+          "selected_quart": [
+            0,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            1,
+            1,
+            1
+          ],
+          "selected_quart": [
+            -1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2,
+            2,
+            2
+          ],
+          "selected_quart": [
+            0,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            3,
+            3,
+            3
+          ],
+          "selected_quart": [
+            1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            4,
+            4,
+            4
+          ],
+          "selected_quart": [
+            1,
+            0,
+            0
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -1,
+            -1,
+            -1
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2,
+            -2,
+            -2
+          ],
+          "selected_quart": [
+            -1,
+            -1,
+            -1
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -17,
+            319,
+            16
+          ],
+          "selected_quart": [
+            -5,
+            79,
+            4
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            15,
+            -64,
+            -16
+          ],
+          "selected_quart": [
+            3,
+            -16,
+            -5
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            16,
+            320,
+            31
+          ],
+          "selected_quart": [
+            3,
+            79,
+            8
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            29999984,
+            2031,
+            -29999984
+          ],
+          "selected_quart": [
+            7499995,
+            507,
+            -7499997
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -29999984,
+            -2032,
+            29999984
+          ],
+          "selected_quart": [
+            -7499996,
+            -508,
+            7499996
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483648,
+            2147483647,
+            -2147483647
+          ],
+          "selected_quart": [
+            536870912,
+            536870911,
+            536870912
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            2147483647,
+            -2147483647,
+            2147483646
+          ],
+          "selected_quart": [
+            536870911,
+            536870912,
+            536870911
+          ],
+          "provider_calls": 1
+        },
+        {
+          "block": [
+            -2147483646,
+            2147483645,
+            -2147483645
+          ],
+          "selected_quart": [
+            -536870912,
+            536870911,
+            -536870912
+          ],
+          "provider_calls": 1
+        }
+      ]
+    }
+  ],
+  "distance_probes": [
+    {
+      "quart": [
+        0,
+        0,
+        0
+      ],
+      "bits": "4607328785787906949",
+      "zoom_seed": "0",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -1,
+        -64,
+        17
+      ],
+      "bits": "4603248688232482734",
+      "zoom_seed": "0",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -2147483648,
+        2147483647,
+        -17
+      ],
+      "bits": "4604885504735754322",
+      "zoom_seed": "0",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        0,
+        0,
+        0
+      ],
+      "bits": "4610674838385511630",
+      "zoom_seed": "-1",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -1,
+        -64,
+        17
+      ],
+      "bits": "4610520347509931376",
+      "zoom_seed": "-1",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -2147483648,
+        2147483647,
+        -17
+      ],
+      "bits": "4607602905246576148",
+      "zoom_seed": "-1",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        0,
+        0,
+        0
+      ],
+      "bits": "4607328785787906949",
+      "zoom_seed": "-9223372036854775808",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -1,
+        -64,
+        17
+      ],
+      "bits": "4603248688232482734",
+      "zoom_seed": "-9223372036854775808",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -2147483648,
+        2147483647,
+        -17
+      ],
+      "bits": "4604885504735754322",
+      "zoom_seed": "-9223372036854775808",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        0,
+        0,
+        0
+      ],
+      "bits": "4610674838385511630",
+      "zoom_seed": "9223372036854775807",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -1,
+        -64,
+        17
+      ],
+      "bits": "4610520347509931376",
+      "zoom_seed": "9223372036854775807",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    },
+    {
+      "quart": [
+        -2147483648,
+        2147483647,
+        -17
+      ],
+      "bits": "4607602905246576148",
+      "zoom_seed": "9223372036854775807",
+      "offset": [
+        0.25,
+        -0.5,
+        0.75
+      ]
+    }
+  ],
+  "not_verified": [
+    "Actual dimension biome source selection and generated quart-biome storage.",
+    "ChunkStatus dependencies, missing-neighbor availability and persistence.",
+    "Production Main/SurfaceContext integration or full terrain generation."
+  ]
+}

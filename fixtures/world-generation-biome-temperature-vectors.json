@@ -1,0 +1,762 @@
+{
+  "minecraft": "1.21",
+  "source_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "evidence": "Actual unchanged original Biome.getTemperature/private f(BlockPos), coldEnoughToSnow/b(BlockPos), shouldMeltFrozenOceanIcebergSlightly/d(BlockPos), actual original registry biome owners and per-biome ThreadLocal maps. Ordered packed-position aliases and FIFO snapshot are intentional source observations.",
+  "oracle_source_sha256": "a0f20e2c1c0adb8736098bc623995e954192e018da651261e505f057f79ca15a",
+  "oracle_stdout_sha256": "f9f22055ee0822cd59eae996554dfc2a942cdfb6802553cf5126876ab800f5d7",
+  "points": [
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "1061997773",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "1061997773",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "1061976801",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "1061606090",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "1058370243",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "1061997773",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "1061976801",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:plains",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "1056985580",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "1045136671",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "1043653826",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "3193792552",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "0",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "3131299594",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:frozen_ocean",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3184147822",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "1045136671",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "1043653826",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "1049709548",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "1056964608",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "1056922665",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:deep_frozen_ocean",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3184147822",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "0",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "0",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "3131299594",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "3166650455",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "3193792552",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "0",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "3131299594",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_plains",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3197695426",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "3204448256",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "3204448256",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "3204469228",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "3204839939",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "3208075786",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "3204448256",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "3204469228",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:snowy_taiga",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3209460449",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "1045136671",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "1043653826",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "3162823384",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "1045220557",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "1045136671",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:windswept_hills",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3184147822",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "3207803699",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "3207803699",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "3207824671",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "3208195382",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "3211431229",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "3207803699",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "3207824671",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:jagged_peaks",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "3212815892",
+      "cold_enough_to_snow": true,
+      "should_melt_frozen_ocean_iceberg_slightly": false
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        0,
+        63,
+        0
+      ],
+      "temperature_bits": "1073741824",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        0,
+        80,
+        0
+      ],
+      "temperature_bits": "1073741824",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        0,
+        81,
+        0
+      ],
+      "temperature_bits": "1073731338",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        -17,
+        96,
+        23
+      ],
+      "temperature_bits": "1073545983",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        37,
+        256,
+        -103
+      ],
+      "temperature_bits": "1071928059",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        1024,
+        63,
+        -1024
+      ],
+      "temperature_bits": "1073741824",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        1024,
+        81,
+        -1024
+      ],
+      "temperature_bits": "1073731338",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    },
+    {
+      "biome": "minecraft:badlands",
+      "point": [
+        29999984,
+        319,
+        -29999984
+      ],
+      "temperature_bits": "1071235728",
+      "cold_enough_to_snow": false,
+      "should_melt_frozen_ocean_iceberg_slightly": true
+    }
+  ],
+  "packed_alias_sequences": [
+    {
+      "biome": "minecraft:plains",
+      "rows": [
+        {
+          "point": [
+            0,
+            0,
+            0
+          ],
+          "temperature_bits": "1061997773"
+        },
+        {
+          "point": [
+            0,
+            4096,
+            0
+          ],
+          "temperature_bits": "1061997773"
+        }
+      ]
+    },
+    {
+      "biome": "minecraft:plains",
+      "rows": [
+        {
+          "point": [
+            0,
+            4096,
+            0
+          ],
+          "temperature_bits": "3230075453"
+        },
+        {
+          "point": [
+            0,
+            0,
+            0
+          ],
+          "temperature_bits": "3230075453"
+        }
+      ]
+    }
+  ],
+  "fifo_after_full_then_read_oldest_then_insert": {
+    "size": 1024,
+    "first": "274877907007",
+    "last": "281474976710719"
+  }
+}
