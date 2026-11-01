@@ -17,7 +17,7 @@ successful execution of the native implementation or full vanilla parity.
 - Relevant classes: `ServerPlayer` (`aqv`), `ServerGamePacketListenerImpl`
   (`aru`), `AbstractContainerMenu` (`cpu`), `AbstractFurnaceMenu` (`cpv`),
   `Container` (`bqk`), `BaseContainerBlockEntity` (`dqb`), `Inventory` (`cmw`),
-  and `AbstractFurnaceBlock` (`det`).
+  `Player` (`cmx`), and `AbstractFurnaceBlock` (`det`).
 
 ## Ownership survives removal from the level
 
@@ -70,12 +70,30 @@ first, then invokes `doCloseContainer` (`aqv.t`). That method:
    inventory menu.
 3. Assigns the inventory menu as the current menu.
 
-`AbstractContainerMenu.removed` returns only its carried stack. For an alive,
-connected server player it calls `Inventory.placeItemBackInInventory`; for a
-dead or disconnected player it uses the actual player-drop path. It then sets
-the old menu's carried stack to empty. The furnace's three slots are not
-returned a second time. A full inventory can make the cursor remainder enter
-the real player-drop path.
+`AbstractContainerMenu.removed` (`cpu.a(cmx)`) handles a nonempty carried stack
+when its owner is a `ServerPlayer`. Its drop condition is
+`!player.isAlive() || serverPlayer.hasDisconnected()`: the mapped methods are
+`cmx.bE()` and `aqv.w()`. The latter reads the `db` disconnection flag set by
+`aqv.v()`; it is distinct from receiving a client container-close packet.
+When that condition holds, `cmx.a(stack, false)` invokes the two-argument
+`Player.drop` overload, which forwards `around=false` and `traceItem=false`.
+Otherwise, it calls `Inventory.placeItemBackInInventory`. It then sets the old
+menu's carried stack to empty. The furnace's three slots are not returned a
+second time. A full inventory can make the cursor remainder enter the real
+player-drop path even for an alive, connected owner.
+
+The native furnace menu now takes this owner condition explicitly through
+`FurnaceMenuCloseContext`. Main's disconnected-player and duplicate-login
+cleanup select `DeadOrDisconnected`, retaining the cursor as an actual item
+drop instead of inserting it into the disconnecting player's inventory.
+Normal menu closes and live-player save cleanup retain `AliveConnected`.
+The focused local disconnect flow verifies the cursor becoming a real item and
+remaining conserved after cold restart. The full player-death and survival
+lifecycle remains unimplemented. This does not establish the complete
+`PlayerList.remove` callback/persistence order: the current Main cleanup closes
+the furnace before its player checkpoint, whereas Java saves the player before
+the later entity-removal menu callback. The disconnected cursor does not enter
+the player inventory in either path.
 
 `Inventory.placeItemBackInInventory(stack)` enables its packet flag. For each
 successful insertion it sends `ClientboundContainerSetSlotPacket` with window
@@ -118,6 +136,7 @@ close packet first.
 
 These observations require native integration to retain the old container
 identity and each viewer's cursor independently, reject late invalid clicks,
-and run broadcast/validity/close at the actual level player phase. They do not
-establish complete support for survival, disconnected-player drops, all
-workstations, arbitrary callbacks or every packet race.
+and run broadcast/validity/close at the actual level player phase. The bounded
+disconnect cursor path described above still requires its focused runtime
+validation. These observations do not establish complete support for player
+death, survival, all workstations, arbitrary callbacks or every packet race.

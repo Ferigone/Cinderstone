@@ -13,6 +13,14 @@ use std::collections::BTreeSet;
 const MENU_SLOTS: usize = 39;
 const OFFHAND: usize = 39;
 
+/// The actual owner condition at AbstractContainerMenu.removed. The caller
+/// supplies this from player/connection lifecycle state, not the close packet.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FurnaceMenuCloseContext {
+    AliveConnected,
+    DeadOrDisconnected,
+}
+
 /// Actual FurnaceResultSlot.checkTakeAchievements callback. The host must
 /// consume these in order with its real item-crafting, XP, recipe and RNG owners.
 /// Quick-move produces a positive onQuickCraft callback followed by onTake(0).
@@ -152,13 +160,30 @@ impl FurnaceMenu {
         Ok(out)
     }
     pub fn close(&mut self, inventory: &mut PlayerInventory) -> Result<ClickOutcome> {
+        self.close_with_context(inventory, FurnaceMenuCloseContext::AliveConnected)
+    }
+    pub fn close_with_context(
+        &mut self,
+        inventory: &mut PlayerInventory,
+        context: FurnaceMenuCloseContext,
+    ) -> Result<ClickOutcome> {
         // AbstractContainerMenu.removed returns only the carried stack. The
         // three block-entity slots remain in the live furnace owner.
         let mut out = ClickOutcome::default();
-        let mut next_inventory = inventory.clone();
-        let mut carried = self.carried.clone();
-        return_carried_to_inventory(&mut next_inventory, &mut carried, &mut out)?;
-        *inventory = next_inventory;
+        match context {
+            FurnaceMenuCloseContext::AliveConnected => {
+                let mut next_inventory = inventory.clone();
+                let mut carried = self.carried.clone();
+                return_carried_to_inventory(&mut next_inventory, &mut carried, &mut out)?;
+                *inventory = next_inventory;
+            }
+            FurnaceMenuCloseContext::DeadOrDisconnected => {
+                // Player.drop(carried, false) forwards traceItem=false. An
+                // empty cursor does not create an entity. The host commits
+                // this actual drop before publishing the cleared menu.
+                drop_stack(&mut out, self.carried.clone(), false);
+            }
+        }
         self.carried = ItemStack::empty();
         self.quickcraft_status = 0;
         self.quickcraft_slots.clear();

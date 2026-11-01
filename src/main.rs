@@ -2165,7 +2165,10 @@ impl Server {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
         }
         if let Some(window)=players.furnaces.window_id(id) {
-            self.furnace_menu_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;
+            // This actor is leaving after EOF, disconnect, or duplicate-login
+            // replacement. Its carried stack follows Player.drop(stack,false),
+            // before persistence and actor removal, instead of inventory return.
+            self.furnace_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container_furnace::FurnaceMenuCloseContext::DeadOrDisconnected)?;
         }
         if let Some(window)=players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;

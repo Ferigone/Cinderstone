@@ -4,7 +4,7 @@
 //! remain an explicit unsupported boundary until their shared RNG seam exists.
 use super::*;
 use mc121_rust::{
-    container_furnace::FurnaceMenu,
+    container_furnace::{FurnaceMenu, FurnaceMenuCloseContext},
     furnace::{FurnaceKind, FurnaceState},
     inventory::PlayerInventory,
     native_block_entities::{
@@ -461,6 +461,32 @@ impl Server {
         now: i64,
         border: CollisionBorder,
     ) -> Result<bool> {
+        self.furnace_menu_action_with_close_context_locked(
+            world,
+            players,
+            id,
+            click,
+            close,
+            send_close,
+            now,
+            border,
+            FurnaceMenuCloseContext::AliveConnected,
+        )
+    }
+    /// Disconnect cleanup owns this context explicitly; ordinary menu closes
+    /// and the live-player save path retain Inventory.placeItemBackInInventory.
+    pub(super) fn furnace_menu_action_with_close_context_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        click: Option<&ContainerClick>,
+        close: Option<u8>,
+        send_close: bool,
+        now: i64,
+        border: CollisionBorder,
+        close_context: FurnaceMenuCloseContext,
+    ) -> Result<bool> {
         let Some(open) = players.furnaces.menus.get(&id).cloned() else {
             return Ok(false);
         };
@@ -498,7 +524,7 @@ impl Server {
         let mut next_state = old_state.clone();
         let mut next_open = open.clone();
         let outcome = if close.is_some() {
-            next_open.menu.close(&mut next_inventory)?
+            next_open.menu.close_with_context(&mut next_inventory, close_context)?
         } else if open.spectator {
             ClickOutcome {
                 packets: next_open.menu.full_sync(&next_state, &next_inventory)?,
