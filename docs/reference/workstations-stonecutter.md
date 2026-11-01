@@ -152,3 +152,51 @@ owns the outer server-close packet, which precedes these removed callbacks.
 The focused adapter flow now verifies result-throw sound/drop/final-sync order
 and a mixed alive close where the cursor overflow drops before a later input
 insertion packet and that input's remaining overflow drop.
+
+## Actual inventory callbacks and source phases
+
+The adapter now exposes `StonecutterMenuEvent::PlayerInventoryChanged` for the
+actual `Inventory.setChanged`/timesChanged owner, distinct from slot listeners
+and packets. It does not create a counterfeit counter in the menu. The host
+must stage that actual player callback or reject the unsupported context before
+commit. Temporary-input callbacks are separately represented by `InputChanged`:
+SimpleContainer's setter/remover callback, Slot.setChanged and Slot.onTake retain
+their source multiplicity. The default server update listener is the shipped
+no-op; reentrant custom listeners remain unsupported.
+
+Every effect, input/player change, sync and indexed drop carries read-only
+`StonecutterPhase` observations of the actual temporary input, derived result,
+selected data index, canonical player inventory and external cursor. They are
+not additional owners. Initial/incremental sync entrypoints also return these
+phase-tagged events. A host must execute callbacks against the supplied source
+phase rather than replaying all callbacks against only final inventory contents.
+
+In-place quick-move mutations use private working overlays until the source
+container's changed/recompute boundary. Thus shifting the last input can show
+an empty live input alongside the old selection/result at the destination's
+inventory callback, then clear the selection/result at the input callback.
+Crafted/recipe callbacks observe pre-consumption input; input removal observes
+the actual result remainder; subsequent synchronization and sound observe the
+recomputed preview. Cursor-only removal precedes result discard and actual input
+return. Close reconstructs per-insertion phases from the shared ordered raw
+inventory-slot packets, retaining whether the owned return belongs to the cursor
+or input. Actual world/drop construction still belongs to Main's real host.
+
+The ordinary nonempty self-hotbar SWAP preserves its two inventory-change calls.
+An overfull self-swap preserves held/source aliasing, so only the split remainder
+enters Inventory.add. `Slot.safeInsert` uses signed capacity: an imported/raw
+99-count default stone target plus one cursor stone becomes target64/cursor36.
+Zero-capacity insertion still executes the setter and dirty callbacks. Empty
+quick-move destinations retain the setter's callback and the extra source
+Slot.setChanged; merged destinations retain one change callback. Java wrapping
+count arithmetic is used at these accepted overfull boundaries.
+
+Focused native regressions passed for self-swap callback multiplicity, a
+conserved two-sword overfull self-swap, signed and zero capacity, temporary-input
+callback counts, destination-versus-input shift phases, crafted/input/sound
+phases and cursor-versus-input close observations. This is callable native source
+verification. Main still must supply actual player counters, item-crafted,
+recipe/advancement, feature-set, block validity, sound and real drop owners.
+Mutating item callbacks/custom recipe contexts outside the pinned block-result
+profile require an explicit integration contract rather than a no-op substitute.
+No Main callsite or completed aggregate checklist delivery is claimed.

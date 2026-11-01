@@ -6,6 +6,7 @@ use crate::{
         ClickOutcome, ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer,
     },
     inventory::{self, ItemStack, PlayerInventory},
+    protocol::{Packet, Reader},
     workstations::{
         menu::{MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess, WorkstationKind},
         stonecutter::{
@@ -29,20 +30,92 @@ pub struct StonecutterMenu {
     quickcraft_type: u8,
     quickcraft_slots: BTreeSet<usize>,
 }
+/// Read-only source-boundary observations; these are not additional owners.
+#[derive(Clone, Debug)]
+pub struct StonecutterPhase {
+    pub input: ItemStack,
+    pub result_preview: ItemStack,
+    pub selected_recipe_index: i32,
+    pub inventory: PlayerInventory,
+    /// The external menu cursor, separate from retained window0 carried state.
+    pub carried: ItemStack,
+}
 #[derive(Clone, Debug)]
 pub enum StonecutterMenuEvent {
-    Sync(SyncEvent),
-    Effect(StonecutterEffect),
-    /// Execute exactly this owned drop at its source callback position. The
-    /// index refers to `StonecutterPublication.outcome.drops`, not a copy.
+    Sync {
+        event: SyncEvent,
+        phase: StonecutterPhase,
+    },
+    Effect {
+        effect: StonecutterEffect,
+        phase: StonecutterPhase,
+    },
+    /// SimpleContainer.setChanged, its slotsChanged callback and default server
+    /// update listener. The native kernel already computed its state change.
+    InputChanged { phase: StonecutterPhase },
+    /// Actual Inventory.setChanged/timesChanged. The actual player owns it.
+    PlayerInventoryChanged { phase: StonecutterPhase },
+    /// Index into publication.outcome.drops; dispatch at this source position.
     Drop {
         index: usize,
+        phase: StonecutterPhase,
     },
-    /// Item.onCraftedBy(stack, level, player), before trying result quick-move.
-    /// This callback occurs even when the actual inventory accepts nothing.
+    /// Item.onCraftedBy BEFORE even attempting output quick-move insertion.
     ItemCraftedBeforeQuickMove {
         stack: ItemStack,
+        phase: StonecutterPhase,
     },
+}
+impl StonecutterPhase {
+    fn observe_return_packet(
+        &mut self,
+        packet: &Packet,
+        returning: &mut ItemStack,
+        cursor: bool,
+    ) -> Result<()> {
+        ensure!(
+            packet.id == 0x15,
+            "unsupported stonecutter close packet phase"
+        );
+        let mut reader = Reader::new(&packet.payload);
+        ensure!(
+            reader.i8()? == -2 && reader.varint()? == 0,
+            "stonecutter close requires raw Inventory slot packet"
+        );
+        let raw = reader.i16()?;
+        let slot = match raw {
+            0..=8 => 36 + raw as usize,
+            9..=35 => raw as usize,
+            40 => 45,
+            _ => bail!("unsupported stonecutter return index"),
+        };
+        let stack = ItemStack::decode_exact(reader.remaining())?;
+        let old = self.inventory.slot(slot).unwrap();
+        ensure!(
+            stack.same_item_same_components(returning)?,
+            "stonecutter return changed item identity"
+        );
+        let previous = if old.is_empty() {
+            0
+        } else {
+            ensure!(
+                old.same_item_same_components(&stack)?,
+                "stonecutter return overwrote item"
+            );
+            old.count
+        };
+        let added = stack.count.wrapping_sub(previous);
+        ensure!(
+            added > 0 && added <= returning.count,
+            "invalid stonecutter return phase"
+        );
+        self.inventory.set_slot_authoritative(slot, stack);
+        *returning = counted(returning, returning.count.wrapping_sub(added));
+        if cursor {
+            self.carried = canonical(returning);
+        }
+        Ok(())
+    }
 }
 /// A prepared action has no live effects. Inspect/stage `events` and actual item
 /// drops using real owners before consuming `commit`; failed staging is abort.
@@ -55,6 +128,8 @@ pub struct PreparedStonecutterAction {
     next_inventory: PlayerInventory,
     events: Vec<StonecutterMenuEvent>,
     outcome: ClickOutcome,
+    raw_input: Option<ItemStack>,
+    raw_result: Option<ItemStack>,
 }
 /// Publish `events` in order. A Drop index consumes that one owned stack from
 /// outcome.drops; never drain drops independently before/after this sequence.
@@ -150,29 +225,55 @@ impl StonecutterMenu {
             .ok_or_else(|| anyhow::anyhow!("menu revision exhausted"))?;
         Ok(())
     }
-    pub fn initialize(&mut self, inventory: &PlayerInventory) -> Result<Vec<SyncEvent>> {
+    pub fn initialize(&mut self, inventory: &PlayerInventory) -> Result<Vec<StonecutterMenuEvent>> {
         let mut next = self.clone();
         let top = next.top();
         let data = next.data();
         let out = next.sync.initialize(&top, inventory, &data)?;
         next.advance_revision()?;
         *self = next;
-        Ok(out)
+        let phase = self.phase(inventory);
+        Ok(out
+            .into_iter()
+            .map(|event| StonecutterMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect())
     }
-    pub fn broadcast_changes(&mut self, inventory: &PlayerInventory) -> Result<Vec<SyncEvent>> {
+    pub fn broadcast_changes(
+        &mut self,
+        inventory: &PlayerInventory,
+    ) -> Result<Vec<StonecutterMenuEvent>> {
         let mut next = self.clone();
         let top = next.top();
         let data = next.data();
         let out = next.sync.broadcast_changes(&top, inventory, &data)?;
         next.advance_revision()?;
         *self = next;
-        Ok(out)
+        let phase = self.phase(inventory);
+        Ok(out
+            .into_iter()
+            .map(|event| StonecutterMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect())
     }
     pub fn still_valid(&self, access: &impl WorkstationAccess) -> Result<bool> {
         self.sync.still_valid(access)
     }
     pub fn transfer_inventory_state(&self, player: &mut PlayerContainer) -> Result<()> {
         self.sync.transfer_inventory_state(player)
+    }
+    fn phase(&self, inventory: &PlayerInventory) -> StonecutterPhase {
+        StonecutterPhase {
+            input: self.state.input().clone(),
+            result_preview: self.state.result_preview().clone(),
+            selected_recipe_index: self.state.selected_recipe_index(),
+            inventory: inventory.clone(),
+            carried: self.carried().clone(),
+        }
     }
     fn reset_quickcraft(&mut self) {
         self.quickcraft_status = 0;
@@ -187,6 +288,8 @@ impl StonecutterMenu {
             next_inventory: inventory.clone(),
             events: vec![],
             outcome: ClickOutcome::default(),
+            raw_input: None,
+            raw_result: None,
         }
     }
     pub fn prepare_button(
@@ -204,9 +307,7 @@ impl StonecutterMenu {
                 .next_menu
                 .sync
                 .broadcast_changes(&top, &action.next_inventory, &data)?;
-        action
-            .events
-            .extend(events.into_iter().map(StonecutterMenuEvent::Sync));
+        action.push_sync(events);
         action.next_menu.advance_revision()?;
         Ok(action)
     }
@@ -227,6 +328,10 @@ impl StonecutterMenu {
         let before = self.state_id();
         action.next_menu.sync.suppress_remote_updates(true);
         action.do_click(click, recipes, world_game_time, creative)?;
+        ensure!(
+            action.raw_input.is_none() && action.raw_result.is_none(),
+            "unflushed stonecutter source-stack phase"
+        );
         let top = action.next_menu.top();
         let data = action.next_menu.data();
         let events = action.next_menu.sync.finish_click(
@@ -236,9 +341,7 @@ impl StonecutterMenu {
             &action.next_inventory,
             &data,
         )?;
-        action
-            .events
-            .extend(events.into_iter().map(StonecutterMenuEvent::Sync));
+        action.push_sync(events);
         action.next_menu.advance_revision()?;
         Ok(action)
     }
@@ -256,31 +359,107 @@ impl StonecutterMenu {
             context,
         )?;
         action.outcome = removal.outcome;
+        let mut phase = self.phase(inventory);
+        let input_before = phase.input.clone();
+        let mut returning = phase.carried.clone();
+        let mut cursor = true;
         for event in removal.events {
+            if returning.is_empty() && cursor {
+                cursor = false;
+                returning = input_before.clone();
+                phase.carried = ItemStack::empty();
+                phase.input = ItemStack::empty();
+                phase.result_preview = ItemStack::empty();
+            }
             match event {
                 MenuRemovalEvent::Packet { index } => {
-                    action
-                        .events
-                        .push(StonecutterMenuEvent::Sync(SyncEvent::Packet(
-                            action.outcome.packets[index].clone(),
-                        )))
+                    let packet = action.outcome.packets[index].clone();
+                    phase.observe_return_packet(&packet, &mut returning, cursor)?;
+                    action.events.push(StonecutterMenuEvent::Sync {
+                        event: SyncEvent::Packet(packet),
+                        phase: phase.clone(),
+                    });
                 }
                 MenuRemovalEvent::Drop { index } => {
-                    action.events.push(StonecutterMenuEvent::Drop { index })
+                    ensure!(
+                        action.outcome.drops[index].stack == returning,
+                        "stonecutter close drop phase changed"
+                    );
+                    if cursor {
+                        phase.carried = returning.clone();
+                    }
+                    action.events.push(StonecutterMenuEvent::Drop {
+                        index,
+                        phase: phase.clone(),
+                    });
+                    returning = ItemStack::empty();
+                    if cursor {
+                        phase.carried = ItemStack::empty();
+                    }
                 }
             }
         }
-        // Packets have a single ordered publication owner in events.
         action.outcome.packets.clear();
         action.next_menu.advance_revision()?;
         Ok(action)
     }
 }
 impl PreparedStonecutterAction {
+    fn phase(&self) -> StonecutterPhase {
+        let mut phase = self.next_menu.phase(&self.next_inventory);
+        if let Some(input) = &self.raw_input {
+            phase.input = canonical(input);
+        }
+        if let Some(result) = &self.raw_result {
+            phase.result_preview = canonical(result);
+        }
+        phase
+    }
+    fn push_sync(&mut self, events: Vec<SyncEvent>) {
+        let phase = self.phase();
+        self.events
+            .extend(events.into_iter().map(|event| StonecutterMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            }));
+    }
+    fn input_changed(&mut self) {
+        self.events.push(StonecutterMenuEvent::InputChanged {
+            phase: self.phase(),
+        });
+    }
+    fn changed(&mut self, slot: usize, recipes: &impl StonecutterRecipes) -> Result<()> {
+        match slot {
+            0 => {
+                if let Some(input) = self.raw_input.take() {
+                    self.next_menu.state.replace_input(input, recipes)?;
+                    if self.next_menu.state.input().is_empty() {
+                        self.raw_result = None;
+                    }
+                }
+                self.input_changed();
+            }
+            1 => {} // ResultContainer.setChanged is the original no-op.
+            _ => self
+                .events
+                .push(StonecutterMenuEvent::PlayerInventoryChanged {
+                    phase: self.phase(),
+                }),
+        }
+        Ok(())
+    }
     fn slot(&self, slot: usize) -> ItemStack {
         match slot {
-            0 => self.next_menu.state.input().clone(),
-            1 => self.next_menu.state.result_preview().clone(),
+            0 => self
+                .raw_input
+                .as_ref()
+                .unwrap_or(self.next_menu.state.input())
+                .clone(),
+            1 => self
+                .raw_result
+                .as_ref()
+                .unwrap_or(self.next_menu.state.result_preview())
+                .clone(),
             _ => self
                 .next_inventory
                 .slot(slot + 7)
@@ -288,6 +467,8 @@ impl PreparedStonecutterAction {
                 .clone(),
         }
     }
+    /// Slot.setByPlayer: the temporary SimpleContainer setter invokes its own
+    /// changed callback, then Slot.set invokes changed once more.
     fn set_slot(
         &mut self,
         slot: usize,
@@ -295,34 +476,119 @@ impl PreparedStonecutterAction {
         recipes: &impl StonecutterRecipes,
     ) -> Result<()> {
         match slot {
-            0 => self.next_menu.state.replace_input(stack, recipes)?,
-            1 => bail!("derived stonecutter result cannot be assigned as owned input"),
-            _ => self.next_inventory.set_slot_authoritative(slot + 7, stack),
+            0 => {
+                self.raw_input = None;
+                self.raw_result = None;
+                self.next_menu.state.replace_input(stack, recipes)?;
+                self.input_changed();
+                self.input_changed();
+            }
+            1 => self.raw_result = Some(canonical(&stack)),
+            _ => {
+                self.next_inventory
+                    .set_slot_authoritative(slot + 7, canonical(&stack));
+                self.changed(slot, recipes)?;
+            }
         }
         Ok(())
     }
+    fn mutate_slot(&mut self, slot: usize, stack: ItemStack) {
+        match slot {
+            0 => self.raw_input = Some(canonical(&stack)),
+            1 => self.raw_result = Some(canonical(&stack)),
+            _ => self
+                .next_inventory
+                .set_slot_authoritative(slot + 7, canonical(&stack)),
+        }
+    }
     fn sync_after_recompute(&mut self) -> Result<()> {
-        let top = self.next_menu.top();
-        let data = self.next_menu.data();
-        let events = self
-            .next_menu
-            .sync
-            .broadcast_changes(&top, &self.next_inventory, &data)?;
-        self.events
-            .extend(events.into_iter().map(StonecutterMenuEvent::Sync));
+        let phase = self.phase();
+        let events = self.next_menu.sync.broadcast_changes(
+            &[phase.input, phase.result_preview],
+            &self.next_inventory,
+            &[phase.selected_recipe_index],
+        )?;
+        self.push_sync(events);
         Ok(())
     }
     fn apply_take(&mut self, take: StonecutterTake) -> Result<ItemStack> {
+        let effects = take.effects().to_vec();
+        // Crafted/reward callbacks precede input consumption. The result
+        // container already holds the actual removed/insertion remainder.
+        for effect in effects.iter().take_while(|effect| {
+            !matches!(effect, StonecutterEffect::InputConsumedAndResultRecomputed)
+        }) {
+            self.events.push(StonecutterMenuEvent::Effect {
+                effect: effect.clone(),
+                phase: self.phase(),
+            });
+        }
         let taken = take.commit(&mut self.next_menu.state)?;
+        if self.next_menu.state.input().is_empty() {
+            self.raw_result = Some(ItemStack::empty());
+        }
+        // inputSlot.remove(1) invokes SimpleContainer.setChanged exactly once.
+        self.input_changed();
+        self.raw_result = None;
+        self.raw_input = None;
+        self.sync_after_recompute()?;
+        let mut after_recompute = false;
         for effect in taken.effects {
             if effect == StonecutterEffect::InputConsumedAndResultRecomputed {
-                self.sync_after_recompute()?;
-            } else {
-                self.events.push(StonecutterMenuEvent::Effect(effect));
+                after_recompute = true;
+                continue;
+            }
+            if after_recompute {
+                self.events.push(StonecutterMenuEvent::Effect {
+                    effect,
+                    phase: self.phase(),
+                });
             }
         }
         Ok(taken.output)
     }
+    /// Slot.tryRemove, without its caller-specific onTake/cursor ordering.
+    fn try_remove_slot(
+        &mut self,
+        slot: usize,
+        amount: i32,
+        maximum: i32,
+        recipes: &impl StonecutterRecipes,
+    ) -> Result<ItemStack> {
+        let source = self.slot(slot);
+        if source.is_empty() || maximum <= 0 {
+            return Ok(ItemStack::empty());
+        }
+        ensure!(
+            slot != 1,
+            "result removal requires its prepared result owner"
+        );
+        let amount = amount.min(maximum).max(0).min(source.count);
+        if amount == 0 {
+            return Ok(ItemStack::empty());
+        }
+        let taken = if slot == 0 {
+            let taken = self.next_menu.state.remove_input(amount, recipes)?;
+            self.raw_input = None;
+            if self.next_menu.state.input().is_empty() {
+                self.raw_result = None;
+            }
+            self.input_changed();
+            taken
+        } else {
+            let taken = counted(&source, amount);
+            self.next_inventory.set_slot_authoritative(
+                slot + 7,
+                counted(&source, source.count.wrapping_sub(amount)),
+            );
+            taken
+        };
+        if self.slot(slot).is_empty() {
+            self.set_slot(slot, ItemStack::empty(), recipes)?;
+        }
+        Ok(taken)
+    }
+    /// Slot.safeTake runs onTake before returning to THROW/PICKUP_ALL callers.
     fn take_slot(
         &mut self,
         slot: usize,
@@ -331,22 +597,21 @@ impl PreparedStonecutterAction {
         recipes: &impl StonecutterRecipes,
         time: i64,
     ) -> Result<ItemStack> {
-        let source = self.slot(slot);
-        if source.is_empty() || maximum <= 0 {
-            return Ok(ItemStack::empty());
-        }
         if slot == 1 {
-            // Slot.tryRemove forbids partial extraction when mayPlace is false.
-            if source.count > maximum {
+            let source = self.slot(slot);
+            if source.is_empty() || source.count > maximum {
                 return Ok(ItemStack::empty());
             }
             if let Some(take) = self.next_menu.state.prepare_take(recipes, time)? {
+                self.raw_result = Some(ItemStack::empty());
                 return self.apply_take(take);
             }
             return Ok(ItemStack::empty());
         }
-        let taken = counted(&source, amount.min(maximum).max(0).min(source.count));
-        self.set_slot(slot, counted(&source, source.count - taken.count), recipes)?;
+        let taken = self.try_remove_slot(slot, amount, maximum, recipes)?;
+        if !taken.is_empty() {
+            self.changed(slot, recipes)?;
+        }
         Ok(taken)
     }
     fn do_click(
@@ -374,10 +639,15 @@ impl PreparedStonecutterAction {
                     } else {
                         1.min(source.count)
                     };
-                    self.next_menu
-                        .sync
-                        .set_carried(counted(&source, source.count - amount));
-                    self.drop_stack(counted(&source, amount));
+                    if button == 1 {
+                        self.next_menu
+                            .sync
+                            .set_carried(counted(&source, source.count.wrapping_sub(amount)));
+                        self.drop_stack(counted(&source, amount));
+                    } else {
+                        self.drop_stack(counted(&source, amount));
+                        self.next_menu.sync.set_carried(ItemStack::empty());
+                    }
                 } else if slot >= 0 {
                     let slot = slot as usize;
                     if click.kind == ClickType::QuickMove {
@@ -429,75 +699,69 @@ impl PreparedStonecutterAction {
         time: i64,
     ) -> Result<()> {
         let source = self.slot(slot);
-        let carried = self.next_menu.sync.carried().clone();
+        let carried = self.next_menu.carried().clone();
         ensure!(
             inventory::item_name(source.item_id) != Some("bundle")
                 && inventory::item_name(carried.item_id) != Some("bundle"),
             "bundle item click overrides require the actual bundle owner"
         );
         if slot == 1 {
-            if source.is_empty() {
-                return Ok(());
-            }
-            if carried.is_empty() {
-                if let Some(take) = self.next_menu.state.prepare_take(recipes, time)? {
-                    // cpu.lambda$doClick$3 installs the actual cursor first.
-                    self.next_menu
-                        .sync
-                        .set_carried(take.output_preview().clone());
-                    self.apply_take(take)?;
-                }
-            } else if source.same_item_same_components(&carried)?
-                && carried.max_stack_size()? - carried.count >= source.count
+            if !source.is_empty()
+                && (carried.is_empty()
+                    || source.same_item_same_components(&carried)?
+                        && carried.max_stack_size()?.wrapping_sub(carried.count) >= source.count)
             {
                 if let Some(take) = self.next_menu.state.prepare_take(recipes, time)? {
-                    // lambda$doClick$4 grows that same cursor before onTake.
-                    self.next_menu.sync.set_carried(counted(
-                        &carried,
-                        carried.count + take.output_preview().count,
-                    ));
+                    self.raw_result = Some(ItemStack::empty());
+                    self.next_menu.sync.set_carried(if carried.is_empty() {
+                        take.output_preview().clone()
+                    } else {
+                        counted(
+                            &carried,
+                            carried.count.wrapping_add(take.output_preview().count),
+                        )
+                    });
                     self.apply_take(take)?;
                 }
             }
-            return Ok(());
+            return Ok(()); // final result Slot.setChanged is a no-op
         }
         if source.is_empty() {
-            if !carried.is_empty() && slot != 1 {
+            if !carried.is_empty() {
                 let amount = (if button == 0 { carried.count } else { 1 }).min(limit(&carried)?);
-                self.set_slot(slot, counted(&carried, amount), recipes)?;
                 self.next_menu
                     .sync
-                    .set_carried(counted(&carried, carried.count - amount));
+                    .set_carried(counted(&carried, carried.count.wrapping_sub(amount)));
+                self.set_slot(slot, counted(&carried, amount), recipes)?;
             }
         } else if carried.is_empty() {
             let amount = if button == 0 {
                 source.count
             } else {
-                (source.count + 1) / 2
+                source.count.wrapping_add(1) / 2
             };
-            let taken = self.take_slot(slot, amount, i32::MAX, recipes, time)?;
-            self.next_menu.sync.set_carried(taken);
-        } else if slot != 1 {
-            if source.same_item_same_components(&carried)? {
-                let amount = (if button == 0 { carried.count } else { 1 })
-                    .min((limit(&carried)? - source.count).max(0));
-                if amount > 0 {
-                    self.set_slot(slot, counted(&source, source.count + amount), recipes)?;
-                    self.next_menu
-                        .sync
-                        .set_carried(counted(&carried, carried.count - amount));
-                }
-            } else if carried.count <= limit(&carried)? {
-                self.set_slot(slot, carried, recipes)?;
-                self.next_menu.sync.set_carried(source);
+            let taken = self.try_remove_slot(slot, amount, i32::MAX, recipes)?;
+            if !taken.is_empty() {
+                self.next_menu.sync.set_carried(taken);
+                self.changed(slot, recipes)?;
             }
         } else if source.same_item_same_components(&carried)? {
-            let amount = (carried.max_stack_size()? - carried.count).max(0);
-            let taken = self.take_slot(slot, source.count, amount, recipes, time)?;
+            // crq.safeInsert uses SIGNED capacity, including zero/negative.
+            let amount = (if button == 0 { carried.count } else { 1 })
+                .min(limit(&carried)?.wrapping_sub(source.count));
             self.next_menu
                 .sync
-                .set_carried(counted(&carried, carried.count + taken.count));
+                .set_carried(counted(&carried, carried.count.wrapping_sub(amount)));
+            self.set_slot(
+                slot,
+                counted(&source, source.count.wrapping_add(amount)),
+                recipes,
+            )?;
+        } else if carried.count <= limit(&carried)? {
+            self.next_menu.sync.set_carried(source);
+            self.set_slot(slot, carried, recipes)?;
         }
+        self.changed(slot, recipes)?;
         Ok(())
     }
     fn move_to(
@@ -506,9 +770,10 @@ impl PreparedStonecutterAction {
         start: usize,
         end: usize,
         reverse: bool,
+        source_slot: usize,
         recipes: &impl StonecutterRecipes,
     ) -> Result<bool> {
-        let before = stack.count;
+        let mut moved = false;
         let order: Vec<usize> = if reverse {
             (start..end).rev().collect()
         } else {
@@ -518,10 +783,25 @@ impl PreparedStonecutterAction {
             for &slot in &order {
                 let existing = self.slot(slot);
                 if !existing.is_empty() && existing.same_item_same_components(stack)? {
-                    let amount = stack.count.min((limit(stack)? - existing.count).max(0));
-                    if amount > 0 {
-                        self.set_slot(slot, counted(&existing, existing.count + amount), recipes)?;
-                        *stack = counted(stack, stack.count - amount);
+                    let total = existing.count.wrapping_add(stack.count);
+                    let maximum = limit(&existing)?;
+                    if total <= maximum {
+                        *stack = ItemStack::empty();
+                        self.mutate_slot(source_slot, stack.clone());
+                        self.mutate_slot(slot, counted(&existing, total));
+                        self.changed(slot, recipes)?;
+                        moved = true;
+                    } else if existing.count < maximum {
+                        *stack = counted(
+                            stack,
+                            stack
+                                .count
+                                .wrapping_sub(maximum.wrapping_sub(existing.count)),
+                        );
+                        self.mutate_slot(source_slot, stack.clone());
+                        self.mutate_slot(slot, counted(&existing, maximum));
+                        self.changed(slot, recipes)?;
+                        moved = true;
                     }
                     if stack.is_empty() {
                         break;
@@ -533,13 +813,17 @@ impl PreparedStonecutterAction {
             for slot in order {
                 if self.slot(slot).is_empty() {
                     let amount = stack.count.min(limit(stack)?);
-                    self.set_slot(slot, counted(stack, amount), recipes)?;
-                    *stack = counted(stack, stack.count - amount);
+                    let inserted = counted(stack, amount);
+                    *stack = counted(stack, stack.count.wrapping_sub(amount));
+                    self.mutate_slot(source_slot, stack.clone());
+                    self.set_slot(slot, inserted, recipes)?;
+                    self.changed(slot, recipes)?;
+                    moved = true;
                     break;
                 }
             }
         }
-        Ok(stack.count != before)
+        Ok(moved)
     }
     fn quick_move_once(
         &mut self,
@@ -556,30 +840,39 @@ impl PreparedStonecutterAction {
             self.events
                 .push(StonecutterMenuEvent::ItemCraftedBeforeQuickMove {
                     stack: source.clone(),
+                    phase: self.phase(),
                 });
-            if !self.move_to(&mut left, 2, 38, true, recipes)? {
+            if !self.move_to(&mut left, 2, 38, true, slot, recipes)? {
                 return Ok(false);
             }
+            if left.is_empty() {
+                self.set_slot(slot, ItemStack::empty(), recipes)?;
+            }
+            self.changed(slot, recipes)?; // ResultContainer no-op
             let take = self.next_menu.state.prepare_quick_take(
                 recipes,
                 time,
-                source.count - left.count,
+                source.count.wrapping_sub(left.count),
             )?;
             self.apply_take(take)?;
             self.sync_after_recompute()?;
             return Ok(true);
         }
         let moved = if slot == 0 {
-            self.move_to(&mut left, 2, 38, false, recipes)?
+            self.move_to(&mut left, 2, 38, false, slot, recipes)?
         } else if !recipes.matching_recipes(&left)?.is_empty() {
-            self.move_to(&mut left, 0, 1, false, recipes)?
+            self.move_to(&mut left, 0, 1, false, slot, recipes)?
         } else if slot < 29 {
-            self.move_to(&mut left, 29, 38, false, recipes)?
+            self.move_to(&mut left, 29, 38, false, slot, recipes)?
         } else {
-            self.move_to(&mut left, 2, 29, false, recipes)?
+            self.move_to(&mut left, 2, 29, false, slot, recipes)?
         };
         if moved {
-            self.set_slot(slot, left, recipes)?;
+            if left.is_empty() {
+                self.set_slot(slot, ItemStack::empty(), recipes)?;
+            }
+            self.changed(slot, recipes)?;
+            self.changed(slot, recipes)?; // Slot.setChanged then onTake
             self.sync_after_recompute()?;
         }
         Ok(moved)
@@ -597,50 +890,57 @@ impl PreparedStonecutterAction {
         } else {
             36 + button as usize
         };
-        if slot >= 2 && slot + 7 == player_slot {
-            return Ok(());
-        }
+        let aliases_held = slot >= 2 && slot + 7 == player_slot;
         let source = self.slot(slot);
         let held = self
             .next_inventory
             .slot(player_slot)
-            .expect("hotbar/offhand owner")
+            .expect("actual hotbar/offhand")
             .clone();
         if source.is_empty() && held.is_empty() {
             return Ok(());
         }
         if held.is_empty() {
-            // SWAP installs the actual hotbar/offhand output before onTake,
-            // including that callback's nested broadcastChanges.
             self.next_inventory
                 .set_slot_authoritative(player_slot, source.clone());
             if slot == 1 {
                 if let Some(take) = self.next_menu.state.prepare_take(recipes, time)? {
+                    self.raw_result = Some(ItemStack::empty());
                     self.apply_take(take)?;
                 }
             } else {
                 self.set_slot(slot, ItemStack::empty(), recipes)?;
+                self.changed(slot, recipes)?;
             }
         } else if source.is_empty() {
             if slot != 1 {
                 let amount = held.count.min(limit(&held)?);
+                self.next_inventory.set_slot_authoritative(
+                    player_slot,
+                    counted(&held, held.count.wrapping_sub(amount)),
+                );
                 self.set_slot(slot, counted(&held, amount), recipes)?;
-                self.next_inventory
-                    .set_slot_authoritative(player_slot, counted(&held, held.count - amount));
             }
         } else if slot != 1 {
             let maximum = limit(&held)?;
             if held.count > maximum {
-                self.set_slot(slot, counted(&held, maximum), recipes)?;
+                let remainder = held.count.wrapping_sub(maximum);
                 self.next_inventory
-                    .set_slot_authoritative(player_slot, counted(&held, held.count - maximum));
-                let mut displaced = source;
+                    .set_slot_authoritative(player_slot, counted(&held, remainder));
+                self.set_slot(slot, counted(&held, maximum), recipes)?;
+                self.changed(slot, recipes)?;
+                let mut displaced = if aliases_held {
+                    counted(&source, remainder)
+                } else {
+                    source
+                };
                 self.add_to_inventory(&mut displaced, creative)?;
                 self.drop_stack(displaced);
             } else {
                 self.next_inventory
                     .set_slot_authoritative(player_slot, source);
                 self.set_slot(slot, held, recipes)?;
+                self.changed(slot, recipes)?;
             }
         }
         Ok(())
@@ -815,7 +1115,7 @@ impl PreparedStonecutterAction {
                     .copied()
                     .collect::<Vec<_>>();
                 let each = match self.next_menu.quickcraft_type {
-                    0 => carried.count / slots.len().max(1) as i32,
+                    0 => ((carried.count as f32) / (slots.len().max(1) as f32)).floor() as i32,
                     1 => 1,
                     2 => carried.max_stack_size()?,
                     _ => 0,
@@ -831,8 +1131,8 @@ impl PreparedStonecutterAction {
                     {
                         continue;
                     }
-                    let count = (each + source.count).min(limit(&carried)?);
-                    left -= count - source.count;
+                    let count = each.wrapping_add(source.count).min(limit(&carried)?);
+                    left = left.wrapping_sub(count.wrapping_sub(source.count));
                     self.set_slot(slot, counted(&carried, count), recipes)?;
                 }
                 self.next_menu.sync.set_carried(counted(&carried, left));
@@ -850,8 +1150,18 @@ impl PreparedStonecutterAction {
                 around: false,
                 trace_item: true,
             });
-            self.events.push(StonecutterMenuEvent::Drop { index });
+            self.events.push(StonecutterMenuEvent::Drop {
+                index,
+                phase: self.phase(),
+            });
         }
+    }
+}
+fn canonical(stack: &ItemStack) -> ItemStack {
+    if stack.is_empty() {
+        ItemStack::empty()
+    } else {
+        stack.clone()
     }
 }
 fn counted(stack: &ItemStack, count: i32) -> ItemStack {
@@ -949,19 +1259,30 @@ mod tests {
             .position(|e| {
                 matches!(
                     e,
-                    StonecutterMenuEvent::Effect(StonecutterEffect::PlayTakeResultSound)
+                    StonecutterMenuEvent::Effect {
+                        effect: StonecutterEffect::PlayTakeResultSound,
+                        ..
+                    }
                 )
             })
             .unwrap();
         let dropped = throwing
             .events()
             .iter()
-            .position(|e| matches!(e, StonecutterMenuEvent::Drop { index: 0 }))
+            .position(|e| matches!(e, StonecutterMenuEvent::Drop { index: 0, .. }))
             .unwrap();
         let final_sync = throwing
             .events()
             .iter()
-            .rposition(|e| matches!(e, StonecutterMenuEvent::Sync(SyncEvent::Packet(_))))
+            .rposition(|e| {
+                matches!(
+                    e,
+                    StonecutterMenuEvent::Sync {
+                        event: SyncEvent::Packet(_),
+                        ..
+                    }
+                )
+            })
             .unwrap();
         assert!(sound < dropped && dropped < final_sync);
         assert_eq!(throwing.drops()[0].stack, stack("stone_slab", 2));
@@ -979,7 +1300,10 @@ mod tests {
                 .iter()
                 .filter(|e| matches!(
                     e,
-                    StonecutterMenuEvent::Effect(StonecutterEffect::PlayTakeResultSound)
+                    StonecutterMenuEvent::Effect {
+                        effect: StonecutterEffect::PlayTakeResultSound,
+                        ..
+                    }
                 ))
                 .count(),
             1
@@ -1039,10 +1363,13 @@ mod tests {
             .position(|e| {
                 matches!(
                     e,
-                    StonecutterMenuEvent::Sync(SyncEvent::SlotListener {
-                        player_slot: Some(36),
+                    StonecutterMenuEvent::Sync {
+                        event: SyncEvent::SlotListener {
+                            player_slot: Some(36),
+                            ..
+                        },
                         ..
-                    })
+                    }
                 )
             })
             .unwrap();
@@ -1052,7 +1379,10 @@ mod tests {
             .position(|e| {
                 matches!(
                     e,
-                    StonecutterMenuEvent::Effect(StonecutterEffect::PlayTakeResultSound)
+                    StonecutterMenuEvent::Effect {
+                        effect: StonecutterEffect::PlayTakeResultSound,
+                        ..
+                    }
                 )
             })
             .unwrap();
@@ -1091,17 +1421,293 @@ mod tests {
         assert!(matches!(
             closing.events(),
             [
-                StonecutterMenuEvent::Drop { index: 0 },
-                StonecutterMenuEvent::Sync(SyncEvent::Packet(_)),
-                StonecutterMenuEvent::Drop { index: 1 }
+                StonecutterMenuEvent::Drop { index: 0, .. },
+                StonecutterMenuEvent::Sync {
+                    event: SyncEvent::Packet(_),
+                    ..
+                },
+                StonecutterMenuEvent::Drop { index: 1, .. }
             ]
         ));
         assert_eq!(closing.drops()[0].stack, stack("quartz", 2));
         assert_eq!(closing.drops()[1].stack, stack("stone", 2));
+        let cursor_phase = closing
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                StonecutterMenuEvent::Drop { index: 0, phase } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(cursor_phase.input, stack("stone", 3));
+        assert_eq!(cursor_phase.carried, stack("quartz", 2));
+        let input_phase = closing
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                StonecutterMenuEvent::Drop { index: 1, phase } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert!(input_phase.input.is_empty() && input_phase.carried.is_empty());
+        assert_eq!(input_phase.inventory.slot(9).unwrap(), &stack("stone", 64));
         let publication = closing.commit(&mut menu, &mut inventory)?;
         assert!(publication.outcome.packets.is_empty());
         assert_eq!(inventory.slot(9).unwrap(), &stack("stone", 64));
         assert!(menu.carried().is_empty());
+        assert!(menu.state().input().is_empty());
+        Ok(())
+    }
+    fn apply(
+        menu: &mut StonecutterMenu,
+        inventory: &mut PlayerInventory,
+        recipes: &impl StonecutterRecipes,
+        slot: i16,
+        button: i8,
+        kind: ClickType,
+        time: i64,
+    ) -> Result<StonecutterPublication> {
+        menu.prepare_click(
+            &click(menu, slot, button, kind),
+            inventory,
+            recipes,
+            time,
+            false,
+        )?
+        .commit(menu, inventory)
+    }
+    fn player_changes(events: &[StonecutterMenuEvent]) -> Vec<&StonecutterPhase> {
+        events
+            .iter()
+            .filter_map(|event| match event {
+                StonecutterMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect()
+    }
+    #[test]
+    fn native_self_swap_signed_zero_capacity_and_actual_counter_phases() -> Result<()> {
+        let recipes = PinnedStonecutterRecipes::new(|_: &ItemStack| Ok(true));
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(36, stack("stone", 1));
+        let mut menu = StonecutterMenu::new(5)?;
+        menu.initialize(&inventory)?;
+        let swapped = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            29,
+            0,
+            ClickType::Swap,
+            30,
+        )?;
+        assert_eq!(player_changes(&swapped.events).len(), 2);
+        assert!(player_changes(&swapped.events).iter().all(|phase| phase
+            .inventory
+            .slot(36)
+            .unwrap()
+            == &stack("stone", 1)));
+        // Accepted imported/raw overfull fixture: source/held are one object.
+        inventory.set_slot_authoritative(36, stack("iron_sword", 2));
+        let swapped = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            29,
+            0,
+            ClickType::Swap,
+            30,
+        )?;
+        assert_eq!(player_changes(&swapped.events).len(), 2);
+        assert_eq!(inventory.slot(36).unwrap(), &stack("iron_sword", 1));
+        assert_eq!(inventory.slot(37).unwrap(), &stack("iron_sword", 1));
+        assert!(swapped.outcome.drops.is_empty());
+        inventory.set_slot_authoritative(9, stack("stone", 99));
+        menu.sync.set_carried(stack("stone", 1));
+        let inserted = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            2,
+            0,
+            ClickType::Pickup,
+            30,
+        )?;
+        assert_eq!(inventory.slot(9).unwrap(), &stack("stone", 64));
+        assert_eq!(menu.carried(), &stack("stone", 36));
+        assert_eq!(player_changes(&inserted.events).len(), 2);
+        assert!(player_changes(&inserted.events)
+            .iter()
+            .all(|phase| phase.carried == stack("stone", 36)));
+        menu.sync.set_carried(stack("stone", 1));
+        let zero = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            2,
+            0,
+            ClickType::Pickup,
+            30,
+        )?;
+        assert_eq!(player_changes(&zero.events).len(), 2);
+        assert_eq!(menu.carried(), &stack("stone", 1));
+        assert_eq!(inventory.slot(9).unwrap(), &stack("stone", 64));
+        menu.sync.set_carried(stack("stone", 64));
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            0,
+            0,
+            ClickType::Pickup,
+            30,
+        )?;
+        menu.sync.set_carried(stack("stone", 1));
+        let zero = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            0,
+            0,
+            ClickType::Pickup,
+            30,
+        )?;
+        assert_eq!(
+            zero.events
+                .iter()
+                .filter(|event| matches!(event, StonecutterMenuEvent::InputChanged { .. }))
+                .count(),
+            3
+        );
+        assert_eq!(menu.state().input(), &stack("stone", 64));
+        assert_eq!(menu.carried(), &stack("stone", 1));
+        Ok(())
+    }
+    #[test]
+    fn crafted_callbacks_keep_preconsumption_input_and_recomputed_result_phases() -> Result<()> {
+        let recipes = PinnedStonecutterRecipes::new(|_: &ItemStack| Ok(true));
+        let mut inventory = PlayerInventory::new();
+        let mut menu = StonecutterMenu::new(6)?;
+        menu.initialize(&inventory)?;
+        menu.sync.set_carried(stack("stone", 3));
+        apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            0,
+            0,
+            ClickType::Pickup,
+            40,
+        )?;
+        let choice = menu
+            .state()
+            .recipes()
+            .iter()
+            .position(|id| id == "minecraft:stone_slab_from_stone_stonecutting")
+            .unwrap() as i32;
+        menu.prepare_button(choice, &inventory, &recipes)?
+            .commit(&mut menu, &mut inventory)?;
+        let mut input_shift_menu = menu.clone();
+        let mut input_shift_inventory = inventory.clone();
+        let input_shift = apply(
+            &mut input_shift_menu,
+            &mut input_shift_inventory,
+            &recipes,
+            0,
+            0,
+            ClickType::QuickMove,
+            40,
+        )?;
+        let destination = player_changes(&input_shift.events);
+        assert_eq!(destination.len(), 2);
+        assert!(destination[0].input.is_empty());
+        assert_eq!(destination[0].selected_recipe_index, choice);
+        assert_eq!(destination[0].result_preview, stack("stone_slab", 2));
+        let changed = input_shift
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                StonecutterMenuEvent::InputChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(changed.len(), 4);
+        assert!(changed
+            .iter()
+            .all(|phase| phase.selected_recipe_index == -1 && phase.result_preview.is_empty()));
+        let taken = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            1,
+            1,
+            ClickType::Pickup,
+            40,
+        )?;
+        let crafted = taken
+            .events
+            .iter()
+            .find_map(|event| match event {
+                StonecutterMenuEvent::Effect {
+                    effect: StonecutterEffect::CraftedBy { .. },
+                    phase,
+                } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(crafted.input, stack("stone", 3));
+        assert!(crafted.result_preview.is_empty());
+        assert_eq!(crafted.carried, stack("stone_slab", 2));
+        let consumed = taken
+            .events
+            .iter()
+            .find_map(|event| match event {
+                StonecutterMenuEvent::InputChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(consumed.input, stack("stone", 2));
+        assert!(consumed.result_preview.is_empty());
+        let sounded = taken
+            .events
+            .iter()
+            .find_map(|event| match event {
+                StonecutterMenuEvent::Effect {
+                    effect: StonecutterEffect::PlayTakeResultSound,
+                    phase,
+                } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(sounded.input, stack("stone", 2));
+        assert_eq!(sounded.result_preview, stack("stone_slab", 2));
+        let shifted = apply(
+            &mut menu,
+            &mut inventory,
+            &recipes,
+            1,
+            0,
+            ClickType::QuickMove,
+            41,
+        )?;
+        assert_eq!(player_changes(&shifted.events).len(), 3); // empty destination2, later merge1
+        let crafted = shifted
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                StonecutterMenuEvent::Effect {
+                    effect: StonecutterEffect::CraftedBy { amount: 0, .. },
+                    phase,
+                } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(crafted.len(), 2);
+        assert_eq!(crafted[0].input, stack("stone", 2));
+        assert_eq!(crafted[1].input, stack("stone", 1));
+        assert!(crafted.iter().all(|phase| phase.result_preview.is_empty()));
+        assert_eq!(inventory.slot(44).unwrap(), &stack("stone_slab", 4));
+        assert_eq!(menu.carried(), &stack("stone_slab", 2));
         assert!(menu.state().input().is_empty());
         Ok(())
     }
