@@ -21,8 +21,7 @@ COPY tools/crafting_metadata.json \
      tools/player_physics_facts.json \
      tools/item_entity_physics_facts.json ./tools/
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    cargo build --locked --release --bin mc121-rust \
+RUN cargo build --locked --release --bin mc121-rust \
     && strip target/release/mc121-rust
 
 FROM debian:bookworm-slim AS runtime

@@ -115,7 +115,7 @@ The fixed planning checklist has **100 named, unweighted delivery items** at
 These are **planning-checklist indicators**, not percentages of Minecraft's
 functional compatibility, engineering effort or remaining time. Partial features
 can be implemented without completing a broader checklist item. The machine
-readable source of truth is [`mc121-rust-progress.json`](progress/checklist.json).
+readable source of truth is [`progress/checklist.json`](progress/checklist.json).
 The denominator and definition change only with an explicit scope-version change.
 
 ## Development
@@ -137,7 +137,7 @@ For reference tooling and existing checks:
 cargo check --locked --bin mc121-rust
 ```
 
-Further tools are under `tools/`, with evidence under `evidence/`. A historical
+Reference tools are under `tools/`. A historical
 stock graphical-client connection demonstrates that specific build's limited
 interoperability; it does not validate the current reconstructed build or all
 vanilla gameplay.

@@ -8,7 +8,7 @@ Deploying it does not establish complete vanilla compatibility. See
 ## Railway
 
 Use one service connected to [Ferigone/Cinderstone](https://github.com/Ferigone/Cinderstone)
-and its `main` branch. Enable GitHub autodeploys for that branch. The repository
+and its `master` branch. Enable GitHub autodeploys for that branch. The repository
 root is the build root, and the builder is `DOCKERFILE` with `Dockerfile`.
 Leave any custom start command empty so the image entrypoint runs.
 
