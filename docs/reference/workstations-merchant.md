@@ -148,9 +148,124 @@ inventory autofill, input-only closure and transaction guards. Their fixture
 stage is explicitly not a production merchant owner. They do not establish a
 PLAY client or live entity flow.
 
-The central adapter still owns entity-use/open-screen dispatch, actual merchant
-and offer lifetimes, the offers packet and selection packet dispatch, full menu
-click modes, result-destination/cursor movement, state-ID/slot synchronization,
-player validity phase, close/disconnect and real callbacks/world effects.
-The implementation is a callable bounded kernel and completes neither
+## Native menu controller continuation
+
+`src/container_workstation_merchant.rs` now supplies the bounded server menu
+controller: all seven ordinary click modes, select-trade/autofill, derived
+preview/cursor ownership, borrowed player inventory, source dirty callbacks,
+state-ID/client-prediction synchronization and ordered removal. This is callable
+native behavior, not a registered merchant entity or a Main invocation.
+
+Additional primary inspection used `AbstractContainerMenu.doClick` (`cpu`),
+`Slot.tryRemove/safeTake/safeInsert` (`crq`) and
+`ServerGamePacketListenerImpl.handleSelectTrade` (`aru`, mapped lines 756–766),
+again through pinned JDK 21 `javap -p -c`. Source details retained by the adapter:
+
+- Payments accept ordinary items; result insertion is denied. Player shift
+  transfer goes between main inventory and hotbar rather than inventing
+  automatic payment targeting. Payment shift return is forward and result
+  shift return reverse. Offhand swap uses actual raw inventory slot 40.
+- Ordinary result pickup/throw removes the whole result, while its crafted
+  amount remains the requested removal capped by the old result count. Right
+  pickup of three outputs obtains all three and reports crafted amount two.
+  The actual cursor is installed after the source remove/setChanged phase and
+  before `onTake`. A result swap into an empty hotbar/offhand uses
+  `Slot.setByPlayer`, not `remove`; its crafted callback amount is **zero**.
+- Result shift transfer can be partial. With three bread and only one available
+  destination space, Java transfers one, runs the positive crafted callback on
+  the original count-three copy, plays trade sound, regenerates the preview and
+  calls `onTake` on the old count-two remainder with crafted amount zero. It
+  consumes the offer once; the overwritten preview is not another owned item.
+  Failed shift insertion invokes no trade/crafted/sound callback.
+- Repeated `MerchantContainer.setItem/setChanged` recomputations are preserved,
+  including repeated `notifyTradeUpdated` calls. Unlike smithing's superclass
+  ordering, explicit `MerchantMenu.slotsChanged` refreshes the trade result
+  **before** superclass broadcast. Ordinary container `setChanged` refreshes
+  without inventing a menu broadcast. Player `Inventory.setChanged` callbacks
+  keep source multiplicity and intermediate inventory/source-stack observations.
+- `PickupAll` is a valid no-collection action for **every** menu slot, including
+  the player's slots. Creative clone remains a real creative action. Drag
+  insertion excludes result and requires the actual selected Slot identity
+  HashSet encounter order from the host; ascending native indices are not a
+  substitute for an effectful callback order. Signed ordinary `safeInsert`
+  capacity and overfull self-swap remainders preserve the source behavior.
+- SelectTrade carries only one VarInt index, without window or click state ID.
+  The actual handler requires current `MerchantMenu` and its trading-player
+  identity, then invokes `setSelectionHint` before `tryMoveItems`. It has no
+  extra spectator gate or immediate broadcast. Invalid indices still take the
+  selection-hint phase but do not autofill. A later player broadcast observes
+  native state. Merchant offers/level/XP/restock metadata are not menu DataSlots.
+
+Packet click/selection preparation checks actual trading-player validity.
+Broadcast remains callable after that validity is lost: the real player phase
+broadcasts first, then checks validity and closes. It must not skip that final
+observation by applying the packet guard to a broadcast.
+
+The controller exposes `prepare_initialize`, `prepare_broadcast`,
+`prepare_slots_changed`, `prepare_click`, `prepare_select_trade` and
+`prepare_close`. `MerchantMenuPlan::validate/commit` binds one private
+`MerchantMenuHost` stage to the actual merchant/player, its stable offer objects,
+the entire borrowed inventory snapshot and this UI's nonreused instance plus
+checked revision. The stage key must remain constant throughout preparation;
+an identical later UI or reused window ID cannot accept the old plan.
+
+`MerchantMenuHost` extends the existing `MerchantStage`. Its required callbacks
+supply source-phase observations, real inventory dirty/add behavior, component
+identity validation, drag encounter order, actual drops and ordered sync. It
+must preflight the actual private owner transaction. Source observations contain
+read-only item/inventory values, not another live inventory, extra result or
+permission to publish copied items. Trade callbacks execute synchronously so
+actual use/XP changes affect following recomputations. Pricing, stable offer
+handles, advancement/criteria, player/world/Item/RNG and sound owners remain real
+host responsibilities; there is no default villager, offer book or no-op trade
+receiver.
+
+The narrow crate-private `MerchantState::menu_*` bridges expose source raw slot
+changes, result removal, recomputation and `onTake` phases to this complete
+private action. Existing prepared-kernel entry points remain available and use
+the same evaluation/cost/trade logic. No second result preview or duplicated
+trade evaluator is introduced. Several slot phases do not call the old public
+kernel commit separately: the complete controller stage publishes **once**.
+
+Host callbacks already stage actual effects/sync/drops during preparation.
+`commit` revalidates and invokes that stage's `publish` once, then installs the
+native menu/inventory snapshots under the same actual-owner lock. Do not replay
+callbacks or drops again after commit. The central single output FIFO retains
+real world-add/tracking and packet order; a later terminal transport close does
+not roll back a completed source mutation or recreate a published drop.
+
+Removal uses the shared indexed packet/drop schedule, cursor first. It then
+clears the real merchant trading-player reference, removes payment zero without
+update, returns/drops it, then does the same for payment one. Source observations
+retain the later payment until its own removal. It discards the preview and
+marks this UI inactive. Alive returns retain per-insertion raw inventory packets;
+dead/disconnected stacks use `around=false, traceItem=false`. The actual close
+packet, when called for by source, precedes these effects; old shared baseline
+transfer follows removal. No universal death phase is inferred from the policy.
+
+Unsupported component/reference identity, bundle overrides, non-entity trade
+sound, stale output lacking an actual active offer, or unavailable owners must
+error. The required `callbacks_preserve_menu_owners` certification is checked
+before preparation, after callbacks and at commit. Real callback/criteria
+contexts that would mutate the menu, its canonical inventory/cursor or crafted
+output need a direct bridge and must reject this bounded controller; merely
+queuing a callback that silently loses those mutations is invalid. In
+particular an output-mutating `Item.onCraftedBy` is not implemented by the
+immutable kernel callback. Custom FoodProperties equality cannot be certified
+by matching wire bytes; `require_stack_context` must resolve actual identity or
+reject, and ItemCost component-20 predicates remain explicitly unsupported.
+
+Focused controller flows passed whole-result right pickup/throw, callback
+cursor/payment observations, partial result shift and original/zero crafted
+phases, select-trade without invented broadcast, drag/clone/pick-all exclusion,
+offhand swap, ordinary player shift, ordered cursor/detach/payment close and
+stale/replacement UI guards. Additional edge flow checks result-swap amount zero,
+signed overfull insertion and rejection of an actual unavailable trade callback
+without changing live menu/inventory. Receivers are explicit private fixtures,
+not a vanilla merchant or a live PLAY result.
+
+Main still owns entity-use/open-screen dispatch, merchant/offer lifetimes,
+offers packet transport and selection/click routing, actual creative/player
+state, player-phase validity/broadcast, close/disconnect/death integration and
+all required real callbacks/world effects. This continuation completes neither
 `inventory.4` nor `crafting.5`.
