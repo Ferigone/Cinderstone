@@ -1,0 +1,24 @@
+{
+  "minecraft": "1.21",
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "codec": "original cuq.h OPTIONAL_STREAM_CODEC decode/encode; no ItemStack.CODEC",
+  "cases": [
+    {
+      "query": {
+        "name": "legacy/duplicates-and-absent-removals",
+        "bytes": "AQEDAgMAAwEBAgMF"
+      },
+      "expected": {
+        "accepted": true,
+        "consumed": 12,
+        "remaining": 0,
+        "canonical": "AQEBAAEC",
+        "patch_count": 1,
+        "added": [
+          1
+        ],
+        "removed": []
+      }
+    }
+  ]
+}

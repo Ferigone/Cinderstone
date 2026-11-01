@@ -1,0 +1,1400 @@
+{
+  "format": "mc121-entity-wire-fixtures-v1",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "producer": "minecraft-protocol 1.68.0 independent serializer",
+  "quantization_source": "Minecraft1.21 aig/abv/afw/aqt actual bytecode",
+  "cases": [
+    {
+      "name": "plain-player-spawn",
+      "kind": "spawn",
+      "input": {
+        "player": {
+          "entity_id": 1,
+          "profile": {
+            "uuid": [
+              16,
+              146,
+              5,
+              8,
+              213,
+              216,
+              62,
+              237,
+              147,
+              210,
+              146,
+              241,
+              147,
+              175,
+              231,
+              215
+            ],
+            "name": "Alice",
+            "properties": []
+          },
+          "position": {
+            "x": 8.5,
+            "y": 65,
+            "z": 8.5,
+            "yaw": 0,
+            "pitch": 0,
+            "on_ground": true
+          },
+          "gamemode": 1,
+          "listed": true,
+          "latency": 0,
+          "display_name": null,
+          "chat_session": null,
+          "metadata": {
+            "flags": 0,
+            "skin_parts": 127,
+            "main_hand": 1
+          }
+        }
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "PwEQkgUI1dg+7ZPSkvGTr+fXBUFsaWNlAAABAQAA"
+        },
+        {
+          "name": "spawn_entity",
+          "id": 1,
+          "payload": "ARCSBQjV2D7tk9KS8ZOv59eAAUAhAAAAAAAAQFBAAAAAAABAIQAAAAAAAAAAAAAAAAAAAAA="
+        },
+        {
+          "name": "entity_head_rotation",
+          "id": 72,
+          "payload": "AQA="
+        },
+        {
+          "name": "entity_metadata",
+          "id": 88,
+          "payload": "AQkDQaAAABEAf/8="
+        }
+      ]
+    },
+    {
+      "name": "signed-profile-chat-display-spawn",
+      "kind": "spawn",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        }
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "PwG4jRGyxWM/B51UWFIX0+aaBlNpZ25lZAEIdGV4dHVyZXMUc2lnbmVkLXRleHR1cmUtdmFsdWUBEGJhc2U2NC1zaWduYXR1cmUBBwcHBwcHBwcHBwcHBwcHBwAAAYvP5WgABAECAwQDCQgHAwB/AQgAB0Rpc3BsYXk="
+        },
+        {
+          "name": "spawn_entity",
+          "id": 1,
+          "payload": "rAK4jRGyxWM/B51UWFIX0+aagAHAYAABAAAAAEBQQAAAAAAAv+AAAAAAAABA//8AAAAAAAAA"
+        },
+        {
+          "name": "entity_head_rotation",
+          "id": 72,
+          "payload": "rAL/"
+        },
+        {
+          "name": "entity_metadata",
+          "id": 88,
+          "payload": "rAIAAKIJA0GgAAARAD8SAAD/"
+        }
+      ]
+    },
+    {
+      "name": "info-mask-1",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 1
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "AQG4jRGyxWM/B51UWFIX0+aaBlNpZ25lZAEIdGV4dHVyZXMUc2lnbmVkLXRleHR1cmUtdmFsdWUBEGJhc2U2NC1zaWduYXR1cmU="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-2",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 2
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "AgG4jRGyxWM/B51UWFIX0+aaAQcHBwcHBwcHBwcHBwcHBwcAAAGLz+VoAAQBAgMEAwkIBw=="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-4",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 4
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "BAG4jRGyxWM/B51UWFIX0+aaAw=="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-8",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 8
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "CAG4jRGyxWM/B51UWFIX0+aaAA=="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-16",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 16
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "EAG4jRGyxWM/B51UWFIX0+aafw=="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-32",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 32
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "IAG4jRGyxWM/B51UWFIX0+aaAQgAB0Rpc3BsYXk="
+        }
+      ]
+    },
+    {
+      "name": "info-mask-0",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 0
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "AAG4jRGyxWM/B51UWFIX0+aa"
+        }
+      ]
+    },
+    {
+      "name": "info-mask-63",
+      "kind": "info",
+      "input": {
+        "player": {
+          "entity_id": 300,
+          "profile": {
+            "uuid": [
+              184,
+              141,
+              17,
+              178,
+              197,
+              99,
+              63,
+              7,
+              157,
+              84,
+              88,
+              82,
+              23,
+              211,
+              230,
+              154
+            ],
+            "name": "Signed",
+            "properties": [
+              {
+                "name": "textures",
+                "value": "signed-texture-value",
+                "signature": "base64-signature"
+              }
+            ]
+          },
+          "position": {
+            "x": -128.0001220703125,
+            "y": 65,
+            "z": -0.5,
+            "yaw": -1,
+            "pitch": 91.125,
+            "on_ground": false
+          },
+          "gamemode": 3,
+          "listed": false,
+          "latency": 127,
+          "display_name": [
+            8,
+            0,
+            7,
+            68,
+            105,
+            115,
+            112,
+            108,
+            97,
+            121
+          ],
+          "chat_session": {
+            "uuid": [
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7,
+              7
+            ],
+            "expires_at": 1700000000000,
+            "public_key": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "key_signature": [
+              9,
+              8,
+              7
+            ]
+          },
+          "metadata": {
+            "flags": 162,
+            "skin_parts": 63,
+            "main_hand": 0
+          }
+        },
+        "actions": 63
+      },
+      "expected": [
+        {
+          "name": "player_info",
+          "id": 62,
+          "payload": "PwG4jRGyxWM/B51UWFIX0+aaBlNpZ25lZAEIdGV4dHVyZXMUc2lnbmVkLXRleHR1cmUtdmFsdWUBEGJhc2U2NC1zaWduYXR1cmUBBwcHBwcHBwcHBwcHBwcHBwAAAYvP5WgABAECAwQDCQgHAwB/AQgAB0Rpc3BsYXk="
+        }
+      ]
+    },
+    {
+      "name": "positive-relative-quarter",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": 0.25,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "rel_entity_move",
+          "id": 46,
+          "payload": "rAIEAAAAAAAB"
+        }
+      ]
+    },
+    {
+      "name": "negative-half-tie-keeps-coordinate",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": -0.0001220703125,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        }
+      },
+      "expected": []
+    },
+    {
+      "name": "negative-one-and-half-tie",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": -0.0003662109375,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "rel_entity_move",
+          "id": 46,
+          "payload": "rAL//wAAAAAB"
+        }
+      ]
+    },
+    {
+      "name": "negative-small-rotation",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": -1,
+          "pitch": -1,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "entity_look",
+          "id": 48,
+          "payload": "rAL//wE="
+        },
+        {
+          "name": "entity_head_rotation",
+          "id": 72,
+          "payload": "rAL/"
+        }
+      ]
+    },
+    {
+      "name": "combined-relative-rotation",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": -1.25,
+          "y": 2.5,
+          "z": -3.75,
+          "yaw": 90,
+          "pitch": 45,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "entity_move_look",
+          "id": 47,
+          "payload": "rALsACgAxABAIAE="
+        },
+        {
+          "name": "entity_head_rotation",
+          "id": 72,
+          "payload": "rAJA"
+        }
+      ]
+    },
+    {
+      "name": "negative-short-boundary",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": -8,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "rel_entity_move",
+          "id": 46,
+          "payload": "rAKAAAAAAAAB"
+        }
+      ]
+    },
+    {
+      "name": "positive-short-boundary",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": 7.999755859375,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "rel_entity_move",
+          "id": 46,
+          "payload": "rAJ//wAAAAAB"
+        }
+      ]
+    },
+    {
+      "name": "positive-overflow-teleport",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": 8,
+          "y": 0,
+          "z": 0,
+          "yaw": -1,
+          "pitch": -1,
+          "on_ground": true
+        }
+      },
+      "expected": [
+        {
+          "name": "entity_teleport",
+          "id": 112,
+          "payload": "rAJAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE="
+        },
+        {
+          "name": "entity_head_rotation",
+          "id": 72,
+          "payload": "rAL/"
+        }
+      ]
+    },
+    {
+      "name": "ground-state-forces-teleport",
+      "kind": "movement",
+      "input": {
+        "id": 300,
+        "previous": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": true
+        },
+        "current": {
+          "x": 0,
+          "y": 0,
+          "z": 0,
+          "yaw": 0,
+          "pitch": 0,
+          "on_ground": false
+        }
+      },
+      "expected": [
+        {
+          "name": "entity_teleport",
+          "id": 112,
+          "payload": "rAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        }
+      ]
+    },
+    {
+      "name": "animation-0",
+      "kind": "animation",
+      "input": {
+        "id": 300,
+        "animation": 0
+      },
+      "expected": [
+        {
+          "name": "animation",
+          "id": 3,
+          "payload": "rAIA"
+        }
+      ]
+    },
+    {
+      "name": "animation-3",
+      "kind": "animation",
+      "input": {
+        "id": 300,
+        "animation": 3
+      },
+      "expected": [
+        {
+          "name": "animation",
+          "id": 3,
+          "payload": "rAID"
+        }
+      ]
+    },
+    {
+      "name": "animation-5",
+      "kind": "animation",
+      "input": {
+        "id": 300,
+        "animation": 5
+      },
+      "expected": [
+        {
+          "name": "animation",
+          "id": 3,
+          "payload": "rAIF"
+        }
+      ]
+    },
+    {
+      "name": "destroy-and-player-list-remove",
+      "kind": "remove",
+      "input": {
+        "id": 300,
+        "uuid": [
+          184,
+          141,
+          17,
+          178,
+          197,
+          99,
+          63,
+          7,
+          157,
+          84,
+          88,
+          82,
+          23,
+          211,
+          230,
+          154
+        ]
+      },
+      "expected": [
+        {
+          "name": "entity_destroy",
+          "id": 66,
+          "payload": "AawC"
+        },
+        {
+          "name": "player_remove",
+          "id": 61,
+          "payload": "AbiNEbLFYz8HnVRYUhfT5po="
+        }
+      ]
+    }
+  ]
+}

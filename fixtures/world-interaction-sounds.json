@@ -1,0 +1,410 @@
+[
+  {
+    "name": "minecraft:oak_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:iron_door",
+    "can_open_by_hand": false,
+    "open_sound_id": 747,
+    "close_sound_id": 746,
+    "open_sound": "minecraft:block.iron_door.open",
+    "close_sound": "minecraft:block.iron_door.close"
+  },
+  {
+    "name": "minecraft:oak_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:spruce_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:birch_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:jungle_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:acacia_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:cherry_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 293,
+    "close_sound_id": 292,
+    "open_sound": "minecraft:block.cherry_wood_trapdoor.open",
+    "close_sound": "minecraft:block.cherry_wood_trapdoor.close"
+  },
+  {
+    "name": "minecraft:dark_oak_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:mangrove_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 1564,
+    "close_sound_id": 1563,
+    "open_sound": "minecraft:block.wooden_trapdoor.open",
+    "close_sound": "minecraft:block.wooden_trapdoor.close"
+  },
+  {
+    "name": "minecraft:bamboo_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 121,
+    "close_sound_id": 120,
+    "open_sound": "minecraft:block.bamboo_wood_trapdoor.open",
+    "close_sound": "minecraft:block.bamboo_wood_trapdoor.close"
+  },
+  {
+    "name": "minecraft:oak_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:iron_trapdoor",
+    "can_open_by_hand": false,
+    "open_sound_id": 755,
+    "close_sound_id": 754,
+    "open_sound": "minecraft:block.iron_trapdoor.open",
+    "close_sound": "minecraft:block.iron_trapdoor.close"
+  },
+  {
+    "name": "minecraft:spruce_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:birch_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:jungle_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:acacia_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:cherry_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 299,
+    "close_sound_id": 298,
+    "open_sound": "minecraft:block.cherry_wood_fence_gate.open",
+    "close_sound": "minecraft:block.cherry_wood_fence_gate.close"
+  },
+  {
+    "name": "minecraft:dark_oak_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:mangrove_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 503,
+    "close_sound_id": 502,
+    "open_sound": "minecraft:block.fence_gate.open",
+    "close_sound": "minecraft:block.fence_gate.close"
+  },
+  {
+    "name": "minecraft:bamboo_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 127,
+    "close_sound_id": 126,
+    "open_sound": "minecraft:block.bamboo_wood_fence_gate.open",
+    "close_sound": "minecraft:block.bamboo_wood_fence_gate.close"
+  },
+  {
+    "name": "minecraft:spruce_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:birch_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:jungle_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:acacia_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:cherry_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 291,
+    "close_sound_id": 290,
+    "open_sound": "minecraft:block.cherry_wood_door.open",
+    "close_sound": "minecraft:block.cherry_wood_door.close"
+  },
+  {
+    "name": "minecraft:dark_oak_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:mangrove_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 1562,
+    "close_sound_id": 1561,
+    "open_sound": "minecraft:block.wooden_door.open",
+    "close_sound": "minecraft:block.wooden_door.close"
+  },
+  {
+    "name": "minecraft:bamboo_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 119,
+    "close_sound_id": 118,
+    "open_sound": "minecraft:block.bamboo_wood_door.open",
+    "close_sound": "minecraft:block.bamboo_wood_door.close"
+  },
+  {
+    "name": "minecraft:crimson_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 933,
+    "close_sound_id": 932,
+    "open_sound": "minecraft:block.nether_wood_trapdoor.open",
+    "close_sound": "minecraft:block.nether_wood_trapdoor.close"
+  },
+  {
+    "name": "minecraft:warped_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 933,
+    "close_sound_id": 932,
+    "open_sound": "minecraft:block.nether_wood_trapdoor.open",
+    "close_sound": "minecraft:block.nether_wood_trapdoor.close"
+  },
+  {
+    "name": "minecraft:crimson_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 939,
+    "close_sound_id": 938,
+    "open_sound": "minecraft:block.nether_wood_fence_gate.open",
+    "close_sound": "minecraft:block.nether_wood_fence_gate.close"
+  },
+  {
+    "name": "minecraft:warped_fence_gate",
+    "can_open_by_hand": true,
+    "open_sound_id": 939,
+    "close_sound_id": 938,
+    "open_sound": "minecraft:block.nether_wood_fence_gate.open",
+    "close_sound": "minecraft:block.nether_wood_fence_gate.close"
+  },
+  {
+    "name": "minecraft:crimson_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 931,
+    "close_sound_id": 930,
+    "open_sound": "minecraft:block.nether_wood_door.open",
+    "close_sound": "minecraft:block.nether_wood_door.close"
+  },
+  {
+    "name": "minecraft:warped_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 931,
+    "close_sound_id": 930,
+    "open_sound": "minecraft:block.nether_wood_door.open",
+    "close_sound": "minecraft:block.nether_wood_door.close"
+  },
+  {
+    "name": "minecraft:copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:exposed_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:oxidized_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:weathered_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:waxed_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:waxed_exposed_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:waxed_oxidized_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:waxed_weathered_copper_door",
+    "can_open_by_hand": true,
+    "open_sound_id": 352,
+    "close_sound_id": 351,
+    "open_sound": "minecraft:block.copper_door.open",
+    "close_sound": "minecraft:block.copper_door.close"
+  },
+  {
+    "name": "minecraft:copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:exposed_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:oxidized_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:weathered_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:waxed_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:waxed_exposed_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:waxed_oxidized_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  },
+  {
+    "name": "minecraft:waxed_weathered_copper_trapdoor",
+    "can_open_by_hand": true,
+    "open_sound_id": 359,
+    "close_sound_id": 358,
+    "open_sound": "minecraft:block.copper_trapdoor.open",
+    "close_sound": "minecraft:block.copper_trapdoor.close"
+  }
+]

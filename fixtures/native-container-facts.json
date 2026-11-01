@@ -1,0 +1,18 @@
+{
+  "block_ids": {
+    "minecraft:chest": 177,
+    "minecraft:barrel": 774
+  },
+  "minecraft": "1.21",
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "sounds": {
+    "minecraft:block.chest.open": 302,
+    "minecraft:block.chest.close": 300,
+    "minecraft:block.barrel.open": 129,
+    "minecraft:block.barrel.close": 128
+  },
+  "chest_type_id": 1,
+  "barrel_type_id": 26,
+  "opener_recheck_delay": 5,
+  "update_tag_owner": "dqh:emptyCompound"
+}

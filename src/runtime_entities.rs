@@ -1,0 +1,1489 @@
+//! Authoritative item storage joining the proved tick, spatial and sender cores.
+//!
+//! Tracking, level simulation and connection-phase pickup are separate calls.
+//! The host owns ticket visibility, player lifecycle, inventory and gameplay
+//! listeners. Unsupported world callbacks remain errors from RuntimeItemWorld.
+use crate::{
+    entity_base::BaseEffect,
+    entity_move::ProfileEvent,
+    entity_spatial::Visibility,
+    entity_state::EntityPhysicalState,
+    entity_tick::EntityTickList,
+    entity_tracking_order::TrackingEntityMap,
+    fluid_physics::FluidShapeCache,
+    geometry::{Aabb, Vec3},
+    inventory::ItemStack,
+    item_entity::{self, ItemPickupHost, ItemState, Pickup},
+    item_replication::ItemReplication,
+    protocol::Packet,
+    rain_physics::RainExposure,
+    random::LegacyRandomSource,
+    replication::EntitySnapshot,
+    runtime_collision::CollisionEntity,
+    runtime_entity_index::{EntityHandle, EntityKind, RuntimeEntityIndex},
+    runtime_item_world::{ItemWorldFacts, RuntimeItemEffect, RuntimeItemHost, RuntimeItemWorld},
+    runtime_world::RuntimeWorld,
+};
+use anyhow::{ensure, Context, Result};
+use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
+
+#[derive(Clone, Debug)]
+pub enum RuntimeEntityEvent {
+    Update {
+        revision: u64,
+        snapshot: Box<EntitySnapshot<ItemState>>,
+        packets: Vec<Packet>,
+    },
+    Removed {
+        revision: u64,
+        entity_id: i32,
+    },
+    Collected {
+        revision: u64,
+        pickup: Pickup,
+    },
+    Effect {
+        revision: u64,
+        deliveries: Vec<EffectDelivery>,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct EffectDelivery {
+    /// Audience captured synchronously at the original world callback.
+    pub recipients: Vec<i32>,
+    pub packet: Packet,
+}
+
+/// Facts from the actual player's connection-phase Player.aiStep call.
+#[derive(Clone, Copy, Debug)]
+pub struct PickupPlayer {
+    pub entity_id: i32,
+    pub uuid: [u8; 16],
+    pub bounds: Aabb,
+    pub alive: bool,
+    pub spectator: bool,
+    /// None means unmounted or the actual vehicle has already been removed.
+    pub vehicle_bounds: Option<Aabb>,
+}
+
+pub trait RuntimeEntityHost {
+    /// Optional instrumentation only; never substitutes a gameplay callback.
+    fn observe_item_tick(&mut self, _state: &ItemState, _random: &LegacyRandomSource) {}
+    /// External entities retain their actual Level.tickNonPassenger callback.
+    fn level_player_tick(&mut self, player: EntityHandle) -> Result<()>;
+    fn profile(&mut self, event: ProfileEvent);
+    /// Sound has already consumed one nextLong from the separately owned
+    /// Level.threadSafeRandom; Level.random is unchanged. Other effects
+    /// carry no invented seed. Gameplay listeners execute synchronously here.
+    fn effect(
+        &mut self,
+        state: &EntityPhysicalState,
+        effect: RuntimeItemEffect,
+        sound_seed: Option<i64>,
+    ) -> Result<Vec<EffectDelivery>>;
+    fn entity_damage(
+        &mut self,
+        state: &EntityPhysicalState,
+        stack: &ItemStack,
+        health: i32,
+        causing_entity: Option<i32>,
+    ) -> Result<()>;
+    fn discarded(
+        &mut self,
+        state: &EntityPhysicalState,
+        stack: &ItemStack,
+        health: i32,
+    ) -> Result<()>;
+    /// Vanilla Inventory.add. On success the host must put TakeItemEntity
+    /// before its private menu synchronization, using original_count.
+    fn add_to_inventory(
+        &mut self,
+        player: PickupPlayer,
+        item_entity_id: i32,
+        original_count: i32,
+        stack: &mut ItemStack,
+    ) -> Result<bool>;
+    /// Player.take at its literal call site, before discard/count restoration.
+    /// The Collected event has already entered the shared outbox, so menu
+    /// broadcastChanges can follow it without crossing independent streams.
+    fn collect_item(
+        &mut self,
+        player: PickupPlayer,
+        state: &ItemState,
+        original_count: i32,
+        accepted_count: i32,
+    ) -> Result<()>;
+    fn collected(
+        &mut self,
+        player: PickupPlayer,
+        state: &ItemState,
+        pickup: Pickup,
+        original_item_id: i32,
+    ) -> Result<()>;
+}
+
+struct RuntimeItem {
+    handle: EntityHandle,
+    state: ItemState,
+    random: LegacyRandomSource,
+}
+struct TrackedItem {
+    handle: EntityHandle,
+    sender: ItemReplication,
+    last_section: crate::entity_spatial::SectionKey,
+}
+
+struct PreparedItem {
+    state: ItemState,
+    random: LegacyRandomSource,
+    tracking: Option<(ItemReplication, EntitySnapshot<ItemState>)>,
+}
+
+/// Validated items held with an exclusive store borrow until the menu commits.
+/// Dropping this token publishes nothing and consumes no store generation/RNG.
+pub struct PreparedItemBatch<'a> {
+    store: &'a mut RuntimeEntities,
+    items: Vec<PreparedItem>,
+}
+impl PreparedItemBatch<'_> {
+    pub fn commit(self) -> Vec<EntityHandle> {
+        self.commit_inner(None)
+    }
+    pub fn commit_with_world_random(self, random: LegacyRandomSource) -> Vec<EntityHandle> {
+        self.commit_inner(Some(random))
+    }
+    fn commit_inner(self, random: Option<LegacyRandomSource>) -> Vec<EntityHandle> {
+        let Self { store, items } = self;
+        if let Some(random) = random {
+            store.world_random = random;
+        }
+        let mut handles = Vec::with_capacity(items.len());
+        for item in items {
+            let PreparedItem {
+                state,
+                random,
+                tracking,
+            } = item;
+            let handle = store
+                .index
+                .register(
+                    state.entity_id,
+                    EntityKind::Item,
+                    state.position_vec(),
+                    false,
+                    |chunk| {
+                        store
+                            .chunk_visibility
+                            .get(&chunk)
+                            .copied()
+                            .unwrap_or(Visibility::Hidden)
+                    },
+                )
+                .expect("exclusive prepared insertion preserves validated identities and capacity");
+            store.items.insert(
+                handle.id,
+                RuntimeItem {
+                    handle,
+                    state,
+                    random,
+                },
+            );
+            if let Some((sender, snapshot)) = tracking {
+                store.tracking.insert(
+                    handle.id,
+                    TrackedItem {
+                        handle,
+                        sender,
+                        last_section: crate::entity_spatial::section_at(
+                            snapshot.entity.position_vec(),
+                        ),
+                    },
+                );
+                store.tracking_order.insert(handle.id, handle);
+                let revision = next_revision(&mut store.outbox.revision)
+                    .expect("prepared tracking publication capacity");
+                store.outbox.send(RuntimeEntityEvent::Update {
+                    revision,
+                    snapshot: Box::new(snapshot),
+                    packets: vec![],
+                });
+            }
+            // onEntityAdded starts tracking before ticking, matching onMove.
+            if store
+                .index
+                .visibility(handle)
+                .is_some_and(Visibility::ticking)
+            {
+                store.ticks.add(handle.id, handle);
+            }
+            handles.push(handle);
+        }
+        handles
+    }
+}
+
+pub struct RuntimeEntities {
+    index: RuntimeEntityIndex,
+    ticks: EntityTickList<EntityHandle>,
+    items: BTreeMap<i32, RuntimeItem>,
+    tracking: BTreeMap<i32, TrackedItem>,
+    tracking_order: TrackingEntityMap<EntityHandle>,
+    chunk_visibility: BTreeMap<(i32, i32), Visibility>,
+    world_random: LegacyRandomSource,
+    sound_random: Option<LegacyRandomSource>,
+    outbox: EntityOutbox,
+}
+type EntityPublisher = Arc<dyn Fn(RuntimeEntityEvent) + Send + Sync>;
+#[derive(Default)]
+struct EntityOutbox {
+    revision: u64,
+    events: Vec<RuntimeEntityEvent>,
+    publisher: Option<EntityPublisher>,
+}
+impl EntityOutbox {
+    fn send(&mut self, event: RuntimeEntityEvent) {
+        if let Some(publish) = &self.publisher {
+            publish(event);
+        } else {
+            self.events.push(event);
+        }
+    }
+}
+impl RuntimeEntities {
+    /// Send synchronously into a shared ordered outbox with menu/world packets.
+    /// The sink must not re-enter this store. Tests can retain the local queue.
+    pub fn with_publisher(
+        mut self,
+        publisher: Arc<dyn Fn(RuntimeEntityEvent) + Send + Sync>,
+    ) -> Self {
+        self.outbox.publisher = Some(publisher);
+        self
+    }
+    /// Supply the level RNG state; this constructor does not invent a seed.
+    pub fn new(world_random: LegacyRandomSource) -> Self {
+        Self {
+            index: RuntimeEntityIndex::new(),
+            ticks: EntityTickList::new(),
+            items: BTreeMap::new(),
+            tracking: BTreeMap::new(),
+            tracking_order: TrackingEntityMap::new(),
+            chunk_visibility: BTreeMap::new(),
+            world_random,
+            sound_random: None,
+            outbox: EntityOutbox::default(),
+        }
+    }
+    /// Consume the actual independent Level.threadSafeRandom stream. The host
+    /// serializes this owner with its level/registry lock; no concurrent CAS
+    /// semantics or fallback to Level.random are implied by this builder.
+    pub fn with_sound_random(mut self, sound_random: LegacyRandomSource) -> Self {
+        self.sound_random = Some(sound_random);
+        self
+    }
+    pub fn sound_random_state48(&self) -> Option<u64> {
+        self.sound_random.as_ref().map(LegacyRandomSource::state48)
+    }
+    /// Level.playSound uses the level's distinct ThreadSafeLegacy stream.
+    pub fn next_sound_seed(&mut self) -> Result<i64> {
+        Ok(self
+            .sound_random
+            .as_mut()
+            .context("level sound random owner unavailable")?
+            .next_i64())
+    }
+    pub fn world_random_mut(&mut self) -> &mut LegacyRandomSource {
+        &mut self.world_random
+    }
+    pub fn item(&self, id: i32) -> Option<&ItemState> {
+        self.items.get(&id).map(|entry| &entry.state)
+    }
+    pub fn item_count(&self) -> usize {
+        self.items.len()
+    }
+    /// Preserve EntitySectionStorage query order for the Player-only push
+    /// predicate. The caller supplies current authoritative Player AABBs.
+    pub fn native_body_query(
+        &mut self,
+        bounds: Aabb,
+        except: i32,
+        mut current_bounds: impl FnMut(EntityHandle) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        self.index
+            .query(bounds, Some(EntityKind::Player), |handle| {
+                if handle.id == except {
+                    Ok(None)
+                } else {
+                    current_bounds(handle)
+                }
+            })
+    }
+    /// The current level tick list, including stale-but-still-scheduled items.
+    /// Tracking visibility and published snapshots are not a simulation gate.
+    pub fn ticking_item_states(&self) -> impl Iterator<Item = &ItemState> {
+        self.ticks.ordered_entries().filter_map(|(_, handle)| {
+            self.items
+                .get(&handle.id)
+                .filter(|entry| {
+                    entry.handle == handle
+                        && !entry.state.removed
+                        && self.index.get(handle).is_some()
+                })
+                .map(|entry| &entry.state)
+        })
+    }
+    pub fn item_states(&self) -> impl Iterator<Item = &ItemState> {
+        self.items.values().map(|entry| &entry.state)
+    }
+    /// Native persistence sees the actual retained RNG, without drawing or
+    /// reconstructing a stream from the entity's original constructor seed.
+    pub fn persistent_item_states(
+        &self,
+    ) -> impl Iterator<Item = (&ItemState, &LegacyRandomSource)> {
+        self.items
+            .values()
+            .map(|entry| (&entry.state, &entry.random))
+    }
+    pub fn persistent_item_tick_order(&self) -> Vec<i32> {
+        self.ticks
+            .ordered_entries()
+            .filter_map(|(id, handle)| {
+                self.items
+                    .get(&id)
+                    .filter(|entry| entry.handle == handle)
+                    .map(|_| id)
+            })
+            .collect()
+    }
+    pub fn world_random_state48(&self) -> u64 {
+        self.world_random.state48()
+    }
+    pub fn highest_registered_entity_id(&self) -> Option<i32> {
+        self.index.entries().map(|entry| entry.handle.id).max()
+    }
+    pub fn prepare_items(
+        &mut self,
+        entries: Vec<(ItemState, LegacyRandomSource)>,
+    ) -> Result<PreparedItemBatch<'_>> {
+        self.index
+            .validate_registration_batch(entries.iter().map(|(state, _)| state.entity_id))?;
+        let mut items = Vec::with_capacity(entries.len());
+        let mut publications = 0_u64;
+        for (state, random) in entries {
+            state.validate()?;
+            ensure!(!state.removed, "cannot register a removed item");
+            let sender = ItemReplication::new(&state)?;
+            // Hidden entities must satisfy the same sender contract before a
+            // later visibility transition can create their live tracker.
+            let snapshot = sender.snapshot(&state)?;
+            // Check the actual outgoing representation while failure can still
+            // roll back the menu. No dirty state is drained by this encoding.
+            state.spawn_packets()?;
+            let section = crate::entity_spatial::section_coordinates(
+                crate::entity_spatial::section_at(state.position_vec()),
+            );
+            let accessible = self
+                .chunk_visibility
+                .get(&(section.0, section.2))
+                .copied()
+                .unwrap_or(Visibility::Hidden)
+                .accessible();
+            let tracking = if accessible {
+                publications += 1;
+                Some((sender, snapshot))
+            } else {
+                None
+            };
+            items.push(PreparedItem {
+                state,
+                random,
+                tracking,
+            });
+        }
+        self.outbox
+            .revision
+            .checked_add(publications)
+            .context("item revision exhausted")?;
+        Ok(PreparedItemBatch { store: self, items })
+    }
+    pub fn revision(&self) -> u64 {
+        self.outbox.revision
+    }
+    pub fn drain_events(&mut self) -> Vec<RuntimeEntityEvent> {
+        std::mem::take(&mut self.outbox.events)
+    }
+    pub fn snapshots(&self) -> Result<(u64, Vec<EntitySnapshot<ItemState>>)> {
+        Ok((
+            self.outbox.revision,
+            self.tracking_order
+                .values()
+                .filter_map(|handle| self.tracking.get(&handle.id))
+                .filter_map(|tracked| {
+                    self.items
+                        .get(&tracked.handle.id)
+                        .filter(|entry| entry.handle == tracked.handle && !entry.state.removed)
+                        .map(|entry| (tracked, entry))
+                })
+                .map(|(tracked, entry)| tracked.sender.snapshot(&entry.state))
+                .collect::<Result<_>>()?,
+        ))
+    }
+    pub fn register_player(&mut self, id: i32, position: Vec3) -> Result<EntityHandle> {
+        let visibility = &self.chunk_visibility;
+        let handle = self
+            .index
+            .register(id, EntityKind::Player, position, true, |chunk| {
+                visibility
+                    .get(&chunk)
+                    .copied()
+                    .unwrap_or(Visibility::Hidden)
+            })?;
+        self.ticks.add(id, handle);
+        // ChunkMap's map includes players. Their hash slots affect the order
+        // of item senders even when this layer delegates player publication.
+        self.tracking_order.insert(id, handle);
+        Ok(handle)
+    }
+    pub fn remove_player(&mut self, id: i32) -> Result<()> {
+        if let Some(entry) = self.index.by_id(id) {
+            ensure!(
+                entry.kind == EntityKind::Player,
+                "expected registered player"
+            );
+            self.index.remove(entry.handle);
+            self.ticks.remove(id);
+            self.tracking_order.remove(id);
+        }
+        Ok(())
+    }
+    pub fn move_player(&mut self, id: i32, position: Vec3) -> Result<()> {
+        if let Some(entry) = self.index.by_id(id) {
+            ensure!(
+                entry.kind == EntityKind::Player,
+                "expected registered player"
+            );
+            self.index
+                .position_changed(entry.handle, position, |chunk| {
+                    self.chunk_visibility
+                        .get(&chunk)
+                        .copied()
+                        .unwrap_or(Visibility::Hidden)
+                })?;
+        }
+        Ok(())
+    }
+    /// Ticket manager input. Loading a network chunk alone must not imply this.
+    pub fn set_chunk_visibility(
+        &mut self,
+        chunk: (i32, i32),
+        visibility: Visibility,
+    ) -> Result<()> {
+        self.chunk_visibility.insert(chunk, visibility);
+        for transition in self.index.set_chunk_visibility(chunk, visibility)? {
+            if transition.was_ticking() != transition.is_ticking() {
+                if transition.is_ticking() {
+                    self.ticks
+                        .add(transition.entity.handle.id, transition.entity.handle);
+                } else {
+                    self.ticks.remove(transition.entity.handle.id);
+                }
+            }
+            if transition.entity.kind == EntityKind::Item {
+                let handle = transition.entity.handle;
+                let state = &self
+                    .items
+                    .get(&handle.id)
+                    .context("indexed item missing")?
+                    .state;
+                change_tracking(
+                    &mut self.tracking,
+                    &mut self.tracking_order,
+                    &mut self.outbox,
+                    handle,
+                    state,
+                    (transition.previous, transition.current),
+                )?;
+            }
+        }
+        Ok(())
+    }
+    pub fn insert_item(
+        &mut self,
+        state: ItemState,
+        random: LegacyRandomSource,
+    ) -> Result<EntityHandle> {
+        Ok(self
+            .prepare_items(vec![(state, random)])?
+            .commit()
+            .pop()
+            .expect("one prepared item"))
+    }
+    /// ChunkMap's shared sender phase, before level entity simulation.
+    pub fn publish_tracking(
+        &mut self,
+        in_entity_ticking_range: impl FnMut((i32, i32)) -> bool,
+    ) -> Result<()> {
+        self.publish_tracking_with_players(in_entity_ticking_range, |_| {
+            anyhow::bail!("registered players require their shared tracking callback")
+        })
+    }
+    pub fn publish_tracking_with_players(
+        &mut self,
+        mut in_entity_ticking_range: impl FnMut((i32, i32)) -> bool,
+        mut publish_player: impl FnMut(EntityHandle) -> Result<()>,
+    ) -> Result<()> {
+        for handle in self.tracking_order.values() {
+            let Some(tracked) = self.tracking.get_mut(&handle.id) else {
+                publish_player(handle)?;
+                continue;
+            };
+            ensure!(tracked.handle == handle, "stale tracked item handle");
+            let entry = self
+                .items
+                .get_mut(&tracked.handle.id)
+                .context("tracked item missing")?;
+            if entry.state.removed {
+                continue;
+            }
+            let section = crate::entity_spatial::section_at(entry.state.position_vec());
+            let (x, _, z) = crate::entity_spatial::section_coordinates(section);
+            if section == tracked.last_section && !in_entity_ticking_range((x, z)) {
+                continue;
+            }
+            let publication = tracked.sender.send_changes(&mut entry.state)?;
+            tracked.last_section = section;
+            let revision = next_revision(&mut self.outbox.revision)?;
+            self.outbox.send(RuntimeEntityEvent::Update {
+                revision,
+                snapshot: Box::new(publication.snapshot),
+                packets: publication.packets,
+            });
+        }
+        Ok(())
+    }
+    pub fn simulate_level(
+        &mut self,
+        world: &mut RuntimeWorld,
+        facts: ItemWorldFacts,
+        colliders: &[CollisionEntity],
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        self.simulate_level_with_context(world, facts, colliders, None, None, host)
+    }
+    /// Reuse the server-wide observed history across all items and dimensions.
+    pub fn simulate_level_with_fluid_cache(
+        &mut self,
+        world: &mut RuntimeWorld,
+        facts: ItemWorldFacts,
+        colliders: &[CollisionEntity],
+        cache: &mut FluidShapeCache,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        self.simulate_level_with_context(world, facts, colliders, Some(cache), None, host)
+    }
+    /// Share the actual fluid-shape history and source-validated rain exposure
+    /// across every item in this level tick. Neither capability is fabricated.
+    pub fn simulate_level_with_context(
+        &mut self,
+        world: &mut RuntimeWorld,
+        facts: ItemWorldFacts,
+        colliders: &[CollisionEntity],
+        cache: Option<&mut FluidShapeCache>,
+        rain: Option<&mut dyn RainExposure>,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        self.simulate_level_inner(world, facts, colliders, cache, rain, host)
+    }
+    fn simulate_level_inner(
+        &mut self,
+        world: &mut RuntimeWorld,
+        facts: ItemWorldFacts,
+        colliders: &[CollisionEntity],
+        mut cache: Option<&mut FluidShapeCache>,
+        mut rain: Option<&mut dyn RainExposure>,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        let Self {
+            index,
+            ticks,
+            items,
+            tracking,
+            tracking_order,
+            chunk_visibility,
+            world_random: _,
+            sound_random,
+            outbox,
+        } = self;
+        ticks
+            .try_for_each(|ticks, handle| -> Result<()> {
+                let Some(indexed) = index.get(handle) else {
+                    return Ok(());
+                };
+                if indexed.kind == EntityKind::Player {
+                    return host.level_player_tick(handle);
+                }
+                let Some(mut current) = items.remove(&handle.id) else {
+                    return Ok(());
+                };
+                ensure!(current.handle == handle, "stale item tick handle");
+                if current.state.removed {
+                    index.remove(handle);
+                    ticks.remove(handle.id);
+                    if tracking.remove(&handle.id).is_some() {
+                        tracking_order.remove(handle.id);
+                        let revision = next_revision(&mut outbox.revision)?;
+                        outbox.send(RuntimeEntityEvent::Removed {
+                            revision,
+                            entity_id: handle.id,
+                        });
+                    }
+                    return Ok(());
+                }
+                current.state.begin_level_tick();
+                // Before movement, base tick cannot replace a surviving item's
+                // stack. This read-only template supplies the unwatched fields;
+                // onMove overlays the *current* physical fields. Merge runs later.
+                let tracking_context = RefCell::new(current.state.clone());
+                let parts = RefCell::new(TickParts {
+                    index,
+                    ticks,
+                    items,
+                    tracking,
+                    tracking_order,
+                    chunk_visibility,
+                    sound_random,
+                    outbox,
+                    host,
+                });
+                let mut callbacks = ItemCallbacks {
+                    parts: &parts,
+                    handle,
+                    tracking_context: &tracking_context,
+                };
+                let outcome = (|| {
+                    let mut provider = RuntimeItemWorld::new(
+                        world,
+                        &current.state.physical,
+                        &mut current.random,
+                        &mut callbacks,
+                        facts,
+                        colliders,
+                    )?;
+                    if let Some(cache) = cache.as_deref_mut() {
+                        provider = provider.with_fluid_shape_cache(cache);
+                    }
+                    if let Some(exposure) = rain.as_mut() {
+                        provider = provider.with_rain_exposure(&mut **exposure);
+                    }
+                    current
+                        .state
+                        .tick_full_body(&mut provider, |state| parts.borrow_mut().merge(state))?;
+                    Ok::<(), anyhow::Error>(())
+                })();
+                {
+                    let mut parts = parts.borrow_mut();
+                    parts
+                        .host
+                        .observe_item_tick(&current.state, &current.random);
+                    // Keep the actual post-error state for diagnosis; completed
+                    // synchronous callbacks are not rolled back by a Rust error.
+                    if current.state.removed {
+                        parts.remove_item(handle, &current.state)?;
+                    } else {
+                        parts.items.insert(handle.id, current);
+                    }
+                }
+                outcome
+            })
+            .map_err(|error| anyhow::anyhow!("entity level tick: {error}"))
+    }
+    /// Run for each actual connection-phase Player.aiStep, after world ticks.
+    /// The caller preserves its real connection iteration order.
+    pub fn player_touch(
+        &mut self,
+        player: PickupPlayer,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        if !player.alive || player.spectator {
+            return Ok(());
+        }
+        let bounds = if let Some(vehicle) = player.vehicle_bounds {
+            player
+                .bounds
+                .minmax(vehicle)
+                .inflate(Vec3::new(1.0, 0.0, 1.0))
+        } else {
+            player.bounds.inflate(Vec3::new(1.0, 0.5, 1.0))
+        };
+        let items = &self.items;
+        let candidates = self.index.query(bounds, Some(EntityKind::Item), |handle| {
+            Ok(items
+                .get(&handle.id)
+                .filter(|entry| entry.handle == handle && !entry.state.removed)
+                .map(|entry| entry.state.bounds))
+        })?;
+        for handle in candidates {
+            let Some(entry) = self.items.get_mut(&handle.id) else {
+                continue;
+            };
+            if entry.handle != handle {
+                continue;
+            }
+            if entry.state.removed {
+                continue;
+            }
+            let mut callbacks = PickupCallbacks {
+                player,
+                handle,
+                index: &mut self.index,
+                ticks: &mut self.ticks,
+                tracking: &mut self.tracking,
+                tracking_order: &mut self.tracking_order,
+                outbox: &mut self.outbox,
+                host,
+            };
+            let result = entry.state.try_pickup_with_callbacks(
+                player.uuid,
+                player.entity_id,
+                &mut callbacks,
+            );
+            if entry.state.removed {
+                self.items.remove(&handle.id);
+            }
+            result?;
+        }
+        Ok(())
+    }
+}
+struct PickupCallbacks<'a, H> {
+    player: PickupPlayer,
+    handle: EntityHandle,
+    index: &'a mut RuntimeEntityIndex,
+    ticks: &'a mut EntityTickList<EntityHandle>,
+    tracking: &'a mut BTreeMap<i32, TrackedItem>,
+    tracking_order: &'a mut TrackingEntityMap<EntityHandle>,
+    outbox: &'a mut EntityOutbox,
+    host: &'a mut H,
+}
+impl<H: RuntimeEntityHost> ItemPickupHost for PickupCallbacks<'_, H> {
+    fn is_client_side(&self) -> bool {
+        false
+    }
+    fn add_to_inventory(&mut self, stack: &mut ItemStack) -> Result<bool> {
+        self.host
+            .add_to_inventory(self.player, self.handle.id, stack.count, stack)
+    }
+    fn collect(
+        &mut self,
+        state: &ItemState,
+        original_count: i32,
+        accepted_count: i32,
+    ) -> Result<()> {
+        let pickup = Pickup {
+            item_entity_id: state.entity_id,
+            player_entity_id: self.player.entity_id,
+            packet_count: original_count,
+            accepted_count,
+            removed: state.removed,
+        };
+        let revision = next_revision(&mut self.outbox.revision)?;
+        self.outbox
+            .send(RuntimeEntityEvent::Collected { revision, pickup });
+        self.host
+            .collect_item(self.player, state, original_count, accepted_count)
+    }
+    fn discarded(&mut self, state: &ItemState) -> Result<()> {
+        self.index.remove(self.handle);
+        self.ticks.remove(self.handle.id);
+        if self.tracking.remove(&self.handle.id).is_some() {
+            self.tracking_order.remove(self.handle.id);
+            let revision = next_revision(&mut self.outbox.revision)?;
+            self.outbox.send(RuntimeEntityEvent::Removed {
+                revision,
+                entity_id: self.handle.id,
+            });
+        }
+        self.host
+            .discarded(&state.physical, &state.stack, state.health)
+    }
+    fn after(&mut self, state: &ItemState, pickup: Pickup, original_item_id: i32) -> Result<()> {
+        self.host
+            .collected(self.player, state, pickup, original_item_id)
+    }
+}
+
+fn next_revision(revision: &mut u64) -> Result<u64> {
+    *revision = revision.checked_add(1).context("item revision exhausted")?;
+    Ok(*revision)
+}
+fn start_tracking(
+    tracking: &mut BTreeMap<i32, TrackedItem>,
+    tracking_order: &mut TrackingEntityMap<EntityHandle>,
+    outbox: &mut EntityOutbox,
+    handle: EntityHandle,
+    state: &ItemState,
+) -> Result<()> {
+    ensure!(
+        !tracking.contains_key(&handle.id),
+        "item is already tracked"
+    );
+    let sender = ItemReplication::new(state)?;
+    let snapshot = sender.snapshot(state)?;
+    tracking.insert(
+        handle.id,
+        TrackedItem {
+            handle,
+            sender,
+            last_section: crate::entity_spatial::section_at(state.position_vec()),
+        },
+    );
+    tracking_order.insert(handle.id, handle);
+    let revision = next_revision(&mut outbox.revision)?;
+    outbox.send(RuntimeEntityEvent::Update {
+        revision,
+        snapshot: Box::new(snapshot),
+        packets: vec![],
+    });
+    Ok(())
+}
+fn change_tracking(
+    tracking: &mut BTreeMap<i32, TrackedItem>,
+    tracking_order: &mut TrackingEntityMap<EntityHandle>,
+    outbox: &mut EntityOutbox,
+    handle: EntityHandle,
+    state: &ItemState,
+    visibility: (Visibility, Visibility),
+) -> Result<()> {
+    let (previous, current) = visibility;
+    if previous.accessible() == current.accessible() {
+        return Ok(());
+    }
+    if current.accessible() {
+        start_tracking(tracking, tracking_order, outbox, handle, state)?;
+    } else if tracking.remove(&handle.id).is_some() {
+        tracking_order.remove(handle.id);
+        let revision = next_revision(&mut outbox.revision)?;
+        outbox.send(RuntimeEntityEvent::Removed {
+            revision,
+            entity_id: handle.id,
+        });
+    }
+    Ok(())
+}
+
+struct TickParts<'a, H> {
+    index: &'a mut RuntimeEntityIndex,
+    ticks: &'a mut EntityTickList<EntityHandle>,
+    items: &'a mut BTreeMap<i32, RuntimeItem>,
+    tracking: &'a mut BTreeMap<i32, TrackedItem>,
+    tracking_order: &'a mut TrackingEntityMap<EntityHandle>,
+    chunk_visibility: &'a BTreeMap<(i32, i32), Visibility>,
+    sound_random: &'a mut Option<LegacyRandomSource>,
+    outbox: &'a mut EntityOutbox,
+    host: &'a mut H,
+}
+impl<H: RuntimeEntityHost> TickParts<'_, H> {
+    fn unregister(&mut self, handle: EntityHandle) -> Result<bool> {
+        if !self.index.remove(handle) {
+            return Ok(false);
+        }
+        self.ticks.remove(handle.id);
+        if self.tracking.remove(&handle.id).is_some() {
+            self.tracking_order.remove(handle.id);
+            let revision = next_revision(&mut self.outbox.revision)?;
+            self.outbox.send(RuntimeEntityEvent::Removed {
+                revision,
+                entity_id: handle.id,
+            });
+        }
+        Ok(true)
+    }
+    fn remove_item(&mut self, handle: EntityHandle, state: &ItemState) -> Result<()> {
+        if self.unregister(handle)? {
+            self.host
+                .discarded(&state.physical, &state.stack, state.health)?;
+        }
+        Ok(())
+    }
+    fn merge(&mut self, current: &mut ItemState) -> Result<()> {
+        let items = &self.items;
+        let bounds = current.bounds.inflate(Vec3::new(0.5, 0.0, 0.5));
+        let candidates = self.index.query(bounds, Some(EntityKind::Item), |handle| {
+            if handle.id == current.entity_id {
+                return Ok(None);
+            }
+            let Some(entry) = items.get(&handle.id).filter(|entry| entry.handle == handle) else {
+                return Ok(None);
+            };
+            Ok(entry.state.is_mergeable()?.then_some(entry.state.bounds))
+        })?;
+        for handle in candidates {
+            if current.removed {
+                break;
+            }
+            let Some(mut other) = self.items.remove(&handle.id) else {
+                continue;
+            };
+            let result = item_entity::merge_pair(current, &mut other.state);
+            if other.state.removed {
+                self.remove_item(handle, &other.state)?;
+            } else {
+                self.items.insert(handle.id, other);
+            }
+            result?;
+            if current.removed {
+                let current_handle = self
+                    .index
+                    .by_id(current.entity_id)
+                    .context("merge source is not indexed")?
+                    .handle;
+                self.remove_item(current_handle, current)?;
+            }
+        }
+        Ok(())
+    }
+}
+struct ItemCallbacks<'a, 'b, H> {
+    parts: &'a RefCell<TickParts<'b, H>>,
+    handle: EntityHandle,
+    tracking_context: &'a RefCell<ItemState>,
+}
+impl<H: RuntimeEntityHost> RuntimeItemHost for ItemCallbacks<'_, '_, H> {
+    fn position_changed(&mut self, state: &EntityPhysicalState) -> Result<()> {
+        let mut parts = self.parts.borrow_mut();
+        let visibility = parts.chunk_visibility;
+        if let Some(transition) =
+            parts
+                .index
+                .position_changed(self.handle, state.position_vec(), |chunk| {
+                    visibility
+                        .get(&chunk)
+                        .copied()
+                        .unwrap_or(Visibility::Hidden)
+                })?
+        {
+            // onMove updates tracking before ticking. The chunk-status path
+            // deliberately uses the reverse ordering above.
+            if transition.previous.accessible() != transition.current.accessible() {
+                let mut context = self.tracking_context.borrow().clone();
+                context.physical = state.clone();
+                let TickParts {
+                    tracking,
+                    tracking_order,
+                    outbox,
+                    ..
+                } = &mut *parts;
+                change_tracking(
+                    tracking,
+                    tracking_order,
+                    outbox,
+                    self.handle,
+                    &context,
+                    (transition.previous, transition.current),
+                )?;
+            }
+            if transition.was_ticking() != transition.is_ticking() {
+                if transition.is_ticking() {
+                    parts.ticks.add(self.handle.id, self.handle);
+                } else {
+                    parts.ticks.remove(self.handle.id);
+                }
+            }
+        }
+        Ok(())
+    }
+    fn profile(&mut self, event: ProfileEvent) {
+        self.parts.borrow_mut().host.profile(event);
+    }
+    fn effect(&mut self, state: &EntityPhysicalState, effect: RuntimeItemEffect) -> Result<()> {
+        let mut parts = self.parts.borrow_mut();
+        if matches!(
+            effect,
+            RuntimeItemEffect::Base(BaseEffect::DiscardBelowWorld)
+        ) && parts.unregister(self.handle)?
+        {
+            let context = self.tracking_context.borrow();
+            parts
+                .host
+                .discarded(state, &context.stack, context.health)?;
+        }
+        let seed = if matches!(effect, RuntimeItemEffect::Sound { .. }) {
+            Some(
+                parts
+                    .sound_random
+                    .as_mut()
+                    .context("actual Level.threadSafeRandom sound owner unavailable")?
+                    .next_i64(),
+            )
+        } else {
+            None
+        };
+        let deliveries = parts.host.effect(state, effect, seed)?;
+        if !deliveries.is_empty() {
+            let revision = next_revision(&mut parts.outbox.revision)?;
+            parts.outbox.send(RuntimeEntityEvent::Effect {
+                revision,
+                deliveries,
+            });
+        }
+        Ok(())
+    }
+    fn entity_damage(
+        &mut self,
+        state: &EntityPhysicalState,
+        stack: &ItemStack,
+        health: i32,
+        causing_entity: Option<i32>,
+    ) -> Result<()> {
+        {
+            let mut context = self.tracking_context.borrow_mut();
+            context.stack = stack.clone();
+            context.health = health;
+        }
+        self.parts
+            .borrow_mut()
+            .host
+            .entity_damage(state, stack, health, causing_entity)
+    }
+    fn discarded(
+        &mut self,
+        state: &EntityPhysicalState,
+        stack: &ItemStack,
+        health: i32,
+    ) -> Result<()> {
+        let mut parts = self.parts.borrow_mut();
+        if parts.unregister(self.handle)? {
+            parts.host.discarded(state, stack, health)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+#[path = "../tools/runtime_entities_tests.rs"]
+mod original_corpus_tests;
+
+#[cfg(test)]
+#[path = "../tools/runtime_entities_rain_tests.rs"]
+mod rain_context_tests;
+
+#[cfg(test)]
+mod integration_tests {
+    use super::*;
+    use crate::{
+        entity::Position, runtime_collision::CollisionBorder, runtime_item_world::RainAvailability,
+        world::FlatWorld,
+    };
+    struct Host {
+        visits: Vec<i32>,
+        removed: Vec<i32>,
+    }
+    impl RuntimeEntityHost for Host {
+        fn observe_item_tick(&mut self, state: &ItemState, _: &LegacyRandomSource) {
+            self.visits.push(state.entity_id);
+        }
+        fn level_player_tick(&mut self, player: EntityHandle) -> Result<()> {
+            self.visits.push(player.id);
+            Ok(())
+        }
+        fn profile(&mut self, _: ProfileEvent) {}
+        fn effect(
+            &mut self,
+            _: &EntityPhysicalState,
+            effect: RuntimeItemEffect,
+            _: Option<i64>,
+        ) -> Result<Vec<EffectDelivery>> {
+            ensure!(
+                matches!(effect, RuntimeItemEffect::HitGround { .. }),
+                "unexpected test-world effect"
+            );
+            Ok(vec![])
+        }
+        fn entity_damage(
+            &mut self,
+            _: &EntityPhysicalState,
+            _: &ItemStack,
+            _: i32,
+            _: Option<i32>,
+        ) -> Result<()> {
+            anyhow::bail!("unexpected damage")
+        }
+        fn discarded(&mut self, state: &EntityPhysicalState, _: &ItemStack, _: i32) -> Result<()> {
+            assert!(state.removed);
+            self.removed.push(state.entity_id);
+            Ok(())
+        }
+        fn add_to_inventory(
+            &mut self,
+            _: PickupPlayer,
+            _: i32,
+            _: i32,
+            _: &mut ItemStack,
+        ) -> Result<bool> {
+            anyhow::bail!("unexpected pickup")
+        }
+        fn collect_item(&mut self, _: PickupPlayer, _: &ItemState, _: i32, _: i32) -> Result<()> {
+            anyhow::bail!("unexpected pickup")
+        }
+        fn collected(&mut self, _: PickupPlayer, _: &ItemState, _: Pickup, _: i32) -> Result<()> {
+            anyhow::bail!("unexpected pickup")
+        }
+    }
+    fn item(id: i32, count: i32) -> ItemState {
+        ItemState::new(
+            id,
+            [id as u8; 16],
+            Position {
+                x: 8.5,
+                y: 64.,
+                z: 8.5,
+                yaw: 0.,
+                pitch: 0.,
+                on_ground: true,
+            },
+            Vec3::ZERO,
+            ItemStack::new(1, count).unwrap(),
+        )
+        .unwrap()
+    }
+    #[test]
+    fn tracker_lifecycle_and_distance_gate_preserve_dirty_state_and_reset_only_global_tracking() {
+        let mut runtime = RuntimeEntities::new(LegacyRandomSource::new(90));
+        runtime
+            .insert_item(item(17, 1), LegacyRandomSource::new(91))
+            .unwrap();
+        assert!(runtime.snapshots().unwrap().1.is_empty());
+        assert!(runtime.drain_events().is_empty());
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Tracked)
+            .unwrap();
+        runtime.publish_tracking(|_| false).unwrap();
+        assert_eq!(runtime.tracking[&17].sender.tracking_tick_count(), 0);
+        assert_ne!(runtime.item(17).unwrap().metadata_dirty, 0);
+        runtime.publish_tracking(|_| true).unwrap();
+        assert_eq!(runtime.tracking[&17].sender.tracking_tick_count(), 1);
+        assert_eq!(runtime.item(17).unwrap().metadata_dirty, 0);
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Ticking)
+            .unwrap();
+        assert_eq!(runtime.tracking[&17].sender.tracking_tick_count(), 1);
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Hidden)
+            .unwrap();
+        assert!(runtime.snapshots().unwrap().1.is_empty());
+        runtime
+            .items
+            .get_mut(&17)
+            .unwrap()
+            .state
+            .set_stack_count_in_place(5);
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Tracked)
+            .unwrap();
+        let snapshot = runtime.snapshots().unwrap().1.pop().unwrap();
+        assert_eq!(snapshot.entity.stack.count, 5);
+        assert_eq!(runtime.tracking[&17].sender.tracking_tick_count(), 0);
+    }
+    #[test]
+    fn merge_removal_mutates_the_actual_tick_list_without_reordering_external_players() {
+        let mut runtime = RuntimeEntities::new(LegacyRandomSource::new(92));
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Ticking)
+            .unwrap();
+        let mut first = item(17, 4);
+        first.tick_count = 39;
+        runtime
+            .insert_item(first, LegacyRandomSource::new(93))
+            .unwrap();
+        runtime
+            .register_player(99, Vec3::new(8.5, 64., 8.5))
+            .unwrap();
+        let mut source = item(3, 1);
+        source.tick_count = 39;
+        runtime
+            .insert_item(source, LegacyRandomSource::new(94))
+            .unwrap();
+        let mut world = RuntimeWorld::Fixture(FlatWorld::new(0, 1, 10, 9, 39));
+        let mut host = Host {
+            visits: vec![],
+            removed: vec![],
+        };
+        runtime
+            .simulate_level(
+                &mut world,
+                ItemWorldFacts {
+                    game_time: 1,
+                    minimum_build_height: -64,
+                    ultrawarm: false,
+                    border: CollisionBorder::default(),
+                    rain: RainAvailability::NotRaining,
+                    has_passengers: false,
+                },
+                &[],
+                &mut host,
+            )
+            .unwrap();
+        assert_eq!(host.visits, vec![17, 99]);
+        assert_eq!(host.removed, vec![3]);
+        assert_eq!(runtime.item(17).unwrap().stack.count, 5);
+        assert!(runtime.item(3).is_none());
+        assert!(runtime.index.by_id(3).is_none());
+        assert!(!runtime.ticks.contains(3));
+        assert!(!runtime.tracking_order.contains_key(3));
+    }
+
+    #[test]
+    fn pickup_uses_one_ordered_outbox_and_preserves_the_discarded_stack_object() {
+        use crate::player_inventory::SharedContainer;
+        use std::sync::Mutex;
+        struct PickupHost {
+            menu: SharedContainer,
+            calls: Vec<&'static str>,
+        }
+        impl RuntimeEntityHost for PickupHost {
+            fn level_player_tick(&mut self, _: EntityHandle) -> Result<()> {
+                anyhow::bail!("not a level tick")
+            }
+            fn profile(&mut self, _: ProfileEvent) {}
+            fn effect(
+                &mut self,
+                _: &EntityPhysicalState,
+                _: RuntimeItemEffect,
+                _: Option<i64>,
+            ) -> Result<Vec<EffectDelivery>> {
+                anyhow::bail!("unexpected effect")
+            }
+            fn entity_damage(
+                &mut self,
+                _: &EntityPhysicalState,
+                _: &ItemStack,
+                _: i32,
+                _: Option<i32>,
+            ) -> Result<()> {
+                anyhow::bail!("unexpected damage")
+            }
+            fn discarded(
+                &mut self,
+                state: &EntityPhysicalState,
+                stack: &ItemStack,
+                _: i32,
+            ) -> Result<()> {
+                assert!(state.removed);
+                assert_eq!(stack.count, 0);
+                assert_eq!(stack.item_id, 1);
+                self.calls.push("discard");
+                Ok(())
+            }
+            fn add_to_inventory(
+                &mut self,
+                _: PickupPlayer,
+                _: i32,
+                original: i32,
+                stack: &mut ItemStack,
+            ) -> Result<bool> {
+                assert_eq!(original, 3);
+                self.calls.push("inventory_add");
+                self.menu
+                    .transact(|menu| Ok((menu.add_pickup_to_inventory(stack, false)?, vec![])))
+            }
+            fn collect_item(
+                &mut self,
+                _: PickupPlayer,
+                state: &ItemState,
+                original: i32,
+                accepted: i32,
+            ) -> Result<()> {
+                assert!(!state.removed);
+                assert_eq!(state.stack.count, 0);
+                assert_eq!((original, accepted), (3, 3));
+                self.calls.push("take");
+                self.menu
+                    .transact(|menu| Ok(((), menu.broadcast_changes()?)))
+            }
+            fn collected(
+                &mut self,
+                _: PickupPlayer,
+                state: &ItemState,
+                pickup: Pickup,
+                original_item_id: i32,
+            ) -> Result<()> {
+                assert!(state.removed);
+                assert_eq!((state.stack.item_id, state.stack.count), (1, 3));
+                assert_eq!(original_item_id, 1);
+                assert!(pickup.removed);
+                self.calls.push("stats_then_on_pickup");
+                Ok(())
+            }
+        }
+        let order = Arc::new(Mutex::new(Vec::new()));
+        let menu_order = Arc::clone(&order);
+        let menu = SharedContainer::with_publisher(Arc::new(move |update| {
+            if !update.packets.is_empty() {
+                menu_order.lock().unwrap().push("menu");
+            }
+        }));
+        let entity_order = Arc::clone(&order);
+        let mut runtime = RuntimeEntities::new(LegacyRandomSource::new(95)).with_publisher(
+            Arc::new(move |event| {
+                let kind = match event {
+                    RuntimeEntityEvent::Update { .. } => "update",
+                    RuntimeEntityEvent::Collected { .. } => "collect",
+                    RuntimeEntityEvent::Removed { .. } => "remove",
+                    RuntimeEntityEvent::Effect { .. } => "effect",
+                };
+                entity_order.lock().unwrap().push(kind);
+            }),
+        );
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Ticking)
+            .unwrap();
+        runtime
+            .insert_item(item(17, 3), LegacyRandomSource::new(96))
+            .unwrap();
+        order.lock().unwrap().clear();
+        let mut host = PickupHost {
+            menu,
+            calls: vec![],
+        };
+        runtime
+            .player_touch(
+                PickupPlayer {
+                    entity_id: 99,
+                    uuid: [99; 16],
+                    bounds: Aabb::player(Vec3::new(8.5, 64., 8.5), 0.6, 1.8),
+                    alive: true,
+                    spectator: false,
+                    vehicle_bounds: None,
+                },
+                &mut host,
+            )
+            .unwrap();
+        assert_eq!(*order.lock().unwrap(), ["collect", "menu", "remove"]);
+        assert_eq!(
+            host.calls,
+            ["inventory_add", "take", "discard", "stats_then_on_pickup"]
+        );
+        assert_eq!(
+            host.menu
+                .read(|menu| menu.inventory.slot(36).unwrap().count)
+                .unwrap(),
+            3
+        );
+        assert!(runtime.item(17).is_none());
+        assert!(runtime.index.by_id(17).is_none());
+    }
+
+    #[test]
+    fn menu_and_prepared_drop_commit_together_before_the_menu_outbox() {
+        use crate::player_inventory::SharedContainer;
+        use std::sync::Mutex;
+        let order = Arc::new(Mutex::new(Vec::new()));
+        let menu_order = Arc::clone(&order);
+        let menu = SharedContainer::with_publisher(Arc::new(move |update| {
+            if !update.packets.is_empty() {
+                menu_order.lock().unwrap().push("menu");
+            }
+        }));
+        menu.transact(|menu| {
+            menu.inventory
+                .set_slot_authoritative(36, ItemStack::new(1, 3)?);
+            menu.record_external_sync();
+            Ok(((), vec![]))
+        })
+        .unwrap();
+        let entity_order = Arc::clone(&order);
+        let mut runtime = RuntimeEntities::new(LegacyRandomSource::new(97)).with_publisher(
+            Arc::new(move |event| {
+                if matches!(event, RuntimeEntityEvent::Update { .. }) {
+                    entity_order.lock().unwrap().push("spawn");
+                }
+            }),
+        );
+        runtime
+            .set_chunk_visibility((0, 0), Visibility::Ticking)
+            .unwrap();
+        let state_before = menu.read(|menu| menu.inventory.state_id()).unwrap();
+        let failed: Result<Vec<EntityHandle>> = {
+            let runtime = &mut runtime;
+            menu.transact_with_commit(
+                move |menu| {
+                    menu.inventory
+                        .set_slot_authoritative(36, ItemStack::empty());
+                    let mut invalid = item(18, 1);
+                    invalid.vehicle = Some(99);
+                    let prepared = runtime.prepare_items(vec![
+                        (item(17, 3), LegacyRandomSource::new(98)),
+                        (invalid, LegacyRandomSource::new(99)),
+                    ])?;
+                    Ok((prepared, menu.broadcast_changes()?))
+                },
+                |prepared| prepared.commit(),
+            )
+        };
+        assert!(failed.is_err());
+        assert_eq!(runtime.item_count(), 0);
+        assert!(runtime.index.by_id(17).is_none());
+        assert!(order.lock().unwrap().is_empty());
+        assert_eq!(
+            menu.read(|menu| (
+                menu.inventory.slot(36).unwrap().count,
+                menu.inventory.state_id()
+            ))
+            .unwrap(),
+            (3, state_before)
+        );
+        let rng = LegacyRandomSource::new(100);
+        let expected_rng = rng.state48();
+        let handles = {
+            let runtime = &mut runtime;
+            menu.transact_with_commit(
+                move |menu| {
+                    let stack = menu.inventory.slot(36).unwrap().clone();
+                    menu.inventory
+                        .set_slot_authoritative(36, ItemStack::empty());
+                    let mut state = item(17, 3);
+                    state.stack = stack;
+                    let prepared =
+                        runtime.prepare_items(vec![(state, LegacyRandomSource::new(101))])?;
+                    Ok((prepared, menu.broadcast_changes()?))
+                },
+                move |prepared| prepared.commit_with_world_random(rng),
+            )
+            .unwrap()
+        };
+        assert_eq!(handles[0].generation, 1);
+        assert_eq!(*order.lock().unwrap(), ["spawn", "menu"]);
+        assert!(menu
+            .read(|menu| menu.inventory.slot(36).unwrap().is_empty())
+            .unwrap());
+        assert_eq!(runtime.item(17).unwrap().stack.count, 3);
+        assert_eq!(runtime.world_random.state48(), expected_rng);
+    }
+
+    #[test]
+    fn dropping_a_prepared_batch_reserves_no_entity_identity_or_rng_state() {
+        let mut runtime = RuntimeEntities::new(LegacyRandomSource::new(102));
+        let original_rng = runtime.world_random.state48();
+        let mut invalid = item(18, 1);
+        invalid.metadata_dirty = 0x200;
+        assert!(runtime
+            .prepare_items(vec![(invalid, LegacyRandomSource::new(105))])
+            .is_err());
+        drop(
+            runtime
+                .prepare_items(vec![(item(17, 3), LegacyRandomSource::new(103))])
+                .unwrap(),
+        );
+        assert!(runtime.index.by_id(17).is_none());
+        assert_eq!(runtime.item_count(), 0);
+        assert!(runtime.drain_events().is_empty());
+        assert_eq!(runtime.world_random.state48(), original_rng);
+        assert_eq!(
+            runtime
+                .insert_item(item(17, 3), LegacyRandomSource::new(104))
+                .unwrap()
+                .generation,
+            1
+        );
+    }
+}

@@ -1,0 +1,716 @@
+{
+  "format": "mc121-port-progress-v1",
+  "updated_at": "2026-11-01T01:52:53.154725+00:00",
+  "scope_version": 1,
+  "metric": "100 named unweighted delivery items; planning-checklist completion only",
+  "not_behavior_coverage": true,
+  "not_engineering_effort_percentage": true,
+  "total_points": 100,
+  "code_ported_points": 55,
+  "main_integrated_points": 50,
+  "code_ported_percent": 55,
+  "main_integrated_percent": 50,
+  "full_vanilla_parity": false,
+  "rows": [
+    {
+      "id": "network.1",
+      "area": "network",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "network.2",
+      "area": "network",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "network.3",
+      "area": "network",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "network.4",
+      "area": "network",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "network.5",
+      "area": "network",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "authentication.1",
+      "area": "authentication",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "authentication.2",
+      "area": "authentication",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "authentication.3",
+      "area": "authentication",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "authentication.4",
+      "area": "authentication",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "authentication.5",
+      "area": "authentication",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "registries.1",
+      "area": "registries",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "registries.2",
+      "area": "registries",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "registries.3",
+      "area": "registries",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "registries.4",
+      "area": "registries",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "registries.5",
+      "area": "registries",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "world_storage.1",
+      "area": "world_storage",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "world_storage.2",
+      "area": "world_storage",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "world_storage.3",
+      "area": "world_storage",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "world_storage.4",
+      "area": "world_storage",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "world_storage.5",
+      "area": "world_storage",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "chunk_lifecycle.1",
+      "area": "chunk_lifecycle",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "chunk_lifecycle.2",
+      "area": "chunk_lifecycle",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "chunk_lifecycle.3",
+      "area": "chunk_lifecycle",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "chunk_lifecycle.4",
+      "area": "chunk_lifecycle",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "chunk_lifecycle.5",
+      "area": "chunk_lifecycle",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "world_generation.1",
+      "area": "world_generation",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false
+    },
+    {
+      "id": "world_generation.2",
+      "area": "world_generation",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false
+    },
+    {
+      "id": "world_generation.3",
+      "area": "world_generation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "world_generation.4",
+      "area": "world_generation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "world_generation.5",
+      "area": "world_generation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "lighting.1",
+      "area": "lighting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "lighting.2",
+      "area": "lighting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "lighting.3",
+      "area": "lighting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "lighting.4",
+      "area": "lighting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "lighting.5",
+      "area": "lighting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "block_interactions.1",
+      "area": "block_interactions",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "block_interactions.2",
+      "area": "block_interactions",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "block_interactions.3",
+      "area": "block_interactions",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "block_interactions.4",
+      "area": "block_interactions",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "block_interactions.5",
+      "area": "block_interactions",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "fluids.1",
+      "area": "fluids",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "fluids.2",
+      "area": "fluids",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "fluids.3",
+      "area": "fluids",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "fluids.4",
+      "area": "fluids",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "fluids.5",
+      "area": "fluids",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "player_motion.1",
+      "area": "player_motion",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "player_motion.2",
+      "area": "player_motion",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "player_motion.3",
+      "area": "player_motion",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false
+    },
+    {
+      "id": "player_motion.4",
+      "area": "player_motion",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "player_motion.5",
+      "area": "player_motion",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "inventory.1",
+      "area": "inventory",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "inventory.2",
+      "area": "inventory",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "inventory.3",
+      "area": "inventory",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "inventory.4",
+      "area": "inventory",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "inventory.5",
+      "area": "inventory",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "crafting.1",
+      "area": "crafting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "crafting.2",
+      "area": "crafting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false
+    },
+    {
+      "id": "crafting.3",
+      "area": "crafting",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "crafting.4",
+      "area": "crafting",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "crafting.5",
+      "area": "crafting",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "items.1",
+      "area": "items",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "items.2",
+      "area": "items",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "items.3",
+      "area": "items",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "items.4",
+      "area": "items",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "items.5",
+      "area": "items",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "entities.1",
+      "area": "entities",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "entities.2",
+      "area": "entities",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "entities.3",
+      "area": "entities",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "entities.4",
+      "area": "entities",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "entities.5",
+      "area": "entities",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "mobs_ai.1",
+      "area": "mobs_ai",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "mobs_ai.2",
+      "area": "mobs_ai",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "mobs_ai.3",
+      "area": "mobs_ai",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "mobs_ai.4",
+      "area": "mobs_ai",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "mobs_ai.5",
+      "area": "mobs_ai",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "survival_combat.1",
+      "area": "survival_combat",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "survival_combat.2",
+      "area": "survival_combat",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false
+    },
+    {
+      "id": "survival_combat.3",
+      "area": "survival_combat",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "survival_combat.4",
+      "area": "survival_combat",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "survival_combat.5",
+      "area": "survival_combat",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "environment.1",
+      "area": "environment",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "environment.2",
+      "area": "environment",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "environment.3",
+      "area": "environment",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "environment.4",
+      "area": "environment",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "environment.5",
+      "area": "environment",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "simulation.1",
+      "area": "simulation",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "simulation.2",
+      "area": "simulation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "simulation.3",
+      "area": "simulation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "simulation.4",
+      "area": "simulation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "simulation.5",
+      "area": "simulation",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "commands_data.1",
+      "area": "commands_data",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "commands_data.2",
+      "area": "commands_data",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "commands_data.3",
+      "area": "commands_data",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "commands_data.4",
+      "area": "commands_data",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "commands_data.5",
+      "area": "commands_data",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "persistence_ops.1",
+      "area": "persistence_ops",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "persistence_ops.2",
+      "area": "persistence_ops",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "persistence_ops.3",
+      "area": "persistence_ops",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true
+    },
+    {
+      "id": "persistence_ops.4",
+      "area": "persistence_ops",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    },
+    {
+      "id": "persistence_ops.5",
+      "area": "persistence_ops",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false
+    }
+  ]
+}

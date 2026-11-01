@@ -1,0 +1,29 @@
+{
+  "entityId": 1,
+  "isHardcore": false,
+  "worldNames": [
+    "minecraft:overworld",
+    "minecraft:the_end",
+    "minecraft:the_nether"
+  ],
+  "maxPlayers": 4,
+  "viewDistance": 2,
+  "simulationDistance": 2,
+  "reducedDebugInfo": false,
+  "enableRespawnScreen": true,
+  "doLimitedCrafting": false,
+  "worldState": {
+    "dimension": 0,
+    "name": "minecraft:overworld",
+    "hashedSeed": [
+      2047574433,
+      -177187409
+    ],
+    "gamemode": "creative",
+    "previousGamemode": 255,
+    "isDebug": false,
+    "isFlat": true,
+    "portalCooldown": 0
+  },
+  "enforcesSecureChat": false
+}

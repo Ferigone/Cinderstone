@@ -1,0 +1,12 @@
+{
+  "minecraft": "1.21",
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "queries": 6696,
+  "food_ticks": 20400,
+  "observed_states": 33036,
+  "vectors_sha256": "9b0fb188b0a7684e904d53a903cb08b88a3bf3766635eb4c9d71f24c27f2e410",
+  "native_source_sha256": "07021a9693bcf58e0d2443e576f7b4bfdc3897479822a34a4f8bb979b0ec6cf3",
+  "scope": "Original FoodData, CombatRules, LivingEntity health/absorption/fall methods and Player numeric damage subtraction with controlled contexts/callbacks; peaceful aiStep prefix stops at missing inventory. Full hurt cooldown, death, equipment/enchantment and world side effects remain caller responsibilities.",
+  "mismatches": 0,
+  "rust_tests_passed": 3
+}

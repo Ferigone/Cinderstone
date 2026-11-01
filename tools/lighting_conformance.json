@@ -1,0 +1,20 @@
+{
+  "minecraft": "1.21",
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "state_count": 26684,
+  "unique_state_facts": 162,
+  "face_shapes": 47,
+  "scenes": 11,
+  "edits": 719,
+  "value_pairs": 153787,
+  "note": "All stable values match unchanged Java1.21, including no-skylight dimensions and cached incremental boundary-source preservation. Java asynchronous section publication/scheduling is not covered.",
+  "facts_sha256": "0947a8c376329cd690eb3c5087b6f1449d04020852e38342325815bf2a9d0804",
+  "vectors_sha256": "97ec189fe7da544c85916fd4786923314ef0a153f3e4c9e9d91bf3f742e02ee7",
+  "native_source_sha256": "0828ba4b55685724aba79734a05951e2bb6660ac5912b9d5b0bae02db345fc40",
+  "uncached_world_context_checks": 716,
+  "rust_stable_value_matches": true,
+  "mismatches": 0,
+  "rust_module_tests_passed": 5,
+  "incremental_updates": true,
+  "single_interior_edit_column_budget": 481
+}

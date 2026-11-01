@@ -1,0 +1,53 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source": "pinned original Mojang registry packet, independently decoded",
+  "configuration_sha256": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+  "payload": "GG1pbmVjcmFmdDpkaW1lbnNpb25fdHlwZQQTbWluZWNyYWZ0Om92ZXJ3b3JsZAEKAQALcGlnbGluX3NhZmUAAQAHbmF0dXJhbAEFAA1hbWJpZW50X2xpZ2h0AAAAAAMAH21vbnN0ZXJfc3Bhd25fYmxvY2tfbGlnaHRfbGltaXQAAAAACAAKaW5maW5pYnVybgAfI21pbmVjcmFmdDppbmZpbmlidXJuX292ZXJ3b3JsZAEAFHJlc3Bhd25fYW5jaG9yX3dvcmtzAAEADGhhc19za3lsaWdodAEBAAliZWRfd29ya3MBCAAHZWZmZWN0cwATbWluZWNyYWZ0Om92ZXJ3b3JsZAEACWhhc19yYWlkcwEDAA5sb2dpY2FsX2hlaWdodAAAAYAGABBjb29yZGluYXRlX3NjYWxlP/AAAAAAAAAKABltb25zdGVyX3NwYXduX2xpZ2h0X2xldmVsAwANbWluX2luY2x1c2l2ZQAAAAADAA1tYXhfaW5jbHVzaXZlAAAABwgABHR5cGUAEW1pbmVjcmFmdDp1bmlmb3JtAAMABW1pbl95////wAEACXVsdHJhd2FybQABAAtoYXNfY2VpbGluZwADAAZoZWlnaHQAAAGAABltaW5lY3JhZnQ6b3ZlcndvcmxkX2NhdmVzAQoBAAtwaWdsaW5fc2FmZQABAAduYXR1cmFsAQUADWFtYmllbnRfbGlnaHQAAAAAAwAfbW9uc3Rlcl9zcGF3bl9ibG9ja19saWdodF9saW1pdAAAAAAIAAppbmZpbmlidXJuAB8jbWluZWNyYWZ0OmluZmluaWJ1cm5fb3ZlcndvcmxkAQAUcmVzcGF3bl9hbmNob3Jfd29ya3MAAQAMaGFzX3NreWxpZ2h0AQEACWJlZF93b3JrcwEIAAdlZmZlY3RzABNtaW5lY3JhZnQ6b3ZlcndvcmxkAQAJaGFzX3JhaWRzAQMADmxvZ2ljYWxfaGVpZ2h0AAABgAYAEGNvb3JkaW5hdGVfc2NhbGU/8AAAAAAAAAoAGW1vbnN0ZXJfc3Bhd25fbGlnaHRfbGV2ZWwDAA1taW5faW5jbHVzaXZlAAAAAAMADW1heF9pbmNsdXNpdmUAAAAHCAAEdHlwZQARbWluZWNyYWZ0OnVuaWZvcm0AAwAFbWluX3n////AAQAJdWx0cmF3YXJtAAEAC2hhc19jZWlsaW5nAQMABmhlaWdodAAAAYAAEW1pbmVjcmFmdDp0aGVfZW5kAQoBAAtwaWdsaW5fc2FmZQABAAduYXR1cmFsAAUADWFtYmllbnRfbGlnaHQAAAAAAwAfbW9uc3Rlcl9zcGF3bl9ibG9ja19saWdodF9saW1pdAAAAAAIAAppbmZpbmlidXJuABkjbWluZWNyYWZ0OmluZmluaWJ1cm5fZW5kAQAUcmVzcGF3bl9hbmNob3Jfd29ya3MAAQAMaGFzX3NreWxpZ2h0AAEACWJlZF93b3JrcwAIAAdlZmZlY3RzABFtaW5lY3JhZnQ6dGhlX2VuZAQACmZpeGVkX3RpbWUAAAAAAAAXcAEACWhhc19yYWlkcwEDAA5sb2dpY2FsX2hlaWdodAAAAQAGABBjb29yZGluYXRlX3NjYWxlP/AAAAAAAAAKABltb25zdGVyX3NwYXduX2xpZ2h0X2xldmVsAwANbWluX2luY2x1c2l2ZQAAAAADAA1tYXhfaW5jbHVzaXZlAAAABwgABHR5cGUAEW1pbmVjcmFmdDp1bmlmb3JtAAMABW1pbl95AAAAAAEACXVsdHJhd2FybQABAAtoYXNfY2VpbGluZwADAAZoZWlnaHQAAAEAABRtaW5lY3JhZnQ6dGhlX25ldGhlcgEKAQALcGlnbGluX3NhZmUBAQAHbmF0dXJhbAAFAA1hbWJpZW50X2xpZ2h0PczMzQMAH21vbnN0ZXJfc3Bhd25fYmxvY2tfbGlnaHRfbGltaXQAAAAPCAAKaW5maW5pYnVybgAcI21pbmVjcmFmdDppbmZpbmlidXJuX25ldGhlcgEAFHJlc3Bhd25fYW5jaG9yX3dvcmtzAQEADGhhc19za3lsaWdodAABAAliZWRfd29ya3MACAAHZWZmZWN0cwAUbWluZWNyYWZ0OnRoZV9uZXRoZXIEAApmaXhlZF90aW1lAAAAAAAARlABAAloYXNfcmFpZHMAAwAObG9naWNhbF9oZWlnaHQAAACABgAQY29vcmRpbmF0ZV9zY2FsZUAgAAAAAAAAAwAZbW9uc3Rlcl9zcGF3bl9saWdodF9sZXZlbAAAAAcDAAVtaW5feQAAAAABAAl1bHRyYXdhcm0BAQALaGFzX2NlaWxpbmcBAwAGaGVpZ2h0AAABAAA=",
+  "dimensions": [
+    {
+      "key": "minecraft:overworld",
+      "facts": {
+        "min_y": -64,
+        "height": 384,
+        "logical_height": 384,
+        "ultrawarm": false,
+        "has_skylight": true,
+        "has_ceiling": false
+      }
+    },
+    {
+      "key": "minecraft:overworld_caves",
+      "facts": {
+        "min_y": -64,
+        "height": 384,
+        "logical_height": 384,
+        "ultrawarm": false,
+        "has_skylight": true,
+        "has_ceiling": true
+      }
+    },
+    {
+      "key": "minecraft:the_end",
+      "facts": {
+        "min_y": 0,
+        "height": 256,
+        "logical_height": 256,
+        "ultrawarm": false,
+        "has_skylight": false,
+        "has_ceiling": false
+      }
+    },
+    {
+      "key": "minecraft:the_nether",
+      "facts": {
+        "min_y": 0,
+        "height": 256,
+        "logical_height": 128,
+        "ultrawarm": true,
+        "has_skylight": false,
+        "has_ceiling": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "scope": "join-chunk-position-keepalive",
+  "host": "127.0.0.1",
+  "port": 25566,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "checks": {
+    "loginSuccess": true,
+    "configurationComplete": true,
+    "play": true,
+    "join": true,
+    "chunk": true,
+    "position": true,
+    "teleportAckSent": true,
+    "keepAliveReceived": true,
+    "keepAliveEchoSent": true
+  },
+  "counts": {
+    "registryData": 11,
+    "chunks": 45,
+    "keepAlive": 1,
+    "settingsSent": 1,
+    "knownPacksResponses": 1,
+    "chunkBatchResponses": 6
+  },
+  "elapsedMs": 15824.2
+}

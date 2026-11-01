@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "oracle": "actual Minecraft1.21 dyz/dzy/dzz/dzn/dzx/eof/eok/eoi/eoh/eoj/eoe",
+  "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "rounds": 100,
+  "profile": "debug",
+  "compared_outputs": 160879,
+  "trace_sha256": "296562e570e6bd1dfb86c7d90620b2a4720219a0bacb432abff603098c628207",
+  "covered": [
+    "Legacy and Xoroshiro integer/float outputs and rejection sampling",
+    "zero seed128 fallback",
+    "RandomSupport mix,upgrade and MD5 UTF8 hashing",
+    "isolated UTF16 surrogates and coordinate integer overflow",
+    "fork and positional factories/state consumption",
+    "ImprovedNoise permutations,scaled sampling and derivative accumulation",
+    "Simplex2D/3D raw sample bits",
+    "modern and legacy Perlin octave initialization,zero amplitudes and coordinate wrapping",
+    "NormalNoise max bounds and raw sample bits",
+    "WorldgenRandom wrapper consumption count and decoration/feature/largefeature seed mixing",
+    "slime chunk mixed int/long arithmetic",
+    "PerlinSimplexNoise negative/zero/positive octaves and origin offsets",
+    "lattice planes/corners \u00b11ULP, y-scale epsilon and wrapping boundaries",
+    "BlendedNoise bounds/samples with official overworld/end/nether parameters",
+    "all60official built-in noise parameter definitions"
+  ],
+  "not_covered": [
+    "Gaussian sampling",
+    "density router,terrain surfaces,carvers,features and structures"
+  ],
+  "mismatches": []
+}

@@ -1,0 +1,14 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "oracle_inner_jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "files": {
+    "configuration.json": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+    "join.json": "c18145617b60c4218d67e2ebe197c24b86a611efe3c59c0911872a2bef3d246c",
+    "join-packet.json": "e1ae712cc5dc3e2687d9d8420d92d2aeeee085516d4b152da9e002fa54ec264f",
+    "position.json": "32acb57614fd0058a58b9edbbf22520b12ba2f4e1ec938e847f6bb151d459f57",
+    "interop-report.json": "9981adaf02c65fc50fe5ca923b30669fc516c5ffa0335e618afc7b5f21caba68"
+  },
+  "capture_scope": "Actual vanilla Java1.21; offline local creative; allregistryentrieswithoutknownpackomission; noGUIclientinthecapture"
+}

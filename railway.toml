@@ -1,0 +1,15 @@
+# Compatibility configuration for Railway services that read railway.toml.
+# New service settings, persistent volume and TCP proxy are provisioned through
+# Railway itself. See docs/DEPLOYMENT.md for the explicit settings.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["Cargo.toml", "Cargo.lock", "src/**", "fixtures/**", "tools/*.json", "Dockerfile", ".dockerignore", "deploy/**", "railway.toml"]
+
+[deploy]
+numReplicas = 1
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+overlapSeconds = "0"
+drainingSeconds = "60"
+# Minecraft uses raw TCP. Do not configure an HTTP healthcheck path.

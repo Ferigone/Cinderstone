@@ -1,0 +1,16 @@
+{
+  "x": -6.5,
+  "y": 64,
+  "z": 9.5,
+  "yaw": 0,
+  "pitch": 0,
+  "flags": {
+    "_value": 0,
+    "x": false,
+    "y": false,
+    "z": false,
+    "yaw": false,
+    "pitch": false
+  },
+  "teleportId": 1
+}

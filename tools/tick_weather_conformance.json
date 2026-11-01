@@ -1,0 +1,24 @@
+{
+  "success": true,
+  "oracle": "actual Minecraft 1.21 aqu.advanceWeatherCycle/dcw weather interpolation/dyz random",
+  "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "rounds": 100,
+  "compared_outputs": 31000,
+  "trace_sha256": "aab848fa2337d45ae8b6c3dcfbcfab937325682f10f0c3d1d6817d529004b53d",
+  "covered": [
+    "clear/rain/thunder timers and toggle boundaries",
+    "weather random sampling bounds/order/consumption",
+    "hasSkylight and doWeatherCycle gates",
+    "float32 weather smoothing and clamping",
+    "rain/thunder interpolation threshold predicates",
+    "prepareWeather and resetWeatherCycle",
+    "setWeatherParameters",
+    "signed zero, NaN/infinity and overflow edge levels",
+    "actual ServerLevel weather packet reasons, values, order and dimension/global routing"
+  ],
+  "not_covered": [
+    "chunk lightning/precipitation/ice/snow effects",
+    "weather persistence integration"
+  ],
+  "mismatches": []
+}

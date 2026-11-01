@@ -1,0 +1,562 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "noises": {
+    "minecraft:aquifer_barrier": {
+      "first_octave": -3,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8021c082551ae852079d1d094466fb525391f3ae383c1e1670c5fdfa573586d5"
+    },
+    "minecraft:aquifer_fluid_level_floodedness": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:aquifer_fluid_level_spread": {
+      "first_octave": -5,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "5f13a7913ff95676daa29e43e0bd692b72ab036d0ecbec90f4e65f59996c1c6c"
+    },
+    "minecraft:aquifer_lava": {
+      "first_octave": -1,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "84eba8a6c4e154d9eb1b8e6467fd852f61c207165f0517937e64f4730b1869f2"
+    },
+    "minecraft:badlands_pillar": {
+      "first_octave": -2,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "61c9d56b5e36c6f52082c740d669dd96982de173435cab4c5b5ed49332f7e2d9"
+    },
+    "minecraft:badlands_pillar_roof": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:badlands_surface": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "a4d4e7d8c7b5fdd83cf33a2b9dad739565a86673f3f482bb0aa08e6a09f5488e"
+    },
+    "minecraft:calcite": {
+      "first_octave": -9,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "7cf77e6e8c01a120d183d393bb27ef8613368a17f4361789886f4fbc737292b9"
+    },
+    "minecraft:cave_cheese": {
+      "first_octave": -8,
+      "amplitudes": [
+        0.5,
+        1.0,
+        2.0,
+        1.0,
+        2.0,
+        1.0,
+        0.0,
+        2.0,
+        0.0
+      ],
+      "source_sha256": "3963e71a58184d6d0d67edddd5a9a89618bce436ea6deada88fee9bcce8ac91b"
+    },
+    "minecraft:cave_entrance": {
+      "first_octave": -7,
+      "amplitudes": [
+        0.4,
+        0.5,
+        1.0
+      ],
+      "source_sha256": "5def3f2fdf6f647b19af47c3d7954676abac780a6672d010724da508186809dd"
+    },
+    "minecraft:cave_layer": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:clay_bands_offset": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:continentalness": {
+      "first_octave": -9,
+      "amplitudes": [
+        1.0,
+        1.0,
+        2.0,
+        2.0,
+        2.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "7a6cf57a552a237c3f02364db96c0f5ca858ce067e126fc2e23d607ea212c031"
+    },
+    "minecraft:continentalness_large": {
+      "first_octave": -11,
+      "amplitudes": [
+        1.0,
+        1.0,
+        2.0,
+        2.0,
+        2.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "7b1603ab711c47e3b142d68fd6dbac5281c1da3de92d7d8c083f8f46a0753904"
+    },
+    "minecraft:erosion": {
+      "first_octave": -9,
+      "amplitudes": [
+        1.0,
+        1.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "0e39e18f0a18fbc796a4db4fa66313f07851e5362983c3a46b1749aaa1c7d537"
+    },
+    "minecraft:erosion_large": {
+      "first_octave": -11,
+      "amplitudes": [
+        1.0,
+        1.0,
+        0.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "a152550842a7126e9d627ef4564792bf35524c0a2b1725b7fe5c8d1975470d7e"
+    },
+    "minecraft:gravel": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "814aacddc06a22af43a84e72821c73cf08b46d2016c50c5a6d643728b1292e72"
+    },
+    "minecraft:gravel_layer": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.013333333333333334
+      ],
+      "source_sha256": "cf7db1642b4b6489adbb264933345e2807250675ff0529868eb4b5fe61bb5334"
+    },
+    "minecraft:ice": {
+      "first_octave": -4,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "78a8fba21812ed27d2d42f253976193c3c0ec8f4c70434329061dfee85b65a0d"
+    },
+    "minecraft:iceberg_pillar": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "1662cce687efc135f704115b74a07563f385c664a07f146ce75e0d29041b9ea3"
+    },
+    "minecraft:iceberg_pillar_roof": {
+      "first_octave": -3,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8021c082551ae852079d1d094466fb525391f3ae383c1e1670c5fdfa573586d5"
+    },
+    "minecraft:iceberg_surface": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "a4d4e7d8c7b5fdd83cf33a2b9dad739565a86673f3f482bb0aa08e6a09f5488e"
+    },
+    "minecraft:jagged": {
+      "first_octave": -16,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "e176bb3cfab852e5b92cf91ea02ba5c650ea9475b8799da701fa728f61844b7c"
+    },
+    "minecraft:nether_state_selector": {
+      "first_octave": -4,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "1c8b117b60c7a424df513170e3479bf02a4e20dd7049e0a1b0bbd296c6311488"
+    },
+    "minecraft:nether_wart": {
+      "first_octave": -3,
+      "amplitudes": [
+        1.0,
+        0.0,
+        0.0,
+        0.9
+      ],
+      "source_sha256": "0b70cf56073de4cfd4223ccf9d3331bc5cd67dafbeba791019e453855ad117cd"
+    },
+    "minecraft:netherrack": {
+      "first_octave": -3,
+      "amplitudes": [
+        1.0,
+        0.0,
+        0.0,
+        0.35
+      ],
+      "source_sha256": "d0481420c8f3081fab9e34f8e27a0cf89f05e6beea6a1664e674dc9af1da0293"
+    },
+    "minecraft:noodle": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:noodle_ridge_a": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:noodle_ridge_b": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:noodle_thickness": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:offset": {
+      "first_octave": -3,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        0.0
+      ],
+      "source_sha256": "685ec5d37332a7bcc5aec62ee1835b69af9c1c0b8daf7411753713ad135da59a"
+    },
+    "minecraft:ore_gap": {
+      "first_octave": -5,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "5f13a7913ff95676daa29e43e0bd692b72ab036d0ecbec90f4e65f59996c1c6c"
+    },
+    "minecraft:ore_vein_a": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:ore_vein_b": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:ore_veininess": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:packed_ice": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "9cebf0736f35b4d2329b148f2b84be734317aa0a3521ef8a58e236c746f819ad"
+    },
+    "minecraft:patch": {
+      "first_octave": -5,
+      "amplitudes": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.013333333333333334
+      ],
+      "source_sha256": "5f78809f634603c3ab6ddab2d3ebfadaae148077f92d2013ff954997c9f0e229"
+    },
+    "minecraft:pillar": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0,
+        1.0
+      ],
+      "source_sha256": "c320989092b1012adef13350ec892b3b8f5f0deda3c852fd2ad94015b16906bf"
+    },
+    "minecraft:pillar_rareness": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:pillar_thickness": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:powder_snow": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "1662cce687efc135f704115b74a07563f385c664a07f146ce75e0d29041b9ea3"
+    },
+    "minecraft:ridge": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0,
+        2.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "7e0bef11d327e3b60a16aca59661af23ab6442974a2a06cf8d19086d11085176"
+    },
+    "minecraft:soul_sand_layer": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.013333333333333334
+      ],
+      "source_sha256": "cf7db1642b4b6489adbb264933345e2807250675ff0529868eb4b5fe61bb5334"
+    },
+    "minecraft:spaghetti_2d": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:spaghetti_2d_elevation": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:spaghetti_2d_modulator": {
+      "first_octave": -11,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "ffc5fef5e13a37e4f8377fb84e0552f201e49440b4394dacc69a175a307ecc4f"
+    },
+    "minecraft:spaghetti_2d_thickness": {
+      "first_octave": -11,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "ffc5fef5e13a37e4f8377fb84e0552f201e49440b4394dacc69a175a307ecc4f"
+    },
+    "minecraft:spaghetti_3d_1": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:spaghetti_3d_2": {
+      "first_octave": -7,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "37510ab77eedf6fb49aa8821739e0a10a91cd0b87aaa446dd1af737e83feff01"
+    },
+    "minecraft:spaghetti_3d_rarity": {
+      "first_octave": -11,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "ffc5fef5e13a37e4f8377fb84e0552f201e49440b4394dacc69a175a307ecc4f"
+    },
+    "minecraft:spaghetti_3d_thickness": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:spaghetti_roughness": {
+      "first_octave": -5,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "5f13a7913ff95676daa29e43e0bd692b72ab036d0ecbec90f4e65f59996c1c6c"
+    },
+    "minecraft:spaghetti_roughness_modulator": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "8aec188a99373042bc4b4b5b697c214f78bd639715685059c42b4190420676a9"
+    },
+    "minecraft:surface": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "source_sha256": "a4d4e7d8c7b5fdd83cf33a2b9dad739565a86673f3f482bb0aa08e6a09f5488e"
+    },
+    "minecraft:surface_secondary": {
+      "first_octave": -6,
+      "amplitudes": [
+        1.0,
+        1.0,
+        0.0,
+        1.0
+      ],
+      "source_sha256": "01f9ad87b6df20f8b5928a8b7b2db0164cfa8099f5116843a19e1717e0d1c0a8"
+    },
+    "minecraft:surface_swamp": {
+      "first_octave": -2,
+      "amplitudes": [
+        1.0
+      ],
+      "source_sha256": "73e2191444e865e7b9ee4b6edea3111d1f4ddd88bbc737ecd1daf85967c496ca"
+    },
+    "minecraft:temperature": {
+      "first_octave": -10,
+      "amplitudes": [
+        1.5,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "9d98e13680ce8a1bc9acf6ca30bda83b761b5109d37a0b6ed61b82f93dc5a61b"
+    },
+    "minecraft:temperature_large": {
+      "first_octave": -12,
+      "amplitudes": [
+        1.5,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "eb266cadc818706a4bd7c47906b63b6732b2050a8fa8f04606a1ff78f5ec5fca"
+    },
+    "minecraft:vegetation": {
+      "first_octave": -8,
+      "amplitudes": [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "6d7823ec5b23eb988ce3a95fbb64e033a3cf886f671883d93e164fcc8184784c"
+    },
+    "minecraft:vegetation_large": {
+      "first_octave": -10,
+      "amplitudes": [
+        1.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "source_sha256": "d5fe0bb7722cc5599e46dcfd0400784d0a54769819cf6a2a7846fd657c59baa3"
+    }
+  }
+}

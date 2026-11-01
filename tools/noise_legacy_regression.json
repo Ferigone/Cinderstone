@@ -1,0 +1,25 @@
+{
+  "success": true,
+  "oracle": "actual Minecraft 1.21 LegacyRandomSource dyz / BitRandomSource dyn",
+  "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "seeds": 1000,
+  "compared_outputs": 93000,
+  "trace_sha256": "54e599372c9af6d023059684374f484c0183bd5bd30a0c24defe3aac3280e448",
+  "methods": [
+    "constructor",
+    "setSeed",
+    "next(bits)",
+    "nextInt",
+    "nextInt(bound)",
+    "nextLong",
+    "nextBoolean",
+    "nextFloat(raw bits)",
+    "nextDouble(raw bits)"
+  ],
+  "excluded": [
+    "Gaussian sampling",
+    "positional random factories",
+    "concurrent misuse exceptions"
+  ],
+  "mismatches": []
+}

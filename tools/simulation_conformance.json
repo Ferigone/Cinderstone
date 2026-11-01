@@ -1,0 +1,16 @@
+{
+  "minecraft": "1.21",
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "queries": 3562,
+  "sprint_lifecycle_actions": 4800,
+  "sprint_clock_replay": "Actual System.nanoTime readings are observed and injected into Rust for deterministic replay; localized report formatting is not compared.",
+  "level_gate_combinations": 2048,
+  "scope": "OriginalServerLevel.tick/tickTime, MinecraftServer.tickServer/tickChildren/computeNextAutosaveInterval, SleepStatus and ServerTickRateManager sprint/freeze/step/rate lifecycle. Injectedcallbacksverifyphaseorder/gates; fullchunk/entity/raid/blockmechanicsnotclaimed.",
+  "observed_phase_callbacks": 26206,
+  "vectors_sha256": "b917cd5896283e83b50c764067bd7d564b9f700a759a01cbf288398f58c0c77d",
+  "native_source_sha256": "eba92888d1769974b818c84bc52b700d57dc5f37cebfaaca077fe1a41fd5e855",
+  "mismatches": 0,
+  "rust_tests_passed": 3,
+  "ticking_packet_vectors": 54,
+  "packet_registry_sha256": "6f613707a721fa9dec64f79f35527ec6884ee762fd5620930f9d72543178c3ca"
+}

@@ -1,0 +1,35 @@
+{
+  "success": true,
+  "oracle": "actual Minecraft 1.21 eyt/eyx/eyo/eys/eyq/afl",
+  "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "rounds": 100,
+  "compared_outputs": 35104,
+  "trace_sha256": "30e915cebc40b6021bbe33c6a7091f26ad66a2f8a105c2f1811803dbefab8b50",
+  "covered": [
+    "priority clamping",
+    "drain/intra comparators",
+    "Java PriorityQueue tie behavior",
+    "canonical type+position deduplication",
+    "poll reservation removal",
+    "pending saved ticks",
+    "unpack negative subtick order",
+    "saved delay narrowing",
+    "time packet freeze/zero/overflow",
+    "cross-container due draining and global limits",
+    "tickability gates and container removal",
+    "fastutil map/heap equal-comparator ties",
+    "callbacks rescheduling same-tick work",
+    "region clear/copy of scheduled ticks",
+    "willTickThisTick remaining queue queries",
+    "region clear/copy during callbacks",
+    "saved NBT tick loading filters exact owning chunk",
+    "unpack after container registration updates scheduling",
+    "Level block-random-position independent LCG/wrapping coordinates",
+    "TickRateManager rates/freeze/step state including NaN and infinities"
+  ],
+  "not_covered": [
+    "actual block/fluid tick callbacks",
+    "server tick rate recovery or sprint"
+  ],
+  "mismatches": []
+}

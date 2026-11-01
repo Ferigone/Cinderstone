@@ -1,0 +1,17 @@
+{
+  "source": "actual Minecraft1.21 eof constructor via tools/noise_Oracle.java",
+  "jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "seed": 0,
+  "offset_bits": {
+    "legacy": [
+      "4640787989073939081",
+      "4633863055005396500",
+      "4639945362322812801"
+    ],
+    "xoro": [
+      "4631132334412478376",
+      "4641407485698495224",
+      "4634225565187554606"
+    ]
+  }
+}

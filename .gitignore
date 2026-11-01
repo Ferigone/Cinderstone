@@ -1,0 +1,17 @@
+/target/
+/node_modules
+/runtime/
+/*.zip
+*.log
+/logs/
+__pycache__/
+*.class
+tools/*failure*.tsv
+tools/*failure*.jsonl
+/checkpoint.json
+
+
+# Build/source archives belong in Releases, never the repository tree.
+*.tar.gz
+*.tgz
+*.7z

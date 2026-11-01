@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "method": "Exact official JAR net.minecraft.data.Main --reports, compared before attaching prototype data",
+  "items": 1333,
+  "components": 57,
+  "blocks": 1060,
+  "block_states": 26684,
+  "report_sha256": {
+    "items": "e277ae15f7d01a84caea32f24b3360e7c67105dbaa5163fabb1b330e26f21b44",
+    "blocks": "0dde7f869588905763ea6ff2e7e01bec1db740a58d27477fd27c2f07fb029f73",
+    "registries": "dc2a233b69c590714e0c446a6dc671ea87ec24fedd4f24d75806387b82d7d2c0"
+  },
+  "differences": []
+}
