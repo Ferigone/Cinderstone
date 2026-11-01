@@ -644,10 +644,18 @@ impl<R: CrafterRecipes, C: CrafterMenuCallbacks> Action<'_, R, C> {
                     } else {
                         source.count.min(1)
                     };
-                    self.menu
-                        .sync
-                        .set_carried(counted(&source, source.count - n));
-                    self.drop_stack(counted(&source, n));
+                    if button == 0 {
+                        // Player.drop observes the original whole cursor;
+                        // AbstractContainerMenu clears it only afterward.
+                        self.drop_stack(counted(&source, n));
+                        self.menu.sync.set_carried(ItemStack::empty());
+                    } else {
+                        // The source split(1) mutates carried before dropping.
+                        self.menu
+                            .sync
+                            .set_carried(counted(&source, source.count - n));
+                        self.drop_stack(counted(&source, n));
+                    }
                 } else if slot >= 0 {
                     if kind == ClickType::Pickup {
                         self.pickup(slot as usize, button)?;
@@ -707,14 +715,16 @@ impl<R: CrafterRecipes, C: CrafterMenuCallbacks> Action<'_, R, C> {
                 }
             } else if self.may_place(slot) {
                 if source.same_item_same_components(&carried)? {
+                    // Slot.safeInsert retains its signed capacity and invokes
+                    // setByPlayer even for zero acceptance. A loaded overfull
+                    // target returns the excess to the carried stack before
+                    // the setter/dirty/broadcast callbacks run.
                     let n = (if button == 0 { carried.count } else { 1 })
-                        .min((limit(&carried)? - source.count).max(0));
-                    if n > 0 {
-                        self.menu
-                            .sync
-                            .set_carried(counted(&carried, carried.count - n));
-                        self.set(slot, counted(&source, source.count + n))?;
-                    }
+                        .min(limit(&carried)? - source.count);
+                    self.menu
+                        .sync
+                        .set_carried(counted(&carried, carried.count.wrapping_sub(n)));
+                    self.set(slot, counted(&source, source.count.wrapping_add(n)))?;
                 } else if carried.count <= limit(&carried)? {
                     self.menu.sync.set_carried(source);
                     self.set(slot, carried)?;
@@ -1493,6 +1503,117 @@ mod tests {
         assert!(first_local < last_dirty && last_dirty < first_packet);
         Ok(())
     }
+    #[test]
+    fn outside_pickup_drop_observes_left_cursor_and_right_split_phases() -> Result<()> {
+        for button in [0, 1] {
+            let mut state = CrafterState::default();
+            state.set_slot(4, item("oak_log", 2))?;
+            let mut inventory = PlayerInventory::new();
+            inventory.set_slot_authoritative(9, item("stone", 3));
+            let callbacks = Callbacks(true, 1);
+            let mut menu = CrafterMenu::new(3, &callbacks)?;
+            menu.initialize(&state, &inventory, &callbacks, &mut Recipes)?;
+            click(&mut menu, &mut state, &mut inventory, 9, ClickType::Pickup)?;
+            let outcome = custom_click(
+                &mut menu,
+                &mut state,
+                &mut inventory,
+                -999,
+                button,
+                ClickType::Pickup,
+                false,
+            )?;
+            assert_eq!(outcome.drops.len(), 1);
+            let dropped = if button == 0 { 3 } else { 1 };
+            assert_eq!(outcome.drops[0].stack, item("stone", dropped));
+            assert!(!outcome.drops[0].around && outcome.drops[0].trace_item);
+            let phase = outcome
+                .events
+                .iter()
+                .find_map(|event| match event {
+                    CrafterMenuEvent::Drop { index: 0, phase } => Some(phase),
+                    _ => None,
+                })
+                .expect("actual drop source phase");
+            assert_eq!(
+                phase.carried,
+                item("stone", if button == 0 { 3 } else { 2 })
+            );
+            assert_eq!(phase.state.inputs()[4], item("oak_log", 2));
+            assert_eq!(phase.preview, item("oak_planks", 4));
+            assert!(phase.player_inventory.slot(9).unwrap().is_empty());
+            assert_eq!(menu.sync().carried().count, 3 - dropped);
+            assert_eq!(
+                menu.sync().carried().count + outcome.drops[0].stack.count,
+                3
+            );
+            assert_eq!(state.inputs()[4], item("oak_log", 2));
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn matching_full_and_overfull_pickup_retains_source_setter_and_broadcast_phases() -> Result<()>
+    {
+        // crq.safeInsert sets the existing stack even for n=0, followed by
+        // cpu.doClick's final Slot.setChanged. For an overfull loaded stack,
+        // its signed capacity moves the excess back to the actual cursor.
+        for original_count in [64, 99] {
+            let mut inputs = std::array::from_fn(|_| ItemStack::empty());
+            inputs[0] = item("stone", original_count);
+            let mut state = CrafterState::restore(inputs, &[], 0, 0)?;
+            let mut inventory = PlayerInventory::new();
+            inventory.set_slot_authoritative(9, item("stone", 1));
+            let callbacks = Callbacks(true, 1);
+            let mut menu = CrafterMenu::new(3, &callbacks)?;
+            menu.initialize(&state, &inventory, &callbacks, &mut Recipes)?;
+            click(&mut menu, &mut state, &mut inventory, 9, ClickType::Pickup)?;
+            // An authoritative change awaiting the next ordinary broadcast
+            // makes the intermediate first broadcast observable. It must run
+            // after the setter/first Slot dirty and before the final Slot dirty.
+            inventory.set_slot_authoritative(10, item("quartz", 2));
+            let outcome = click(&mut menu, &mut state, &mut inventory, 0, ClickType::Pickup)?;
+            let dirty = outcome
+                .events
+                .iter()
+                .enumerate()
+                .filter_map(|(index, event)| {
+                    matches!(event, CrafterMenuEvent::BlockEntityChanged { .. }).then_some(index)
+                })
+                .collect::<Vec<_>>();
+            assert_eq!(dirty.len(), 3);
+            let listener = outcome
+                .events
+                .iter()
+                .position(|event| {
+                    matches!(event,
+                        CrafterMenuEvent::Sync {
+                            event: SyncEvent::SlotListener { menu_slot: 10, stack, .. }, ..
+                        } if stack == &item("quartz", 2)
+                    )
+                })
+                .expect("pending actual inventory listener at intermediate broadcast");
+            assert!(dirty[1] < listener && listener < dirty[2]);
+            let expected_cursor = 1 + original_count - 64;
+            for index in dirty {
+                let CrafterMenuEvent::BlockEntityChanged { phase } = &outcome.events[index] else {
+                    unreachable!()
+                };
+                assert_eq!(phase.state.inputs()[0], item("stone", 64));
+                assert_eq!(phase.carried, item("stone", expected_cursor));
+                assert_eq!(phase.player_inventory.slot(10), Some(&item("quartz", 2)));
+                assert!(phase.preview.is_empty());
+            }
+            assert_eq!(state.inputs()[0], item("stone", 64));
+            assert_eq!(menu.sync().carried(), &item("stone", expected_cursor));
+            assert_eq!(
+                state.inputs()[0].count + menu.sync().carried().count,
+                original_count + 1
+            );
+        }
+        Ok(())
+    }
+
     #[test]
     fn unchanged_and_data_only_broadcasts_do_not_touch_shared_recipe_cache() -> Result<()> {
         struct Counting {

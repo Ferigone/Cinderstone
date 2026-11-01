@@ -205,3 +205,34 @@ self-hotbar SWAP produces two even when contents stay identical. Overfull
 self-alias remains rejected before mutation. Source close raw insertion packets
 carry reconstructed per-insertion inventory/cursor phases, followed by the
 remaining overflow drop phase; the block's inputs are retained throughout.
+
+
+## Matching full-slot pickup correction
+
+`Slot.safeInsert` (`crq.b(ItemStack,int)`, bytecode offsets 22–87) retains the
+signed `slotMaximum - existingCount` capacity. For equal components it invokes
+`setByPlayer` even when the accepted amount is zero. The crafter controller now
+retains the actual container setter's dirty callback, the first
+`CrafterSlot.setChanged` dirty/broadcast, and the ordinary PICKUP final
+`setChanged` dirty/broadcast as three separate source dirty boundaries. It does
+not collapse a full matching target into only the final callback.
+
+For a loaded overfull target, the same signed calculation returns excess items
+to the actual carried stack before those callbacks: 99 stone in a maximum-64
+slot plus one carried stone becomes 64 in the slot and 36 carried. Clamping the
+transfer amount to zero before calling the real setter would lose those 35
+excess items. The focused native regression checks both zero-acceptance and
+this overfull case, their three phase snapshots, a pending authoritative player
+inventory listener between the second and final dirty boundaries, the unchanged
+derived preview and exact stone conservation. This is an in-process native
+source-phase check, not a Main or network gameplay observation.
+
+
+Outside PICKUP retains the distinct cursor phases from `AbstractContainerMenu`
+(`cpu`, offsets 619–651): left click drops the whole actual cursor before
+clearing it; right click splits one from that cursor before invoking the drop.
+The native Drop phase now exposes the original carried stack for left click and
+the reduced carried stack for right click. A focused regression verifies those
+snapshots, the exact owned drop, unchanged block inputs/derived preview and item
+conservation for both buttons. The actual Item/RNG/world drop owner still belongs
+to central integration.
