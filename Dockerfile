@@ -46,7 +46,7 @@ ENV MC_BIND=0.0.0.0 \
     MC_VIEW_DISTANCE=2 \
     MC_DIFFICULTY=easy
 EXPOSE 25565/tcp
-VOLUME ["/data"]
+# Persistent /data is mounted by Railway service configuration.
 STOPSIGNAL SIGTERM
 ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/app/deploy/start.sh"]
 CMD []
