@@ -1,0 +1,21 @@
+package oracle;
+import java.io.*;import java.lang.reflect.*;import java.util.*;import java.util.stream.*;import com.google.gson.*;
+public class BiomeTemperatureOracle {
+ static final PrintStream OUT=System.out;static Class<?> BIOME,POS,KEY,LOC,HOLDER;static Object biomes,lookup;static Method temperature,cold,melt;static Field cacheField,climateField;
+ static Object call(Object object,String name)throws Exception {Method m=object.getClass().getMethod(name);m.setAccessible(true);return m.invoke(object);}
+ static Object biome(String name)throws Exception {Object registry=Class.forName("lu").getField("aF").get(null);Object key=KEY.getMethod("a",KEY,LOC).invoke(null,registry,LOC.getMethod("a",String.class).invoke(null,name));Object holder=Class.forName("jn").getMethod("b",KEY).invoke(biomes,key);return HOLDER.getMethod("a").invoke(holder);}
+ static Object cache(Object b)throws Exception {return ((ThreadLocal<?>)cacheField.get(b)).get();}
+ static void clear(Object b)throws Exception {cache(b).getClass().getMethod("clear").invoke(cache(b));}
+ static long packed(int x,int y,int z){return ((long)x&67108863L)<<38|((long)z&67108863L)<<12|((long)y&4095L);}
+ static Map<String,Object> snapshot(Object b)throws Exception {Object map=cache(b);Map<String,Object>r=new LinkedHashMap<>();r.put("size",map.getClass().getMethod("size").invoke(map));if((int)r.get("size")>0){r.put("first",map.getClass().getMethod("firstLongKey").invoke(map).toString());r.put("last",map.getClass().getMethod("lastLongKey").invoke(map).toString());}return r;}
+ static Object query(JsonObject q)throws Exception {
+  String op=q.get("op").getAsString();
+  if(op.equals("climates")){Map<String,Object>r=new TreeMap<>();try(Stream<?>s=(Stream<?>)Class.forName("jo").getMethod("b").invoke(biomes)){for(Object h:s.toList()){Object b=HOLDER.getMethod("a").invoke(h),c=climateField.get(b),key=Class.forName("jm$c").getMethod("h").invoke(h);String name=KEY.getMethod("a").invoke(key).toString();Class<?>C=c.getClass();Map<String,Object>row=new LinkedHashMap<>();row.put("has_precipitation",call(c,"a"));row.put("temperature_bits",Integer.toUnsignedString(Float.floatToRawIntBits((float)call(c,"b"))));row.put("temperature_modifier",call(call(c,"c"),"c"));row.put("downfall_bits",Integer.toUnsignedString(Float.floatToRawIntBits((float)call(c,"d"))));r.put(name,row);}}return r;}
+  Object b=biome(q.get("biome").getAsString());
+  if(op.equals("clear")){clear(b);return null;}
+  if(op.equals("point")){JsonArray p=q.getAsJsonArray("point");int x=p.get(0).getAsInt(),y=p.get(1).getAsInt(),z=p.get(2).getAsInt();Object pos=POS.getConstructor(int.class,int.class,int.class).newInstance(x,y,z);float t=(float)temperature.invoke(b,pos);return Map.of("temperature_bits",Integer.toUnsignedString(Float.floatToRawIntBits(t)),"cold_enough_to_snow",cold.invoke(b,pos),"should_melt_frozen_ocean_iceberg_slightly",melt.invoke(b,pos),"cache",snapshot(b));}
+  if(op.equals("fifo")){clear(b);Constructor<?> pos=POS.getConstructor(int.class,int.class,int.class);for(int i=0;i<1024;i++)temperature.invoke(b,pos.newInstance(i,63,0));temperature.invoke(b,pos.newInstance(0,63,0));temperature.invoke(b,pos.newInstance(1024,63,0));return snapshot(b);}
+  throw new IllegalArgumentException(op);
+ }
+ public static void main(String[]args)throws Exception {Class.forName("ab").getMethod("a").invoke(null);Class.forName("akt").getMethod("a").invoke(null);BIOME=Class.forName("ddw");POS=Class.forName("jd");KEY=Class.forName("akq");LOC=Class.forName("akr");HOLDER=Class.forName("jm");lookup=Class.forName("pd").getMethod("a").invoke(null);Object registry=Class.forName("lu").getField("aF").get(null);biomes=Class.forName("jo$a").getMethod("b",KEY).invoke(lookup,registry);temperature=BIOME.getDeclaredMethod("f",POS);temperature.setAccessible(true);cold=BIOME.getMethod("b",POS);melt=BIOME.getMethod("d",POS);cacheField=BIOME.getDeclaredField("m");cacheField.setAccessible(true);climateField=BIOME.getDeclaredField("i");climateField.setAccessible(true);Gson gson=new GsonBuilder().serializeNulls().create();BufferedReader input=new BufferedReader(new InputStreamReader(System.in));for(String line;(line=input.readLine())!=null;)try{OUT.println(gson.toJson(query(JsonParser.parseString(line).getAsJsonObject())));}catch(InvocationTargetException e){e.getCause().printStackTrace();System.exit(1);}}
+}

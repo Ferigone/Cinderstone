@@ -1,0 +1,42 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "base_master": "e292dc3d31f0575fa9471d97bcaac7c407547ced",
+  "reviewed_source_commit": "02a8f8490e220ebf8342e302e6c2553986a0b61f",
+  "validated_at_utc": "2026-11-01T20:54:57.110588+00:00",
+  "passed": true,
+  "commands": [
+    "cargo build --locked --bin mc121-rust",
+    "cargo test --locked --lib worldgen::biome",
+    "cargo test --locked --lib worldgen::generator::tests"
+  ],
+  "log_sha256": "979d0b73d9a73d19b34bfafd5f9e3e6e0dfe9b8221030b13aa8dac7e5fce7826",
+  "source_sha256": {
+    "src/worldgen/mod.rs": "df82fefcf496e187341a9f1a9dd23cf936ea56270b306194d44e0f949a12b387",
+    "src/worldgen/biome_context.rs": "4b22b4065e6deba4e984281610092d6b36614739a8b5bb0f642ed90d95a524d9",
+    "src/worldgen/biome_temperature.rs": "f755890782c556812f51dbfe2d9b171b569b7dfe9345d506e0161611dda37626",
+    "src/worldgen/biome_zoom.rs": "9c10618810ad86666ebd761266accad323c8bbc820cfc3e7d05db37170ec7507",
+    "src/worldgen/validation/BiomeZoomOracle.java": "1055ee39d40f145122f70cdb26de8a52f674c5743633b1c95dd8eb25ffcf3d76",
+    "src/worldgen/validation/BiomeTemperatureOracle.java": "a0f20e2c1c0adb8736098bc623995e954192e018da651261e505f057f79ca15a",
+    "fixtures/world-generation-biome-climate.json": "1935dcef53e9445905cbfb62e173cbf5b7bdb13ab249a201f520afa93792a012",
+    "fixtures/world-generation-biome-temperature-vectors.json": "159e65ffaeef450515ac28b06f31825154d628dd08be5449e198a66e1c52195c",
+    "fixtures/world-generation-biome-zoom.json": "4efde094829636fabbfe61a173d303cd091231d49d1086623eac02001d688082"
+  },
+  "reviews": [
+    "Independent pinned javap arithmetic/cache/zoom review: no blocking defect in declared built-in scope.",
+    "Independent provider/thermal ownership/error review: no blocking defect in declared built-in scope.",
+    "Same-key datapack override limitation clarified: actual provider must certify pinned registry."
+  ],
+  "observations": [
+    "Original selected quart/raw double and long bits; single actual provider query and exact error propagation.",
+    "Original raw temperature float bits, predicates, packed aliases/FIFO prehistory.",
+    "Adapter biome lookup does not warm thermal cache; thermal callbacks do not requery provider.",
+    "Shared immutable fixed-seed noises and worker-local !Send/!Sync thermal owner."
+  ],
+  "not_verified": [
+    "Natural biome selection and actual BIOMES/neighbor storage/provider",
+    "Custom/same-key override registry contents",
+    "Main invocation, phase scheduler, persistence, lighting/features/FULL",
+    "Every seed/coordinate/profile"
+  ]
+}

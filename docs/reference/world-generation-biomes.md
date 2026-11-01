@@ -52,3 +52,8 @@ seed, query actual generated quart-biome owners (including neighboring chunks),
 and feed the selected canonical biome to its thermal owner. Constructing those
 BIOMES records, meeting generation dependencies, completing lighting/features,
 persistence and publishing FULL remain separate work.
+
+The unchanged portable original probe source is committed at
+`src/worldgen/validation/BiomeZoomOracle.java`, matching the fixture source hash.
+Compile against the verified original server and libraries; entry class is
+`oracle.BiomeZoomOracle`. It writes the recorded JSON observation object.

@@ -72,3 +72,10 @@ remain outside the repository. Native focused comparisons assert raw float32
 bits, both thermal predicates, packed-key prehistory, FIFO ownership and absence
 of cache effects during pure name validation. These checks do not establish
 natural biome selection, Main integration or complete dimension generation.
+
+The unchanged portable reflection probe is committed at
+`src/worldgen/validation/BiomeTemperatureOracle.java`, matching the source hash
+above. Entry class `oracle.BiomeTemperatureOracle` consumes JSON lines with
+`climates`, `clear`, `point` (biome/point), or `fifo` operations; its classpath
+requires the verified original server and libraries. No original binaries are
+packaged with these source probes.
