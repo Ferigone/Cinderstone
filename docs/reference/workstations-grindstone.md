@@ -155,11 +155,17 @@ Validity delegates the captured grindstone and actual player reach with +4.0.
 The central packet/tick owner still performs the source selected-menu,
 spectator, validity/close and disconnect dispatch checks.
 
-`begin_stage` must privately stage **all** real owners and callbacks, not shallow
-clone shared mutable world state. `publish_stage` validates the captured owner
-revision and atomically publishes inventory, RNG, entities, ordered listeners
-and packets; an error publishes nothing. The controller only replaces its menu
-after successful publication. Host `preflight` rejects unavailable actual owners
+`begin_stage` must detach **all** mutable real owners and callbacks, including
+inventory, RNG, orb merging/allocation, drops and packet outbox; a shallow clone
+of shared mutable world state is insufficient. `publish_stage` validates the
+captured owner revision and completes all fallible preparation **before** its
+atomic live commit. Failure publishes nothing. Success queues the ordered
+outbox under the same outer owner lock, then the controller installs its menu
+infallibly. The host must never drain packets, permit callback reentry or save
+menu/player state before that final UI installation and outer lock exit.
+`menu.state()`, `menu.carried()` and the host's canonical `inventory()` already
+provide the actual read-only save views; no additional inventory owner is
+introduced. Host `preflight` rejects unavailable actual owners
 and reentrant listener contexts. Read-only `GrindstonePhase` records the exact
 callback entry inputs, preview, canonical inventory and cursor. The actual
 Inventory.add/placeItemBack owner is responsible for its own internal mutation,
@@ -183,6 +189,29 @@ bound-one draw, XP-before-throw, outside cursor phases, stale/reused UI and
 registry/player binding guards, and close returning only the two inputs. This
 is a native controller scenario, not an original-Java click replay, production
 world, PLAY runtime or complete conformance suite.
+
+## Retained full-state resynchronization
+
+The central integration request recorded on issue 3 as comment `6564455352`
+adds `GrindstoneMenu::broadcast_full_state<H: GrindstoneMenuHost<Binding = K,
+RegistrySnapshot = S>>(&mut self, host: &mut H) -> Result<()>` and the explicit
+`GrindstoneMenuAction::FullState` preflight action. This uses the existing private
+transaction: snapshot the retained menu, invoke
+`MenuSync.broadcast_full_state(actual_top, host.inventory(), [])`, stage every
+sync event with the actual `GrindstonePhase`, check the next UI revision,
+atomically publish/queue the host stage and install the menu. It does not call
+initialize, recompute the preview, consume inputs, reset drag/cursor, draw RNG,
+or award XP. The ordinary full-content packet advances the protocol state ID
+and updates synchronization baselines; older dispatch tokens become stale.
+
+A focused native flow preserves a real count-two derived result, its two inputs,
+an actual picked-up cursor and an active drag selection across full resync. It
+checks the thirty-nine-slot content packet and source phase, confirms stale
+click/close tokens fail, and observes an empty subsequent incremental broadcast.
+Rejecting atomic publication leaves the original menu, cursor, inventory,
+RNG, callback records and queued sync unchanged. This fixture establishes the
+retained resync contract; production spectator dispatch and outbox publication
+remain central responsibilities.
 
 Main has no grindstone callsite in this stage. Actual enchantment/tag/minimum-cost
 bindings, Level RNG/orb/event/drop transactions, canonical player callbacks and

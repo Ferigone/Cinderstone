@@ -28,6 +28,7 @@ pub struct GrindstoneMenuToken {
 pub enum GrindstoneMenuAction {
     Initialize,
     Broadcast,
+    FullState,
     Click(ClickType),
     Close(MenuCloseContext),
 }
@@ -43,10 +44,15 @@ pub struct GrindstonePhase {
 /// lifetime, enchantment registry/tag owner, canonical inventory and shared
 /// Level RNG/entity allocation owners. A grindstone has no block entity.
 ///
-/// begin_stage must isolate ALL owners (including callback effects/packets,
-/// Inventory.add, RNG, orb merging/allocation and Player.drop). publish_stage
-/// atomically validates/publishes them under the caller's owner transaction;
-/// failure publishes nothing. A shallow clone of live owners is insufficient.
+/// begin_stage must detach ALL mutable owners (including callback effects and
+/// packet outbox, Inventory.add, RNG, orb merging/allocation and Player.drop).
+/// A shallow clone of live owners is insufficient. publish_stage completes all
+/// fallible preparation before its atomic live commit; failure publishes
+/// nothing. Success queues the ordered output under the same outer owner lock.
+/// It must NEVER drain packets, reenter callbacks or save menu/player state
+/// before the controller's following infallible UI installation and outer lock
+/// exit. Retained menu state/cursor and host inventory already provide the
+/// actual read-only save views; phase snapshots are not another live owner.
 /// Sync/dirty listeners must be nonreentrant; preflight must reject unavailable
 /// owners and callback contexts rather than implement no-op world substitutes.
 pub trait GrindstoneMenuHost: GrindstoneEnchantments + Sized {
@@ -250,6 +256,25 @@ impl<K: Clone + Eq + Debug, S: Clone + Eq + Debug> GrindstoneMenu<K, S> {
             GrindstoneMenuAction::Broadcast,
             host,
             |next, host| next.broadcast(host),
+        )
+    }
+    /// Resynchronize the retained menu without recomputing its result or
+    /// changing inputs, cursor or drag state. Publication uses the same actual
+    /// owner transaction as other synchronization phases.
+    pub fn broadcast_full_state<H: GrindstoneMenuHost<Binding = K, RegistrySnapshot = S>>(
+        &mut self,
+        host: &mut H,
+    ) -> Result<()> {
+        self.transaction(
+            self.token,
+            GrindstoneMenuAction::FullState,
+            host,
+            |next, host| {
+                let events = next
+                    .sync
+                    .broadcast_full_state(&next.top(), host.inventory(), &[])?;
+                host.stage_sync_events(events, &next.phase(host))
+            },
         )
     }
     pub fn click<H: GrindstoneMenuHost<Binding = K, RegistrySnapshot = S>>(
@@ -978,6 +1003,8 @@ mod tests {
         generation: u64,
         base_generation: u64,
         fail_orbs: bool,
+        fail_publish: bool,
+        sync_events: Vec<(Vec<SyncEvent>, GrindstonePhase)>,
     }
     impl Host {
         fn new() -> Self {
@@ -991,6 +1018,8 @@ mod tests {
                 generation: 0,
                 base_generation: 0,
                 fail_orbs: false,
+                fail_publish: false,
+                sync_events: vec![],
             }
         }
         fn record(&mut self, name: &'static str, value: i32, phase: &GrindstonePhase) {
@@ -1035,6 +1064,7 @@ mod tests {
             Ok(stage)
         }
         fn publish_stage(&mut self, mut stage: Self, _: GrindstoneMenuToken) -> Result<()> {
+            ensure!(!self.fail_publish, "fixture atomic publication unavailable");
             ensure!(
                 stage.base_generation == self.generation,
                 "fixture owner revision changed"
@@ -1073,6 +1103,7 @@ mod tests {
             phase: &GrindstonePhase,
         ) -> Result<()> {
             self.record("broadcast", events.len() as i32, phase);
+            self.sync_events.push((events, phase.clone()));
             Ok(())
         }
         fn level_random_next_int(&mut self, bound: i32) -> Result<i32> {
@@ -1391,6 +1422,98 @@ mod tests {
                 &mut host
             )
             .is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn full_state_resync_retains_preview_cursor_drag_and_rolls_back_rejected_publication(
+    ) -> Result<()> {
+        let (mut menu, mut host) = pair()?;
+        host.inventory.set_slot_authoritative(11, item("stone", 4));
+        act(&mut menu, &mut host, 5, 0, ClickType::Pickup)?;
+        act(&mut menu, &mut host, -999, 0, ClickType::QuickCraft)?;
+        act(&mut menu, &mut host, 6, 1, ClickType::QuickCraft)?;
+        let retained = menu.staged_copy();
+        let inventory = host.inventory.clone();
+        let random = host.random.state48();
+        let generation = host.generation;
+        let records = host.records.len();
+        let queued_sync = host.sync_events.len();
+        host.fail_publish = true;
+        assert!(menu.broadcast_full_state(&mut host).is_err());
+        assert_eq!(menu.token(), retained.token());
+        assert_eq!(menu.state, retained.state);
+        assert_eq!(menu.sync, retained.sync);
+        assert_eq!(menu.drag_status, retained.drag_status);
+        assert_eq!(menu.drag_type, retained.drag_type);
+        assert_eq!(menu.drag_slots, retained.drag_slots);
+        assert_eq!(host.inventory.slots(), inventory.slots());
+        assert_eq!(host.inventory.carried(), inventory.carried());
+        assert_eq!(host.generation, generation);
+        assert_eq!(host.random.state48(), random);
+        assert_eq!(host.records.len(), records);
+        assert_eq!(host.sync_events.len(), queued_sync);
+        host.fail_publish = false;
+        menu.broadcast_full_state(&mut host)?;
+        assert_eq!(menu.token().instance, retained.token().instance);
+        assert_eq!(menu.token().revision, retained.token().revision + 1);
+        assert_eq!(menu.state, retained.state);
+        assert_eq!(menu.state.preview().count, 2);
+        assert_eq!(menu.carried(), &item("stone", 4));
+        assert_eq!(menu.drag_status, retained.drag_status);
+        assert_eq!(menu.drag_type, retained.drag_type);
+        assert_eq!(menu.drag_slots, retained.drag_slots);
+        assert_eq!(menu.state_id(), (retained.state_id() + 1) & 32767);
+        assert_eq!(host.random.state48(), random);
+        assert_eq!(host.records.len(), records + 1);
+        assert_eq!(host.records[records].name, "broadcast");
+        assert_eq!(host.sync_events.len(), queued_sync + 1);
+        let (events, phase) = host.sync_events.last().unwrap();
+        assert_eq!(phase.inputs, *retained.state.inputs());
+        assert_eq!(phase.preview, *retained.state.preview());
+        assert_eq!(&phase.carried, retained.carried());
+        assert_eq!(phase.player_inventory.slots(), inventory.slots());
+        assert_eq!(phase.player_inventory.carried(), inventory.carried());
+        let packet = events
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .expect("retained full-content packet");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, menu.window_id());
+        assert_eq!(reader.varint()?, menu.state_id());
+        assert_eq!(reader.varint()?, 39);
+        let top = retained.top();
+        for slot in 0..39 {
+            let (stack, used) = ItemStack::decode(reader.remaining())?;
+            reader.bytes(used)?;
+            let expected = if slot < 3 {
+                &top[slot]
+            } else {
+                inventory.slot(slot + 6).unwrap()
+            };
+            assert_eq!(&stack, expected);
+        }
+        assert_eq!(
+            ItemStack::decode_exact(reader.remaining())?,
+            item("stone", 4)
+        );
+        let old_click = click(&menu, -999, 0, ClickType::Pickup);
+        assert!(menu.click(retained.token(), &old_click, &mut host).is_err());
+        assert!(menu
+            .close(
+                retained.token(),
+                MenuCloseContext::AliveConnected,
+                &mut host
+            )
+            .is_err());
+        assert_eq!(host.sync_events.len(), queued_sync + 1);
+        menu.broadcast_changes(&mut host)?;
+        assert!(host.sync_events.last().unwrap().0.is_empty());
+        assert_eq!(menu.state, retained.state);
+        assert_eq!(host.inventory.slots(), inventory.slots());
         Ok(())
     }
 }
