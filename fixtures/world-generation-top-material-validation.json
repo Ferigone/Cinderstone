@@ -1,0 +1,32 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "reviewed_source_commit": "ab6d0938a7341eaa630f422300f668fd0f9d74fc",
+  "base_master": "c1baf5c70f07e53b6b76edaf84be5da57f6bd40b",
+  "passed": true,
+  "commands": [
+    "cargo build --locked --bin mc121-rust",
+    "cargo test --locked --lib worldgen::surface::tests"
+  ],
+  "log_sha256": "e5a286ecc63168d9c60f4dc050067e16ac713480442563f6194c05f26df9cb97",
+  "source_sha256": {
+    "src/worldgen/surface/mod.rs": "41a59896a1d1788499161e830f9aef3f62b3f587c1cc56c717bcb7c31aeeadb0",
+    "src/worldgen/surface/rules.rs": "292cc4b35136e2310b38c38813b1e47ab64ed5752cf88c183efacf0970b66d3f",
+    "src/worldgen/validation/WorldgenTopMaterialOracle.java": "6a016507a43991e6cfc31f631845e5556f3ea797422fcf83bcf13e633c146440",
+    "fixtures/world-generation-top-material.json": "68a82e28f1e10eef946d798f27d7c058abe3fcb8c2641e59d60e967df2c764c4"
+  },
+  "review": "Independent pinned-source review and root review found no blocking defect in the bounded compiled-builtin-rule API.",
+  "observed": [
+    "Actual original nullable material/wet-dry results",
+    "Original lazy biome callbacks and propagated dependency error",
+    "Original canonical input block arrays unchanged",
+    "Native block-read/write/extension traps and same optional results"
+  ],
+  "not_verified": [
+    "Arbitrary separately supplied RuleSource binding/callback traces",
+    "Actual Carvers material/host adapter, carving loop, dependency scheduler and Main",
+    "Every rule/position/height/biome branch; complete generation/FULL"
+  ],
+  "previous_reviewed_source_commit": "b8d9b4c34ebf0a62abfa1b3b8a225aca33dd11d6",
+  "previous_log_sha256": "0385c7e066188da36adba94e6c26aa70144f1ec86d7b1c33860d6cb9f232890c"
+}
