@@ -14,3 +14,5 @@ pub mod brewing;
 pub mod merchant;
 pub mod dispenser;
 pub mod enchanting;
+pub mod hopper;
+pub mod shulker;
