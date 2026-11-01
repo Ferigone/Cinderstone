@@ -5,6 +5,7 @@
 //! Definitions, attributes, packets, persistence and production Main wiring
 //! remain separate integration responsibilities.
 
+pub mod attribute_instance;
 mod instance;
 
 pub use instance::{EffectInstance, EffectTickHost};
