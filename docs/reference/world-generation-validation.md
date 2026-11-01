@@ -1,0 +1,60 @@
+# Native generation stage validation
+
+Implementation source commit:
+`6c0b18c50abcee153705675e8d900757400b1e72`, based on
+`643106e8eb60d970a8df67eb9acf0ab5f107c788`.
+The checked-in generator-only report records exact source and probe hashes:
+[`world-generation-stage-validation.json`](../../fixtures/world-generation-stage-validation.json).
+
+Reference inspection used direct `javap` through Java 21's `jdk.jdeps` module.
+No REA tools were exposed, and no REA Evidence IDs are claimed. The original
+server and official mappings were verified against `fixtures/source-lock.json`;
+the inner server SHA-256 was
+`8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`.
+
+The real Main compiler check passed:
+
+```sh
+cargo check --locked --bin mc121-rust
+cargo test --locked --lib worldgen::
+cargo test --locked --lib density::chunk::tests
+```
+
+The focused native checks cover original RNG/factory observations, original
+aquifer decisions and fluid-update flags, cache-owner identity, and failed
+traversal cleanup. Existing unrelated compiler warnings remain. The Main check
+includes the mechanically exported namespace; it proves compilation, not a
+production generation callsite.
+
+The portable probe sources and invocation are documented in
+[`src/worldgen/validation/README.md`](../../src/worldgen/validation/README.md).
+The NOISE comparison constructs the original NoiseChunk and calls its real
+interpolation/block-state methods in source `doFill` order. It compares complete
+canonical state arrays for seed `123456789` in all seven built-in noise settings,
+plus an Overworld chunk at negative X. Each selected original/native array agrees.
+This is direct original-class runtime execution, not execution of the original
+server's generation scheduler or `doFill` itself.
+
+The SURFACE comparison invokes the actual original SurfaceSystem on a real
+ProtoChunk containing original NOISE output, with real FixedBiomeSource,
+BiomeManager and WorldGenerationContext owners. The controlled original biomes
+are plains, eroded badlands, frozen ocean, swamp, nether wastes and the End.
+Native NOISE-to-SURFACE output agrees on complete state arrays, both WG
+heightmaps and surface postprocessing deltas. Native unavailable-biome rejection
+preserves the NOISE image/stage; repeated SURFACE application is rejected.
+Frozen-ocean terrain includes active iceberg growth. The eroded-badlands case
+does not demonstrate positive pillar filling; its source water guard applies.
+Thermal callbacks replay actual original biome observations and reject unknown
+coordinates, rather than assuming a constant temperature.
+
+Separate source notes describe the
+[density router](world-generation-density.md),
+[random owners](world-generation-random.md),
+[NoiseChunk lifecycle](world-generation-noise-chunk.md),
+[aquifer](world-generation-aquifer.md) and
+[surface rules](world-generation-surface.md).
+The [integration contract](world-generation-integration.md) lists the missing
+production owners and call phases. Main generation, natural multi-biome lookup,
+nonempty blending/beardifier, full dimension generation, carving, features,
+lighting, persistence and FULL publication remain unverified or unsupported.
+No checklist row or progress metric is changed by these observations.

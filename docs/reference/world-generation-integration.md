@@ -91,9 +91,11 @@ No production callsite invokes this module at that base:
   Its source owner explicitly rejects Anvil FULL post-load/conversion. Disk or
   cache presence is not treated as a generation future.
 
-The integration coordinator must supply or narrowly assign all of these seams:
+The integration coordinator must supply the remaining production seams:
 
-1. Add the mechanical `pub mod worldgen;` library export.
+1. The mechanical `pub mod worldgen;` library export is included. The coordinator's
+   published status at `46e5ca821b69a91e5555914dc82d03f57df6a507` explicitly
+   permits this narrow change. It adds no Main generation callsite.
 2. Own the real seed, noise-settings key, dimension and height accessor for one
    world. Construct and retain its generator independently of gameplay RNG.
 3. Supply the original generation dependencies and status scheduler, including
@@ -106,9 +108,15 @@ The integration coordinator must supply or narrowly assign all of these seams:
    A `NoiseTerrain` is never substituted for a completed resident FULL source.
 
 `src/main.rs`, `src/main_*.rs`, shared runtime/storage seams, `src/lib.rs`,
-manifests and checklist/status accounting are reserved to that coordinator.
-This branch does not edit them. Main integration remains pending; it is not
+manifests and checklist accounting are reserved to that coordinator. The only
+shared source change is the explicitly permitted library export. The team's own
+handoff status uses the separately assigned per-instance status path. Main integration remains pending; it is not
 established by compiling or directly calling a generator stage in a probe.
 
-Focused compiler and original-class runtime results are recorded by the team
-coordinator with their exact source/artifact identity before handoff.
+Focused compiler and original-class runtime results are recorded in
+[world-generation-validation.md](world-generation-validation.md) and the
+generator-only validation fixture. NOISE arrays match the original class
+traversal for all seven pinned settings in the selected cases. Controlled
+fixed-biome SURFACE cases match actual original ProtoChunk output, both WG
+heightmaps and surface postprocessing deltas. Those observations do not certify
+natural biome selection or a Main missing-chunk generation path.
