@@ -102,15 +102,18 @@ proves exact RNG consumption order, not just the items.
 | `LootTable.fill` into a 27- or 9-slot container, with and without pre-filled slots | 317 |
 | Named random sequences, three consecutive rolls, saved stream state compared | 676 |
 
-1174 of the 1178 vanilla tables are rolled. The four that are not
-(`chests/shipwreck_map`, `entities/pillager`, `entities/player`, `entities/wither`)
-need a real structure search, raid manager, player and scoreboard in the harness;
-they parse natively but are not differentially checked.
+1174 of the 1178 vanilla tables are rolled by the oracle. The other four are not
+differentially checked: `entities/wither` and `entities/player` have no pools (the
+native test asserts they roll nothing); `entities/pillager` needs the `raider`
+entity sub-predicate and a raid manager, which are not ported (it fails with
+`Unsupported` when reached); `chests/shipwreck_map` calls `exploration_map`, which
+needs a structure search and map saved data (host call, `Unsupported` by default).
 
 `cargo test --locked --lib loot::` runs the vectors in about one second, parses all
 1178 tables, and adds focused tests for Java number semantics, parameter-set
 validation, unknown/unported types, short-circuit of unsupported predicate clauses,
-random-sequence persistence/NBT and source selection.
+random-sequence persistence/NBT, source selection, the empty vanilla tables and a
+decoder for every registered condition type.
 
 What this does **not** establish: any Main, world, entity, packet or persistence
 behaviour; the `score`, `storage`, `enchantment_level`, `entity_scores` and

@@ -583,3 +583,53 @@ fn explicit_seed_beats_sequence_beats_level_random() {
     let mut by_level = RollRandom::select(0, None, &mut sequences, &mut level_random);
     assert_eq!(by_level.next_i32(), expected_level);
 }
+
+#[test]
+fn empty_vanilla_tables_roll_nothing_and_every_condition_type_decodes() {
+    // `entities/wither` and `entities/player` are tables without pools.
+    let level = TestLevel {
+        biome: String::new(),
+        game_time: 0,
+        day_time: 0,
+        raining: false,
+        thundering: false,
+    };
+    for key in ["minecraft:entities/wither", "minecraft:entities/player"] {
+        let table = vanilla().get(key).unwrap();
+        let entity = TestEntity::from_json(&serde_json::json!({ "type": "minecraft:wither" }));
+        let source = TestDamage { type_id: "minecraft:generic".to_owned(), direct: None, source: None };
+        let mut params = LootParams::default();
+        params.origin = Some([0.0; 3]);
+        params.this_entity = Some(&entity);
+        params.damage_source = Some(&source);
+        params.validate(table.param_set).unwrap();
+        let mut random = LegacyRandomSource::new(3);
+        let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
+        assert!(table.get_random_items(&mut ctx).unwrap().is_empty(), "{key}");
+    }
+    // Every registered condition type has a decoder (none falls through to the error arm).
+    for body in [
+        r#"{"condition":"minecraft:inverted","term":{"condition":"minecraft:killed_by_player"}}"#,
+        r#"{"condition":"minecraft:any_of","terms":[]}"#,
+        r#"{"condition":"minecraft:all_of","terms":[]}"#,
+        r#"{"condition":"minecraft:random_chance","chance":0.5}"#,
+        r#"{"condition":"minecraft:random_chance_with_enchanted_bonus","unenchanted_chance":0.1,"enchanted_chance":0.2,"enchantment":"minecraft:looting"}"#,
+        r#"{"condition":"minecraft:entity_properties","entity":"this"}"#,
+        r#"{"condition":"minecraft:killed_by_player"}"#,
+        r#"{"condition":"minecraft:entity_scores","entity":"this","scores":{"a":1}}"#,
+        r#"{"condition":"minecraft:block_state_property","block":"minecraft:stone"}"#,
+        r#"{"condition":"minecraft:match_tool"}"#,
+        r#"{"condition":"minecraft:table_bonus","enchantment":"minecraft:fortune","chances":[0.1]}"#,
+        r#"{"condition":"minecraft:survives_explosion"}"#,
+        r#"{"condition":"minecraft:damage_source_properties"}"#,
+        r#"{"condition":"minecraft:location_check"}"#,
+        r#"{"condition":"minecraft:weather_check"}"#,
+        r#"{"condition":"minecraft:reference","name":"minecraft:x"}"#,
+        r#"{"condition":"minecraft:time_check","value":1}"#,
+        r#"{"condition":"minecraft:value_check","value":1,"range":1}"#,
+        r#"{"condition":"minecraft:enchantment_active_check","active":true}"#,
+    ] {
+        super::parse::condition(&serde_json::from_str::<Value>(body).unwrap())
+            .unwrap_or_else(|error| panic!("{body}: {error}"));
+    }
+}

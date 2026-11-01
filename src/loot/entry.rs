@@ -427,6 +427,10 @@ fn split_stack(
         return Ok(());
     }
     let maximum = max_stack_size(&stack)?;
+    if maximum <= 0 {
+        // Java would split forever; a non-positive maximum is an invalid component.
+        return Err(LootError::Invalid(format!("maximum stack size {maximum}")));
+    }
     let count = count_of(&stack);
     if count < maximum {
         accept(stack);

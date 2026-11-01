@@ -739,7 +739,7 @@ pub fn condition(value: &Value) -> Result<Condition> {
         "enchantment_active_check" => {
             Condition::EnchantmentActiveCheck(boolean(required(map, "active", "enchantment_active_check")?, "active")?)
         }
-        _ => unreachable!("checked against CONDITION_TYPES"),
+        other => return codec(format!("condition type {other} has no decoder")),
     })
 }
 
