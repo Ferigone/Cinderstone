@@ -94,6 +94,16 @@ core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
 - [x] 2×2 inventory crafting and bounded recipe-book state.
 - [x] 3×3 crafting table, recipe remainders and shift crafting.
 - [x] Single/double chest and barrel owners, menus and native persistence.
+- [x] Bounded native Stonecutter Main: canonical recipe/callback/transaction,
+      immediate pickup, current-menu close, player phase and disconnect/save owners;
+      focused local flows and [source evidence](reference/stonecutter-production.md).
+- [x] Bounded Smithing Main composition, genuine retained full-state recovery and
+      actual three-input transform/close/disconnect/native-restart witness;
+      [production limits](reference/smithing-production.md) remain explicit.
+- [ ] Complete Smithing trim/custom contexts, remaining workstation families and
+      their actual Main lifetime/owner contracts.
+- [ ] Complete custom component reference identity, remaining workstation contexts
+      and all remaining menu families before closing aggregate checklist rows.
 - [ ] Complete furnace-family processing, rewards and world interactions.
 - [x] Bounded furnace/smoker/blast-furnace engines, default recipes/fuels,
       authoritative three-slot menus, processing ticks, counters and lit states.

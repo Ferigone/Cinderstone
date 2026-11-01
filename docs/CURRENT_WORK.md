@@ -5,6 +5,61 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native Smithing — Main connected; local runtime passed
+
+The real Smithing Main path passed a full build and actual offline protocol767
+flow on source `a4d5b460de69c1380c12323fe5dbedd77581f0d0`, tree
+`e12ecb9193bc70c68b055551c51afcaba37687a3`, binary
+`d6e1df77a4698c763692c5c282028f55494d2724d89537d1dc96e71949c1df88`.
+The [flow](validation/smithing-flow.json) completed at
+`2026-11-01T22:05:07.066206+00:00`: actual three-input netherite-sword recipe,
+level event1044, crafted-stat1, close, native PLAY restart, open-menu disconnect
+and nonempty native item-checkpoint restart preserved owned items without a
+second result preview. All isolated servers exited normally.
+
+[Production contracts and limits](reference/smithing-production.md) describe
+actual counter/listener/book/stat/drop ownership, full-state recovery, integer
+block-event coordinates/audience and no sound RNG. The later current-master
+composition `3241766` also passed the complete Main build; its extra upstream
+changes are independently owned worldgen/entity source, with the observed Smith
+Main path retained. Publishing/review/CI is in progress; hosted Smithing is not
+yet claimed. Trim, custom/reentrant contexts and unexercised paths remain open.
+
+## Native Stonecutter — merged and hosted
+
+[PR72](https://github.com/Ferigone/Cinderstone/pull/72) merged as
+`dddc0e7807bf8caa91d5b57232e0535e6519f5ed`. Published head `b19e160` has the exact
+Git tree of locally built/runtime-checked `5553015`. The full Main build and
+actual positive/conservation and FOOD current-window recovery flows passed.
+Queued-button retirement was observed. Queued-click targeted runtime coverage
+remains unresolved: a tick retired the menu first; an isolated retry failed its
+initial placement visibility observation. Both incomplete reports keep
+`ok:false`; source review is not relabeled a runtime success.
+
+[Production evidence](reference/stonecutter-production.md) records actual recipe,
+callback, RNG, menu-phase/pickup, close/disconnect/save and component-recovery
+paths. Railway release `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS;
+native offline listening was observed at `2026-11-01T22:05:31.290410832Z`, with
+one running, zero crashed replicas, retained volume and no pending work. The
+fresh public status probe still failed DNS. See
+[hosted observation](validation/railway-stonecutter.json).
+
+## Active next source stages
+
+Grindstone's actual configured enchantment context, provider, mixed Item/XP
+preparation/publication and synchronous XP stage are under isolated composition.
+Focused library and existing-Main compiler checks passed for the mixed runtime
+and XP modules. The unexported Host still needs genuine retained-menu APIs and
+Main assembly; it is not working Grindstone gameplay. Loom's actual configured
+patterns, provider, callbacks/lifetime/pickup and primary transaction code are
+being assembled; no Loom runtime witness or Main claim exists yet. Team3 has a
+narrow explicit new MainAnvil namespace assignment in issue3; central shared
+seams remain reserved.
+
+Other teams self-review/merge their owned source PRs. Fixed scope_version1
+checklist remains56/100 code and51/100 Main; these bounded stages do not close
+the aggregate all-workstation delivery or measure whole-game compatibility.
+
 ## Native connection transport — published and hosted
 
 Native core `894a3cc` and Main `87dda91054478098ba86eebaaf32869fa176f307`

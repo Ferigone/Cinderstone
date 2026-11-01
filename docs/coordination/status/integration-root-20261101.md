@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: completed_stage; published connection release verified
+State: implementing; Stonecutter hosted, Smithing source publication and next native menu stages
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -13,7 +13,32 @@ accounting, persistent journal and Railway. External teams own unused default
 areas in the coordination guide. No separate external instance is assumed active
 without an actual issue or Git branch/status check-in.
 
-## Latest published delivery
+## Current stage
+
+Stonecutter Main PR72 merged as `dddc0e7807bf8caa91d5b57232e0535e6519f5ed`;
+exact head/tree `b19e160`/`adf8b392` matched local `5553015`. Full Main/actual CI
+passed. Local positive and FOOD current-menu recovery flows passed; queued
+button handler observed, queued click coverage explicitly unresolved.
+Railway `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS/native offline
+listen `2026-11-01T22:05:31.290410832Z`, one replica, volume, no pending work.
+Fresh public TCP status still fails DNS.
+
+Smithing Main source `a4d5b460`/tree `e12ecb91` and binary `d6e1df77` passed
+actual transform/event1044/crafted-stat/close/disconnect/native-restart flow at
+`2026-11-01T22:05:07.066206+00:00`. Current-master composition `3241766` then
+passed full Main build. Source publication/self-review/CI is the current step;
+no hosted Smithing claim yet. Fixed scope1 stays56/100 code and51/100 Main.
+
+Root plus six actual subordinate slots handle disjoint active source tasks:
+isolated Grindstone mixed entity/XP/Host and compiler review; Loom configured
+registry/provider/callback/lifetime/primary code and original-source/runtime
+prerequisites. No coding after a stopped session is implied. The user's
+standing authorization permits independent teams to self-review/merge owned
+source; root retains central shared seams, checklist/journal and deployment.
+Team3's explicit new MainAnvil namespace assignment is
+[issue3 comment6564589182](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6564589182).
+
+## Earlier published delivery
 
 Published core `894a3cc9358144f967489018069396ac97c6db70`, Main
 `87dda91054478098ba86eebaaf32869fa176f307` and docs

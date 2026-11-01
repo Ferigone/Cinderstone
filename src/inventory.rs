@@ -465,6 +465,9 @@ pub struct PlayerInventory {
     selected_hotbar: usize,
     carried: ItemStack,
     state_id: i32,
+    // Java Inventory.timesChanged is transient. Existing native/Java restore
+    // reconstructs through new(), while detached views preserve its value.
+    times_changed: i32,
 }
 
 impl Default for PlayerInventory {
@@ -480,6 +483,7 @@ impl PlayerInventory {
             selected_hotbar: 0,
             carried: ItemStack::empty(),
             state_id: 0,
+            times_changed: 0,
         }
     }
     pub fn slots(&self) -> &[ItemStack] {
@@ -487,6 +491,14 @@ impl PlayerInventory {
     }
     pub fn carried(&self) -> &ItemStack {
         &self.carried
+    }
+    /// Detached view of the canonical inventory with its actual active menu's
+    /// cursor. Slots, selected hotbar and synchronization state are unchanged;
+    /// this snapshot neither moves a stack nor creates another live owner.
+    pub fn snapshot_with_carried(&self, carried: &ItemStack) -> Self {
+        let mut snapshot = self.clone();
+        snapshot.set_carried_authoritative(carried.clone());
+        snapshot
     }
     pub(crate) fn set_carried_authoritative(&mut self, stack: ItemStack) {
         self.carried = if stack.is_empty() {
@@ -508,6 +520,15 @@ impl PlayerInventory {
     }
     pub fn state_id(&self) -> i32 {
         self.state_id
+    }
+    /// Java Inventory.getTimesChanged, distinct from protocol state IDs.
+    pub fn get_times_changed(&self) -> i32 {
+        self.times_changed
+    }
+    /// Java Inventory.setChanged increments only at its actual source calls.
+    /// Generic slot/cursor setters do not implicitly repeat that callback.
+    pub fn set_changed(&mut self) {
+        self.times_changed = self.times_changed.wrapping_add(1);
     }
     pub fn selected_hotbar(&self) -> usize {
         self.selected_hotbar

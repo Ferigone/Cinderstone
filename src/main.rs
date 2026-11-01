@@ -110,6 +110,18 @@ mod main_chat_keys;
 mod main_connection;
 mod main_connection_rate;
 mod main_connection_decode;
+mod main_stonecutter;
+mod main_stonecutter_recipes;
+mod main_stonecutter_dispatch;
+mod main_stonecutter_lifecycle;
+mod main_stonecutter_pickup;
+mod main_workstation_components;
+mod main_menu_resync;
+mod main_smithing;
+mod main_smithing_recipes;
+mod main_smithing_dispatch;
+mod main_smithing_lifecycle;
+mod main_smithing_pickup;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -481,6 +493,8 @@ struct LivePlayers {
     native_containers: main_block_entities::NativeContainerRuntime,
     crafting_tables: main_crafting_table::CraftingTableRuntime,
     furnaces: main_furnaces::FurnaceRuntime,
+    stonecutters: main_stonecutter::StonecutterRuntime,
+    smithing_tables: main_smithing::SmithingRuntime,
     experience_runtime: main_experience::MainExperienceRuntime,
     block_runtime: main_block_ticks::MainBlockRuntime,
     redstone_runtime: main_redstone::MainRedstoneRuntime,
@@ -742,6 +756,8 @@ impl LivePlayers {
             native_containers: main_block_entities::NativeContainerRuntime::default(),
             crafting_tables: main_crafting_table::CraftingTableRuntime::default(),
             furnaces: main_furnaces::FurnaceRuntime::default(),
+            stonecutters: main_stonecutter::StonecutterRuntime::default(),
+            smithing_tables: main_smithing::SmithingRuntime::default(),
             experience_runtime: main_experience::MainExperienceRuntime::default(),
             block_runtime: main_block_ticks::MainBlockRuntime::new(fresh_unedited),
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
@@ -1021,6 +1037,8 @@ impl Server {
         let inventory=players.native_containers.inventory_snapshot(id,&inventory);
         let inventory=players.crafting_tables.inventory_snapshot(id,&inventory);
         let inventory=players.furnaces.inventory_snapshot(id,&inventory);
+        let inventory=players.stonecutters.inventory_snapshot(id,&inventory);
+        let inventory=players.smithing_tables.inventory_snapshot(id,&inventory);
         let stats = players.gameplay.snapshot_player_stats(uuid)?;
         let mut lifecycle = players
             .player_lifecycle
@@ -1114,6 +1132,57 @@ impl Server {
         }
         Ok(())
     }
+    /// handleContainerClose targets the actual current server menu. Select and
+    /// remove that owner in one operation, never across separate async guards
+    /// after remembering an earlier window ID.
+    async fn close_current_player_menu(&self, id: i32) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
+        let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
+        let border = self.native_container_border()?;
+        let mut world = self.world.write().await;
+        let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
+        enum CurrentMenu {
+            Furnace(u8),
+            Stonecutter(u8),
+            Smithing(u8),
+            CraftingTable(u8),
+            NativeContainer(u8),
+        }
+        let mut current = [
+            players.furnaces.window_id(id).map(CurrentMenu::Furnace),
+            players.stonecutters.window_id(id).map(CurrentMenu::Stonecutter),
+            players.smithing_tables.window_id(id).map(CurrentMenu::Smithing),
+            players.crafting_tables.window_id(id).map(CurrentMenu::CraftingTable),
+            players.native_containers.window_id(id).map(CurrentMenu::NativeContainer),
+        ].into_iter().flatten();
+        let selected = current.next();
+        ensure!(current.next().is_none(), "multiple current player menus during close");
+        let closed = match selected {
+            Some(CurrentMenu::Furnace(window)) => self.furnace_menu_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            Some(CurrentMenu::Stonecutter(window)) => self.close_stonecutter_with_context_locked(
+                &mut world, &mut players, id, window, false, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?,
+            Some(CurrentMenu::Smithing(window)) => self.close_smithing_with_context_locked(
+                &mut world, &mut players, id, window, false, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?,
+            Some(CurrentMenu::CraftingTable(window)) => self.crafting_table_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            Some(CurrentMenu::NativeContainer(window)) => self.native_menu_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            None => return self.close_inventory_menu_locked(
+                &mut world, &mut players, id, now, border,
+            ),
+        };
+        ensure!(closed, "actual current player menu changed during close");
+        Ok(())
+    }
+
     async fn execute_menu_action(
         &self,
         id: i32,
@@ -1313,6 +1382,7 @@ impl Server {
         Ok(())
     }
     async fn tick_item_world(&self) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
         let game_time = self
             .clock
             .read()
@@ -1335,10 +1405,15 @@ impl Server {
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
         players.simulate_item_world_with_player_menus(&mut world, game_time, border, &self.entity_events,
-            |players, world, id| self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border))
+            |players, world, id| {
+                self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
+                self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;
+                self.tick_native_smithing_menu_for_player_locked(world, players, id, game_time, border)
+            })
     }
 
     async fn tick_connection_phase(&self) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
         let game_time=self.clock.read().map_err(|_|anyhow!("clock poisoned"))?.game_time;
         let bounds=self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis()as i64);
         let border=CollisionBorder{min_x:bounds.min_x,min_z:bounds.min_z,max_x:bounds.max_x,max_z:bounds.max_z};
@@ -1397,10 +1472,28 @@ impl Server {
                     containers,
                     gameplay,
                     chunk_runtime,
+                    stonecutters,
+                    smithing_tables,
                     ..
                 } = &mut *players;
+                let active_stonecutter = stonecutters.has_open(id);
+                let active_smithing = smithing_tables.has_open(id);
+                ensure!(!(active_stonecutter && active_smithing), "multiple current external menus during connection pickup");
                 let mut frame = gameplay.frame(registry, &chunk_runtime.manager, true);
                 let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                let mut stonecutter_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                           inventory: &mc121_rust::inventory::PlayerInventory| {
+                    stonecutters.broadcast_for_inventory(id, pickup, inventory, hooks)
+                };
+                let mut smithing_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                        inventory: &mc121_rust::inventory::PlayerInventory| {
+                    smithing_tables.broadcast_for_inventory(id, pickup, inventory, hooks)
+                };
+                if active_smithing {
+                    host = host.with_external_menu_sync_and_hooks(pickup, &mut smithing_sync);
+                } else if active_stonecutter {
+                    host = host.with_external_menu_sync_and_hooks(pickup, &mut stonecutter_sync);
+                }
                 item_runtime.player_touch(pickup, &mut host)?;
             }
             self::LivePlayers::tick_native_food_slice(&mut players,id,&self.entity_events)?;
@@ -2070,6 +2163,7 @@ impl Server {
     }
 
     async fn save(&self) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
         let _save = self.save_lock.lock().await;
         let mut world = self.world.write().await;
         let clock = *self
@@ -2084,6 +2178,8 @@ impl Server {
             if self.shutting_down.load(Ordering::Acquire) {
                 self.finish_shutdown_chunk_tasks_locked(&mut world, &mut players, clock.game_time)?;
                 self.close_furnaces_for_save_locked(&mut world,&mut players,clock.game_time)?;
+                self.close_stonecutters_for_save_locked(&mut world,&mut players,clock.game_time)?;
+                self.close_smithing_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_crafting_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_native_containers_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 let b=self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
@@ -2219,6 +2315,7 @@ struct PresenceGuard {
 }
 impl Server {
     async fn cleanup_player(&self, id: i32, reason: Option<&'static str>) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
         let admission = self.player_admission.lock().await;
         self.cleanup_player_admitted(id, reason, &admission).await
     }
@@ -2232,6 +2329,8 @@ impl Server {
             ensure!(!players.native_containers.has_open(id), "orphan native menu retained");
             ensure!(!players.crafting_tables.has_open(id), "orphan crafting menu retained");
             ensure!(!players.furnaces.has_open(id), "orphan furnace menu retained");
+            ensure!(!players.stonecutters.has_open(id), "orphan stonecutter menu retained");
+            ensure!(!players.smithing_tables.has_open(id), "orphan smithing menu retained");
             return Ok(());
         }
         if let Some(reason)=reason {
@@ -2241,6 +2340,12 @@ impl Server {
         // actual external menu. Keep that order for carried/grid drop RNG and
         // shared entity allocation even when a block menu remains current.
         self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        if let Some(window)=players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        }
+        if let Some(window)=players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        }
         if let Some(window)=players.furnaces.window_id(id) {
             // This actor is leaving after EOF, disconnect, or duplicate-login
             // replacement. Its carried stack follows Player.drop(stack,false),
@@ -2431,6 +2536,12 @@ async fn main() -> Result<()> {
         let item_count = checkpoint.item_count();
         match checkpoint.restore(&world) {
             Ok(restored) => {
+                // Include hidden items before adopting either restored time
+                // or the live runtime. Failure cannot enter legacy fallback.
+                for state in restored.runtime.item_states() {
+                    main_workstation_components::require_supported_stack(&state.stack)
+                        .with_context(|| format!("refusing unsupported native checkpoint item {}", state.entity_id))?;
+                }
                 ensure!(!restored.source.requires_fire_checkpoint() || had_fire_checkpoint,
                     "native source history requires its saved fire queue, including stale scheduled ticks");
                 ensure!(!restored.source.requires_block_checkpoint() || had_block_checkpoint,
@@ -3203,6 +3314,12 @@ async fn play(
                 if path.try_exists()? { saved=Some(mc121_rust::player_nbt::import_player_file(&path,uuid,Some(&stats))?); }
             }
         }
+        if let Some(data) = saved.as_ref() {
+            // One admission boundary for pending, native and imported saves,
+            // before apply/refresh can canonicalize an unsupported component.
+            main_workstation_components::require_supported_inventory(&data.inventory)
+                .context("refusing unsupported saved/pending/imported player inventory before admission")?;
+        }
         let math=players.math_random.as_ref().context("actual global Math.random owner missing")?;
         let constructor_math=[math.next_f64()?,math.next_f64()?,math.next_f64()?];
         let mut player = PlayerState::new(entity_id, profile, position)?;
@@ -3667,8 +3784,21 @@ async fn play(
                         server.set_flying(entity_id,flags&0x02!=0)?;
                     },
                     0x36 => { let hand=fields.varint()?; fields.finish()?; server.animate(entity_id, hand)?; },
+                    0x0d => {
+                        let window=fields.varint()?; let button=fields.varint()?; fields.finish()?;
+                        let _=server.stonecutter_button(entity_id,window,button).await?;
+                    },
                     0x0e => {
                         let click=ContainerClick::decode(&packet.payload)?;
+                        if let Err(error) = main_workstation_components::require_supported_prediction(&click) {
+                            // Refuse before adopting predictions or mutating
+                            // actual stacks, then sync the retained current owner.
+                            eprintln!("{}", json!({"event":"native_component_admission_refused","entity_id":entity_id,"packet_id":packet.id,"reason":format!("{error:#}")}));
+                            server.resync_current_player_menu(entity_id).await?;
+                            continue;
+                        }
+                        if server.click_native_smithing_table(entity_id,&click).await? {continue;}
+                        if server.click_native_stonecutter(entity_id,&click).await? {continue;}
                         if server.click_native_furnace(entity_id,&click).await? {continue;}
                         if server.click_native_crafting_table(entity_id,&click).await? {continue;}
                         if server.click_native_container(entity_id,&click).await? {continue;}
@@ -3677,27 +3807,22 @@ async fn play(
                     },
                     0x0f => {
                         let _requested_window=fields.u8()?; fields.finish()?;
-                        // handleContainerClose closes the current menu; its
-                        // packet ID never selects or revives an older owner.
-                        let window = {
-                            let players=server.players.read().map_err(|_|anyhow!("players poisoned"))?;
-                            players.furnaces.window_id(entity_id)
-                                .or_else(||players.crafting_tables.window_id(entity_id))
-                                .or_else(||players.native_containers.window_id(entity_id))
-                                .unwrap_or(0)
-                        };
-                        if server.close_native_furnace(entity_id,window,false).await? {continue;}
-                        if server.close_native_crafting_table(entity_id,window,false).await? {continue;}
-                        if server.close_native_container(entity_id,window,false).await? {continue;}
-                        if window==0 {
-                            let result=server.execute_menu_action(entity_id,&container,PlayerContainer::close,None).await;
-                            finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
-                        }
+                        // Selection and removal share one actual operation;
+                        // the client's window never chooses a retained owner.
+                        let result=server.close_current_player_menu(entity_id).await;
+                        finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                     },
                     0x2f => { let slot=fields.i16()?; fields.finish()?; container.transact(|menu| {menu.inventory.set_selected_hotbar(slot)?;Ok(((),vec![]))})?; },
                     0x32 => {
                         if gamemode != 1 { continue; }
                         let slot=fields.i16()?; let stack=ItemStack::decode_exact(fields.remaining())?;
+                        if let Err(error) = main_workstation_components::require_supported_stack(&stack) {
+                            // Preserve actual slot/cursor ownership and repair
+                            // through the real current menu's full-state path.
+                            eprintln!("{}", json!({"event":"native_component_admission_refused","entity_id":entity_id,"packet_id":packet.id,"reason":format!("{error:#}")}));
+                            server.resync_current_player_menu(entity_id).await?;
+                            continue;
+                        }
                         if slot<0 {
                             let result=server.execute_menu_action(entity_id,&container,|_|Ok(ClickOutcome::default()),Some((slot,stack))).await;
                             finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
@@ -3745,6 +3870,14 @@ async fn play(
                         let sequence=fields.varint()?; fields.finish()?;
                         if sequence<0 || !(0..=5).contains(&face) || !cursor.iter().all(|v| v.is_finite()) { bail!("invalid placement request"); }
                         if teleport_confirmed && server.use_native_furnace(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_stonecutter(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_smithing_table(entity_id,hand,target).await? {
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                             continue;
                         }

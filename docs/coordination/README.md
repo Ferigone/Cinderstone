@@ -12,8 +12,7 @@ Assigned team issues: [world generation #2](https://github.com/Ferigone/Cinderst
 [workstations #3](https://github.com/Ferigone/Cinderstone/issues/3),
 [entities/survival #4](https://github.com/Ferigone/Cinderstone/issues/4).
 Published world-generation, workstation and damage/effect branches and actual
-issue2–4 check-ins are now observed. Draft PRs5/workstations and6/worldgen
-remain pending central integration; publication does not establish Main calls.
+issue2–4 check-ins are now observed. Draft PRs5/workstations and6/worldgen have progressed through their owners' reviews/merges; source publication does not establish Main calls. Later issue updates record exact stages.
 
 ## Start one independent instance per team
 
@@ -129,8 +128,7 @@ During active work, fetch `origin` and inspect the current integration status on
 `master` and status files on `origin/teams/*` branches. Read other branches with
 `git show <remote-branch>:docs/coordination/status/<instance-id>.md` without
 switching or modifying their checkouts. Route integration-contract requests and
-responses in these versioned status records. Only the central coordinator
-reviews and integrates the code into `master`.
+responses in these versioned status records. The user now authorizes each assigned team to review and merge its own owned source PRs. Central Main integration, fixed-checklist accounting and deployment configuration remain reserved.
 
 Each owner writes its own branch/status file, avoiding a shared multi-writer
 status file. The coordinator's current record is
@@ -159,7 +157,7 @@ access blocker and retain local commits; do not claim a remote handoff occurred.
   allows it. Defer comprehensive conformance suites. Test counts are not a
   progress metric. Do not claim functional compatibility or performance gains
   from protocol support, compilation, isolated numerical code or test volume.
-- Do not force-push, merge into `master`, deploy, change the checklist/journal,
+- Do not force-push, deploy manually, change the checklist/journal,
   introduce source archives, commit secrets/private saves/proprietary Java
   artifacts, or change licensing. Preserve GPL-2.0-only and existing notices.
 - A team may propose evidence that a complete named delivery is callable or
@@ -170,7 +168,7 @@ access blocker and retain local commits; do not claim a remote handoff occurred.
   Report active agents from observed state. If a turn ends or work pauses,
   record what stopped and what remains; do not imply ongoing background coding.
 
-Only the integration coordinator merges accepted work, resolves central-file
+Each team may self-review and merge its owned source PRs under the user's explicit authorization. The integration coordinator integrates Main, resolves central-file
 conflicts, updates public status/checklist evidence and the persistent journal,
 and verifies the resulting Railway deployment. Teams communicate by actually
 reading GitHub updates; this document creates no automatic cross-chat channel.

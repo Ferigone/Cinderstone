@@ -1,0 +1,85 @@
+{
+  "ok": false,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "5553015344f939f6bb255f414439e1c3b022af5a",
+  "binary_sha256": "526842c949dd1ab039e0b71a017cb8ce794e0241d526c1344002ad6e4c922539",
+  "harness_sha256": "50d04c569428f151ad54939bf21dcc6a26824ce8daa38ba37c64547b7fd53a0d",
+  "started_at": "2026-11-01T21:55:07.194556+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "Actual valid CreativeSlot reach mutation immediately followed in one TCP write by Stonecutter button/click. Require exact handler-triggered typed retirement, owned-input/cursor conservation, continued PLAY/world and graceful native save. No full custom attribute compatibility.",
+  "full_custom_attribute_support": false,
+  "checks": {
+    "queued_button_typed_retirement_preserves_play_and_owned_items": {
+      "ok": true,
+      "before_modifier": {
+        "window": 1,
+        "input_before": 8,
+        "input_after": 7,
+        "owned_cursor_result": 2,
+        "nonowned_remaining_preview": 2
+      },
+      "wire_write_count": 1,
+      "packet_ids_in_order": [
+        50,
+        13
+      ],
+      "creative_payload_hex": "002401d00601000c01061763696e64657273746f6e653a72656163685f70726f62653ff0000000000000000101",
+      "queued_action_payload_hex": "0105",
+      "actual_retirement_trigger": "container_button",
+      "inventory": {
+        "stone": 7,
+        "stone_slab": 2,
+        "reach_item": 1
+      },
+      "cursor_empty": true,
+      "actual_component_echo": true,
+      "actual_list_reply": "commands.list.players",
+      "status_online": 1
+    }
+  },
+  "valid_modifier": {
+    "component_id": 12,
+    "attribute_id": 6,
+    "name": "cinderstone:reach_probe",
+    "amount": 1.0,
+    "operation": "add",
+    "slot_group": "main_hand",
+    "item_id": 848
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e"
+  },
+  "failure": "AssertionError(('menu retired safely but queued handler path was not observed; tick may have won', 'click', [{'entity_id': 1, 'event': 'native_menu_profile_retired', 'menu': 'stonecutter', 'native_limit': 'unsupported_block_interaction_range', 'reason': 'native workstation reach requires the actual equipped attribute owner'}]))",
+  "completed_at": "2026-11-01T21:55:33.692366+00:00",
+  "source_tree": "adf8b3920e3a75b60fa7d19451602112539d1178",
+  "coverage_status": "partial: button handler exercised; click handler not exercised before safe tick retirement",
+  "failure_classification": "strict handler-coverage assertion, not an observed item-loss, disconnect or world-loop failure",
+  "additional_observations": {
+    "queued_click_packet_ids_in_one_write": [
+      50,
+      14
+    ],
+    "queued_click_observed_retirement_event": {
+      "event": "native_menu_profile_retired",
+      "menu": "stonecutter",
+      "native_limit": "unsupported_block_interaction_range",
+      "trigger": null
+    },
+    "queued_click_before_handler_assertion": {
+      "current_window": 0,
+      "cursor_empty": true,
+      "inventory": {
+        "stone": 6,
+        "stone_slab": 4,
+        "reach_item": 1
+      },
+      "actual_list_reply": "commands.list.players",
+      "status_online": 1
+    },
+    "click_handler_runtime_coverage": false,
+    "final_native_saved_ownership_assertions_reached": false
+  }
+}

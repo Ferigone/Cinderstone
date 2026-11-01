@@ -56,12 +56,34 @@ fn still_valid(world: &mut WorldBackend, player: &PlayerState, p: (i32, i32, i32
     Ok(geometry::can_interact_with_block(eyes, p, range, 4.))
 }
 impl Server {
+    /// Resend the retained crafting menu, its real grid/result and its own
+    /// cursor through sendAllDataToRemote. Do not execute another recipe/click
+    /// or replace the preserved local inventory-criterion baseline.
+    pub(super) fn resync_native_crafting_table_locked(
+        &self,
+        _world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        _now: i64,
+        _border: CollisionBorder,
+    ) -> Result<()> {
+        let mut open = players.crafting_tables.menus.get(&id).cloned()
+            .context("resync requires the actual current crafting-table menu")?;
+        let shared = players.containers.get(&id)
+            .context("crafting-table resync inventory missing")?.clone();
+        let packet = shared.read(|menu| open.menu.full_sync(&menu.inventory))??;
+        players.crafting_tables.menus.insert(id, open);
+        send(&self.entity_events, id, vec![packet]);
+        Ok(())
+    }
+
     pub(super) async fn use_native_crafting_table(
         &self,
         id: i32,
         hand: i32,
         target: (i32, i32, i32),
     ) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -104,6 +126,30 @@ impl Server {
             players.world_context.rules.boolean("doLimitedCrafting") == Some(false),
             "limited crafting requires actual known-recipe unlock owner"
         );
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(
                 &mut world,
