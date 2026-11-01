@@ -639,7 +639,11 @@ impl Server {
                 },
                 |_| {
                     ensure!(rain_available, "furnace drop rain owner absent");
-                    chunk_runtime.certify_query_region(
+                    // A pending player-ticket update does not invalidate the
+                    // actual current FULL/light owners under these locks.
+                    // Closing a menu must use those owners without requiring
+                    // unrelated future scheduler work to be globally idle.
+                    chunk_runtime.certify_current_query_region(
                         &mut world_slot.borrow_mut(),
                         chunk_transports,
                         &self.entity_events,
@@ -652,7 +656,7 @@ impl Server {
                             ((player.position.x + 18.).floor() as i32).div_euclid(16),
                             ((player.position.z + 18.).floor() as i32).div_euclid(16),
                         ),
-                    )
+                    ).map(|_| ())
                 },
                 || random_seed::create_random().map_err(anyhow::Error::from),
                 DropCommitCallbacks {
