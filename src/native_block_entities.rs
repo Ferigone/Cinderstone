@@ -13,7 +13,8 @@ pub type BlockPosition = (i32, i32, i32);
 #[path = "native_furnace_entities.rs"]
 mod furnace_entities;
 pub use furnace_entities::{
-    furnace_kind, furnace_name, furnace_type_id, FurnaceImage, NativeFurnace,
+    furnace_kind, furnace_name, furnace_type_id, FurnaceImage, FurnaceRemovalSnapshot,
+    NativeFurnace,
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerKind {
@@ -339,6 +340,74 @@ impl NativeBlockEntities {
     pub fn furnace_viewers(&self, p: BlockPosition) -> Result<Vec<i32>> {
         Ok(self.furnace_entry(p)?.viewers.iter().copied().collect())
     }
+    /// Capture a removal's actual three slots, used-recipe order and metadata.
+    /// Changing LIT/facing retains the same owner and returns None, just as
+    /// AbstractFurnaceBlock.onRemove returns for the same block identity.
+    pub fn prepare_furnace_removal(
+        &self,
+        p: BlockPosition,
+        old: u32,
+        new: u32,
+    ) -> Result<Option<FurnaceRemovalSnapshot>> {
+        let Some(kind) = furnace_kind(old) else {
+            ensure!(
+                !self.furnaces.contains_key(&p),
+                "orphan furnace at non-furnace removal state"
+            );
+            return Ok(None);
+        };
+        self.furnace_validate_at(p, old)?;
+        ensure!(
+            inventory::block_state_name(new).is_some(),
+            "unknown furnace replacement state"
+        );
+        if furnace_kind(new) == Some(kind) {
+            return Ok(None);
+        }
+        let entry = self.furnace_entry(p)?;
+        Ok(Some(FurnaceRemovalSnapshot {
+            image: entry.image.clone(),
+            replacement_state: new,
+            viewers: entry.viewers.iter().copied().collect(),
+        }))
+    }
+    /// Check the complete owner baseline, not only item counts. The bounded
+    /// removal host must close actual menus (or reject active viewers) before
+    /// staging a removal; this method never drops viewer registrations.
+    pub fn validate_furnace_removal(&self, removal: &FurnaceRemovalSnapshot) -> Result<()> {
+        let image = removal.image();
+        self.furnace_validate_at(image.position, image.state)?;
+        let entry = self.furnace_entry(image.position)?;
+        ensure!(entry.image == *image, "furnace removal owner changed");
+        ensure!(
+            entry.viewers.is_empty(),
+            "active furnace removal requires actual close owner"
+        );
+        ensure!(
+            furnace_kind(removal.replacement_state()) != Some(entry.kind()),
+            "furnace removal receipt retains the same block identity"
+        );
+        Ok(())
+    }
+    /// Permit the ordinary transition guard on a PRIVATE staged world clone.
+    ///
+    /// The host must first prepare real inventory drops and recipe XP using
+    /// `removal`, then immediately replace the clone's block and publish only
+    /// that final world in its shared entity/random transaction. Draining a
+    /// clone is not an emitted live inventory/recipe-clear callback. The normal
+    /// transition still removes the block entity and ticker; its nonempty and
+    /// active-viewer guards remain unchanged for every other caller.
+    pub fn drain_furnace_removal(&mut self, removal: &FurnaceRemovalSnapshot) -> Result<()> {
+        self.validate_furnace_removal(removal)?;
+        let mut next = removal.image().furnace_state.clone();
+        next.slots = std::array::from_fn(|_| ItemStack::empty());
+        next.commit_recipe_rewards()?;
+        next.validate()?;
+        self.furnace_entry_mut(removal.image().position)?
+            .image
+            .furnace_state = next;
+        Ok(())
+    }
     pub fn images(&self) -> Vec<ContainerImage> {
         self.entries.values().map(|e| e.image.clone()).collect()
     }
@@ -360,8 +429,11 @@ impl NativeBlockEntities {
         Ok(())
     }
     pub fn validate_owned_at(&self, p: BlockPosition, state: u32) -> Result<()> {
-        if furnace_kind(state).is_some() { self.furnace_validate_at(p, state) }
-        else { self.validate_at(p, state) }
+        if furnace_kind(state).is_some() {
+            self.furnace_validate_at(p, state)
+        } else {
+            self.validate_at(p, state)
+        }
     }
     pub fn preflight_transition(&self, p: BlockPosition, old: u32, new: u32) -> Result<()> {
         if let Some(kind) = furnace_kind(old) {

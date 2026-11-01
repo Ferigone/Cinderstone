@@ -42,6 +42,37 @@ pub struct FurnaceImage {
     pub lock: String,
     pub retained_nbt: Option<Vec<u8>>,
 }
+/// Exact original owner captured before a different-block replacement.
+///
+/// The fields are private to the block-entity owner so callers cannot invent a
+/// removal receipt from selected slot/reward values. A host stages item drops
+/// and experience from this image, drains only a private world clone, and must
+/// complete that clone's block transition before publishing it. This is not a
+/// claim that the Java onRemove callback clears RecipesUsed: its original
+/// object retains those counters until base onRemove discards the object.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FurnaceRemovalSnapshot {
+    pub(super) image: FurnaceImage,
+    pub(super) replacement_state: u32,
+    pub(super) viewers: Vec<i32>,
+}
+impl FurnaceRemovalSnapshot {
+    pub fn image(&self) -> &FurnaceImage {
+        &self.image
+    }
+    pub fn replacement_state(&self) -> u32 {
+        self.replacement_state
+    }
+    pub fn slots(&self) -> &[ItemStack; 3] {
+        &self.image.furnace_state.slots
+    }
+    pub fn pending_recipe_rewards(&self) -> Result<Vec<crate::furnace::FurnaceRecipeReward>> {
+        self.image.furnace_state.pending_recipe_rewards()
+    }
+    pub fn viewers(&self) -> &[i32] {
+        &self.viewers
+    }
+}
 #[derive(Clone, Debug)]
 pub struct NativeFurnace {
     pub image: FurnaceImage,

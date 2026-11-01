@@ -12,6 +12,7 @@ pub mod native_block_entities;
 pub mod crafting;
 pub mod crafting_table;
 pub mod creative_drop;
+pub mod container_drops;
 pub mod density;
 pub mod entity;
 pub mod experience;
