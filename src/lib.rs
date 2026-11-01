@@ -111,6 +111,7 @@ pub mod container_workstation_storage;
 pub mod container_workstation_enchanting;
 pub mod container_workstation_crafter;
 pub mod container_workstation_grindstone;
+pub mod container_workstation_loom;
 pub mod world;
 pub mod world_context;
 pub mod world_rules;
