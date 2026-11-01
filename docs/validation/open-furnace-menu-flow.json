@@ -1,0 +1,234 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "scope": "Three local protocol clients: two viewers retain furnace cursors while another creative player removes the block; cleared old slots, normal invalid-menu close, same-position replacement identity, real contents/XP and cold-restart conservation.",
+  "full_vanilla_parity": false,
+  "checks": {
+    "three_native_clients_joined": true,
+    "two_open_viewers_close_after_cleared_old_contents": true,
+    "cursor_stacks_return_once": true,
+    "real_item_and_stored_experience_entities": true,
+    "same_position_replacement_has_independent_owner": true,
+    "contents_and_xp_conserved_after_open_menu_removal": true,
+    "cursors_replacement_and_entities_survive_cold_restart": true
+  },
+  "observed": {
+    "cases": [
+      {
+        "samePositionReplacement": false,
+        "viewerA": {
+          "seq": 53,
+          "name": "close_window",
+          "window": 1,
+          "top": [
+            null,
+            null,
+            null
+          ],
+          "carried": {
+            "id": 808,
+            "count": 5
+          },
+          "data": [
+            [
+              0,
+              1391
+            ],
+            [
+              1,
+              1600
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              200
+            ]
+          ]
+        },
+        "viewerC": {
+          "seq": 58,
+          "name": "close_window",
+          "window": 1,
+          "top": [
+            null,
+            null,
+            null
+          ],
+          "carried": {
+            "id": 806,
+            "count": 7
+          },
+          "data": [
+            [
+              0,
+              1391
+            ],
+            [
+              1,
+              1600
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              200
+            ]
+          ]
+        },
+        "replacementObservedBeforeClose": {
+          "A": false,
+          "C": false
+        },
+        "newItemIds": [
+          4,
+          5,
+          6
+        ],
+        "newXpOrbs": [
+          {
+            "value": 1,
+            "x": 12.5,
+            "y": 64.5,
+            "z": 8.5
+          }
+        ]
+      },
+      {
+        "samePositionReplacement": true,
+        "viewerA": {
+          "seq": 103,
+          "name": "close_window",
+          "window": 2,
+          "top": [
+            null,
+            null,
+            null
+          ],
+          "carried": {
+            "id": 808,
+            "count": 5
+          },
+          "data": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              200
+            ]
+          ]
+        },
+        "viewerC": {
+          "seq": 107,
+          "name": "close_window",
+          "window": 2,
+          "top": [
+            null,
+            null,
+            null
+          ],
+          "carried": {
+            "id": 806,
+            "count": 7
+          },
+          "data": [
+            [
+              0,
+              0
+            ],
+            [
+              1,
+              0
+            ],
+            [
+              2,
+              0
+            ],
+            [
+              3,
+              200
+            ]
+          ]
+        },
+        "replacementObservedBeforeClose": {
+          "A": true,
+          "C": true
+        },
+        "newItemIds": [
+          8,
+          9
+        ],
+        "newXpOrbs": []
+      }
+    ],
+    "beforeRestart": {
+      "itemTotals": {
+        "dirt": 34,
+        "coal": 4,
+        "diamond": 1,
+        "quartz": 5,
+        "emerald": 7
+      },
+      "playerXp": 1,
+      "orbXp": 0,
+      "totalXp": 1,
+      "itemIds": [
+        4,
+        5,
+        6,
+        8,
+        9
+      ],
+      "savedItems": 5
+    },
+    "afterRestart": {
+      "itemTotals": {
+        "dirt": 34,
+        "coal": 4,
+        "diamond": 1,
+        "quartz": 5,
+        "emerald": 7
+      },
+      "playerXp": 1,
+      "orbXp": 0,
+      "totalXp": 1,
+      "itemIds": [
+        4,
+        5,
+        6,
+        9
+      ],
+      "savedItems": 4
+    }
+  },
+  "binary_sha256": "c85bd34e0ca87b41acfb355edd6c7e2e5349a42517523fae04904bf0f2b3dba1",
+  "completed_at": "2026-11-01T12:29:55.009Z",
+  "source_commit": "482f11b1e269e8e8f78b2b3d7e4ccdf1763b1b1b",
+  "build_profile": "debug",
+  "method": "Local minecraft-protocol clients, real-time native server ticks. This is not a graphical Java-client or public-network gameplay run.",
+  "performance_benchmark": false,
+  "shutdown_signal": "SIGTERM",
+  "remaining_limits": [
+    "Alive connected creative native profile only",
+    "Disconnected or dead player cursor-drop branch remains incomplete",
+    "Full-inventory cursor overflow not exercised by this flow",
+    "Spectator and invalid late-click source paths are implemented but not exercised by this flow",
+    "Survival, comparators, Mending, custom datapacks and remaining workstations",
+    "Complete server-phase and Java-world equivalence"
+  ]
+}

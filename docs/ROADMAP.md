@@ -66,8 +66,10 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [x] Native furnace persistence and real experience-orb reward integration.
 - [x] Bounded creative furnace destruction with owned contents and stored recipe
       XP, with a recorded local item/experience-conservation and cold-restart flow.
-- [ ] Furnace removal with active menu viewers, survival breaking and remaining
-      world-removal contexts.
+- [x] Bounded active-viewer furnace-container lifetime, later player-phase close
+      and independent same-position replacement, with a local two-viewer flow.
+- [ ] Disconnected/dead cursor dropping, full-inventory overflow conformance,
+      survival breaking and remaining world-removal contexts.
 - [ ] Comparator receivers, Mending repairs and combined menu output-XP/item-drop paths.
 - [ ] Custom cooking datapacks and dynamic recipe reload.
 - [ ] Hoppers and inventory transfer between block entities.
@@ -76,11 +78,15 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [ ] Remaining complex item components and context-dependent recipe processing.
 - [ ] Full loot, enchantment, durability and tool behavior.
 
-Active-viewer furnace removal is the current integration stage. It must retain
-the original removed container for its existing menus, close invalid menus in the
-actual later player phase, return cursor contents once and reject rebinding to a
-new furnace at the same position. This work is **IN PROGRESS**; its checklist
-entry remains open pending implementation and the recorded bounded flow.
+The [active-viewer flow](validation/open-furnace-menu-flow.json) passed for an
+ordinary furnace with two viewers and an independent breaker. The old container
+retains its identity and counters after its slots are dropped; a replacement at
+the same coordinates does not become that container. The actual later Level
+player phase broadcasts, validates and closes each old menu, with the close
+packet before cursor return. Item and XP totals survived cold restart without
+new replacement entity IDs. The recorded path covers alive creative players;
+disconnected/dead cursor dropping and full-inventory overflow are not established.
+Hosted verification of this new source remains pending at this update.
 
 The earlier creative block-removal implementation requires every furnace menu viewer
 to close first. It stages actual container contents and stored recipe XP without

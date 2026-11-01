@@ -65,11 +65,14 @@ recipe XP in one entity/random transaction. It does not drop the furnace block
 itself in creative mode. The [focused local removal flow](docs/validation/furnace-removal-flow.json)
 passed for all three furnace types, actual item/XP entities and native cold
 restart with item and experience conservation. This result applies to its
-recorded binary; hosted deployment verification is separate. A furnace must
-have no active menu viewers before it is broken in that recorded path. The next
-integration stage is porting removed-container lifetime for active menu viewers,
-including later menu closure and same-position replacement. That stage remains
-in progress and has no recorded runtime result yet.
+recorded binary; hosted deployment verification is separate. The newer
+[open-menu flow](docs/validation/open-furnace-menu-flow.json) passed for an
+ordinary furnace with two viewers during creative destruction. It preserves the
+removed container until later player-phase closure, returns cursor contents once
+and keeps a same-position replacement independent. Item and XP totals survived
+cold restart. This covers the alive-player inventory-return branch; the
+disconnected/dead cursor-drop branch remains unported and full-inventory overflow
+is not covered by that flow.
 
 Comparator receivers, Mending repairs, custom datapacks and survival furnace
 breaking remain unsupported. Menu actions combining output XP with item drops

@@ -5,19 +5,45 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Furnace menu lifetime after removal — integration in progress
+## Furnace menu lifetime after removal — bounded local flow passed
 
-The current porting stage targets creative destruction while one or more players
-still have the furnace menu open. The removed block entity's actual container
-must remain owned by those existing menus until their later validity/close phase.
-Its dropped contents must not be available a second time, and a replacement
-furnace at the same position must not become the old menu's container. Cursor
-return, explicit close, disconnect and shutdown cleanup must release each menu
-owner exactly once.
+The removed furnace container now remains owned by its existing menus after
+creative destruction. Its dropped slots are empty, while the old container's
+burn counters and used-recipe data remain available until the final viewer
+releases it. Menus capture the actual owner identity, so a newly placed furnace
+at the same coordinates cannot become the old menu's container. The Level player
+phase broadcasts the captured container, checks validity and then closes it.
+The close-window packet precedes cursor-return effects.
 
-This stage is **IN PROGRESS**. There is no recorded compiler, runtime or hosted
-verification result for this new lifetime path yet. The closed-menu processing
-and removal results below remain evidence for their exact recorded versions.
+The [focused local open-menu flow](validation/open-furnace-menu-flow.json)
+**passed** on 1 November 2026 at 13:29:55 Europe/Warsaw, for source commit
+`482f11b1e269e8e8f78b2b3d7e4ccdf1763b1b1b` and debug binary SHA-256
+`c85bd34e0ca87b41acfb355edd6c7e2e5349a42517523fae04904bf0f2b3dba1`.
+The recorded scope includes:
+
+- Two viewers holding the same ordinary furnace menu while another player
+  destroys the furnace; both observe its emptied old slots before menu closure.
+- Both viewers observing a replacement block entity at the same position before
+  their old menus close, without rebinding those menus to the new container.
+- The old burn value remaining 1,391 while the replacement furnace has its own
+  empty contents and independent state.
+- Close-window publication before cursor return, with cursor contents returned
+  once to each alive player's inventory.
+- Conserved totals of 34 dirt, four coal, one diamond, five quartz and seven
+  emeralds through clean shutdown and cold restart, with one XP point before
+  and after. Remaining item IDs are a subset of the original saved IDs because
+  legitimate merges can remove entities; no replacement IDs were introduced.
+
+The compiler check also passed. This is an alive-creative, local protocol-client
+result for the recorded path. The optimized hosted release and native offline
+startup are verified separately below. It does not establish graphical-client or public-network
+validation, full vanilla compatibility, or a performance advantage.
+
+The disconnected/dead-player cursor-drop branch remains unported, and the
+full-inventory overflow path is not covered by this flow. Survival breaking,
+comparator receivers, Mending repairs and other menu families remain incomplete.
+The earlier processing and closed-menu results below retain their exact recorded
+versions and scopes.
 
 ## Earlier closed-menu furnace block removal — bounded runtime flow passed
 
@@ -55,11 +81,11 @@ session, public-network gameplay, complete scheduler equivalence or a throughput
 advantage. The earlier processing observations below retain their original
 binary and scope.
 
-This path is restricted to the supported native creative-player profile and
-furnaces with no active menu viewers. Close every menu viewing the furnace before
-breaking it. Removal while a menu is open, survival breaking and other removal
-contexts remain unsupported. Comparator receivers, Mending repairs, custom
-cooking datapacks and menu output-XP actions that also drop items remain open.
+That recorded path used the supported native creative-player profile and
+furnaces with no active menu viewers. The newer bounded active-viewer lifetime
+path is described above. Survival breaking and other removal contexts remain
+unsupported. Comparator receivers, Mending repairs, custom cooking datapacks
+and menu output-XP actions that also drop items remain open.
 
 ## Earlier furnace processing integration — bounded runtime flow passed
 
@@ -102,8 +128,10 @@ evidence boundaries are described in the
 
 Remaining furnace limits are explicit:
 
-- The new bounded creative removal path passed its recorded local flow above.
-  Open-menu, survival and other removal contexts remain unsupported.
+- The bounded closed-menu and alive-creative active-viewer removal paths passed
+  their recorded local flows above. Disconnected/dead cursor dropping, survival
+  and other removal contexts remain incomplete; full-inventory overflow is not
+  covered by the new flow.
 - Comparator receivers and Mending experience repairs are unsupported.
 - Menu actions combining furnace output experience and item drops are rejected
   before commit. The new block-removal transaction is a separate path.
@@ -166,14 +194,14 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) records the furnace
-removal batch: optimized release build, successful automatic deployment,
+The [deployment observation](validation/railway-preview.json) records the active-
+viewer furnace batch: optimized release build, successful automatic deployment,
 one running replica and native offline listening on `0.0.0.0:25565` at
-10:49:40 UTC on 1 November 2026. The persistent volume is retained. The current
-release has no observed public PLAY join in that snapshot; the earlier offline
-join remains explicitly historical. A fresh external status/pong probe failed
-DNS resolution from the development environment. Local gameplay, hosted startup
-and public gameplay are separate evidence scopes.
+12:32:11 UTC on 1 November 2026. The existing persistent volume is retained.
+No public PLAY join is recorded for this release; the earlier join remains
+explicitly historical. A fresh external status/pong probe failed DNS resolution
+from the development environment. Local gameplay, hosted startup and public
+gameplay are separate evidence scopes.
 
 ## Remaining scope and checklist
 
