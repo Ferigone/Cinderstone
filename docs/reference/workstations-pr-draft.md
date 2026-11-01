@@ -1,6 +1,6 @@
 # Add native workstation transactions and production owner contracts
 
-[Draft PR #5](https://github.com/Ferigone/Cinderstone/pull/5) against `master` from
+[PR #5](https://github.com/Ferigone/Cinderstone/pull/5) against `master` from
 `teams/workstations/ws-20261101-7c2f/menus`. Refs
 [issue #3](https://github.com/Ferigone/Cinderstone/issues/3).
 Created and read back after the feature branch was pushed normally.
@@ -19,9 +19,9 @@ bounded anvil/grindstone/loom/cartography/beacon/brewing/lectern and special-map
 recipe contexts. Real registry, recipe, player/world/entity and advancement
 owners remain required; no fake production implementations are supplied.
 
-There are no new Main callsites. Keep this PR draft: opening/dispatch, real
-state-owner binding/ticking/persistence and remaining contexts/families still
-need integration. `inventory.4`, `crafting.2` and `crafting.5` remain incomplete.
+There are no new Main callsites. This reviewed callable foundation can merge
+under the user's explicit authorization; opening/dispatch, real state-owner
+binding/ticking/persistence and remaining contexts/families still need integration. `inventory.4`, `crafting.2` and `crafting.5` remain incomplete.
 The [integration ledger](workstations-integration.md) gives exact source phase
 contracts and [team status](../coordination/status/ws-20261101-7c2f.md) retains
 source commits, owned files and dated publication history.
@@ -37,7 +37,7 @@ Primary evidence: pinned original server and official mappings, direct JDK21
 `javap`, and separately labeled restricted unchanged-Java helper observations.
 No proprietary artifacts/raw disassembly or gameplay claims are included.
 
-Validation at source `7147da02c737360682386df4d73792cb8b03ae00`:
+Earlier validation at source `7147da02c737360682386df4d73792cb8b03ae00`:
 
 - `cargo test --locked --lib workstation` passed the focused native flows.
 - `cargo build --locked --bin mc121-rust` passed.
@@ -55,3 +55,15 @@ chat/session changes, in a separate source-overlay worktree. Both passed; no
 master merge or Main edit occurred. The source remains `7147da0`. The posted
 [integration request](workstations-integration-request.md) aligns publication
 with that coordinator's ordered connection output and exact owner contracts.
+
+
+Review source `3e934abc7db2fdb51c700e9b3e3959fb2cb8e096` corrects signed/zero slot insertion, actual
+inventory callback phases, close/drop phases and reused-UI stale-plan guards.
+It additionally supplies certified default recipe/feature context and the exact
+central-requested retained full-state resync wrapper. See the
+[review ledger](workstations-pr5-review.md) and its source/owner evidence.
+The actual merge candidate7b5dc48 composes master664b7e6 with that exact source.
+Full Main build and every workstation flow passed. The full library suite is
+NOT green: two protocol/runtime-chunk assertions reproduce on clean master;
+the ledger names their exact test cases and central report. Those source/test
+files were not changed to hide the failures. No GitHub checks are configured.

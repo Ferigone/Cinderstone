@@ -25,7 +25,7 @@ maximum. They completed implementation and cross-review. The
 [per-instance status](../coordination/status/ws-20261101-7c2f.md) contains exact
 commits, file claims, validation and dated publication history. Ordinary Git
 push published the branch at `ab08813e34fa8ab458208b99a13c50dfdce769d5`;
-[draft PR #5](https://github.com/Ferigone/Cinderstone/pull/5) and the
+[PR #5](https://github.com/Ferigone/Cinderstone/pull/5) and the
 [integration queue request](https://github.com/Ferigone/Cinderstone/issues/1#issuecomment-6563262903)
 were created and read back. The earlier403 publication blocker is resolved.
 Actual Main/runtime owner integration remains pending; no shared credentials
@@ -173,3 +173,26 @@ chat/session changes, in a separate source-overlay worktree. Both passed; no
 master merge or Main edit occurred. The source remains `7147da0`. The posted
 [integration request](workstations-integration-request.md) aligns publication
 with that coordinator's ordered connection output and exact owner contracts.
+
+
+## Reviewed source update and active central integration
+
+Reviewed source `3e934abc7db2fdb51c700e9b3e3959fb2cb8e096` adds exact source-phase counter/listener/drop
+observations in StonecutterMenuEvent and SmithingMenuEvent. Their authoritative
+initialize/incremental/action APIs now return phased menu events; actual
+PlayerInventoryChanged and stonecutter InputChanged require real callbacks.
+The separately requested stonecutter broadcast_full_state returns raw SyncEvent
+values while preserving retained state and invalidating older action plans.
+
+[Default recipe context](workstations-recipe-context.md) supplies actual observed
+Java constructor/stable result ordering and required features, borrowing the
+canonical recipe owner and actual enabled-feature snapshot. The
+[death/removal contract](workstations-death-context.md) supplies exact APIs,
+window0-before-external removal and genuine death/respawn boundaries.
+These contracts were actually posted to issues1/3; central has declared new
+main_stonecutter modules and shared Main/runtime seams as active work.
+
+[PR review](workstations-pr5-review.md) records concrete fixes and final combined
+source validation on master664b7e6. Main build and all workstation flows passed;
+two unrelated full-library baseline assertions reproduce on clean master and
+remain explicitly red. Production menu integration and fixed rows remain open.
