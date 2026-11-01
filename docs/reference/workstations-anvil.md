@@ -23,9 +23,10 @@ Raw Java artifacts and disassembly stay outside the repository.
   the actual item's `isValidRepairItem` callback, not a menu-local item list.
 - Addition `STORED_ENCHANTMENTS` **presence** selects the source's book branch.
   Enchantment merging uses actual holders, compatibility/applicability, max
-  levels, anvil costs and map encounter order. This stage explicitly rejects
-  that branch and enchanted sacrifices; existing base enchantments survive
-  supported renames/material repairs/unenchanted sacrifices.
+  levels, anvil costs and map encounter order. The native owner-backed branch
+  below implements those rules; an absent actual owner explicitly rejects the
+  branch. Existing base enchantments also survive supported renames/material
+  repairs/unenchanted sacrifices without inventing a registry.
 - `setItemName` filters each Java UTF-16 character with
   `StringUtil.isAllowedChatCharacter` (exclude U+00A7, values below U+0020 and
   U+007F), then rejects filtered strings longer than 50 UTF-16 units. The blank
@@ -177,12 +178,13 @@ primitive-only prototype elisions remain supported; equal wire bytes alone do
 not establish Java nested-stack identity. Multi-slot drag additionally
 requires the actual selected Slot-identity HashSet encounter order.
 
-Enchantment combining remains unsupported, including stored-enchantment
-sacrifices and enchanted same-item sacrifices; the controller does not fabricate
-an enchantment registry, holder compatibility, repair list or translation
-fallback. Supported operations remain rename, material repair and unenchanted
-same-item repair through the real context owner. Complete anvil gameplay and
-all-menu compatibility are not claimed.
+Enchantment combining is callable only through the actual-owner capability
+below. Its default is explicitly unavailable, so existing basic hosts still
+reject stored-enchantment and enchanted same-item sacrifices rather than
+fabricate a registry, compatibility, repair list or translation fallback. A
+production enchantment registry/map/component adapter remains pending alongside
+Main integration. Complete anvil gameplay and all-menu compatibility are not
+claimed.
 
 Focused native flows execute the new adapter rather than an unused test filter.
 They observe repair cost/materials, old-preview and cost callback phases,
@@ -197,3 +199,82 @@ The existing kernel checks retain the expensive rename-only cap, material
 consumption, stale unsupported input atomicity and UTF-16 filtering. These are
 native contract checks, not Java gameplay or comprehensive conformance runs.
 The fixed aggregate deliveries `inventory.4` and `crafting.5` remain incomplete.
+
+
+## Actual-owner enchantment combination increment
+
+The same native computation now supports the `cpw.m` enchantment branch at
+bytecode offsets 434–758 through `AnvilEnchantmentSession`. No second result
+computation or preview is introduced. `AnvilContext`'s new capability defaults
+to **None/unavailable**, preserving existing public callers and their explicit
+unsupported boundary. The menu captures the actual enchantment snapshot at
+opening and validates it before and after every action; a newly appearing,
+disappearing, foreign or reloaded owner cannot silently replace it. Owner
+changes must be handled by the central transaction while preserving owned
+inputs, not retried with fabricated definitions.
+
+The provider returns opaque actual holder/snapshot references, copies the base
+`ItemEnchantments.Mutable` and its tooltip state into scratch ownership, and
+supplies actual incoming entries, current keys/levels, holder equality,
+definitions, supported-item membership, both exclusive sets, exact level setters
+and selected-component serialization. It must reject foreign/unresolved values.
+The scratch map owns no live input, player inventory or output. Queries consume
+no RNG and do not mutate live owners. The provider's write-back replaces only
+the chosen enchantment component, preserving unrelated output components and
+base tooltip visibility. There is no production provider or fixed default
+rarity/cost table in this milestone.
+
+A single incoming entry is admitted without guessing an encounter order.
+Multiple entries require the provider to certify the actual holder/hash-map
+encounter order; a boolean default or protocol-ID/BTree/wire ordering is not a
+source certificate. The native guard rejects uncertified multi-entry contexts.
+The actual current mutable-map key order is also supplied after each setter.
+This matters when incoming enchantments conflict: accepted earlier entries can
+reject later entries, and the stack-count cost rule can also make order visible.
+
+For each entry, native code reads the existing level, chooses incoming+1 for
+equal levels or max(existing,incoming) otherwise, and clamps an accepted level
+to the actual definition's maximum. `Enchantment.canEnchant` (`dac.c(ItemStack)`)
+checks `supported_items`; creative or an exact enchanted-book base overrides
+that applicability result. Neither overrides compatibility. Each incompatible
+different current holder adds one level to operation cost, even when the
+incoming entry was already inapplicable. A rejected entry records rejection;
+an accepted entry uses **Mutable.set**, not upgrade/max(old,new), so an overlevel
+base can be reduced to its definition maximum. `dai$a.set` removes nonpositive
+levels and otherwise puts min(level,255). Normal decoded definitions require
+max_level 1–255 and a nonnegative anvil_cost.
+
+Each accepted entry adds `anvil_cost * accepted_level`, retaining Java signed
+integer wrapping. Addition `STORED_ENCHANTMENTS` **presence**, even empty or on
+a non-book item, changes its multiplier to max(1,anvil_cost/2), bypasses the
+same-item requirement and suppresses the durability-combine bonus. However,
+`EnchantmentHelper.getEnchantments` (`dae.b/d`) still reads stored component 23
+only for the exact enchanted-book item and ordinary component 9 otherwise.
+Thus presence and selected map type must not be conflated. If base count is
+above one, each accepted entry sets operation cost to 40; subsequent rejected
+entry penalties may increase it again. All-rejected with none accepted returns
+empty/cost zero **before rename**, discarding any previous durability-work cost.
+No curse/treasure restriction, primary-items test, enchanting-table tag, weight,
+minimum/maximum enchantability, recipe, advancement or preview RNG is added.
+Compatibility is `dac.areCompatible`: different holder identity and absence from
+both actual exclusive sets.
+
+Rename, long prior-work addition, operation-cost wrapping, total clamp,
+rename-only cap39, survival result refusal at40+, saturating prior-work increase,
+XP/input consumption and actual player-RNG/block callbacks retain the existing
+source path. Final `dae.setEnchantments` writes only the output-selected 9/23
+component after the prior-work component is set and only for a nonempty result.
+The basic no-owner path continues to preserve existing enchantments for repairs
+and rename without parsing holders it does not own.
+
+Focused native fixtures use actual registered IDs and the pinned original
+sharpness/smite/unbreaking resource max-level/anvil-cost facts. Their restricted
+item/exclusive sets and ordered maps are explicitly test fixtures, not production
+bindings, Java Fastutil observations or a gameplay oracle. Checks cover book
+cost/level/tooltip behavior, lowering an overlevel base via exact set, book-base
+applicability override, stored-presence versus exact-item map choice, creative
+compatibility refusal, 40+ survival/creative behavior, uncertified multi-entry
+rejection and certified conflicting-order outcomes. An adapter flow uses that
+restricted owner through actual menu input/cursor/XP transitions and rejects
+registry-epoch or capability drift without publication. No Main callsite or
+complete enchantment gameplay is claimed.

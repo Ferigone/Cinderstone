@@ -8,8 +8,8 @@ use crate::{
     nbt::JavaString,
     workstations::{
         anvil::{
-            finish_anvil_take, AnvilComputationChange, AnvilContext, AnvilPlayer, AnvilState,
-            AnvilWorldAccess,
+            finish_anvil_take, AnvilComputationChange, AnvilContext, AnvilEnchantmentSession,
+            AnvilEnchantmentSnapshot, AnvilPlayer, AnvilState, AnvilWorldAccess,
         },
         menu::{
             require_component_context, MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess,
@@ -90,6 +90,7 @@ pub trait AnvilMenuHost: AnvilContext + AnvilWorldAccess + WorkstationAccess {
 #[derive(Debug)]
 pub struct AnvilMenu<K> {
     binding: K,
+    enchantments: Option<AnvilEnchantmentSnapshot>,
     token: AnvilMenuToken,
     active: bool,
     state: AnvilState,
@@ -111,6 +112,24 @@ impl<H: AnvilMenuHost> AnvilContext for ObservedContext<'_, H> {
             }
         }
         self.actual.observe_menu_phase(&self.phase)
+    }
+    fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+        self.actual.enchantment_snapshot()
+    }
+    fn validate_enchantment_snapshot(
+        &self,
+        snapshot: Option<&AnvilEnchantmentSnapshot>,
+    ) -> Result<()> {
+        self.actual.validate_enchantment_snapshot(snapshot)
+    }
+    fn begin_enchantment_merge(
+        &mut self,
+        base: &ItemStack,
+        addition: &ItemStack,
+        snapshot: &AnvilEnchantmentSnapshot,
+    ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+        self.actual
+            .begin_enchantment_merge(base, addition, snapshot)
     }
     fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
         self.actual.is_valid_repair_item(base, addition)
@@ -144,6 +163,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         };
         Ok(Self {
             binding: host.binding().clone(),
+            enchantments: host.enchantment_snapshot()?,
             token: AnvilMenuToken {
                 instance,
                 revision: 0,
@@ -159,6 +179,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
     fn staged_copy(&self) -> Self {
         Self {
             binding: self.binding.clone(),
+            enchantments: self.enchantments.clone(),
             token: self.token,
             active: self.active,
             state: self.state.clone(),
@@ -209,6 +230,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         Ok(())
     }
     fn validate_publish<H: AnvilMenuHost<Binding = K>>(&self, host: &H) -> Result<()> {
+        host.validate_enchantment_snapshot(self.enchantments.as_ref())?;
         ensure!(
             &self.binding == host.binding(),
             "anvil binding changed during callback"
@@ -247,6 +269,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         [self.state.preview().level_cost]
     }
     fn validate_host(&self, host: &impl AnvilMenuHost<Binding = K>) -> Result<()> {
+        host.validate_enchantment_snapshot(self.enchantments.as_ref())?;
         ensure!(
             self.active && &self.binding == host.binding(),
             "anvil player/table/menu binding changed"
@@ -1087,6 +1110,7 @@ mod tests {
         drops: Vec<DroppedStack>,
         xp: Vec<i32>,
         current: Option<AnvilPhase>,
+        enchantment_owner: Option<crate::workstations::anvil::enchantment_fixture::Owner>,
     }
     impl Host {
         fn new() -> Self {
@@ -1106,6 +1130,7 @@ mod tests {
                 drops: vec![],
                 xp: vec![],
                 current: None,
+                enchantment_owner: None,
             }
         }
         fn record(&mut self, name: &'static str, phase: &AnvilPhase) {
@@ -1123,6 +1148,35 @@ mod tests {
         }
     }
     impl AnvilContext for Host {
+        fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+            match &self.enchantment_owner {
+                Some(owner) => owner.enchantment_snapshot(),
+                None => Ok(None),
+            }
+        }
+        fn validate_enchantment_snapshot(
+            &self,
+            snapshot: Option<&AnvilEnchantmentSnapshot>,
+        ) -> Result<()> {
+            match &self.enchantment_owner {
+                Some(owner) => owner.validate_enchantment_snapshot(snapshot),
+                None => {
+                    ensure!(snapshot.is_none(), "fixture enchantment owner disappeared");
+                    Ok(())
+                }
+            }
+        }
+        fn begin_enchantment_merge(
+            &mut self,
+            base: &ItemStack,
+            addition: &ItemStack,
+            snapshot: &AnvilEnchantmentSnapshot,
+        ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+            self.enchantment_owner
+                .as_mut()
+                .ok_or_else(|| anyhow::anyhow!("fixture owner unavailable"))?
+                .begin_enchantment_merge(base, addition, snapshot)
+        }
         fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
             self.world_event("repair-rule");
             Ok(
@@ -1624,6 +1678,52 @@ mod tests {
         menu.close(now, MenuCloseContext::DeadOrDisconnected, &mut host)?;
         assert!(menu.click(menu.token(), &packet, &mut host).is_err());
         assert!(menu.initialize(&mut host).is_err());
+        Ok(())
+    }
+    #[test]
+    fn owned_book_combination_forwards_snapshot_and_commits_existing_cursor_xp_flow() -> Result<()>
+    {
+        use crate::workstations::anvil::enchantment_fixture::{enchanted, entries, id, Owner};
+        let mut host = Host::new();
+        host.enchantment_owner = Some(Owner::new());
+        host.inventory.set_slot_authoritative(
+            9,
+            enchanted(item("iron_sword", 1), &[("sharpness", 2)], false),
+        );
+        host.inventory.set_slot_authoritative(
+            10,
+            enchanted(item("enchanted_book", 1), &[("sharpness", 2)], true),
+        );
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        click(&mut menu, &mut host, 4, 0, ClickType::QuickMove)?;
+        assert_eq!(menu.state().preview().level_cost, 3);
+        assert_eq!(
+            host.draws, 0,
+            "preview/enchantment merging consumes no player RNG"
+        );
+        assert_eq!(
+            entries(&menu.state().preview().stack)?,
+            (vec![(id("sharpness"), 3)], false)
+        );
+        let token = menu.token();
+        let events = host.events.len();
+        host.enchantment_owner.as_mut().unwrap().epoch += 1;
+        assert!(menu.broadcast_changes(&mut host).is_err());
+        assert_eq!(menu.token(), token);
+        assert_eq!(host.events.len(), events);
+        host.enchantment_owner.as_mut().unwrap().epoch -= 1;
+        click(&mut menu, &mut host, 2, 0, ClickType::Pickup)?;
+        assert_eq!(host.xp, [-3]);
+        assert_eq!(host.draws, 1);
+        assert_eq!(entries(menu.carried())?.0, vec![(id("sharpness"), 3)]);
+        assert!(menu.state().inputs().iter().all(ItemStack::is_empty));
+        // A previously absent capability cannot appear under an open basic UI.
+        let mut host = Host::new();
+        let mut basic = AnvilMenu::new(7, &host)?;
+        host.enchantment_owner = Some(Owner::new());
+        assert!(basic.initialize(&mut host).is_err());
         Ok(())
     }
     #[test]
