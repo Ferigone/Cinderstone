@@ -219,6 +219,22 @@ pub fn damage_after_armor_with_modifier(
     );
     damage * (1.0 - effectiveness)
 }
+/// Fallible counterpart for the actual server weapon-enchantment callback.
+/// Earlier equipment/world mutations remain committed when the callback fails.
+pub fn try_damage_after_armor_with_modifier<E>(
+    damage: f32,
+    armor: f32,
+    toughness: f32,
+    modify: impl FnOnce(f32) -> std::result::Result<f32, E>,
+) -> std::result::Result<f32, E> {
+    let effectiveness = java_clamp(
+        modify(armor_effectiveness(damage, armor, toughness))?,
+        0.0,
+        1.0,
+    );
+    Ok(damage * (1.0 - effectiveness))
+}
+
 pub fn damage_after_magic(damage: f32, protection: f32) -> f32 {
     damage * (1.0 - java_clamp(protection, 0.0, 20.0) / 25.0)
 }
