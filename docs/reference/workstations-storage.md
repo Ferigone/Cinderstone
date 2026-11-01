@@ -131,3 +131,44 @@ drag when callback-order certification is absent, and rejects an already
 prepared drag if that receiver context changes before commit, without changing
 canonical contents or cursor. These are native transaction observations, not a Java oracle run, network-client flow or Main integration.
 Comprehensive conformance remains deferred.
+
+The empty-target branch of `cpu.moveItemStackTo` invokes Slot.setByPlayer and
+then an additional Slot.setChanged. Because setByPlayer itself calls the
+container setter and setChanged, the native trace retains both explicit dirty
+calls. The focused checks assert both calls for a real top destination and both
+Inventory.timesChanged callbacks for an empty player destination. SWAP has no
+same-hotbar-slot shortcut in the source: a nonempty self-swap retains its
+setByPlayer and onTake callbacks, producing two player inventory change calls
+even though item contents are unchanged. This multiplicity is asserted directly.
+
+## Cross-owner phase observations and aliasing
+
+Every lifecycle, container, player-change, sync and drop event now carries a
+read-only `StoragePhase`: the actual staged block contents, canonical player
+inventory and external menu cursor at that source boundary. The external cursor
+is separate from the retained window0 carried value inside PlayerInventory.
+These observations are not extra owned inventories or drops. A real host stages
+its source callbacks against those intermediate owners; replaying all callbacks
+against only the final inventory would be incorrect. Opening now borrows and
+validates the actual player inventory as well as the block owner. Initial and
+incremental sync entrypoints return phase-tagged storage events.
+
+Safe insertion splits/shrinks the live cursor before destination setter/dirty
+callbacks. Shift merging shrinks the source owner before destination callbacks;
+its later empty-target insertion can observe a different source count. The
+focused flow checks a source count of 100 becoming 99 at one container dirty
+boundary, then zero at the next two boundaries, while conserving 198 total stone.
+It also checks the right-click insertion callback observes the five remaining
+cursor emeralds, rather than the old count six. Right-click outside drops observe
+the already split cursor. Cursor-only closure reconstructs each insertion phase
+from the ordered raw inventory-slot packets; its overflow drop sees the actual
+remaining cursor before stopOpen observes the empty cursor.
+
+A nonempty ordinary same-hotbar SWAP retains both dirty callbacks. An overfull
+same-hotbar SWAP also preserves source aliasing: the hovered stack and held stack
+refer to the same original object, so splitting it leaves only the remainder
+for Inventory.add. The native code detects that actual canonical slot alias and
+returns only that remainder. A focused two-iron-sword fixture becomes one sword
+in the original hotbar slot and one in the next free slot, with two inventory
+change callbacks and no duplicated item. All focused storage flows passed after
+these corrections. No Main or network-client observation is implied.

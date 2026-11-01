@@ -8,6 +8,7 @@ use crate::{
         ClickOutcome, ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer,
     },
     inventory::{self, ItemStack, PlayerInventory},
+    protocol::{Packet, Reader},
     workstations::menu::{MenuRemovalEvent, MenuSync, SyncEvent, WorkstationKind},
 };
 use anyhow::{ensure, Result};
@@ -108,27 +109,91 @@ pub enum StorageOperation {
     },
     SetChanged,
 }
+/// Read-only observations of the actual staged owners at a source callback.
+/// The external menu cursor is separate from retained window0 carried state in
+/// PlayerInventory. None of these snapshots confers additional item ownership.
+#[derive(Clone, Debug)]
+pub struct StoragePhase {
+    pub block_slots: Vec<ItemStack>,
+    pub player_inventory: PlayerInventory,
+    pub carried: ItemStack,
+}
 #[derive(Clone, Debug)]
 pub enum StorageMenuEvent<K> {
     StartOpen {
         owner: K,
+        phase: StoragePhase,
     },
     StopOpen {
         owner: K,
+        phase: StoragePhase,
     },
     Container {
         owner: K,
         operation: StorageOperation,
-        slots_after: Vec<ItemStack>,
+        phase: StoragePhase,
     },
-    Sync(SyncEvent),
-    /// Actual Inventory.setChanged (cmw timesChanged), distinct from the local
-    /// menu listener and packet baseline. The host owns this player counter.
-    PlayerInventoryChanged,
+    Sync {
+        event: SyncEvent,
+        phase: StoragePhase,
+    },
+    /// Actual Inventory.setChanged/timesChanged, distinct from menu listeners.
+    PlayerInventoryChanged {
+        phase: StoragePhase,
+    },
     /// Index into publication.outcome.drops; execute exactly in this position.
     Drop {
         index: usize,
+        phase: StoragePhase,
     },
+}
+impl StoragePhase {
+    /// Reconstruct the actual per-insertion close phase from the already
+    /// ordered raw Inventory slot packet. No packet is sent here.
+    fn observe_return_packet(&mut self, packet: &Packet) -> Result<()> {
+        ensure!(packet.id == 0x15, "unsupported storage close packet phase");
+        let mut reader = Reader::new(&packet.payload);
+        ensure!(
+            reader.i8()? == -2 && reader.varint()? == 0,
+            "storage close phase requires raw Inventory slot packet"
+        );
+        let raw = reader.i16()?;
+        let slot = match raw {
+            0..=8 => 36 + raw as usize,
+            9..=35 => raw as usize,
+            40 => 45,
+            _ => anyhow::bail!("unsupported storage close inventory index"),
+        };
+        let stack = ItemStack::decode_exact(reader.remaining())?;
+        let old = self.player_inventory.slot(slot).unwrap();
+        ensure!(
+            stack.same_item_same_components(&self.carried)?,
+            "storage close changed item identity"
+        );
+        let added = stack.count
+            - if old.is_empty() {
+                0
+            } else {
+                ensure!(
+                    old.same_item_same_components(&stack)?,
+                    "storage close overwrote an owned item"
+                );
+                old.count
+            };
+        ensure!(
+            added > 0 && added <= self.carried.count,
+            "invalid storage close insertion phase"
+        );
+        self.player_inventory.set_slot_authoritative(slot, stack);
+        self.carried = counted(&self.carried, self.carried.count - added);
+        Ok(())
+    }
+}
+fn same_inventory(a: &PlayerInventory, b: &PlayerInventory) -> bool {
+    a.slots() == b.slots()
+        && a.carried() == b.carried()
+        && a.selected_hotbar() == b.selected_hotbar()
+        && a.state_id() == b.state_id()
 }
 #[derive(Debug)]
 pub struct StoragePublication<K> {
@@ -150,19 +215,28 @@ pub struct PreparedStorageOpen<K> {
     menu: StorageMenu<K>,
     source_revision: u64,
     source_slots: Vec<ItemStack>,
+    source_inventory: PlayerInventory,
     events: Vec<StorageMenuEvent<K>>,
 }
 impl<K: Clone + Eq + Debug> PreparedStorageOpen<K> {
     pub fn events(&self) -> &[StorageMenuEvent<K>] {
         &self.events
     }
-    pub fn validate(&self, owner: &impl StorageContainer<Key = K>) -> Result<()> {
+    pub fn validate(
+        &self,
+        owner: &impl StorageContainer<Key = K>,
+        inventory: &PlayerInventory,
+    ) -> Result<()> {
         ensure!(
             owner.owner_key() == &self.menu.owner_key
                 && owner.kind() == self.menu.kind
                 && owner.content_revision() == self.source_revision
                 && owner.slots() == self.source_slots,
             "storage owner changed during open preparation"
+        );
+        ensure!(
+            same_inventory(inventory, &self.source_inventory),
+            "actual player inventory changed during open preparation"
         );
         Ok(())
     }
@@ -171,8 +245,9 @@ impl<K: Clone + Eq + Debug> PreparedStorageOpen<K> {
     pub fn commit(
         self,
         owner: &impl StorageContainer<Key = K>,
+        inventory: &PlayerInventory,
     ) -> Result<(StorageMenu<K>, Vec<StorageMenuEvent<K>>)> {
-        self.validate(owner)?;
+        self.validate(owner, inventory)?;
         Ok((self.menu, self.events))
     }
 }
@@ -194,6 +269,7 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
     pub fn prepare_open(
         window_id: u8,
         owner: &impl StorageContainer<Key = K>,
+        inventory: &PlayerInventory,
     ) -> Result<PreparedStorageOpen<K>> {
         validate_owner(owner)?;
         let kind = owner.kind();
@@ -212,7 +288,15 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
             menu,
             source_revision: owner.content_revision(),
             source_slots: owner.slots().to_vec(),
-            events: vec![StorageMenuEvent::StartOpen { owner: key }],
+            source_inventory: inventory.clone(),
+            events: vec![StorageMenuEvent::StartOpen {
+                owner: key,
+                phase: StoragePhase {
+                    block_slots: owner.slots().to_vec(),
+                    player_inventory: inventory.clone(),
+                    carried: ItemStack::empty(),
+                },
+            }],
         })
     }
     pub fn window_id(&self) -> u8 {
@@ -254,25 +338,47 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
         &mut self,
         owner: &impl StorageContainer<Key = K>,
         inventory: &PlayerInventory,
-    ) -> Result<Vec<SyncEvent>> {
+    ) -> Result<Vec<StorageMenuEvent<K>>> {
         self.check_owner(owner)?;
         let mut next = self.clone();
         let out = next.sync.initialize(owner.slots(), inventory, &[])?;
         next.advance_revision()?;
         *self = next;
-        Ok(out)
+        let phase = StoragePhase {
+            block_slots: owner.slots().to_vec(),
+            player_inventory: inventory.clone(),
+            carried: self.carried().clone(),
+        };
+        Ok(out
+            .into_iter()
+            .map(|event| StorageMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect())
     }
     pub fn broadcast_changes(
         &mut self,
         owner: &impl StorageContainer<Key = K>,
         inventory: &PlayerInventory,
-    ) -> Result<Vec<SyncEvent>> {
+    ) -> Result<Vec<StorageMenuEvent<K>>> {
         self.check_owner(owner)?;
         let mut next = self.clone();
         let out = next.sync.broadcast_changes(owner.slots(), inventory, &[])?;
         next.advance_revision()?;
         *self = next;
-        Ok(out)
+        let phase = StoragePhase {
+            block_slots: owner.slots().to_vec(),
+            player_inventory: inventory.clone(),
+            carried: self.carried().clone(),
+        };
+        Ok(out
+            .into_iter()
+            .map(|event| StorageMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect())
     }
     pub fn transfer_inventory_state(&self, player: &mut PlayerContainer) -> Result<()> {
         self.sync.transfer_inventory_state(player)
@@ -333,9 +439,7 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
             &action.next_inventory,
             &[],
         )?;
-        action
-            .events
-            .extend(events.into_iter().map(StorageMenuEvent::Sync));
+        action.push_sync(events);
         action.next_menu.advance_revision()?;
         Ok(action)
     }
@@ -355,19 +459,35 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
             context,
         )?;
         action.outcome = removal.outcome;
+        let mut phase = StoragePhase {
+            block_slots: action.next_top.clone(),
+            player_inventory: inventory.clone(),
+            carried: self.carried().clone(),
+        };
         for event in removal.events {
             match event {
-                MenuRemovalEvent::Packet { index } => action.events.push(StorageMenuEvent::Sync(
-                    SyncEvent::Packet(action.outcome.packets[index].clone()),
-                )),
+                MenuRemovalEvent::Packet { index } => {
+                    let packet = action.outcome.packets[index].clone();
+                    phase.observe_return_packet(&packet)?;
+                    action.events.push(StorageMenuEvent::Sync {
+                        event: SyncEvent::Packet(packet),
+                        phase: phase.clone(),
+                    });
+                }
                 MenuRemovalEvent::Drop { index } => {
-                    action.events.push(StorageMenuEvent::Drop { index })
+                    phase.carried = action.outcome.drops[index].stack.clone();
+                    action.events.push(StorageMenuEvent::Drop {
+                        index,
+                        phase: phase.clone(),
+                    });
+                    phase.carried = ItemStack::empty();
                 }
             }
         }
         action.outcome.packets.clear();
         action.events.push(StorageMenuEvent::StopOpen {
             owner: self.owner_key.clone(),
+            phase: action.phase(),
         });
         action.next_menu.active = false;
         action.next_menu.advance_revision()?;
@@ -509,18 +629,35 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
         })
         .min(stack.max_stack_size()?))
     }
+    fn phase(&self) -> StoragePhase {
+        StoragePhase {
+            block_slots: self.next_top.clone(),
+            player_inventory: self.next_inventory.clone(),
+            carried: self.next_menu.carried().clone(),
+        }
+    }
+    fn push_sync(&mut self, events: Vec<SyncEvent>) {
+        let phase = self.phase();
+        self.events
+            .extend(events.into_iter().map(|event| StorageMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            }));
+    }
     fn operation(&mut self, operation: StorageOperation) {
         self.events.push(StorageMenuEvent::Container {
             owner: self.next_menu.owner_key.clone(),
             operation,
-            slots_after: self.next_top.clone(),
+            phase: self.phase(),
         });
     }
     fn changed(&mut self, slot: usize) {
         if slot < self.top_count() {
             self.operation(StorageOperation::SetChanged);
         } else {
-            self.events.push(StorageMenuEvent::PlayerInventoryChanged);
+            self.events.push(StorageMenuEvent::PlayerInventoryChanged {
+                phase: self.phase(),
+            });
         }
     }
     fn set_by_player(&mut self, slot: usize, stack: ItemStack) {
@@ -586,7 +723,10 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
                 around: false,
                 trace_item,
             });
-            self.events.push(StorageMenuEvent::Drop { index });
+            self.events.push(StorageMenuEvent::Drop {
+                index,
+                phase: self.phase(),
+            });
         }
     }
 }
@@ -638,10 +778,15 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
                     } else {
                         1.min(carried.count)
                     };
-                    self.drop_stack(counted(&carried, amount), true);
-                    self.next_menu
-                        .sync
-                        .set_carried(counted(&carried, carried.count - amount));
+                    if button == 1 {
+                        self.next_menu
+                            .sync
+                            .set_carried(counted(&carried, carried.count - amount));
+                        self.drop_stack(counted(&carried, amount), true);
+                    } else {
+                        self.drop_stack(counted(&carried, amount), true);
+                        self.next_menu.sync.set_carried(ItemStack::empty());
+                    }
                 } else if slot >= 0 {
                     if kind == ClickType::Pickup {
                         self.pickup(slot as usize, button, owner)?;
@@ -698,10 +843,10 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
             if !carried.is_empty() && self.may_place(slot, &carried, owner)? {
                 let amount =
                     (if button == 0 { carried.count } else { 1 }).min(self.limit(slot, &carried)?);
-                self.set_by_player(slot, counted(&carried, amount));
                 self.next_menu
                     .sync
                     .set_carried(counted(&carried, carried.count - amount));
+                self.set_by_player(slot, counted(&carried, amount));
             }
         } else if carried.is_empty() {
             let amount = if button == 0 {
@@ -719,10 +864,10 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
             if source.same_item_same_components(&carried)? {
                 let amount = (if button == 0 { carried.count } else { 1 })
                     .min((self.limit(slot, &carried)? - source.count).max(0));
-                self.set_by_player(slot, counted(&source, source.count + amount));
                 self.next_menu
                     .sync
                     .set_carried(counted(&carried, carried.count - amount));
+                self.set_by_player(slot, counted(&source, source.count + amount));
             } else if carried.count <= self.limit(slot, &carried)? {
                 self.next_menu.sync.set_carried(source);
                 self.set_by_player(slot, carried);
@@ -771,9 +916,9 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
                         .count
                         .min((self.limit(slot, stack)? - existing.count).max(0));
                     if amount > 0 {
-                        self.mutate_stack(slot, counted(&existing, existing.count + amount));
                         *stack = counted(stack, stack.count - amount);
                         self.mutate_stack(source_slot, stack.clone());
+                        self.mutate_stack(slot, counted(&existing, existing.count + amount));
                         self.changed(slot);
                     }
                     if stack.is_empty() {
@@ -790,6 +935,9 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
                     *stack = counted(stack, stack.count - amount);
                     self.mutate_stack(source_slot, stack.clone());
                     self.set_by_player(slot, moved);
+                    // cpu.moveItemStackTo calls Slot.setChanged once more
+                    // after setByPlayer's own Container.setItem/setChanged.
+                    self.changed(slot);
                     break;
                 }
             }
@@ -842,9 +990,7 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
         } else {
             36 + button as usize
         };
-        if slot >= self.top_count() && 9 + slot - self.top_count() == player_slot {
-            return Ok(());
-        }
+        let aliases_held = slot >= self.top_count() && 9 + slot - self.top_count() == player_slot;
         let source = self.slot(slot);
         let held = self.next_inventory.slot(player_slot).unwrap().clone();
         reject_bundle(&source)?;
@@ -860,18 +1006,24 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
         } else if source.is_empty() {
             if self.may_place(slot, &held, owner)? {
                 let amount = held.count.min(self.limit(slot, &held)?);
-                self.set_by_player(slot, counted(&held, amount));
                 self.next_inventory
                     .set_slot_authoritative(player_slot, counted(&held, held.count - amount));
+                self.set_by_player(slot, counted(&held, amount));
             }
         } else if self.may_place(slot, &held, owner)? {
             let maximum = self.limit(slot, &held)?;
             if held.count > maximum {
-                self.set_by_player(slot, counted(&held, maximum));
                 self.next_inventory
                     .set_slot_authoritative(player_slot, counted(&held, held.count - maximum));
+                self.set_by_player(slot, counted(&held, maximum));
                 self.changed(slot);
-                let mut displaced = source;
+                // When source and held denote the SAME canonical player slot,
+                // split already shrank the old source object to its remainder.
+                let mut displaced = if aliases_held {
+                    counted(&source, held.count - maximum)
+                } else {
+                    source
+                };
                 self.add_to_inventory(&mut displaced, creative)?;
                 self.drop_stack(displaced, true);
             } else {
@@ -1200,14 +1352,15 @@ mod tests {
             owner.slots[0] = stack("stone", 8);
             let mut inventory = PlayerInventory::new();
             inventory.set_slot_authoritative(9, stack("emerald", 2));
-            let opening = StorageMenu::prepare_open(3, &owner)?;
+            let opening = StorageMenu::prepare_open(3, &owner, &inventory)?;
             assert!(matches!(
                 opening.events(),
                 [StorageMenuEvent::StartOpen {
-                    owner: "owned-test-object-a"
+                    owner: "owned-test-object-a",
+                    ..
                 }]
             ));
-            let (mut menu, _) = opening.commit(&owner)?;
+            let (mut menu, _) = opening.commit(&owner, &inventory)?;
             menu.initialize(&owner, &inventory)?;
             let mut stale = click(&menu, 0, 1, ClickType::Pickup);
             stale.state_id = -1;
@@ -1217,7 +1370,7 @@ mod tests {
             assert!(publication
                 .events
                 .iter()
-                .any(|e| matches!(e,StorageMenuEvent::Sync(SyncEvent::Packet(p))if p.id==0x13)));
+                .any(|e| matches!(e,StorageMenuEvent::Sync { event:SyncEvent::Packet(p), .. } if p.id==0x13)));
             assert_eq!(menu.carried(), &stack("stone", 4));
             assert_eq!(owner.slots[0], stack("stone", 4));
             for (slot, button) in [(-999, 0), (1, 1), (2, 1), (-999, 2)] {
@@ -1266,7 +1419,7 @@ mod tests {
                 0,
                 ClickType::Pickup,
             )?;
-            action(
+            let moved = action(
                 &mut menu,
                 &mut owner,
                 &mut inventory,
@@ -1274,7 +1427,37 @@ mod tests {
                 0,
                 ClickType::QuickMove,
             )?;
+            assert_eq!(
+                moved
+                    .events
+                    .iter()
+                    .filter(|event| matches!(
+                        event,
+                        StorageMenuEvent::PlayerInventoryChanged { .. }
+                    ))
+                    .count(),
+                2
+            );
             let hotbar_last = (kind.top_slots() + 35) as i16;
+            let same_slot = action(
+                &mut menu,
+                &mut owner,
+                &mut inventory,
+                hotbar_last,
+                8,
+                ClickType::Swap,
+            )?;
+            assert_eq!(
+                same_slot
+                    .events
+                    .iter()
+                    .filter(|event| matches!(
+                        event,
+                        StorageMenuEvent::PlayerInventoryChanged { .. }
+                    ))
+                    .count(),
+                2
+            );
             assert_eq!(inventory.slot(44).unwrap(), &stack("stone", 4));
             let thrown = action(
                 &mut menu,
@@ -1328,9 +1511,10 @@ mod tests {
             assert!(matches!(
                 closing.events(),
                 [
-                    StorageMenuEvent::Drop { index: 0 },
+                    StorageMenuEvent::Drop { index: 0, .. },
                     StorageMenuEvent::StopOpen {
-                        owner: "owned-test-object-a"
+                        owner: "owned-test-object-a",
+                        ..
                     }
                 ]
             ));
@@ -1371,7 +1555,8 @@ mod tests {
         let mut owner = TestContainer::new(StorageMenuKind::Shulker);
         let mut inventory = PlayerInventory::new();
         inventory.set_slot_authoritative(9, stack("shulker_box", 1));
-        let (mut menu, _) = StorageMenu::prepare_open(4, &owner)?.commit(&owner)?;
+        let (mut menu, _) =
+            StorageMenu::prepare_open(4, &owner, &inventory)?.commit(&owner, &inventory)?;
         menu.initialize(&owner, &inventory)?;
         action(
             &mut menu,
@@ -1391,7 +1576,7 @@ mod tests {
             data: maximum.into_inner(),
         });
         inventory.set_slot_authoritative(9, custom.clone());
-        action(
+        let inserted = action(
             &mut menu,
             &mut owner,
             &mut inventory,
@@ -1399,6 +1584,20 @@ mod tests {
             0,
             ClickType::QuickMove,
         )?;
+        assert_eq!(
+            inserted
+                .events
+                .iter()
+                .filter(|event| matches!(
+                    event,
+                    StorageMenuEvent::Container {
+                        operation: StorageOperation::SetChanged,
+                        ..
+                    }
+                ))
+                .count(),
+            2
+        );
         assert_eq!(owner.slots[0], custom); // original container/item max is 99, not a hardcoded64
         assert!(inventory.slot(9).unwrap().is_empty());
         inventory.set_slot_authoritative(9, stack("emerald", 6));
@@ -1443,6 +1642,142 @@ mod tests {
             .commit(&mut menu, &mut owner, &mut inventory)
             .is_err());
         assert!(owner.slots[1].is_empty() && owner.slots[2].is_empty());
+        Ok(())
+    }
+    #[test]
+    fn cross_owner_callback_phases_and_overfull_self_swap_are_conservative() -> Result<()> {
+        let mut owner = TestContainer::new(StorageMenuKind::Hopper);
+        let mut maximum = Writer::new();
+        maximum.varint(99);
+        let maximum = maximum.into_inner();
+        let mut stone = stack("stone", 98);
+        stone.components.push(Component {
+            type_id: 1,
+            data: maximum,
+        });
+        owner.slots[0] = stone.clone();
+        let mut source = stone;
+        source.count = 100;
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, source);
+        let (mut menu, _) =
+            StorageMenu::prepare_open(6, &owner, &inventory)?.commit(&owner, &inventory)?;
+        menu.initialize(&owner, &inventory)?;
+        let moved = action(
+            &mut menu,
+            &mut owner,
+            &mut inventory,
+            5,
+            0,
+            ClickType::QuickMove,
+        )?;
+        let source_counts = moved
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                StorageMenuEvent::Container {
+                    operation: StorageOperation::SetChanged,
+                    phase,
+                    ..
+                } => Some(phase.player_inventory.slot(9).unwrap().count),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(source_counts, vec![99, 0, 0]);
+        assert_eq!(owner.slots[0].count, 99);
+        assert_eq!(owner.slots[1].count, 99);
+        inventory.set_slot_authoritative(9, stack("emerald", 6));
+        action(
+            &mut menu,
+            &mut owner,
+            &mut inventory,
+            5,
+            0,
+            ClickType::Pickup,
+        )?;
+        let inserted = action(
+            &mut menu,
+            &mut owner,
+            &mut inventory,
+            2,
+            1,
+            ClickType::Pickup,
+        )?;
+        let phase = inserted
+            .events
+            .iter()
+            .find_map(|event| match event {
+                StorageMenuEvent::Container {
+                    operation: StorageOperation::SetItem { slot: 2, .. },
+                    phase,
+                    ..
+                } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(phase.carried, stack("emerald", 5));
+        assert_eq!(phase.block_slots[2], stack("emerald", 1));
+        let thrown = action(
+            &mut menu,
+            &mut owner,
+            &mut inventory,
+            -999,
+            1,
+            ClickType::Pickup,
+        )?;
+        let phase = thrown
+            .events
+            .iter()
+            .find_map(|event| match event {
+                StorageMenuEvent::Drop { phase, .. } => Some(phase),
+                _ => None,
+            })
+            .unwrap();
+        assert_eq!(phase.carried, stack("emerald", 4));
+        for slot in 9..46 {
+            inventory.set_slot_authoritative(slot, stack("dirt", 64));
+        }
+        inventory.set_slot_authoritative(9, stack("emerald", 63));
+        let closing = menu.prepare_close(&owner, &inventory, MenuCloseContext::AliveConnected)?;
+        match closing.events() {
+            [StorageMenuEvent::Sync { phase: insert, .. }, StorageMenuEvent::Drop { phase: drop, .. }, StorageMenuEvent::StopOpen { phase: stop, .. }] =>
+            {
+                assert_eq!(insert.carried, stack("emerald", 3));
+                assert_eq!(
+                    insert.player_inventory.slot(9).unwrap(),
+                    &stack("emerald", 64)
+                );
+                assert_eq!(drop.carried, stack("emerald", 3));
+                assert!(stop.carried.is_empty());
+            }
+            _ => panic!("close lost actual callback phases"),
+        }
+        closing.commit(&mut menu, &mut owner, &mut inventory)?;
+        let mut owner = TestContainer::new(StorageMenuKind::Hopper);
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(36, stack("iron_sword", 2));
+        let (mut menu, _) =
+            StorageMenu::prepare_open(7, &owner, &inventory)?.commit(&owner, &inventory)?;
+        menu.initialize(&owner, &inventory)?;
+        let swapped = action(
+            &mut menu,
+            &mut owner,
+            &mut inventory,
+            32,
+            0,
+            ClickType::Swap,
+        )?;
+        assert_eq!(inventory.slot(36).unwrap(), &stack("iron_sword", 1));
+        assert_eq!(inventory.slot(37).unwrap(), &stack("iron_sword", 1));
+        assert_eq!(
+            swapped
+                .events
+                .iter()
+                .filter(|event| matches!(event, StorageMenuEvent::PlayerInventoryChanged { .. }))
+                .count(),
+            2
+        );
+        assert!(swapped.outcome.drops.is_empty());
         Ok(())
     }
 }
