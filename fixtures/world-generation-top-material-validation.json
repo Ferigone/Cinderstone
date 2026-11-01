@@ -1,14 +1,14 @@
 {
   "minecraft": "1.21",
   "protocol": 767,
-  "reviewed_source_commit": "b8d9b4c34ebf0a62abfa1b3b8a225aca33dd11d6",
-  "base_master": "3e924b24bdeee40bab662cf9dd04ffef99cc98a7",
+  "reviewed_source_commit": "ab6d0938a7341eaa630f422300f668fd0f9d74fc",
+  "base_master": "c1baf5c70f07e53b6b76edaf84be5da57f6bd40b",
   "passed": true,
   "commands": [
     "cargo build --locked --bin mc121-rust",
     "cargo test --locked --lib worldgen::surface::tests"
   ],
-  "log_sha256": "0385c7e066188da36adba94e6c26aa70144f1ec86d7b1c33860d6cb9f232890c",
+  "log_sha256": "e5a286ecc63168d9c60f4dc050067e16ac713480442563f6194c05f26df9cb97",
   "source_sha256": {
     "src/worldgen/surface/mod.rs": "41a59896a1d1788499161e830f9aef3f62b3f587c1cc56c717bcb7c31aeeadb0",
     "src/worldgen/surface/rules.rs": "292cc4b35136e2310b38c38813b1e47ab64ed5752cf88c183efacf0970b66d3f",
@@ -26,5 +26,7 @@
     "Arbitrary separately supplied RuleSource binding/callback traces",
     "Actual Carvers material/host adapter, carving loop, dependency scheduler and Main",
     "Every rule/position/height/biome branch; complete generation/FULL"
-  ]
+  ],
+  "previous_reviewed_source_commit": "b8d9b4c34ebf0a62abfa1b3b8a225aca33dd11d6",
+  "previous_log_sha256": "0385c7e066188da36adba94e6c26aa70144f1ec86d7b1c33860d6cb9f232890c"
 }
