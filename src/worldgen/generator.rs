@@ -56,6 +56,21 @@ pub enum TerrainStage {
     Surface,
 }
 
+/// The result of the source fillFromNoise entry point. A no-cell result means
+/// the caller retains its actual input ProtoChunk unchanged. It contains no
+/// replacement terrain, no NoiseChunk, and no completed runtime status.
+pub enum NoiseFillOutcome<'g> {
+    Generated(NoiseTerrain<'g>),
+    NoCells {
+        /// NoiseSettings.clampToHeightAccessor minimum Y.
+        min_y: i32,
+        /// Original clamped height, which may be negative for disjoint ranges.
+        height: i32,
+        /// floorDiv(clamped height, cell height), preserving negative results.
+        cell_count_y: i32,
+    },
+}
+
 /// Actual BiomeManager/biome callbacks needed by SURFACE. The integration
 /// supplies the zoom seed and real biome data; raw climate samples are not a
 /// replacement for biome selection or biome temperature state.
@@ -88,10 +103,12 @@ pub struct NoiseGenerator {
 
 impl NoiseGenerator {
     pub fn builtin(seed: i64, settings: &str) -> Result<Self> {
-        let settings_name = if settings.contains(':') {
-            settings.to_owned()
-        } else {
-            format!("minecraft:{settings}")
+        // ResourceLocation.parse uses the default namespace for both a
+        // missing namespace and an explicitly empty one, such as :overworld.
+        let settings_name = match settings.split_once(':') {
+            Some(("", path)) => format!("minecraft:{path}"),
+            Some(_) => settings.to_owned(),
+            None => format!("minecraft:{settings}"),
         };
         let graph = DensityGraph::builtin(seed, &settings_name)?;
         let router = graph.router()?;
@@ -146,6 +163,35 @@ impl NoiseGenerator {
         &self.settings_name
     }
 
+    /// Mirror fillFromNoise's early no-cell return without inventing a terrain
+    /// image. Clamping and the floor division happen before querying Blender,
+    /// structures or block contents. A skipped result leaves the caller's
+    /// actual input ProtoChunk untouched, regardless of unavailable dependency
+    /// observations; a positive cell count delegates to the existing fill API.
+    pub fn fill_from_noise(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: FreshGenerationContext,
+    ) -> Result<NoiseFillOutcome<'_>> {
+        let level_max_y = validate_level_height(level_min_y, level_height)?;
+        let settings = self.graph.grid().context("missing noise settings")?;
+        let min_y = settings.min_y.max(level_min_y);
+        let height = (settings.min_y + settings.height).min(level_max_y) - min_y;
+        let cell_count_y = height.div_euclid(settings.cell_height);
+        if cell_count_y <= 0 {
+            return Ok(NoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            });
+        }
+        self.fill_noise(chunk_x, chunk_z, level_min_y, level_height, context)
+            .map(NoiseFillOutcome::Generated)
+    }
+
     /// Fill a privately owned new terrain image in original doFill order. The
     /// returned image is only NOISE, irrespective of whether its blocks look
     /// ready to send. Clipped/custom partial noise cells stay unsupported.
@@ -158,13 +204,7 @@ impl NoiseGenerator {
         context: FreshGenerationContext,
     ) -> Result<NoiseTerrain<'_>> {
         context.validate()?;
-        let level_max_y = level_min_y
-            .checked_add(level_height)
-            .context("level height overflows")?;
-        ensure!(
-            level_height > 0 && level_min_y >= -2032 && level_max_y <= 2032,
-            "level height exceeds original dimension coordinate range"
-        );
+        validate_level_height(level_min_y, level_height)?;
         let origin_x = chunk_x.checked_mul(16).context("chunk X overflows")?;
         let origin_z = chunk_z.checked_mul(16).context("chunk Z overflows")?;
         ensure!(
@@ -667,6 +707,17 @@ impl MaterialPalette {
         }
     }
 }
+fn validate_level_height(min_y: i32, height: i32) -> Result<i32> {
+    let max_y = min_y
+        .checked_add(height)
+        .context("level height overflows")?;
+    ensure!(
+        height > 0 && min_y >= -2032 && max_y <= 2032,
+        "level height exceeds original dimension coordinate range"
+    );
+    Ok(max_y)
+}
+
 fn clamped_map(value: f64, from_min: f64, from_max: f64, to_min: f64, to_max: f64) -> f64 {
     let delta = (value - from_min) / (from_max - from_min);
     if delta < 0.0 {
@@ -675,5 +726,30 @@ fn clamped_map(value: f64, from_min: f64, from_max: f64, to_min: f64, to_max: f6
         to_max
     } else {
         to_min + delta * (to_max - to_min)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn positive_fill_requires_the_actual_dependency_owners() -> Result<()> {
+        let generator = NoiseGenerator::builtin(1, "overworld")?;
+        let unavailable = FreshGenerationContext {
+            initial_blocks: GenerationInfluence::Unavailable,
+            blender: GenerationInfluence::Unavailable,
+            structure_beardifier: GenerationInfluence::Unavailable,
+        };
+        assert!(matches!(
+            generator.fill_from_noise(0, 0, 320, 16, unavailable)?,
+            NoiseFillOutcome::NoCells { .. }
+        ));
+        let error = match generator.fill_from_noise(0, 0, -64, 384, unavailable) {
+            Err(error) => error,
+            Ok(_) => panic!("actual cells must not generate without dependency owners"),
+        };
+        assert!(error.to_string().contains("actually empty new ProtoChunk"));
+        Ok(())
     }
 }

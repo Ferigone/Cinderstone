@@ -21,6 +21,14 @@ not claims that a Java server generated a complete playable world:
   71–78, lambda lines 82–85) owns a lava status at level −54 and the settings'
   default-fluid status at the actual sea level. The selected status is lava
   when query Y is below `min(-54, seaLevel)`; otherwise the default status.
+- `NoiseSettings.clampToHeightAccessor` (`dzg.a(dcy)`, mapped lines 97–99)
+  keeps `max(settingsMinY, levelMinY)` and computes
+  `min(settingsMinY + settingsHeight, levelMaxY) - clampedMinY`. The resulting
+  height may be zero or negative. `NoiseBasedChunkGenerator.fillFromNoise`
+  (`dzb.a(eaa,dzm,ddq,duy)`, mapped lines 291–319) floor-divides that height
+  by the cell height and returns `completedFuture(theSameChunk)` when the
+  result is nonpositive. This precedes access to generation dependencies,
+  section acquisition or NoiseChunk construction.
 - `NoiseBasedChunkGenerator.doFill` (`dzb.a(eaa,ddq,dzm,duy,int,int)`, mapped
   lines 324–413) starts interpolation once, traverses cell X and Z forwards,
   cell Y and local Y downwards, then local X and Z forwards. After each update
@@ -54,6 +62,23 @@ the surface host exposes highest non-air Y as the source `getHeight` method does
 `worldgen::NoiseGenerator::builtin(seed, settings)` builds per-world seeded
 owners for any of the seven pinned built-in noise-settings records. It neither
 consumes gameplay Level RNG nor creates a biome or scheduler owner.
+Settings keys follow ResourceLocation's default namespace rule: both `overworld`
+and `:overworld` select `minecraft:overworld`; a supplied nonempty namespace is
+retained.
+
+`fill_from_noise(chunk_x, chunk_z, level_min_y, level_height, context)` is the
+source-entry-point API. Its height arguments represent the actual chunk's
+`getHeightAccessorForGeneration`, supplied by the caller; the generator does not
+invent a retrogen or dimension-height owner. It returns
+`NoiseFillOutcome::Generated(NoiseTerrain)`
+for the existing positive-cell fill path, or
+`NoiseFillOutcome::NoCells { min_y, height, cell_count_y }` for the original
+early-return path. The latter contains only the source clamp metadata: it
+constructs neither a terrain buffer nor a dummy NoiseChunk, and the caller keeps
+its actual input ProtoChunk unchanged. Initial-block, Blender and structure
+observations are not queried on that path. The existing native dimension-height
+domain remains enforced before the clamp; a positive partial cell remains an
+explicit unsupported boundary.
 
 `fill_noise(chunk_x, chunk_z, level_min_y, level_height, context)` returns a
 `NoiseTerrain` borrowing that generator. `FreshGenerationContext` requires
@@ -69,7 +94,9 @@ WORLD_SURFACE_WG and OCEAN_FLOOR_WG first-available heights, and ordered fluid
 postprocessing positions. It carries `TerrainStage::Noise`, not ChunkStatus
 FULL. No partial output is returned on failed material traversal. Noise cells
 must form a nonempty aligned intersection with the level height accessor;
-partial custom cells and an empty intersection are explicit unsupported paths.
+partial custom cells and an empty intersection remain explicit errors for this
+strict API. Callers that need the source no-cell early return use
+`fill_from_noise` and retain their original ProtoChunk on `NoCells`.
 
 `build_surface(&mut terrain, &mut SurfaceContext)` supplies actual block and
 heightmap owners to the SurfaceSystem. `SurfaceContext` must supply zoomed
@@ -120,3 +147,40 @@ traversal for all seven pinned settings in the selected cases. Controlled
 fixed-biome SURFACE cases match actual original ProtoChunk output, both WG
 heightmaps and surface postprocessing deltas. Those observations do not certify
 natural biome selection or a Main missing-chunk generation path.
+
+## Focused no-cell entry-point observation
+
+The original `NoiseBasedChunkGenerator.fillFromNoise` was executed against real
+original ProtoChunk owners containing a stone sentinel, with Blender,
+RandomState and StructureManager parameters all null. Each returned an already
+completed future resolving to the same input ProtoChunk; the sentinel, persisted
+status and unconstructed NoiseChunk field were unchanged. The null dependencies
+were not accessed. This establishes the short-circuit boundary independently
+of a reconstructed traversal loop:
+
+| Overworld level min Y / height | Clamped min Y | Clamped height | Cell count Y |
+| --- | --- | --- | --- |
+| 320 / 16 | 320 | 0 | 0 |
+| 384 / 16 | 384 | −64 | −8 |
+| −160 / 16 | −64 | −80 | −10 |
+| 317 / 2 | 317 | 2 | 0 |
+
+The final row exercises a positive clamped height smaller than one cell; the
+second and third preserve negative floor-division results rather than clamping
+them to zero. The same original registry lookup also confirmed that
+`:overworld` and `minecraft:overworld` resolve to the same settings holder.
+These are bounded original-class runtime observations, not Main integration or
+complete generation-status evidence.
+
+The portable original witness is
+`src/worldgen/validation/WorldgenNoCellsOracle.java` (entry class
+`oracle.WorldgenNoCellsOracle`); it reuses the existing original registry setup
+from `WorldgenSurfaceOracle`. The native witness is
+`src/worldgen/validation/no_cells_probe.rs`. Both write a single JSON object and
+require no machine-specific data paths. Their shared clamp metadata matched;
+the recorded observations and probe hashes are in
+[`world-generation-no-cells.json`](../../fixtures/world-generation-no-cells.json).
+The native probe also checks dependency short-circuiting and the strict existing
+API boundary. A focused unit verifies that a positive overlap still rejects
+unavailable actual dependency owners. Main integration remains a separate,
+pending contract.

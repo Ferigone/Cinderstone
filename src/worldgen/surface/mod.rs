@@ -58,7 +58,11 @@ pub fn builtin_settings(name: &str) -> Result<&'static Value> {
         ))
         .expect("packaged surface settings")
     });
-    let name = if name.contains(':') {
+    // ResourceLocation defaults an explicitly empty namespace as well as an
+    // omitted namespace to "minecraft".
+    let name = if let Some(path) = name.strip_prefix(':') {
+        format!("minecraft:{path}")
+    } else if name.contains(':') {
         name.to_owned()
     } else {
         format!("minecraft:{name}")
@@ -424,4 +428,19 @@ fn generate_bands(mut random: impl RandomSource, palette: &[u32]) -> Result<[u32
         index += random.next_bounded_i32(16)? as usize + 4;
     }
     Ok(bands)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn original_default_namespace_settings_aliases_share_the_packaged_owner() -> Result<()> {
+        let canonical = builtin_settings("minecraft:overworld")?;
+        for alias in ["overworld", ":overworld"] {
+            assert!(std::ptr::eq(canonical, builtin_settings(alias)?));
+        }
+        assert!(builtin_settings("other:overworld").is_err());
+        Ok(())
+    }
 }

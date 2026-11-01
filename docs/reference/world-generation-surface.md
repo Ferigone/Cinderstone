@@ -32,6 +32,12 @@ use `root.fromHashOf("minecraft:clay_bands")` directly; vertical gradients use
 RandomState's separately hashed/forked named positional factories. Neither path
 borrows the gameplay Level RNG.
 
+`builtin_settings` follows the original `ResourceLocation.parse` /
+`bySeparator` (`akr.a`, mapped lines 56 and 77–89) default-namespace rule:
+`overworld`, `:overworld` and `minecraft:overworld` select the same packaged
+settings owner. An explicit different namespace is retained and must identify
+an actual packaged setting; it does not select the default namespace's setting.
+
 `SurfaceSystem::build_surface` consumes an existing chunk through `SurfaceHost`.
 The host must supply actual BiomeManager block-coordinate biome lookup, biome
 cold-enough-to-snow and iceberg-temperature predicates, canonical state metadata,
@@ -80,6 +86,18 @@ matched separately from the earlier NOISE postprocessing records.
 | overworld | swamp | `71b848d52791b383444b9753315093f2f9ce3d5368b36311848f8e1d31ab1a30` |
 | nether | nether_wastes | `19e96d5669a512037dc3fc8aa2035da4ec5a6e6336b5ff8e9b8a8d8c04f8fa01` |
 | end | the_end | `7987147699f5c140f45beec79ea9dd62072ef26abdecd8f5082efe6533037dc3` |
+
+An additional selected **positive badlands pillar** case used overworld seed
+`0`, chunk `(0,0)` and the actual fixed `eroded_badlands` biome. The original
+SURFACE method added 321 air-to-nonair voxels and raised 37 columns; for example,
+the highest occupied Y at local `(8,10)` increased from `62` to `80`. This
+executes pillar filling beyond the earlier case's water guard. The complete
+original and native images matched with SHA-256
+`80285dcd4c48a015d4988cf2feb045400aae80d4e602de839ee8242fa49368b0`,
+along with both WG heightmaps and the surface-only postprocessing delta. The
+original NOISE input also matched the native seeded NOISE output. The same
+unchanged Java classes and public native stage probes described above were
+used, with actual biome-temperature observations and no added terrain fallback.
 
 The native wrapper also rejected an unavailable biome context while preserving
 its NOISE image, heightmaps, postprocessing and stage, and rejected a duplicate

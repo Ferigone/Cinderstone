@@ -10,6 +10,6 @@ pub mod random_state;
 pub mod surface;
 
 pub use generator::{
-    resolve_block_state, FreshGenerationContext, GenerationInfluence, NoiseGenerator, NoiseTerrain,
-    SurfaceContext, TerrainStage,
+    resolve_block_state, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
+    NoiseGenerator, NoiseTerrain, SurfaceContext, TerrainStage,
 };
