@@ -11,3 +11,4 @@ pub mod cartography;
 pub mod lectern;
 pub mod beacon;
 pub mod brewing;
+pub mod merchant;
