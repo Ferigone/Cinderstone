@@ -1,9 +1,9 @@
-//! Bounded Java 1.21 smithing menu adapter: PICKUP and QUICK_MOVE.
+//! Java 1.21 smithing menu click adapter over the pinned default recipes.
 //!
 //! Player inventory is borrowed; inputs/cursor remain in this menu. Preparing
 //! an action changes no live owner. The host must stage the recorded actual
 //! player/item/world callbacks and drops, commit the one-shot plan, then publish
-//! its ordered listener/packet events. Other click modes fail before mutation.
+//! its ordered callback/drop/listener/packet events. Bundle overrides remain explicit.
 use crate::{
     container::{ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer},
     inventory::{self, ItemStack, PlayerInventory},
@@ -15,7 +15,10 @@ use crate::{
     },
 };
 use anyhow::{bail, ensure, Result};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    collections::BTreeSet,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SmithingMenu {
@@ -24,11 +27,18 @@ pub struct SmithingMenu {
     // This identifies only this temporary UI owner, never a block/world/player.
     instance: u64,
     revision: u64,
+    quickcraft_status: u8,
+    quickcraft_type: u8,
+    quickcraft_slots: BTreeSet<usize>,
 }
 #[derive(Clone, Debug)]
 pub enum SmithingMenuEvent {
     Effect(SmithingEffect),
     Sync(SyncEvent),
+    /// Resolve this index in outcome.drops; stage each actual drop once.
+    Drop {
+        index: usize,
+    },
 }
 #[derive(Debug, Default)]
 pub struct SmithingActionOutcome {
@@ -126,6 +136,9 @@ impl SmithingMenu {
             sync: MenuSync::new(window_id, WorkstationKind::Smithing)?,
             instance,
             revision: 0,
+            quickcraft_status: 0,
+            quickcraft_type: 0,
+            quickcraft_slots: BTreeSet::new(),
         })
     }
     pub fn station(&self) -> &SmithingState {
@@ -180,44 +193,26 @@ impl SmithingMenu {
         &self,
         click: &ContainerClick,
         inventory: &PlayerInventory,
+        creative: bool,
     ) -> Result<SmithingActionPlan> {
         ensure!(
             click.window_id == self.sync.window_id(),
             "wrong smithing window"
         );
         ensure!(click.slot < 40, "smithing slot outside menu");
-        ensure!(
-            matches!(click.kind, ClickType::Pickup | ClickType::QuickMove),
-            "smithing click mode is not integrated yet"
-        );
-        ensure!(
-            click.button == 0 || click.button == 1,
-            "unsupported smithing click button"
-        );
         let mut next = self.clone();
         let mut inv = inventory.clone();
         let mut outcome = SmithingActionOutcome::default();
         let state_before = next.sync.state_id();
         next.sync.suppress_remote_updates(true);
-        if click.slot == -999 {
-            let carried = next.sync.carried().clone();
-            if !carried.is_empty() {
-                let n = if click.button == 0 { carried.count } else { 1 };
-                outcome.drops.push(DroppedStack {
-                    stack: counted(&carried, n),
-                    around: false,
-                    trace_item: true,
-                });
-                next.sync.set_carried(counted(&carried, carried.count - n));
-            }
-        } else if (0..40).contains(&click.slot) {
-            let slot = click.slot as usize;
-            if click.kind == ClickType::Pickup {
-                next.pickup(slot, click.button, &mut inv, &mut outcome)?;
-            } else {
-                next.quick_move(slot, &mut inv, &mut outcome)?;
-            }
-        }
+        next.do_click(
+            click.slot as i32,
+            click.button as i32,
+            click.kind,
+            creative,
+            &mut inv,
+            &mut outcome,
+        )?;
         outcome.events.extend(
             next.sync
                 .finish_click(click, state_before, &next.top(), &inv, &[])?
@@ -243,16 +238,20 @@ impl SmithingMenu {
     ) -> Result<SmithingActionPlan> {
         let mut next = self.clone();
         let mut inv = inventory.clone();
+        next.reset_quickcraft();
         let mut inputs = next.station.drain_inputs_on_close();
-        let closed = next.sync.close_inputs(&mut inputs, &mut inv, context)?;
-        let outcome = SmithingActionOutcome {
-            events: closed
-                .packets
-                .into_iter()
-                .map(|p| SmithingMenuEvent::Sync(SyncEvent::Packet(p)))
-                .collect(),
-            drops: closed.drops,
-        };
+        let mut outcome = SmithingActionOutcome::default();
+        // Preserve per-stack packet/drop interleaving: cursor first, then each
+        // original input. A partial alive insertion can send raw slots before
+        // its overflow drop; later inputs follow that drop, not the reverse.
+        let closed = next.sync.close_inputs(&mut [], &mut inv, context)?;
+        Self::append_close(&mut outcome, closed);
+        for input in &mut inputs {
+            let closed = next
+                .sync
+                .close_inputs(std::slice::from_mut(input), &mut inv, context)?;
+            Self::append_close(&mut outcome, closed);
+        }
         next.advance_revision()?;
         Ok(SmithingActionPlan {
             before: self.clone(),
@@ -261,6 +260,19 @@ impl SmithingMenu {
             next_inventory: inv,
             outcome,
         })
+    }
+    fn append_close(outcome: &mut SmithingActionOutcome, closed: crate::container::ClickOutcome) {
+        outcome.events.extend(
+            closed
+                .packets
+                .into_iter()
+                .map(|p| SmithingMenuEvent::Sync(SyncEvent::Packet(p))),
+        );
+        for drop in closed.drops {
+            let index = outcome.drops.len();
+            outcome.drops.push(drop);
+            outcome.events.push(SmithingMenuEvent::Drop { index });
+        }
     }
     fn slot(&self, slot: usize, inventory: &PlayerInventory) -> ItemStack {
         if slot < 3 {
@@ -295,6 +307,121 @@ impl SmithingMenu {
         } else {
             Ok(true)
         }
+    }
+    fn reset_quickcraft(&mut self) {
+        self.quickcraft_status = 0;
+        self.quickcraft_slots.clear();
+    }
+    fn drop_stack(outcome: &mut SmithingActionOutcome, stack: ItemStack) {
+        if !stack.is_empty() {
+            let index = outcome.drops.len();
+            outcome.drops.push(DroppedStack {
+                stack,
+                around: false,
+                trace_item: true,
+            });
+            outcome.events.push(SmithingMenuEvent::Drop { index });
+        }
+    }
+    fn may_pickup(&self, slot: usize) -> Result<bool> {
+        if slot == RESULT_SLOT {
+            self.station.may_pickup()
+        } else {
+            Ok(true)
+        }
+    }
+    fn take_slot(
+        &mut self,
+        slot: usize,
+        amount: i32,
+        maximum: i32,
+        inventory: &mut PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+    ) -> Result<ItemStack> {
+        let source = self.slot(slot, inventory);
+        if source.is_empty() || amount <= 0 || maximum <= 0 {
+            return Ok(ItemStack::empty());
+        }
+        if slot == RESULT_SLOT {
+            if maximum < source.count || !self.station.may_pickup()? {
+                return Ok(ItemStack::empty());
+            }
+            let (output, effects) = self
+                .station
+                .prepare_take(SmithingTakeKind::Pickup)?
+                .commit(&mut self.station)?;
+            outcome
+                .events
+                .extend(effects.into_iter().map(SmithingMenuEvent::Effect));
+            return Ok(output);
+        }
+        let n = source.count.min(amount).min(maximum);
+        self.put_slot(slot, counted(&source, source.count - n), inventory)?;
+        Ok(counted(&source, n))
+    }
+    fn do_click(
+        &mut self,
+        slot: i32,
+        button: i32,
+        kind: ClickType,
+        creative: bool,
+        inventory: &mut PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+    ) -> Result<()> {
+        if kind == ClickType::QuickCraft {
+            return self.quickcraft(slot, button, creative, inventory, outcome);
+        }
+        if self.quickcraft_status != 0 {
+            self.reset_quickcraft();
+            return Ok(());
+        }
+        match kind {
+            ClickType::Pickup | ClickType::QuickMove if button == 0 || button == 1 => {
+                if slot == -999 {
+                    let carried = self.sync.carried().clone();
+                    let n = if button == 0 {
+                        carried.count
+                    } else {
+                        1.min(carried.count)
+                    };
+                    self.sync.set_carried(counted(&carried, carried.count - n));
+                    Self::drop_stack(outcome, counted(&carried, n));
+                } else if slot >= 0 {
+                    if kind == ClickType::Pickup {
+                        self.pickup(slot as usize, button as i8, inventory, outcome)?;
+                    } else if self.may_pickup(slot as usize)? {
+                        self.quick_move(slot as usize, inventory, outcome)?;
+                    }
+                }
+            }
+            ClickType::Swap if slot >= 0 && ((0..9).contains(&button) || button == 40) => {
+                self.swap(slot as usize, button, creative, inventory, outcome)?
+            }
+            ClickType::Clone if creative && slot >= 0 && self.sync.carried().is_empty() => {
+                let source = self.slot(slot as usize, inventory);
+                if !source.is_empty() {
+                    reject_bundle(&source)?;
+                    self.sync
+                        .set_carried(counted(&source, source.max_stack_size()?));
+                }
+            }
+            ClickType::Throw
+                if slot >= 0
+                    && self.sync.carried().is_empty()
+                    && self.may_pickup(slot as usize)? =>
+            {
+                let source = self.slot(slot as usize, inventory);
+                reject_bundle(&source)?;
+                let amount = if button == 0 { 1 } else { source.count };
+                let taken = self.take_slot(slot as usize, amount, i32::MAX, inventory, outcome)?;
+                Self::drop_stack(outcome, taken);
+            }
+            ClickType::PickupAll if slot >= 0 => {
+                self.pickup_all(slot as usize, button, inventory, outcome)?
+            }
+            _ => {}
+        }
+        Ok(())
     }
     fn pickup(
         &mut self,
@@ -421,17 +548,269 @@ impl SmithingMenu {
                     .extend(effects.into_iter().map(SmithingMenuEvent::Effect));
             }
         } else {
-            let mut moving = original;
-            if slot < RESULT_SLOT {
-                self.move_to(&mut moving, 4, 40, false, inventory)?;
-            } else if let Some(target) = self.station.quick_move_input_slot(&moving)? {
-                self.move_to(&mut moving, target, RESULT_SLOT, false, inventory)?;
-            } else if slot < 31 {
-                self.move_to(&mut moving, 31, 40, false, inventory)?;
-            } else {
-                self.move_to(&mut moving, 4, 31, false, inventory)?;
+            loop {
+                let source = self.slot(slot, inventory);
+                if source.is_empty() {
+                    break;
+                }
+                let mut moving = source.clone();
+                if slot < RESULT_SLOT {
+                    self.move_to(&mut moving, 4, 40, false, inventory)?;
+                } else if let Some(target) = self.station.quick_move_input_slot(&moving)? {
+                    self.move_to(&mut moving, target, RESULT_SLOT, false, inventory)?;
+                } else if slot < 31 {
+                    self.move_to(&mut moving, 31, 40, false, inventory)?;
+                } else {
+                    self.move_to(&mut moving, 4, 31, false, inventory)?;
+                }
+                if moving.count == source.count {
+                    break;
+                }
+                self.put_slot(slot, moving, inventory)?;
+                if self.slot(slot, inventory).item_id != source.item_id {
+                    break;
+                }
             }
-            self.put_slot(slot, moving, inventory)?;
+        }
+        Ok(())
+    }
+    fn swap(
+        &mut self,
+        slot: usize,
+        button: i32,
+        creative: bool,
+        inventory: &mut PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+    ) -> Result<()> {
+        let player_slot = if button == 40 {
+            45
+        } else {
+            36 + button as usize
+        };
+        if slot >= 4 && slot + 5 == player_slot {
+            return Ok(());
+        }
+        let source = self.slot(slot, inventory);
+        let held = inventory
+            .slot(player_slot)
+            .expect("actual hotbar/offhand")
+            .clone();
+        reject_bundle(&source)?;
+        reject_bundle(&held)?;
+        if source.is_empty() && held.is_empty() {
+            return Ok(());
+        }
+        if held.is_empty() {
+            if self.may_pickup(slot)? {
+                // Source installs the hotbar/offhand output before onTake.
+                inventory.set_slot_authoritative(player_slot, source.clone());
+                self.take_slot(slot, source.count, i32::MAX, inventory, outcome)?;
+            }
+        } else if source.is_empty() {
+            if self.may_place(slot, &held)? {
+                let n = held.count.min(limit(&held)?);
+                self.put_slot(slot, counted(&held, n), inventory)?;
+                inventory.set_slot_authoritative(player_slot, counted(&held, held.count - n));
+            }
+        } else if self.may_pickup(slot)? && self.may_place(slot, &held)? {
+            let maximum = limit(&held)?;
+            if held.count > maximum {
+                self.put_slot(slot, counted(&held, maximum), inventory)?;
+                inventory.set_slot_authoritative(player_slot, counted(&held, held.count - maximum));
+                let mut old = source;
+                Self::add_to_inventory(&mut old, inventory, creative)?;
+                Self::drop_stack(outcome, old);
+            } else {
+                self.put_slot(slot, held, inventory)?;
+                inventory.set_slot_authoritative(player_slot, source);
+            }
+        }
+        Ok(())
+    }
+    fn add_to_inventory(
+        stack: &mut ItemStack,
+        inventory: &mut PlayerInventory,
+        creative: bool,
+    ) -> Result<()> {
+        let order = (36..45).chain(9..36).collect::<Vec<_>>();
+        if stack.is_damageable()? && stack.damage_value()? > 0 {
+            if let Some(slot) = order
+                .iter()
+                .copied()
+                .find(|i| inventory.slot(*i).unwrap().is_empty())
+            {
+                inventory.set_slot_authoritative(slot, std::mem::take(stack));
+            } else if creative {
+                *stack = ItemStack::empty();
+            }
+            return Ok(());
+        }
+        let mut merges = vec![36 + inventory.selected_hotbar(), 45];
+        merges.extend(order.iter().copied());
+        for slot in merges {
+            let target = inventory.slot(slot).unwrap();
+            if !target.is_empty()
+                && target.is_stackable()?
+                && target.same_item_same_components(stack)?
+            {
+                let n = stack.count.min((limit(target)? - target.count).max(0));
+                if n > 0 {
+                    inventory.set_slot_authoritative(slot, counted(target, target.count + n));
+                    *stack = counted(stack, stack.count - n);
+                }
+                if stack.is_empty() {
+                    return Ok(());
+                }
+            }
+        }
+        for slot in order {
+            if inventory.slot(slot).unwrap().is_empty() {
+                let n = stack.count.min(limit(stack)?);
+                inventory.set_slot_authoritative(slot, counted(stack, n));
+                *stack = counted(stack, stack.count - n);
+                if stack.is_empty() {
+                    return Ok(());
+                }
+            }
+        }
+        if creative {
+            *stack = ItemStack::empty();
+        }
+        Ok(())
+    }
+    fn pickup_all(
+        &mut self,
+        clicked: usize,
+        button: i32,
+        inventory: &mut PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+    ) -> Result<()> {
+        let carried = self.sync.carried().clone();
+        reject_bundle(&carried)?;
+        if carried.is_empty()
+            || !self.slot(clicked, inventory).is_empty() && self.may_pickup(clicked)?
+        {
+            return Ok(());
+        }
+        let order = if button == 0 {
+            (0..40).collect::<Vec<_>>()
+        } else {
+            (0..40).rev().collect()
+        };
+        for pass in 0..2 {
+            for &slot in &order {
+                let source = self.slot(slot, inventory);
+                let carried = self.sync.carried().clone();
+                if carried.count >= carried.max_stack_size()? {
+                    break;
+                }
+                if slot == RESULT_SLOT
+                    || source.is_empty()
+                    || source.count > carried.max_stack_size()?
+                    || !source.same_item_same_components(&carried)?
+                    || !self.may_pickup(slot)?
+                    || pass == 0 && source.count == source.max_stack_size()?
+                {
+                    continue;
+                }
+                let taken = self.take_slot(
+                    slot,
+                    source.count,
+                    carried.max_stack_size()? - carried.count,
+                    inventory,
+                    outcome,
+                )?;
+                self.sync
+                    .set_carried(counted(&carried, carried.count + taken.count));
+            }
+        }
+        Ok(())
+    }
+    fn quickcraft(
+        &mut self,
+        slot: i32,
+        button: i32,
+        creative: bool,
+        inventory: &mut PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+    ) -> Result<()> {
+        let previous = self.quickcraft_status;
+        self.quickcraft_status = (button & 3) as u8;
+        if !(previous == 1 && self.quickcraft_status == 2) && previous != self.quickcraft_status {
+            self.reset_quickcraft();
+            return Ok(());
+        }
+        if self.sync.carried().is_empty() {
+            self.reset_quickcraft();
+            return Ok(());
+        }
+        reject_bundle(self.sync.carried())?;
+        match self.quickcraft_status {
+            0 => {
+                self.quickcraft_type = ((button >> 2) & 3) as u8;
+                if self.quickcraft_type <= 1 || self.quickcraft_type == 2 && creative {
+                    self.quickcraft_status = 1;
+                    self.quickcraft_slots.clear();
+                } else {
+                    self.reset_quickcraft();
+                }
+            }
+            1 if slot >= 0 => {
+                let slot = slot as usize;
+                let carried = self.sync.carried();
+                let source = self.slot(slot, inventory);
+                if self.may_place(slot, carried)?
+                    && (source.is_empty()
+                        || source.same_item_same_components(carried)?
+                            && source.count <= carried.max_stack_size()?)
+                    && (self.quickcraft_type == 2
+                        || carried.count > self.quickcraft_slots.len() as i32)
+                {
+                    self.quickcraft_slots.insert(slot);
+                }
+            }
+            1 => {}
+            2 => {
+                if self.quickcraft_slots.len() == 1 {
+                    let slot = *self.quickcraft_slots.iter().next().unwrap();
+                    self.reset_quickcraft();
+                    return self.do_click(
+                        slot as i32,
+                        self.quickcraft_type as i32,
+                        ClickType::Pickup,
+                        creative,
+                        inventory,
+                        outcome,
+                    );
+                }
+                let carried = self.sync.carried().clone();
+                let mut left = carried.count;
+                let slots = self.quickcraft_slots.iter().copied().collect::<Vec<_>>();
+                let each = match self.quickcraft_type {
+                    0 => carried.count / (slots.len().max(1) as i32),
+                    1 => 1,
+                    2 => carried.max_stack_size()?,
+                    _ => 0,
+                };
+                for slot in slots {
+                    let source = self.slot(slot, inventory);
+                    if !self.may_place(slot, &carried)?
+                        || !source.is_empty()
+                            && (source.count > carried.max_stack_size()?
+                                || !source.same_item_same_components(&carried)?)
+                        || self.quickcraft_type != 2
+                            && carried.count < self.quickcraft_slots.len() as i32
+                    {
+                        continue;
+                    }
+                    let count = (each + source.count).min(limit(&carried)?);
+                    left -= count - source.count;
+                    self.put_slot(slot, counted(&carried, count), inventory)?;
+                }
+                self.sync.set_carried(counted(&carried, left));
+                self.reset_quickcraft();
+            }
+            _ => self.reset_quickcraft(),
         }
         Ok(())
     }
@@ -467,7 +846,7 @@ mod tests {
             changed_slots: BTreeMap::new(),
             carried: ItemStack::empty(),
         };
-        menu.prepare_click(&packet, inv)?.commit(menu, inv)
+        menu.prepare_click(&packet, inv, false)?.commit(menu, inv)
     }
     #[test]
     fn borrowed_inventory_shift_result_and_disconnected_close_flow() -> Result<()> {
@@ -504,7 +883,7 @@ mod tests {
             changed_slots: BTreeMap::new(),
             carried: ItemStack::empty(),
         };
-        let no_capacity = menu.prepare_click(&packet, &full)?;
+        let no_capacity = menu.prepare_click(&packet, &full, false)?;
         assert!(no_capacity
             .outcome()
             .events
@@ -552,7 +931,7 @@ mod tests {
         Ok(())
     }
     #[test]
-    fn stale_inventory_plan_and_unsupported_mode_do_not_mutate_live_state() -> Result<()> {
+    fn stale_inventory_plan_and_bundle_boundary_do_not_mutate_live_state() -> Result<()> {
         let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
         let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
         let mut inv = PlayerInventory::default();
@@ -577,7 +956,7 @@ mod tests {
             changed_slots: BTreeMap::new(),
             carried: ItemStack::empty(),
         };
-        let plan = menu.prepare_click(&packet, &inv)?;
+        let plan = menu.prepare_click(&packet, &inv, false)?;
         assert!(plan
             .outcome()
             .events
@@ -588,9 +967,199 @@ mod tests {
         assert!(plan.commit(&mut menu, &mut inv).is_err());
         assert_eq!(menu, before);
         assert_eq!(inv.slot(9).unwrap().count, 1);
-        packet.kind = ClickType::Swap;
-        assert!(menu.prepare_click(&packet, &inv).is_err());
+        packet.kind = ClickType::Pickup;
+        inv.set_slot_authoritative(9, item("bundle", 1));
+        assert!(menu.prepare_click(&packet, &inv, false).is_err());
         assert_eq!(menu, before);
+        Ok(())
+    }
+    fn custom_click(
+        menu: &mut SmithingMenu,
+        inv: &mut PlayerInventory,
+        slot: i16,
+        button: i8,
+        kind: ClickType,
+        creative: bool,
+    ) -> Result<SmithingActionOutcome> {
+        let packet = ContainerClick {
+            window_id: 7,
+            state_id: menu.sync().state_id(),
+            slot,
+            button,
+            kind,
+            changed_slots: BTreeMap::new(),
+            carried: ItemStack::empty(),
+        };
+        menu.prepare_click(&packet, inv, creative)?
+            .commit(menu, inv)
+    }
+    #[test]
+    fn drag_pickall_offhand_swap_creative_clone_and_result_throw_flow() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        inv.set_slot_authoritative(30, item("stone", 99));
+        menu.initialize(&inv)?;
+        click(&mut menu, &mut inv, 25, ClickType::QuickMove)?;
+        assert!(inv.slot(30).unwrap().is_empty());
+        assert_eq!(inv.slot(36).unwrap().count, 64);
+        assert_eq!(inv.slot(37).unwrap().count, 35);
+        inv.set_slot_authoritative(36, ItemStack::empty());
+        inv.set_slot_authoritative(37, ItemStack::empty());
+        inv.set_slot_authoritative(9, item("netherite_upgrade_smithing_template", 6));
+        click(&mut menu, &mut inv, 4, ClickType::Pickup)?;
+        custom_click(&mut menu, &mut inv, -999, 0, ClickType::QuickCraft, false)?;
+        custom_click(&mut menu, &mut inv, 0, 1, ClickType::QuickCraft, false)?;
+        custom_click(&mut menu, &mut inv, 5, 1, ClickType::QuickCraft, false)?;
+        custom_click(&mut menu, &mut inv, 3, 1, ClickType::QuickCraft, false)?; // result cannot receive dragged items
+        custom_click(&mut menu, &mut inv, -999, 2, ClickType::QuickCraft, false)?;
+        assert_eq!(menu.station().inputs()[0].count, 3);
+        assert_eq!(inv.slot(10).unwrap().count, 3);
+        assert!(menu.sync().carried().is_empty());
+        click(&mut menu, &mut inv, 5, ClickType::Pickup)?;
+        inv.set_slot_authoritative(11, item("netherite_upgrade_smithing_template", 2));
+        custom_click(&mut menu, &mut inv, 5, 0, ClickType::PickupAll, false)?;
+        assert_eq!(menu.sync().carried().count, 8);
+        assert!(menu.station().inputs()[0].is_empty());
+        assert!(inv.slot(11).unwrap().is_empty());
+        let dropped = custom_click(&mut menu, &mut inv, -999, 0, ClickType::Pickup, false)?;
+        assert_eq!(dropped.drops[0].stack.count, 8);
+        inv.set_slot_authoritative(36, item("netherite_upgrade_smithing_template", 2));
+        custom_click(&mut menu, &mut inv, 0, 0, ClickType::Swap, false)?;
+        inv.set_slot_authoritative(45, item("netherite_upgrade_smithing_template", 1));
+        custom_click(&mut menu, &mut inv, 0, 40, ClickType::Swap, false)?;
+        assert_eq!(menu.station().inputs()[0].count, 1);
+        assert_eq!(inv.slot(45).unwrap().count, 2);
+        inv.set_slot_authoritative(10, item("diamond_sword", 1));
+        inv.set_slot_authoritative(11, item("netherite_ingot", 1));
+        click(&mut menu, &mut inv, 5, ClickType::QuickMove)?;
+        click(&mut menu, &mut inv, 6, ClickType::QuickMove)?;
+        custom_click(&mut menu, &mut inv, 3, 2, ClickType::Clone, false)?;
+        assert!(menu.sync().carried().is_empty());
+        let cloned = custom_click(&mut menu, &mut inv, 3, 2, ClickType::Clone, true)?;
+        assert!(cloned
+            .events
+            .iter()
+            .all(|e| !matches!(e, SmithingMenuEvent::Effect(_))));
+        assert_eq!(
+            menu.sync().carried().item_id,
+            item("netherite_sword", 1).item_id
+        );
+        assert_eq!(menu.station().inputs()[0].count, 1);
+        custom_click(&mut menu, &mut inv, -999, 0, ClickType::Pickup, true)?;
+        let swapped = custom_click(&mut menu, &mut inv, 3, 1, ClickType::Swap, false)?;
+        assert_eq!(
+            inv.slot(37).unwrap().item_id,
+            item("netherite_sword", 1).item_id
+        );
+        assert!(matches!(
+            &swapped.events[0],
+            SmithingMenuEvent::Effect(SmithingEffect::CraftedBy { amount: 1, .. })
+        ));
+        assert!(menu.station().result().is_empty());
+        inv.set_slot_authoritative(9, item("netherite_upgrade_smithing_template", 1));
+        inv.set_slot_authoritative(10, item("diamond_sword", 1));
+        inv.set_slot_authoritative(11, item("netherite_ingot", 1));
+        for slot in 4..7 {
+            click(&mut menu, &mut inv, slot, ClickType::QuickMove)?;
+        }
+        let thrown = custom_click(&mut menu, &mut inv, 3, 1, ClickType::Throw, false)?;
+        let drop_event = thrown
+            .events
+            .iter()
+            .position(|e| matches!(e, SmithingMenuEvent::Drop { index: 0 }))
+            .unwrap();
+        let world_event = thrown
+            .events
+            .iter()
+            .position(|e| {
+                matches!(
+                    e,
+                    SmithingMenuEvent::Effect(SmithingEffect::LevelEvent { event: 1044, .. })
+                )
+            })
+            .unwrap();
+        assert!(world_event < drop_event);
+        assert_eq!(
+            thrown.drops[0].stack.item_id,
+            item("netherite_sword", 1).item_id
+        );
+        assert!(menu.station().inputs().iter().all(ItemStack::is_empty));
+        Ok(())
+    }
+    #[test]
+    fn pickup_all_excludes_matching_derived_result() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        menu.station
+            .set_input(0, item("netherite_upgrade_smithing_template", 1))?;
+        let mut base = item("diamond_sword", 1);
+        base.components.push(crate::inventory::Component {
+            type_id: 1,
+            data: vec![64],
+        });
+        menu.station.set_input(1, base)?;
+        menu.station.set_input(2, item("netherite_ingot", 1))?;
+        inv.set_slot_authoritative(9, counted(menu.station().result(), 2));
+        menu.initialize(&inv)?;
+        custom_click(&mut menu, &mut inv, 4, 1, ClickType::Pickup, false)?;
+        assert_eq!(menu.sync().carried().count, 1);
+        let gathered = custom_click(&mut menu, &mut inv, 5, 0, ClickType::PickupAll, false)?;
+        assert_eq!(menu.sync().carried().count, 2);
+        assert_eq!(menu.station().result().count, 1);
+        assert!(menu.station().inputs().iter().all(|s| s.count == 1));
+        assert!(gathered
+            .events
+            .iter()
+            .all(|e| !matches!(e, SmithingMenuEvent::Effect(_))));
+        Ok(())
+    }
+    #[test]
+    fn alive_close_interleaves_raw_insertions_and_overflow_drops_per_owned_stack() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        for slot in 9..45 {
+            inv.set_slot_authoritative(slot, item("stone", 64));
+        }
+        inv.set_slot_authoritative(36, item("netherite_upgrade_smithing_template", 63));
+        inv.set_slot_authoritative(37, item("netherite_ingot", 63));
+        menu.station
+            .set_input(0, item("netherite_upgrade_smithing_template", 3))?;
+        menu.station.set_input(1, item("diamond_sword", 1))?;
+        menu.station.set_input(2, item("netherite_ingot", 2))?;
+        menu.sync
+            .set_carried(item("netherite_upgrade_smithing_template", 2));
+        let close = menu
+            .prepare_close(&inv, MenuCloseContext::AliveConnected)?
+            .commit(&mut menu, &mut inv)?;
+        assert!(matches!(
+            close.events.as_slice(),
+            [
+                SmithingMenuEvent::Sync(SyncEvent::Packet(_)),
+                SmithingMenuEvent::Drop { index: 0 },
+                SmithingMenuEvent::Drop { index: 1 },
+                SmithingMenuEvent::Drop { index: 2 },
+                SmithingMenuEvent::Sync(SyncEvent::Packet(_)),
+                SmithingMenuEvent::Drop { index: 3 }
+            ]
+        ));
+        assert_eq!(
+            close
+                .drops
+                .iter()
+                .map(|d| d.stack.count)
+                .collect::<Vec<_>>(),
+            [1, 3, 1, 1]
+        );
+        assert_eq!(
+            close.drops[2].stack.item_id,
+            item("diamond_sword", 1).item_id
+        ); // never the netherite preview
+        assert_eq!(inv.slot(36).unwrap().count, 64);
+        assert_eq!(inv.slot(37).unwrap().count, 64);
+        assert!(close.drops.iter().all(|d| !d.around && !d.trace_item));
         Ok(())
     }
 }

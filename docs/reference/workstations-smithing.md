@@ -11,7 +11,8 @@ Main call is claimed by this ledger.
 - Inspected classes: `SmithingMenu` (`crt`), `ItemCombinerMenu` (`cqx`, including
   anonymous result/input containers), `RecipeCraftingHolder` (`crk`),
   `ResultContainer` (`crl`), `SmithingTransformRecipe` (`czt`) and
-  `SmithingTrimRecipe` (`czu`). Raw disassembly and Java artifacts stay outside
+  `SmithingTrimRecipe` (`czu`), `AbstractContainerMenu` (`cpu`), `Slot` (`crq`)
+  and player `Inventory` (`cmw`). Raw disassembly and Java artifacts stay outside
   the repository.
 
 ## Source facts and bounded implementation
@@ -89,7 +90,8 @@ The broad `inventory.4`, `crafting.2` and `crafting.5` deliveries remain partial
 
 `src/container_workstation_smithing.rs` connects the state to borrowed canonical
 `PlayerInventory` and shared `MenuSync`. `SmithingMenu.prepare_click` accepts
-PICKUP/QUICK_MOVE, prepares cursor/slot changes and ordered smithing callbacks,
+all seven protocol click modes and the actual player creative flag, prepares
+cursor/slot changes and ordered smithing callbacks,
 and computes prediction/state-ID synchronization without mutating live state.
 Its plan checks the complete menu snapshot, nonreused UI instance identity, checked
 monotonic revision and borrowed inventory before staging and again before commit.
@@ -97,22 +99,36 @@ The host inspects the single ordered effect/sync event stream and drops, stages 
 commits once, and dispatches the ordered sync events. The adapter never awards
 recipes, advances criteria, spawns items or selects a world position itself.
 
-The bounded adapter supports left/right pickup, cursor outside drops, ingredient
-shift routing, main/hotbar transfers, reverse output insertion and repeated
+The adapter supports left/right pickup, cursor outside drops, ingredient shift
+routing, repeated main/hotbar transfers, reverse output insertion and repeated
 smithing while the same result item remains available. Full player inventory
-leaves inputs and callbacks untouched. Bundle click overrides and SWAP, CLONE,
-THROW, QUICK_CRAFT and PICKUP_ALL currently fail before mutation. This explicit
-limit is why the adapter is not claimed as a complete smithing menu delivery.
+leaves inputs and callbacks untouched. SWAP covers hotbar and actual offhand,
+including input slot limits and inventory-return/overflow behavior; output swap
+to an empty hotbar/offhand installs that output before `onTake`. Creative CLONE
+copies the preview without ingredient consumption or smithing callbacks; the
+actual creative flag gates it. THROW consumes a result normally, then records
+its actual drop after the crafted/recipe/world callbacks. QUICK_CRAFT preserves
+the source drag state machine, single-target pickup branch and creative fill
+mode. PICKUP_ALL uses two passes, skips overstacked sources and excludes the
+derived result container. Bundle item-click overrides still require their real
+feature/component owner and fail before live mutation.
 
 `prepare_close` stages the cursor first and owned input slots in order, using the
 actual alive/disconnected context supplied by Main. It excludes the preview.
 The host must publish a server-initiated close packet before those return/drop
-effects and transfer the old shared inventory baselines afterwards.
+effects and transfer the old shared inventory baselines afterwards. The adapter
+prepares cursor and each input separately so raw inventory insertion packets and
+overflow drops retain their actual per-stack interleaving. The one event stream
+includes `Drop { index }` references into the prepared drop list; each actual
+drop is staged/executed once at that position.
 
 Focused adapter checks cover actual native menu actions against a borrowed
 inventory, output placement and zero-count callback, no-capacity refusal,
 disconnected cursor/input conservation, stale inventory rejection and stale-ID
-full-state synchronization. This is an in-process native transaction check,
+full-state synchronization. Later focused flows exercise drag/pick-all item
+conservation, offhand and result hotbar swap, creative clone gating, ordered
+result throw, repeated overstacked main/hotbar transfers, result exclusion from
+pick-all, and mixed alive raw insertions/overflow drops. This is an in-process native transaction check,
 not a protocol socket/client or original-server gameplay observation. The
 central Main block-open, packet dispatch, callback owners and player-phase
 validity/close callsites remain pending the integration contract.
