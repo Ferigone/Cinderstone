@@ -8,6 +8,15 @@ set -eu
 : "${MC_DIFFICULTY:=easy}"
 : "${MC_ONLINE_MODE:=true}"
 : "${MC_RESOURCE_PACK_REQUIRED:=false}"
+: "${MC_MAX_PLAYERS:=20}"
+: "${MC_OP_PERMISSION_LEVEL:=4}"
+: "${MC_ENFORCE_WHITELIST:=false}"
+
+case "$MC_ENFORCE_WHITELIST" in
+    true) set -- --enforce-whitelist "$@" ;;
+    false) ;;
+    *) echo "MC_ENFORCE_WHITELIST must be true or false" >&2; exit 1 ;;
+esac
 
 case "$MC_RESOURCE_PACK_REQUIRED" in
     true) set -- --require-resource-pack "$@" ;;
@@ -53,6 +62,9 @@ exec /app/mc121-rust \
     --port "$MC_PORT" \
     --fixtures /app/fixtures/configuration.json \
     --world "$MC_DATA_DIR/world.json" \
+    --server-directory "${MC_SERVER_DIRECTORY:-$MC_DATA_DIR}" \
+    --max-players "$MC_MAX_PLAYERS" \
+    --op-permission-level "$MC_OP_PERMISSION_LEVEL" \
     --view-distance "$MC_VIEW_DISTANCE" \
     --difficulty "$MC_DIFFICULTY" \
     "$@"
