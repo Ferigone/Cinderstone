@@ -530,32 +530,29 @@ impl PlayerBodyHooks for BodyHooks<'_> {
             PlayerBodyPhase::PushEntities => self.push_players(m),
             PlayerBodyPhase::Pickup => {
                 self.players.gameplay.connection_item_phase(self.id)?;
-                let LivePlayers {
-                    registry,
-                    gameplay,
-                    item_runtime,
-                    containers,
-                    chunk_runtime,
-                    ..
-                } = &mut *self.players;
-                let mut frame = gameplay.frame_current(
-                    registry,
-                    &chunk_runtime.manager,
-                    true,
-                    self.region.context("body pickup requires loaded region")?,
-                );
-                let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
-                item_runtime.player_touch(
-                    PickupPlayer {
-                        entity_id: self.id,
-                        uuid: self.uuid,
-                        bounds: m.physical.bounds,
-                        alive: true,
-                        spectator: false,
-                        vehicle_bounds: None,
-                    },
-                    &mut host,
-                )?;
+                let pickup = PickupPlayer {
+                    entity_id: self.id, uuid: self.uuid, bounds: m.physical.bounds,
+                    alive: true, spectator: false, vehicle_bounds: None,
+                };
+                let candidates = {
+                    let LivePlayers { item_runtime, experience_runtime, .. } = &mut *self.players;
+                    item_runtime.native_pickup_candidates(pickup, |handle| Ok(experience_runtime.bounds(handle)))?
+                };
+                for handle in candidates {
+                    match self.players.item_runtime.entity_kind(handle) {
+                        Some(mc121_rust::runtime_entity_index::EntityKind::Item) => {
+                            let LivePlayers { registry, gameplay, item_runtime, containers, chunk_runtime, .. } = &mut *self.players;
+                            let mut frame = gameplay.frame_current(registry, &chunk_runtime.manager, true,
+                                self.region.context("body pickup requires loaded region")?);
+                            let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                            item_runtime.player_touch_item(handle, pickup, &mut host)?;
+                        }
+                        Some(mc121_rust::runtime_entity_index::EntityKind::ExperienceOrb) => {
+                            self.players.pickup_one_native_experience(handle, self.id, &m.physical, self.events)?;
+                        }
+                        _ => {}
+                    }
+                }
                 Ok(())
             }
             PlayerBodyPhase::FinishPlayerTick => {
@@ -638,6 +635,7 @@ impl LivePlayers {
             .remove(&id)
             .context("native body motion owner missing")?;
         let result = (|| -> Result<()> {
+            self.begin_native_experience_player_tick(id);
             let mut player = self
                 .registry
                 .get(id)

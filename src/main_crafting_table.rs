@@ -128,6 +128,9 @@ impl Server {
                 border,
             )?;
         }
+        if let Some(window) = players.furnaces.window_id(id) {
+            self.furnace_menu_action_locked(&mut world, &mut players, id, None, Some(window), true, now, border)?;
+        }
         self.close_inventory_menu_locked(&mut world, &mut players, id, now, border)?;
         let window = players.native_containers.allocate_window(id);
         let mut menu = CraftingTableMenu::new(window)?;

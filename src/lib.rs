@@ -14,6 +14,7 @@ pub mod crafting_table;
 pub mod creative_drop;
 pub mod density;
 pub mod entity;
+pub mod experience;
 pub mod entity_base;
 pub mod entity_move;
 pub mod entity_spatial;

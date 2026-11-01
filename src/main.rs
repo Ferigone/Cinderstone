@@ -83,6 +83,10 @@ mod main_item_use;
 mod main_player_body;
 mod main_block_entities;
 mod main_crafting_table;
+mod main_furnaces;
+mod main_furnace_notifications;
+mod main_server_timing;
+mod main_experience;
 mod main_block_ticks;
 mod main_redstone;
 mod main_player_motion_hooks;
@@ -341,6 +345,8 @@ struct SavedWorld {
     fire_ticks: Option<main_fire_simulation::SavedFireRuntime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_block_entities: Option<mc121_rust::native_block_entities::SavedNativeBlockEntities>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    experience_orbs: Vec<mc121_rust::experience::SavedExperienceOrb>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     block_ticks: Option<main_block_ticks::SavedBlockRuntime>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -382,6 +388,8 @@ struct LivePlayers {
     native_body_ready: BTreeSet<i32>,
     native_containers: main_block_entities::NativeContainerRuntime,
     crafting_tables: main_crafting_table::CraftingTableRuntime,
+    furnaces: main_furnaces::FurnaceRuntime,
+    experience_runtime: main_experience::MainExperienceRuntime,
     block_runtime: main_block_ticks::MainBlockRuntime,
     redstone_runtime: main_redstone::MainRedstoneRuntime,
     containers: BTreeMap<i32, SharedContainer>,
@@ -636,6 +644,8 @@ impl LivePlayers {
             native_body_ready: BTreeSet::new(),
             native_containers: main_block_entities::NativeContainerRuntime::default(),
             crafting_tables: main_crafting_table::CraftingTableRuntime::default(),
+            furnaces: main_furnaces::FurnaceRuntime::default(),
+            experience_runtime: main_experience::MainExperienceRuntime::default(),
             block_runtime: main_block_ticks::MainBlockRuntime::new(fresh_unedited),
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
             containers: BTreeMap::new(),
@@ -719,6 +729,7 @@ impl LivePlayers {
         Ok(())
     }
     fn remove_runtime_player(&mut self, id: i32) -> Result<()> {
+        self.experience_runtime.forget_player(id);
         self.player_motion_runtime.remove(id);
         self.player_food_runtime.remove(id);
         self.item_use_runtime.remove(id);
@@ -909,6 +920,7 @@ impl Server {
             .read(|menu| menu.inventory.clone())?;
         let inventory=players.native_containers.inventory_snapshot(id,&inventory);
         let inventory=players.crafting_tables.inventory_snapshot(id,&inventory);
+        let inventory=players.furnaces.inventory_snapshot(id,&inventory);
         let stats = players.gameplay.snapshot_player_stats(uuid)?;
         let mut lifecycle = players
             .player_lifecycle
@@ -1242,8 +1254,9 @@ impl Server {
         for id in admission_order {
             if players.player_motion_runtime.contains(id) {
                 if players.native_body_ready.contains(&id) {
-                    if let Err(error)=players.tick_native_player_body(id,&mut world,game_time,border,&self.entity_events) {
-                        eprintln!("{}",json!({"event":"native_player_body_failed","entity_id":id,"reason":format!("{error:#}")}));
+                    match players.tick_native_player_body(id,&mut world,game_time,border,&self.entity_events) {
+                        Ok(()) => players.finish_native_experience_player_tick(id, &self.entity_events)?,
+                        Err(error) => eprintln!("{}",json!({"event":"native_player_body_failed","entity_id":id,"reason":format!("{error:#}")})),
                     }
                 } else {
                     players.advance_native_player_listener_clock(id,&self.entity_events)?;
@@ -1820,16 +1833,24 @@ impl Server {
             item_runtime,
             chunk_runtime,
             revision,
+            registry,
+            observers,
+            chunk_transports,
+            experience_runtime,
             ..
         } = &mut *players;
-        item_runtime.publish_tracking_with_players(
+        item_runtime.publish_tracking_with_external(
             |chunk| {
                 chunk_runtime
                     .manager
                     .ticking_range()
                     .in_entity_ticking_range(chunk)
             },
-            |handle| {
+            |kind, handle| {
+                if kind == mc121_rust::runtime_entity_index::EntityKind::ExperienceOrb {
+                    return experience_runtime.publish_one(handle, registry, observers, chunk_transports, &self.entity_events);
+                }
+                ensure!(kind == mc121_rust::runtime_entity_index::EntityKind::Player, "unknown external sender owner");
                 let (position, body, metadata, head, equipment) = frames
                     .remove(&handle.id)
                     .context("shared sender references absent player frame")?;
@@ -1960,6 +1981,7 @@ impl Server {
                 .write()
                 .map_err(|_| anyhow!("player registry lock poisoned"))?;
             if self.shutting_down.load(Ordering::Acquire) {
+                self.close_furnaces_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_crafting_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_native_containers_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 let b=self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
@@ -2044,6 +2066,7 @@ impl Server {
                     fluid_shapes: Some(fluid_shapes),
                     fire_ticks: Some(fire_checkpoint),
                     native_block_entities: Some(world.native_block_entities().save(clock.game_time)?),
+                    experience_orbs: self.players.read().map_err(|_|anyhow!("player registry lock poisoned"))?.experience_runtime.snapshot()?,
                     block_ticks: Some(self.players.read().map_err(|_|anyhow!("player registry lock poisoned"))?.block_runtime.checkpoint(clock.game_time)),
                     level_random_position_value: random_position_value,
                 };
@@ -2130,10 +2153,14 @@ impl Server {
         if players.registry.get(id).is_none() {
             ensure!(!players.native_containers.has_open(id), "orphan native menu retained");
             ensure!(!players.crafting_tables.has_open(id), "orphan crafting menu retained");
+            ensure!(!players.furnaces.has_open(id), "orphan furnace menu retained");
             return Ok(());
         }
         if let Some(reason)=reason {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
+        }
+        if let Some(window)=players.furnaces.window_id(id) {
+            self.furnace_menu_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;
         }
         if let Some(window)=players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;
@@ -2197,6 +2224,7 @@ async fn main() -> Result<()> {
     // grass_block=9 and minecraft:plains biome=39. This is a flat fixture.
     let mut fixture_world = FlatWorld::new(0, 1, 10, 9, 39);
     let mut initial_clock = TickClock::default();
+    let mut initial_experience_orbs = Vec::new();
     let mut initial_weather = WeatherState::default();
     let mut initial_fluid_runtime = main_fluid_simulation::MainFluidRuntime::default();
     let mut initial_fluid_random = None;
@@ -2218,6 +2246,7 @@ async fn main() -> Result<()> {
         }
         fixture_world.apply_changes(&saved.changes)?;
         initial_clock = saved.clock.unwrap_or_default();
+        initial_experience_orbs = saved.experience_orbs;
         initial_block_ticks = saved.block_ticks;
         had_block_checkpoint = initial_block_ticks.is_some();
         if let Some(records)=saved.native_block_entities {
@@ -2419,6 +2448,8 @@ async fn main() -> Result<()> {
         entity_source = Some(restored.source);
     }
     players.entity_source = entity_source;
+    players.experience_runtime = main_experience::MainExperienceRuntime::restore(initial_experience_orbs, &mut players.item_runtime)?;
+    ensure!(players.experience_runtime.max_entity_id().is_none_or(|id| id < next_entity_id), "persisted XP orb exceeds the shared entity counter");
     if let Some(random) = initial_fluid_random {
         *players.item_runtime.world_random_mut() = random;
     }
@@ -2469,8 +2500,7 @@ async fn main() -> Result<()> {
         json!({"event":"listening","address":listener.local_addr()?.to_string(),
         "minecraft":"1.21","protocol":PROTOCOL,"mode":if server.options.online_mode {"online"} else if server.options.bind.is_loopback() {"offline-loopback"} else {"offline"}})
     );
-    let mut ticks = time::interval_at(Instant::now() + TICK_DURATION, TICK_DURATION);
-    ticks.set_missed_tick_behavior(time::MissedTickBehavior::Burst);
+    let mut ticks = main_server_timing::NativeServerTiming::new()?;
     let mut latency_clock = LatencyUpdateClock::default();
     let mut autosave_ticks = 0_u32;
     let mut server_tick_count = 0_i32;
@@ -2481,7 +2511,10 @@ async fn main() -> Result<()> {
     tokio::pin!(shutdown);
     loop {
         tokio::select! {
-            _ = ticks.tick() => {
+            overload = ticks.next_tick() => {
+                if let Some(overload) = overload? {
+                    eprintln!("{}", json!({"event":"server_tick_overload", "behind_ms":overload.behind_ms, "skipped_deadline_ticks":overload.skipped_ticks}));
+                }
                 server_tick_count=server_tick_count.wrapping_add(1);
                 // MinecraftServer.tickChildren timeSync precedes aqu.tick;
                 // aqu then runs border, weather and tickTime in that order.
@@ -2502,6 +2535,8 @@ async fn main() -> Result<()> {
                 }
                 server.drain_world_interaction_phase().await?;
                 server.tick_item_world().await?;
+                // XP and Item bodies share the actual level tick order above.
+                server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
                 server.publish_pending_block_acknowledgments()?;
                 server.send_chunk_phase().await?;
@@ -3308,6 +3343,7 @@ async fn play(
                     0x36 => { let hand=fields.varint()?; fields.finish()?; server.animate(entity_id, hand)?; },
                     0x0e => {
                         let click=ContainerClick::decode(&packet.payload)?;
+                        if server.click_native_furnace(entity_id,&click).await? {continue;}
                         if server.click_native_crafting_table(entity_id,&click).await? {continue;}
                         if server.click_native_container(entity_id,&click).await? {continue;}
                         let result=server.execute_menu_action(entity_id,&container,|menu|menu.click(&click,gamemode==1,&recipe_context),None).await;
@@ -3315,6 +3351,7 @@ async fn play(
                     },
                     0x0f => {
                         let window=fields.u8()?; fields.finish()?;
+                        if server.close_native_furnace(entity_id,window,false).await? {continue;}
                         if server.close_native_crafting_table(entity_id,window,false).await? {continue;}
                         if server.close_native_container(entity_id,window,false).await? {continue;}
                         if window==0 {
@@ -3372,6 +3409,10 @@ async fn play(
                         let cursor=[fields.f32()?,fields.f32()?,fields.f32()?]; fields.bool()?;
                         let sequence=fields.varint()?; fields.finish()?;
                         if sequence<0 || !(0..=5).contains(&face) || !cursor.iter().all(|v| v.is_finite()) { bail!("invalid placement request"); }
+                        if teleport_confirmed && server.use_native_furnace(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
                         if teleport_confirmed && server.use_native_crafting_table(entity_id,hand,target).await? {
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                             continue;

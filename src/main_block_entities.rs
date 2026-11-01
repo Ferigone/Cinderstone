@@ -97,7 +97,7 @@ impl Server {
         border: CollisionBorder,
     ) -> Result<()> {
         ensure!(
-            !players.native_containers.has_open(id) && !players.crafting_tables.has_open(id),
+            !players.native_containers.has_open(id) && !players.crafting_tables.has_open(id) && !players.furnaces.has_open(id),
             "close actual native menu before InventoryMenu cleanup"
         );
         let Some(player) = players.registry.get(id).cloned() else {
@@ -286,6 +286,9 @@ impl Server {
                 now,
                 border,
             )?;
+        }
+        if let Some(window) = players.furnaces.window_id(id) {
+            self.furnace_menu_action_locked(&mut world, &mut players, id, None, Some(window), true, now, border)?;
         }
         self.close_inventory_menu_locked(&mut world, &mut players, id, now, border)?;
         let next = players.native_containers.allocate_window(id);

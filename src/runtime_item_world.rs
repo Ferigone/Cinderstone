@@ -142,6 +142,8 @@ pub struct RuntimeItemWorld<'a, R: RandomSource, H: RuntimeItemHost> {
     fluid_shape_cache: Option<&'a mut FluidShapeCache>,
     rain_exposure: Option<&'a mut dyn RainExposure>,
     item_move_damage: Option<ItemMoveDamageContext<'a>>,
+    experience_orb: bool,
+    orb_move_health: Option<&'a mut i32>,
 }
 impl<'a, R: RandomSource, H: RuntimeItemHost> RuntimeItemWorld<'a, R, H> {
     pub fn new(
@@ -173,7 +175,33 @@ impl<'a, R: RandomSource, H: RuntimeItemHost> RuntimeItemWorld<'a, R, H> {
             fluid_shape_cache: None,
             rain_exposure: None,
             item_move_damage: None,
+            experience_orb: false,
+            orb_move_health: None,
         })
+    }
+    /// The inherited Entity base/move implementation with the actual XP-orb
+    /// dimensions and its empty doWaterSplashEffect override. This does not
+    /// create an ItemState or substitute an item inventory/health owner.
+    pub fn new_experience_orb(
+        world: &'a mut RuntimeWorld,
+        state: &EntityPhysicalState,
+        random: &'a mut R,
+        host: &'a mut H,
+        facts: ItemWorldFacts,
+        entities: &'a [CollisionEntity],
+    ) -> Result<Self> {
+        ensure!(facts.minimum_build_height == MIN_Y, "runtime XP build-height facts mismatch");
+        ensure!(state.width == 0.5 && state.height == 0.5 && state.eye_height == 0.425f32,
+            "provider requires the actual ExperienceOrb dimensions");
+        Ok(Self { world, random, host, facts, entities,
+            actor: CollisionActor { entity_id: state.entity_id, position: state.position_vec() },
+            fluid_shape_cache: None, rain_exposure: None, item_move_damage: None,
+            experience_orb: true, orb_move_health: None })
+    }
+    pub fn with_experience_orb_health(mut self, health: &'a mut i32) -> Result<Self> {
+        ensure!(self.experience_orb, "XP health supplied to an item world");
+        self.orb_move_health = Some(health);
+        Ok(self)
     }
     /// The same observed process-wide cache must be retained across items,
     /// ticks and dimensions. Omitting it keeps water-ray queries unsupported.
@@ -347,6 +375,7 @@ impl<R: RandomSource, H: RuntimeItemHost> EntityBaseWorld for RuntimeItemWorld<'
         })
     }
     fn water_splash(&mut self, state: &mut EntityPhysicalState) -> Result<()> {
+        if self.experience_orb { return Ok(()); }
         ensure!(
             !self.facts.has_passengers,
             "item splash controlling-passenger context unavailable"
@@ -593,6 +622,20 @@ impl<R: RandomSource, H: RuntimeItemHost> EntityMoveWorld for RuntimeItemWorld<'
                     if callbacks.entity_inside == "dfl" {
                         let amount = fire_inside_damage(block)?
                             .context("unported BaseFireBlock entityInside type")?;
+                        if self.experience_orb {
+                            let health = self.orb_move_health.as_deref_mut()
+                                .context("fire requires actual mutable XP orb health")?;
+                            if !state.fire_immune {
+                                state.remaining_fire_ticks = state.remaining_fire_ticks.wrapping_add(1);
+                                if state.remaining_fire_ticks == 0 && state.remaining_fire_ticks < 160 {
+                                    state.remaining_fire_ticks = 160;
+                                }
+                            }
+                            state.hurt_marked = true;
+                            *health = (*health as f32 - amount) as i32;
+                            if *health <= 0 { state.removed = true; }
+                            continue;
+                        }
                         let damage = self.item_move_damage.take().context(
                             "fire entityInside requires the canonical mutable item stack/health",
                         )?;
@@ -704,6 +747,7 @@ impl<R: RandomSource, H: RuntimeItemHost> FullItemWorld for RuntimeItemWorld<'_,
         health: &mut i32,
         movement: Vec3,
     ) -> Result<()> {
+        ensure!(!self.experience_orb, "XP must use its physical/health owner, not ItemEntity.move");
         self.sync_actor(state)?;
         // Reborrow the genuine backend/RNG/capabilities for exactly this move.
         // The canonical item context cannot outlive its physical move call.
@@ -720,6 +764,8 @@ impl<R: RandomSource, H: RuntimeItemHost> FullItemWorld for RuntimeItemWorld<'_,
                 .as_mut()
                 .map(|exposure| &mut **exposure as &mut dyn RainExposure),
             item_move_damage: Some(ItemMoveDamageContext { stack, health }),
+            experience_orb: false,
+            orb_move_health: None,
         };
         let result = entity_move::move_entity(
             state,

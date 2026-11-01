@@ -33,6 +33,9 @@ impl SessionChunkTransport {
     pub fn on_ack(&mut self, desired: f32) {
         self.sender.on_ack(desired);
     }
+    pub fn entity_chunk_sent(&self, chunk: (i32, i32)) -> bool {
+        self.scheduled.contains(&chunk) && !self.sender.is_pending(chunk)
+    }
     pub fn queue_view(
         &mut self,
         next: entity_tracking::ChunkView,

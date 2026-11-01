@@ -301,6 +301,145 @@ impl RuntimeEntities {
     pub fn item_count(&self) -> usize {
         self.items.len()
     }
+    pub fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind> {
+        self.index.get(handle).map(|entry| entry.kind)
+    }
+    /// A temporary preflight copy contains index ownership facts only. The
+    /// caller must discard it and commit against the actual exclusive owner.
+    pub fn prepare_experience_index(&self) -> Result<RuntimeEntityIndex> {
+        self.index.snapshot_for_preparation()
+    }
+    pub fn experience_chunk_visibility(&self, chunk: (i32, i32)) -> Visibility {
+        self.chunk_visibility
+            .get(&chunk)
+            .copied()
+            .unwrap_or(Visibility::Hidden)
+    }
+    pub fn experience_visibility_at(&self, position: Vec3) -> Visibility {
+        let (x, _, z) =
+            crate::entity_spatial::section_coordinates(crate::entity_spatial::section_at(position));
+        self.experience_chunk_visibility((x, z))
+    }
+    /// XP merge/search uses the same live class index as Item/Player queries.
+    pub fn query_experience_orbs(
+        &mut self,
+        bounds: Aabb,
+        xp_bounds: impl FnMut(EntityHandle) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        self.index
+            .query(bounds, Some(EntityKind::ExperienceOrb), xp_bounds)
+    }
+    /// Validate an external XP owner's IDs before its inventory/RNG commit.
+    /// This is a shared-index capacity check, not an identity reservation.
+    pub fn validate_experience_orb_registration_batch(
+        &self,
+        ids: impl IntoIterator<Item = i32>,
+    ) -> Result<()> {
+        self.index.validate_registration_batch(ids)
+    }
+    /// The host keeps the physical state, RNG and replication owner. Only the
+    /// immutable generation handle and actual section membership live here.
+    pub fn register_experience_orb(&mut self, id: i32, position: Vec3) -> Result<EntityHandle> {
+        ensure!(
+            position.x.is_finite() && position.y.is_finite() && position.z.is_finite(),
+            "nonfinite experience orb position"
+        );
+        let visibility = &self.chunk_visibility;
+        let handle =
+            self.index
+                .register(id, EntityKind::ExperienceOrb, position, false, |chunk| {
+                    visibility
+                        .get(&chunk)
+                        .copied()
+                        .unwrap_or(Visibility::Hidden)
+                })?;
+        let visibility = self
+            .index
+            .visibility(handle)
+            .context("registered experience orb section missing")?;
+        if visibility.accessible() {
+            self.tracking_order.insert(id, handle);
+        }
+        if visibility.ticking() {
+            self.ticks.add(id, handle);
+        }
+        Ok(handle)
+    }
+    /// Call at the XP entity's actual setPosRaw/onMove boundary. Bounds are
+    /// supplied by its physical owner to queries; no stale bounds copy exists.
+    pub fn move_experience_orb(&mut self, handle: EntityHandle, position: Vec3) -> Result<()> {
+        ensure!(
+            position.x.is_finite() && position.y.is_finite() && position.z.is_finite(),
+            "nonfinite experience orb position"
+        );
+        let entry = self
+            .index
+            .get(handle)
+            .context("experience orb handle is not registered")?;
+        ensure!(
+            entry.kind == EntityKind::ExperienceOrb,
+            "expected experience orb handle"
+        );
+        let visibility = &self.chunk_visibility;
+        if let Some(transition) = self.index.position_changed(handle, position, |chunk| {
+            visibility
+                .get(&chunk)
+                .copied()
+                .unwrap_or(Visibility::Hidden)
+        })? {
+            if transition.was_ticking() != transition.is_ticking() {
+                if transition.is_ticking() {
+                    self.ticks.add(handle.id, handle);
+                } else {
+                    self.ticks.remove(handle.id);
+                }
+            }
+            if transition.previous.accessible() != transition.current.accessible() {
+                if transition.current.accessible() {
+                    self.tracking_order.insert(handle.id, handle);
+                } else {
+                    self.tracking_order.remove(handle.id);
+                }
+            }
+        }
+        Ok(())
+    }
+    /// A stale generation cannot remove an entity which reused the same ID.
+    /// Packet removal and XP gameplay callbacks belong to the external owner.
+    pub fn remove_experience_orb(&mut self, handle: EntityHandle) -> Result<()> {
+        let Some(entry) = self.index.get(handle) else {
+            return Ok(());
+        };
+        ensure!(
+            entry.kind == EntityKind::ExperienceOrb,
+            "expected experience orb handle"
+        );
+        self.index.remove(handle);
+        self.ticks.remove(handle.id);
+        self.tracking_order.remove(handle.id);
+        Ok(())
+    }
+    pub fn experience_orb_visibility(&self, handle: EntityHandle) -> Option<Visibility> {
+        self.index
+            .get(handle)
+            .filter(|entry| entry.kind == EntityKind::ExperienceOrb)
+            .and_then(|_| self.index.visibility(handle))
+    }
+    pub fn experience_orb_is_ticking(&self, handle: EntityHandle) -> bool {
+        self.entity_kind(handle) == Some(EntityKind::ExperienceOrb)
+            && self.ticks.get(handle.id) == Some(handle)
+    }
+    /// The same insertion-ordered level list used by item/player simulation.
+    /// The external XP owner must retain this sequence rather than sort by ID.
+    pub fn level_tick_entries(&self) -> impl Iterator<Item = (EntityHandle, EntityKind)> + '_ {
+        self.ticks
+            .ordered_entries()
+            .filter_map(|(_, handle)| self.index.get(handle).map(|entry| (handle, entry.kind)))
+    }
+    pub fn ticking_experience_orbs(&self) -> impl Iterator<Item = EntityHandle> + '_ {
+        self.level_tick_entries()
+            .filter_map(|(handle, kind)| (kind == EntityKind::ExperienceOrb).then_some(handle))
+    }
     /// Preserve EntitySectionStorage query order for the Player-only push
     /// predicate. The caller supplies current authoritative Player AABBs.
     pub fn native_body_query(
@@ -503,6 +642,15 @@ impl RuntimeEntities {
                     state,
                     (transition.previous, transition.current),
                 )?;
+            } else if transition.entity.kind == EntityKind::ExperienceOrb
+                && transition.previous.accessible() != transition.current.accessible()
+            {
+                let handle = transition.entity.handle;
+                if transition.current.accessible() {
+                    self.tracking_order.insert(handle.id, handle);
+                } else {
+                    self.tracking_order.remove(handle.id);
+                }
             }
         }
         Ok(())
@@ -529,12 +677,36 @@ impl RuntimeEntities {
     }
     pub fn publish_tracking_with_players(
         &mut self,
-        mut in_entity_ticking_range: impl FnMut((i32, i32)) -> bool,
+        in_entity_ticking_range: impl FnMut((i32, i32)) -> bool,
         mut publish_player: impl FnMut(EntityHandle) -> Result<()>,
+    ) -> Result<()> {
+        self.publish_tracking_with_external(in_entity_ticking_range, |kind, handle| {
+            ensure!(
+                kind == EntityKind::Player,
+                "experience orb sender owner must use publish_tracking_with_external"
+            );
+            publish_player(handle)
+        })
+    }
+    /// Traverse the actual shared ChunkMap sender order. The callback handles
+    /// externally owned Players and ExperienceOrbs at their original positions
+    /// among Item senders; it must not re-enter this RuntimeEntities borrow.
+    pub fn publish_tracking_with_external(
+        &mut self,
+        mut in_entity_ticking_range: impl FnMut((i32, i32)) -> bool,
+        mut publish_external: impl FnMut(EntityKind, EntityHandle) -> Result<()>,
     ) -> Result<()> {
         for handle in self.tracking_order.values() {
             let Some(tracked) = self.tracking.get_mut(&handle.id) else {
-                publish_player(handle)?;
+                let entry = self
+                    .index
+                    .get(handle)
+                    .context("external tracker handle is stale")?;
+                ensure!(
+                    entry.kind != EntityKind::Item,
+                    "indexed item tracker is missing"
+                );
+                publish_external(entry.kind, handle)?;
                 continue;
             };
             ensure!(tracked.handle == handle, "stale tracked item handle");
@@ -615,87 +787,90 @@ impl RuntimeEntities {
             outbox,
         } = self;
         ticks
-            .try_for_each(|ticks, handle| -> Result<()> {
-                let Some(indexed) = index.get(handle) else {
-                    return Ok(());
-                };
-                if indexed.kind == EntityKind::Player {
-                    return host.level_player_tick(handle);
-                }
-                let Some(mut current) = items.remove(&handle.id) else {
-                    return Ok(());
-                };
-                ensure!(current.handle == handle, "stale item tick handle");
-                if current.state.removed {
-                    index.remove(handle);
-                    ticks.remove(handle.id);
-                    if tracking.remove(&handle.id).is_some() {
-                        tracking_order.remove(handle.id);
-                        let revision = next_revision(&mut outbox.revision)?;
-                        outbox.send(RuntimeEntityEvent::Removed {
-                            revision,
-                            entity_id: handle.id,
-                        });
-                    }
-                    return Ok(());
-                }
-                current.state.begin_level_tick();
-                // Before movement, base tick cannot replace a surviving item's
-                // stack. This read-only template supplies the unwatched fields;
-                // onMove overlays the *current* physical fields. Merge runs later.
-                let tracking_context = RefCell::new(current.state.clone());
-                let parts = RefCell::new(TickParts {
-                    index,
-                    ticks,
-                    items,
-                    tracking,
-                    tracking_order,
-                    chunk_visibility,
-                    sound_random,
-                    outbox,
-                    host,
-                });
-                let mut callbacks = ItemCallbacks {
-                    parts: &parts,
+            .try_for_each(|ticks, handle| {
+                let rain = rain
+                    .as_mut()
+                    .map(|exposure| &mut **exposure as &mut dyn RainExposure);
+                simulate_level_entry_inner(
+                    TickParts {
+                        index: &mut *index,
+                        ticks,
+                        items: &mut *items,
+                        tracking: &mut *tracking,
+                        tracking_order: &mut *tracking_order,
+                        chunk_visibility: &*chunk_visibility,
+                        sound_random: &mut *sound_random,
+                        outbox: &mut *outbox,
+                        host: &mut *host,
+                    },
                     handle,
-                    tracking_context: &tracking_context,
-                };
-                let outcome = (|| {
-                    let mut provider = RuntimeItemWorld::new(
-                        world,
-                        &current.state.physical,
-                        &mut current.random,
-                        &mut callbacks,
-                        facts,
-                        colliders,
-                    )?;
-                    if let Some(cache) = cache.as_deref_mut() {
-                        provider = provider.with_fluid_shape_cache(cache);
-                    }
-                    if let Some(exposure) = rain.as_mut() {
-                        provider = provider.with_rain_exposure(&mut **exposure);
-                    }
-                    current
-                        .state
-                        .tick_full_body(&mut provider, |state| parts.borrow_mut().merge(state))?;
-                    Ok::<(), anyhow::Error>(())
-                })();
-                {
-                    let mut parts = parts.borrow_mut();
-                    parts
-                        .host
-                        .observe_item_tick(&current.state, &current.random);
-                    // Keep the actual post-error state for diagnosis; completed
-                    // synchronous callbacks are not rolled back by a Rust error.
-                    if current.state.removed {
-                        parts.remove_item(handle, &current.state)?;
-                    } else {
-                        parts.items.insert(handle.id, current);
-                    }
-                }
-                outcome
+                    world,
+                    facts,
+                    colliders,
+                    cache.as_deref_mut(),
+                    rain,
+                )
             })
             .map_err(|error| anyhow::anyhow!("entity level tick: {error}"))
+    }
+
+    /// Begin the actual shared Item/Player/XP EntityTickList pass. The marker
+    /// preserves copy-on-write and nested-iteration rejection across separately
+    /// borrowed native body hosts. End this pass on error and unwind as well.
+    pub fn begin_level_tick_pass(&mut self) -> Result<Vec<EntityHandle>> {
+        self.ticks.begin_snapshot_pass().map_err(Into::into)
+    }
+    pub fn finish_level_tick_pass(&mut self) {
+        self.ticks.finish_snapshot_pass();
+    }
+    /// Run exactly the original body for a captured pass entry. Current tick
+    /// membership is deliberately not rechecked: a surviving generation removed
+    /// from ticking during the pass still belongs to its captured iteration.
+    pub fn simulate_level_entry_with_context(
+        &mut self,
+        handle: EntityHandle,
+        world: &mut RuntimeWorld,
+        facts: ItemWorldFacts,
+        colliders: &[CollisionEntity],
+        cache: Option<&mut FluidShapeCache>,
+        rain: Option<&mut dyn RainExposure>,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        ensure!(
+            self.ticks.is_iterating(),
+            "single entity tick requires the actual shared level pass"
+        );
+        let Self {
+            index,
+            ticks,
+            items,
+            tracking,
+            tracking_order,
+            chunk_visibility,
+            world_random: _,
+            sound_random,
+            outbox,
+        } = self;
+        simulate_level_entry_inner(
+            TickParts {
+                index,
+                ticks,
+                items,
+                tracking,
+                tracking_order,
+                chunk_visibility,
+                sound_random,
+                outbox,
+                host,
+            },
+            handle,
+            world,
+            facts,
+            colliders,
+            cache,
+            rain,
+        )
+        .map_err(|error| anyhow::anyhow!("entity level tick: {error}"))
     }
     /// Run for each actual connection-phase Player.aiStep, after world ticks.
     /// The caller preserves its real connection iteration order.
@@ -723,36 +898,86 @@ impl RuntimeEntities {
                 .map(|entry| entry.state.bounds))
         })?;
         for handle in candidates {
-            let Some(entry) = self.items.get_mut(&handle.id) else {
-                continue;
-            };
-            if entry.handle != handle {
-                continue;
-            }
-            if entry.state.removed {
-                continue;
-            }
-            let mut callbacks = PickupCallbacks {
-                player,
-                handle,
-                index: &mut self.index,
-                ticks: &mut self.ticks,
-                tracking: &mut self.tracking,
-                tracking_order: &mut self.tracking_order,
-                outbox: &mut self.outbox,
-                host,
-            };
-            let result = entry.state.try_pickup_with_callbacks(
-                player.uuid,
-                player.entity_id,
-                &mut callbacks,
-            );
-            if entry.state.removed {
-                self.items.remove(&handle.id);
-            }
-            result?;
+            self.player_touch_item(handle, player, host)?;
         }
         Ok(())
+    }
+    /// Player.aiStep's actual Item/XP search in section and insertion order.
+    /// The caller supplies XP AABBs directly from its authoritative store and
+    /// dispatches each returned handle synchronously before taking the next.
+    pub fn native_pickup_candidates(
+        &mut self,
+        player: PickupPlayer,
+        mut xp_bounds: impl FnMut(EntityHandle) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        if !player.alive || player.spectator {
+            return Ok(Vec::new());
+        }
+        let bounds = pickup_search_bounds(player);
+        let items = &self.items;
+        self.index
+            .query_with_kind(bounds, None, |handle, kind| match kind {
+                EntityKind::Player => Ok(None),
+                EntityKind::Item => Ok(items
+                    .get(&handle.id)
+                    .filter(|entry| entry.handle == handle && !entry.state.removed)
+                    .map(|entry| entry.state.bounds)),
+                EntityKind::ExperienceOrb => xp_bounds(handle),
+            })
+    }
+    /// The existing ItemEntity.playerTouch callback for one handle from the
+    /// mixed search. This preserves inventory/collection/discard ordering.
+    pub fn player_touch_item(
+        &mut self,
+        handle: EntityHandle,
+        player: PickupPlayer,
+        host: &mut impl RuntimeEntityHost,
+    ) -> Result<()> {
+        if !player.alive || player.spectator {
+            return Ok(());
+        }
+        let Some(indexed) = self.index.get(handle) else {
+            return Ok(());
+        };
+        ensure!(
+            indexed.kind == EntityKind::Item,
+            "expected item pickup handle"
+        );
+        let Some(entry) = self.items.get_mut(&handle.id) else {
+            return Ok(());
+        };
+        if entry.handle != handle || entry.state.removed {
+            return Ok(());
+        }
+        let mut callbacks = PickupCallbacks {
+            player,
+            handle,
+            index: &mut self.index,
+            ticks: &mut self.ticks,
+            tracking: &mut self.tracking,
+            tracking_order: &mut self.tracking_order,
+            outbox: &mut self.outbox,
+            host,
+        };
+        let result =
+            entry
+                .state
+                .try_pickup_with_callbacks(player.uuid, player.entity_id, &mut callbacks);
+        if entry.state.removed {
+            self.items.remove(&handle.id);
+        }
+        result?;
+        Ok(())
+    }
+}
+fn pickup_search_bounds(player: PickupPlayer) -> Aabb {
+    if let Some(vehicle) = player.vehicle_bounds {
+        player
+            .bounds
+            .minmax(vehicle)
+            .inflate(Vec3::new(1.0, 0.0, 1.0))
+    } else {
+        player.bounds.inflate(Vec3::new(1.0, 0.5, 1.0))
     }
 }
 struct PickupCallbacks<'a, H> {
@@ -869,6 +1094,77 @@ fn change_tracking(
         });
     }
     Ok(())
+}
+
+fn simulate_level_entry_inner<H: RuntimeEntityHost>(
+    mut parts: TickParts<'_, H>,
+    handle: EntityHandle,
+    world: &mut RuntimeWorld,
+    facts: ItemWorldFacts,
+    colliders: &[CollisionEntity],
+    cache: Option<&mut FluidShapeCache>,
+    rain: Option<&mut dyn RainExposure>,
+) -> Result<()> {
+    let Some(indexed) = parts.index.get(handle) else {
+        return Ok(());
+    };
+    match indexed.kind {
+        EntityKind::Player => return parts.host.level_player_tick(handle),
+        // An external owner must dispatch this entry in the same pass. The
+        // item adapter never fabricates an ItemState for an experience orb.
+        EntityKind::ExperienceOrb => return Ok(()),
+        EntityKind::Item => {}
+    }
+    let Some(mut current) = parts.items.remove(&handle.id) else {
+        return Ok(());
+    };
+    ensure!(current.handle == handle, "stale item tick handle");
+    if current.state.removed {
+        parts.unregister(handle)?;
+        return Ok(());
+    }
+    current.state.begin_level_tick();
+    // onMove overlays current physical fields on this pre-movement template.
+    let tracking_context = RefCell::new(current.state.clone());
+    let parts = RefCell::new(parts);
+    let mut callbacks = ItemCallbacks {
+        parts: &parts,
+        handle,
+        tracking_context: &tracking_context,
+    };
+    let outcome = (|| {
+        let mut provider = RuntimeItemWorld::new(
+            world,
+            &current.state.physical,
+            &mut current.random,
+            &mut callbacks,
+            facts,
+            colliders,
+        )?;
+        if let Some(cache) = cache {
+            provider = provider.with_fluid_shape_cache(cache);
+        }
+        if let Some(rain) = rain {
+            provider = provider.with_rain_exposure(rain);
+        }
+        current
+            .state
+            .tick_full_body(&mut provider, |state| parts.borrow_mut().merge(state))?;
+        Ok::<(), anyhow::Error>(())
+    })();
+    {
+        let mut parts = parts.borrow_mut();
+        parts
+            .host
+            .observe_item_tick(&current.state, &current.random);
+        // Retain completed synchronous effects and actual post-error state.
+        if current.state.removed {
+            parts.remove_item(handle, &current.state)?;
+        } else {
+            parts.items.insert(handle.id, current);
+        }
+    }
+    outcome
 }
 
 struct TickParts<'a, H> {

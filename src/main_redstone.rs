@@ -35,6 +35,7 @@ impl LivePlayers{
   self.block_runtime.prepare_halo(world,&self.chunk_runtime,(p.0.div_euclid(16),p.2.div_euclid(16)),now)?;
   let snapshots=self.registry.snapshot();let mut bodies=Vec::new();for v in &snapshots{if v.gamemode!=3{let d=player_physics::player_dimensions(v.metadata.pose,1.)?;bodies.push(Body{bounds:if let Some(body)=override_body.filter(|b|b.entity_id==v.entity_id){body.bounds}else{Aabb::player(Vec3::new(v.position.x,v.position.y,v.position.z),d.width,d.height)},living:true});}}
   bodies.extend(self.item_runtime.item_states().filter(|s|!s.removed).map(|s|Body{bounds:s.bounds,living:false}));
+  bodies.extend(self.experience_runtime.physical_states().filter(|s|!s.removed).map(|s|Body{bounds:s.bounds,living:false}));
   let Self{block_runtime,redstone_runtime,fluid_runtime,chunk_runtime,item_runtime,gameplay,world_interactions,entity_source,world_revision,random_block_ticks,..}=self;
   block_runtime.mark_used();if let Some(source)=entity_source.as_mut(){source.observe_block_scheduler_use();}let exclude=if let Action::Use(_,_,id)=action{id}else{None};
   let fluid=main_fluid_simulation::MainFluidHost{chunks:chunk_runtime,gameplay,interactions:world_interactions,entity_source,revision:world_revision,events,players:snapshots,active_items:item_runtime.item_count(),border,random_ticks:Some(random_block_ticks)};

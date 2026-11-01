@@ -177,6 +177,24 @@ impl<H: Copy> EntityTickList<H> {
         })
     }
 
+    /// Split-phase counterpart of try_for_each for a host that must release
+    /// its entity-store borrow between different native entity bodies. Handles
+    /// are captured from the actual iterated buffer; add/remove still trigger
+    /// the original copy-on-write rule until finish_snapshot_pass is called.
+    /// The host must clear the marker in its error/unwind finally boundary.
+    pub fn begin_snapshot_pass(&mut self) -> Result<Vec<H>, ConcurrentIteration> {
+        if self.iterated.is_some() {
+            return Err(ConcurrentIteration);
+        }
+        let handles = self.ordered_entries().map(|(_, handle)| handle).collect();
+        self.iterated = Some(self.active);
+        Ok(handles)
+    }
+
+    pub fn finish_snapshot_pass(&mut self) {
+        self.iterated = None;
+    }
+
     pub fn for_each(
         &mut self,
         mut visitor: impl FnMut(&mut Self, H),

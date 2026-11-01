@@ -20,12 +20,14 @@ pub struct EntityHandle {
 pub enum EntityKind {
     Player,
     Item,
+    ExperienceOrb,
 }
 impl EntityKind {
     fn class(self) -> u32 {
         match self {
             Self::Player => 1,
             Self::Item => 2,
+            Self::ExperienceOrb => 3,
         }
     }
 }
@@ -80,6 +82,36 @@ impl RuntimeEntityIndex {
     }
     pub fn entries(&self) -> impl Iterator<Item = IndexedEntity> + '_ {
         self.records.values().copied()
+    }
+    /// A transaction-local snapshot of actual handles, generations, section
+    /// visibility and insertion order. Physical state is still supplied by the
+    /// preparing host. This is not a second live index or a sorted-ID rebuild.
+    pub fn snapshot_for_preparation(&self) -> Result<Self> {
+        let records = self.records.clone();
+        let mut spatial = EntitySectionStorage::new(0);
+        let sections: std::collections::BTreeSet<_> =
+            records.values().map(|entry| entry.section).collect();
+        for key in sections {
+            let source = self
+                .spatial
+                .section(key)
+                .context("indexed entity section is missing")?;
+            let target = spatial.get_or_create_section(key, |_| source.visibility());
+            for &handle in source.handles() {
+                ensure!(
+                    records
+                        .get(&handle.id)
+                        .is_some_and(|entry| entry.handle == handle && entry.section == key),
+                    "stale section handle in index preparation"
+                );
+                target.add(handle, |class, h| is_instance(&records, class, h));
+            }
+        }
+        Ok(Self {
+            records,
+            spatial,
+            next_generation: self.next_generation,
+        })
     }
     /// Validate an exclusive owner's whole insertion batch before committing
     /// inventory or RNG changes. This does not reserve or publish identities.
@@ -226,17 +258,28 @@ impl RuntimeEntityIndex {
         kind: Option<EntityKind>,
         mut inspect: impl FnMut(EntityHandle) -> Result<Option<Aabb>>,
     ) -> Result<Vec<EntityHandle>> {
+        self.query_with_kind(bounds, kind, |handle, _kind| inspect(handle))
+    }
+    /// Query the same section/class storage while exposing the registered
+    /// entity class to its authoritative bounds owner. This avoids a second
+    /// kind map when a host owns more than one non-player entity store.
+    pub fn query_with_kind(
+        &mut self,
+        bounds: Aabb,
+        kind: Option<EntityKind>,
+        mut inspect: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
         let records = &self.records;
         self.spatial.query(
             bounds,
             kind.map(EntityKind::class),
             |class, h| is_instance(records, class, h),
             |handle| {
-                if records
+                if let Some(entry) = records
                     .get(&handle.id)
-                    .is_some_and(|entry| entry.handle == handle)
+                    .filter(|entry| entry.handle == handle)
                 {
-                    inspect(handle)
+                    inspect(handle, entry.kind)
                 } else {
                     Ok(None)
                 }
