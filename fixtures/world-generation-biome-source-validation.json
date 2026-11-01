@@ -1,0 +1,60 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "reviewed_source_commit": "27f8b224044188bf4f2964d83555ae2b6f49a126",
+  "base_master": "c998ba0f7666285cd21a0c16af99e817aab68948",
+  "checked_at_utc": "2026-11-01T21:23:30.425788+00:00",
+  "passed": true,
+  "commands": [
+    "cargo build --locked --bin mc121-rust",
+    "cargo test --locked --lib worldgen::climate::tests",
+    "cargo test --locked --lib worldgen::biome_source::tests",
+    "cargo test --locked --lib worldgen::generator::tests::retained_raw_erosion_matches_original_end_observations_before_and_after_noise -- --exact",
+    "python src/worldgen/validation/check_biome_source.py --oracle-dir <verified-original>"
+  ],
+  "log_sha256": {
+    "composed_source": "fb0dbdd8a8362c8d1201eb040cfd4b86d7cc3ef893f37f190dfdadfabb387b2f",
+    "top_material_composition": "d02f93579c15985c1d7903ad73f4e8633e43fd6b40ef2ed88490863573c03d7b"
+  },
+  "original_recheck": {
+    "ok": true,
+    "minecraft": "1.21",
+    "source_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "oracle_source_sha256": "f2456b342c3d4f1a536e2249683de384e7220f04ce9e237544a132d17b4cd91c",
+    "checks": [
+      {
+        "fixture": "world-generation-multinoise-parameters.json",
+        "matched_original": true,
+        "sha256": "75b8d0185473cf6ccec8aeef229be086d63e2049be534ee6dcf62739184bb523"
+      },
+      {
+        "fixture": "world-generation-biome-source-vectors.json",
+        "matched_original": true,
+        "sha256": "a06e769acbbcfe5e44fd9b8ff36daf5a851aa36aacf2e5b51c4117f91a3e8749"
+      }
+    ],
+    "scope": "Ordered original registry parameters and original source searches/thresholds only; native focused checks are separate."
+  },
+  "source_sha256": {
+    "src/worldgen/climate.rs": "fc2e065e673a3e77bed06b0529812b24eac0b88adbbab5a4b558a09879674556",
+    "src/worldgen/biome_source.rs": "6f8ea7459acc71c9a1beebcc3735150c5c6f1d60d55fcc5ee2bb09e72da38301",
+    "src/worldgen/generator.rs": "173ec316ab8a49686c651f420ab32bdb1d188de599c39299cc3d71973ebfdd9f",
+    "src/worldgen/mod.rs": "65933d23978e2be1d663c11a00d1caa003c90cf9f8702613987c6e3cb59d6266",
+    "src/worldgen/validation/WorldgenBiomeSourceOracle.java": "f2456b342c3d4f1a536e2249683de384e7220f04ce9e237544a132d17b4cd91c",
+    "src/worldgen/validation/check_biome_source.py": "adcf8360fa2f0dc02aeb3c1f985043333d237c09051e71877078b85525558f00",
+    "fixtures/world-generation-multinoise-parameters.json": "75b8d0185473cf6ccec8aeef229be086d63e2049be534ee6dcf62739184bb523",
+    "fixtures/world-generation-biome-source-vectors.json": "a06e769acbbcfe5e44fd9b8ff36daf5a851aa36aacf2e5b51c4117f91a3e8749"
+  },
+  "reviews": [
+    "Independent direct javap RTree geometry/order/pruning/overflow/history audit: no blocker.",
+    "Root retained-owner/error/End predicate review fixed incorrect NaN->highlands before publication; actual original NaN/inf/threshold-neighbor vectors now agree.",
+    "Reject ranged offset inputs because original ParameterPoint stores a scalar offset."
+  ],
+  "not_verified": [
+    "Actual BIOMES images/effective resolver and region status/dependency ownership",
+    "Dynamic/datapack or same-key overridden biome registry contents",
+    "Spawn search, nonempty Blender/beardifier/retrogen, carving/features/structures",
+    "Main integration, lighting/persistence/FULL",
+    "Legacy full-SURFACE caller-height defect is independently fixed in sourcee5ee6d7 pending its exact validation/merge"
+  ]
+}

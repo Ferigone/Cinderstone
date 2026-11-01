@@ -5,6 +5,8 @@
 //! owner and generation-status dependencies before publishing their output.
 pub mod aquifer;
 pub mod biome_context;
+pub mod biome_source;
+pub mod climate;
 pub mod biome_temperature;
 pub mod biome_zoom;
 pub mod generator;
@@ -21,3 +23,9 @@ pub use generator::{
 pub use biome_context::BuiltinBiomeSurfaceContext;
 pub use biome_temperature::BiomeTemperature;
 pub use biome_zoom::{BiomeZoom, QuartBiomeProvider};
+
+pub use biome_source::{
+    select_end_biome, BuiltinMultiNoiseBiomeSource, ClimateSampler, EndQuartProvider, ErosionSampler,
+    MultiNoisePreset, MultiNoiseQuartProvider,
+};
+pub use climate::{ClimateParameter, ClimateParameterList, ClimateParameterPoint, ClimateSearch};
