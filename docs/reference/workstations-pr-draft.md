@@ -40,10 +40,17 @@ Validation at source `7147da02c737360682386df4d73792cb8b03ae00`:
 
 - `cargo test --locked --lib workstation` passed the focused native flows.
 - `cargo build --locked --bin mc121-rust` passed.
-- Both commands also passed against current master
+- Both commands also passed against pinned master
   `404a5dab9c1b161b3587aa24e11703458c5a8edd` in a separate worktree with the exact
   source diff applied; no master merge or reserved Main edit.
 - The original-base all-target check found unchanged shared persistence-smoke
   initializers missing existing Options/Server fields. That shared test was not
   changed by this team.
 - No new protocol-client, live-menu or deployment validation is claimed.
+
+A later publication pass repeated both focused native flows and the full Main
+build against master `f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`, including its
+chat/session changes, in a separate source-overlay worktree. Both passed; no
+master merge or Main edit occurred. The source remains `7147da0`. The prepared
+[integration request](workstations-integration-request.md) aligns publication
+with that coordinator's ordered connection output and exact owner contracts.

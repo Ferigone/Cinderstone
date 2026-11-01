@@ -152,7 +152,7 @@ Final continuation source `7147da02c737360682386df4d73792cb8b03ae00` passed
 `cargo build --locked --bin mc121-rust`. These focused native flows cover source
 ownership, intermediate callbacks/counters/cursors, replacement/stale guards,
 result consumption, drag bounds/certification, remainders, RNG and slot layouts.
-The same commands also passed in a separate compatibility worktree at current
+The same commands also passed in a separate compatibility worktree at pinned
 master `404a5dab9c1b161b3587aa24e11703458c5a8edd` with exactly that source diff
 applied. Master and the feature branch were not merged; no Main file was edited.
 This proves compiler/link compatibility, not invocation by Main or gameplay.
@@ -163,3 +163,10 @@ protocol-client flow for these menus, complete registry/owner implementation,
 full anvil enchantment combination, remaining family click adapters, horse/entity
 inventories, complete survival/loot/world integration or fixed-row completion
 is claimed. Comprehensive conformance remains deferred.
+
+A later publication pass repeated both focused native flows and the full Main
+build against master `f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`, including its
+chat/session changes, in a separate source-overlay worktree. Both passed; no
+master merge or Main edit occurred. The source remains `7147da0`. The prepared
+[integration request](workstations-integration-request.md) aligns publication
+with that coordinator's ordered connection output and exact owner contracts.
