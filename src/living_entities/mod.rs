@@ -6,4 +6,5 @@
 pub mod death_tick;
 pub mod death_loot;
 pub mod removal;
+pub mod respawn;
 pub mod server_player_death;
