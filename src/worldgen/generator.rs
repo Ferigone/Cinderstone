@@ -446,6 +446,12 @@ impl NoiseGenerator {
         })
     }
 
+    // The End source compares the erosion function's raw double at an already
+    // converted block position. This is not the quantized climate coordinate.
+    fn sample_erosion_from(&self, density: &mut ChunkDensity, point: DensityPoint) -> Result<f64> {
+        Ok(density.sample_external(&self.graph, self.router.erosion, point)?)
+    }
+
     /// Stage surface replacements privately. An unavailable biome query leaves
     /// the NOISE block image intact; retained preliminary-cache reads are safe
     /// to reuse because they belong to this same graph and chunk.
@@ -643,6 +649,13 @@ impl PreparedGeneration {
             .sample_climate_from(density, quart_x, quart_y, quart_z)
     }
 
+    /// Sample retained wrapped erosion at block coordinates without climate
+    /// float narrowing or quantization, as required by End source thresholds.
+    pub fn sample_erosion(&mut self, point: DensityPoint) -> Result<f64> {
+        let density = self.noise.density_mut_for(self.generator.graph())?;
+        self.generator.sample_erosion_from(density, point)
+    }
+
     /// Consume the prepared owner and run its only material traversal. No
     /// density or aquifer cache is rebuilt, cloned or rebound to another graph.
     pub fn fill_noise(self) -> Result<OwnedNoiseTerrain> {
@@ -735,6 +748,12 @@ impl OwnedNoiseTerrain {
     ) -> Result<ClimateTargetPoint> {
         self.generator
             .sample_climate_from(&mut self.density, quart_x, quart_y, quart_z)
+    }
+
+    /// Sample the same retained erosion function at block coordinates and
+    /// preserve its raw double, without climate float narrowing/quantization.
+    pub fn sample_erosion(&mut self, point: DensityPoint) -> Result<f64> {
+        self.generator.sample_erosion_from(&mut self.density, point)
     }
 
     /// Apply SURFACE using the captured generator and existing density owner.
@@ -1514,6 +1533,78 @@ mod tests {
         assert!(prepared.sample_climate(0, 0, 0).is_err());
         assert!(prepared.fill_noise().is_err());
         assert_eq!(Arc::strong_count(&other), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn retained_raw_erosion_matches_original_end_observations_before_and_after_noise() -> Result<()>
+    {
+        let fixture: Value = serde_json::from_str(include_str!(
+            "../../fixtures/world-generation-biome-source-vectors.json"
+        ))?;
+        for sequence in fixture["end_sequences"]
+            .as_array()
+            .context("End source sequences")?
+        {
+            let seed = sequence["seed"].as_str().context("seed")?.parse::<i64>()?;
+            let settings = sequence["settings"].as_str().context("settings")?;
+            let chunk = sequence["chunk"].as_array().context("chunk")?;
+            let chunk_x = chunk[0].as_i64().context("chunk X")?.try_into()?;
+            let chunk_z = chunk[1].as_i64().context("chunk Z")?.try_into()?;
+            let generator = Arc::new(NoiseGenerator::builtin(seed, settings)?);
+            let mut prepared =
+                generator.prepare_chunk(chunk_x, chunk_z, 0, 128, observed_empty())?;
+            let state_before = prepared.noise.density_for(generator.graph())?.state();
+            let allocations = prepared
+                .noise
+                .density_for(generator.graph())?
+                .allocation_fingerprint();
+            let mut observations = Vec::new();
+            for query in sequence["queries"]
+                .as_array()
+                .context("End source queries")?
+            {
+                let Some(point) = query["erosion_point"].as_array() else {
+                    continue;
+                };
+                let point = DensityPoint::new(
+                    point[0].as_i64().context("erosion X")?.try_into()?,
+                    point[1].as_i64().context("erosion Y")?.try_into()?,
+                    point[2].as_i64().context("erosion Z")?.try_into()?,
+                );
+                let expected = query["erosion_bits"]
+                    .as_str()
+                    .context("original erosion bits")?
+                    .parse::<u64>()?;
+                assert_eq!(prepared.sample_erosion(point)?.to_bits(), expected);
+                observations.push((point, expected));
+            }
+            assert!(!observations.is_empty());
+            assert_eq!(
+                prepared.noise.density_for(generator.graph())?.state(),
+                state_before
+            );
+            assert_eq!(
+                prepared
+                    .noise
+                    .density_for(generator.graph())?
+                    .allocation_fingerprint(),
+                allocations
+            );
+            let mut owned = prepared.fill_noise()?;
+            let state_after = owned.density.state();
+            let after_allocations = owned.density.allocation_fingerprint();
+            assert_eq!(
+                (after_allocations.0, after_allocations.1),
+                (allocations.0, allocations.1)
+            );
+            for (point, expected) in observations {
+                assert_eq!(owned.sample_erosion(point)?.to_bits(), expected);
+            }
+            assert_eq!(owned.density.state(), state_after);
+            assert_eq!(owned.density.allocation_fingerprint(), after_allocations);
+            assert_eq!(owned.stage(), TerrainStage::Noise);
+        }
         Ok(())
     }
 

@@ -80,6 +80,15 @@ climate functions. Owned SURFACE keeps its existing transactional image updates,
 actual `SurfaceContext` requirement and duplicate-stage guard. Neither operation
 creates a BIOMES record or another chunk owner.
 
+`PreparedGeneration::sample_erosion(point)` and
+`OwnedNoiseTerrain::sample_erosion(point)` accept block coordinates and preserve
+the raw double from the same retained wrapped erosion root. The End source's
+erosion thresholds require this value; a narrowed or quantized climate erosion
+coordinate would change that contract. These methods use external single-point
+sampling without another coordinate conversion, graph fallback, RNG or cache
+owner. Original End-source raw-bit observations are checked before and after
+NOISE while retaining cache allocations and interpolation-counter state.
+
 `fill_from_noise` and `fill_from_noise_owned` retain the original early-return
 `NoCells` path. Callers wanting that behavior continue to use those entry points
 and keep their actual input ProtoChunk unchanged. `prepare_chunk` rejects a
