@@ -553,6 +553,11 @@ impl Server {
             let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
             return self.try_remove_native_furnace_locked(&mut world, &mut players, id, at, now, border);
         }
+        if removing && mc121_rust::native_block_entities::container_kind(old_state).is_some() {
+            drop(query);
+            let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
+            return self.try_remove_native_container_locked(&mut world, &mut players, id, at, now, border);
+        }
         let plan = world_interactions::plan_edit(at, state, 3, &mut query)?;
         self.commit_world_interaction(&mut world, &mut players, id, plan)
     }

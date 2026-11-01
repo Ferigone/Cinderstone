@@ -27,9 +27,14 @@ impl PlacementWorld for CallbackQuery<'_> {
     }
 }
 pub(super) fn callbacks_can_complete(world: &WorldBackend, plan: &InteractionPlan) -> Result<()> {
-    callbacks_can_complete_except_furnace_removal(world, plan, None)
+    callbacks_can_complete_except_owned_removal(world, plan, None)
 }
-fn callbacks_can_complete_except_furnace_removal(world: &WorldBackend, plan: &InteractionPlan, furnace: Option<(i32,i32,i32)>) -> Result<()> {
+#[derive(Clone, Copy)]
+enum OwnedRemovalCallback {
+    Furnace((i32, i32, i32)),
+    Container((i32, i32, i32)),
+}
+fn callbacks_can_complete_except_owned_removal(world: &WorldBackend, plan: &InteractionPlan, removal: Option<OwnedRemovalCallback>) -> Result<()> {
     let WorldBackend::Fixture(flat) = world else {
         bail!("imported source has no native callback owner");
     };
@@ -44,10 +49,16 @@ fn callbacks_can_complete_except_furnace_removal(world: &WorldBackend, plan: &In
     // LiquidBlock.onPlace must therefore not be claimed by redstone twice.
     for event in &plan.events {
         if let InteractionEvent::Write{position,old_state,state,..}=event {
-            let own_removal = furnace == Some(*position)
-                && mc121_rust::native_block_entities::furnace_kind(*old_state).is_some()
-                && mc121_rust::native_block_entities::furnace_kind(*old_state) != mc121_rust::native_block_entities::furnace_kind(*state);
-            // The dedicated removal host executes the old furnace callback.
+            let own_removal = match removal {
+                Some(OwnedRemovalCallback::Furnace(at)) => at == *position
+                    && mc121_rust::native_block_entities::furnace_kind(*old_state).is_some()
+                    && mc121_rust::native_block_entities::furnace_kind(*old_state) != mc121_rust::native_block_entities::furnace_kind(*state),
+                Some(OwnedRemovalCallback::Container(at)) => at == *position
+                    && mc121_rust::native_block_entities::container_kind(*old_state).is_some()
+                    && mc121_rust::native_block_entities::container_kind(*old_state) != mc121_rust::native_block_entities::container_kind(*state),
+                None => false,
+            };
+            // The dedicated removal host executes this exact old callback.
             // New-state onPlace still needs its actual fluid/redstone owner.
             let old = if own_removal { 0 } else { *old_state };
             ensure!(mc121_rust::redstone::owns_change_callbacks_after_fluid(old,*state)?,"unported native onPlace/onRemove owner");
@@ -87,9 +98,37 @@ impl LivePlayers {
             .context("furnace removal owner absent")?;
         let mut drained = flat.clone();
         drained.native_block_entities_mut().drain_furnace_removal_retaining_viewers(&receipt, retention)?;
-        callbacks_can_complete_except_furnace_removal(&WorldBackend::Fixture(drained), plan, Some(at))?;
+        callbacks_can_complete_except_owned_removal(&WorldBackend::Fixture(drained), plan, Some(OwnedRemovalCallback::Furnace(at)))?;
         let token = self.entity_source.as_ref().context("native furnace source absent")?
             .prepare_owned_furnace_removal_retaining_viewers_with_block_ticks(world, at, plan, &self.block_runtime, retention)?;
+        if token.requires_fire_owner()? { self.fire_runtime.require_healthy()?; }
+        token.require_fluid_history(&self.world_interactions.fluid_shapes)?;
+        Ok(token)
+    }
+    pub(super) fn prepare_required_native_container_removal_source_edit(
+        &mut self,
+        world: &WorldBackend,
+        at: (i32, i32, i32),
+        plan: &InteractionPlan,
+    ) -> Result<PreparedNativeSourceEdit> {
+        self.require_current_native_source(world)?;
+        let WorldBackend::Fixture(flat) = world else {
+            bail!("native container removal requires fixture backend")
+        };
+        let replacement = plan.events.iter().find_map(|event| match event {
+            InteractionEvent::Write { position, state, .. } if *position == at => Some(*state),
+            _ => None,
+        }).context("container removal write missing")?;
+        let receipt = flat.native_block_entities()
+            .prepare_container_removal(at, flat.block(at.0, at.1, at.2), replacement)?
+            .context("container removal owner absent")?;
+        let mut drained = flat.clone();
+        drained.native_block_entities_mut().drain_container_removal(&receipt)?;
+        callbacks_can_complete_except_owned_removal(
+            &WorldBackend::Fixture(drained), plan, Some(OwnedRemovalCallback::Container(at)),
+        )?;
+        let token = self.entity_source.as_ref().context("native container source absent")?
+            .prepare_owned_container_removal_with_block_ticks(world, at, plan, &self.block_runtime)?;
         if token.requires_fire_owner()? { self.fire_runtime.require_healthy()?; }
         token.require_fluid_history(&self.world_interactions.fluid_shapes)?;
         Ok(token)

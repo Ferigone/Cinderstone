@@ -38,6 +38,11 @@ impl NativeContainerRuntime {
     pub fn has_open(&self, id: i32) -> bool {
         self.menus.contains_key(&id)
     }
+    /// Includes spectator menus, whose captured container does not increment
+    /// the block entity's opener counter but still retains its actual owner.
+    pub(super) fn has_menu_at(&self, position: (i32, i32, i32)) -> bool {
+        self.menus.values().any(|open| open.key.0.contains(&position))
+    }
     pub fn pending_players(&self) -> Vec<i32> {
         self.menus.keys().copied().collect()
     }

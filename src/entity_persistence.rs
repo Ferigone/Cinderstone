@@ -480,6 +480,51 @@ impl NativeEntitySource {
         token.before = before;
         Ok(token)
     }
+    /// Prepare a closed-viewer single-container onRemove transaction. The
+    /// actual source retains its original full image; only a private staging
+    /// owner is drained so ordered writes can remove that block entity.
+    pub fn prepare_owned_container_removal_with_block_ticks(
+        &self,
+        world: &RuntimeWorld,
+        at: (i32, i32, i32),
+        plan: &crate::world_interactions::InteractionPlan,
+        block_ticks: &impl NativeBlockTickOwner,
+    ) -> Result<PreparedNativeSourceEdit> {
+        use crate::world_interactions::InteractionEvent;
+        self.require_owned_callback_world(world)?;
+        let before = WorldImage::capture(world)?;
+        let RuntimeWorld::Fixture(flat) = world else {
+            anyhow::bail!("container removal requires the actual native world")
+        };
+        let writes = plan.events.iter().filter_map(|event| match event {
+            InteractionEvent::Write { position, old_state, state, .. } if *position == at => {
+                Some((*old_state, *state))
+            }
+            _ => None,
+        }).collect::<Vec<_>>();
+        ensure!(writes.len() == 1, "container removal must own exactly one target write");
+        let (old, replacement) = writes[0];
+        ensure!(flat.block(at.0, at.1, at.2) == old, "container removal old state differs");
+        let receipt = flat.native_block_entities()
+            .prepare_container_removal(at, old, replacement)?
+            .context("container removal does not replace a container identity")?;
+        let before_containers = flat.native_block_entities().images();
+        let mut staged = flat.clone();
+        staged.native_block_entities_mut().drain_container_removal(&receipt)?;
+        let staged = RuntimeWorld::Fixture(staged);
+        let mut private_source = Self {
+            history: self.history.clone(),
+            pending_world: self.pending_world.clone(),
+            pending_fluid_seen: self.pending_fluid_seen,
+            pending_fire_seen: self.pending_fire_seen,
+        };
+        private_source.observe_owned_container_change(&staged, &before_containers)?;
+        let mut token = private_source.prepare_owned_edit_with_block_ticks(&staged, plan, block_ticks)?;
+        // Commit still compares against the actual original source/history,
+        // never the drained private image used to calculate final removal.
+        token.before = before;
+        Ok(token)
+    }
     pub fn observe_owned_commit(
         &mut self,
         prepared: PreparedNativeSourceEdit,

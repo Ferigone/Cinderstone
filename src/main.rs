@@ -85,6 +85,7 @@ mod main_block_entities;
 mod main_crafting_table;
 mod main_furnaces;
 mod main_furnace_removal;
+mod main_container_removal;
 mod main_shutdown_chunks;
 mod main_furnace_notifications;
 mod main_server_timing;

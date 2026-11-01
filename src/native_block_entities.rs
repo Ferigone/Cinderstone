@@ -1,5 +1,6 @@
 //! Actual owned chest/barrel and furnace-family block entities. Palette reads alone never create
-//! inventories. Unsupported nonempty destruction and loot tables are errors.
+//! inventories. Nonempty destruction requires actual drop owners; unresolved
+//! loot tables and unsupported removal contexts remain errors.
 use crate::{
     geometry::Direction,
     inventory::{self, ItemStack},
@@ -85,9 +86,44 @@ pub struct ContainerImage {
     pub lock: String,
     pub retained_nbt: Option<Vec<u8>>,
 }
+/// Identity of an actual live chest/barrel object. Private clones retain it;
+/// replacement/import allocates another key. Menus and removal receipts do not
+/// survive restart, so this key is intentionally absent from saved images/NBT.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ContainerOwnerKey(u64);
+/// Original closed container captured before a different-block replacement.
+/// Callers cannot construct this receipt from selected contents. Item drops
+/// use all 27 original slots; only a private world clone may be drained before
+/// its immediate final block transition, never a published empty live owner.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ContainerRemovalSnapshot {
+    image: ContainerImage,
+    owner_key: ContainerOwnerKey,
+    replacement_state: u32,
+    viewers: Vec<i32>,
+    next_recheck: Option<i64>,
+}
+impl ContainerRemovalSnapshot {
+    pub fn image(&self) -> &ContainerImage {
+        &self.image
+    }
+    pub fn owner_key(&self) -> ContainerOwnerKey {
+        self.owner_key
+    }
+    pub fn replacement_state(&self) -> u32 {
+        self.replacement_state
+    }
+    pub fn slots(&self) -> &[ItemStack] {
+        &self.image.slots
+    }
+    pub fn viewers(&self) -> &[i32] {
+        &self.viewers
+    }
+}
 #[derive(Clone, Debug)]
 pub struct NativeContainer {
     pub image: ContainerImage,
+    owner_key: ContainerOwnerKey,
     viewers: BTreeSet<i32>,
     next_recheck: Option<i64>,
 }
@@ -142,8 +178,12 @@ pub struct NativeBlockEntities {
     // block entity; this list retains actual fixture registration order.
     furnace_tick_order: Vec<BlockPosition>,
     next_furnace_owner_key: u64,
+    next_container_owner_key: u64,
 }
 impl NativeContainer {
+    pub fn owner_key(&self) -> ContainerOwnerKey {
+        self.owner_key
+    }
     pub fn state(&self) -> u32 {
         self.image.state
     }
@@ -492,6 +532,161 @@ impl NativeBlockEntities {
             .furnace_state = next;
         Ok(())
     }
+    fn install_container(&mut self, p: BlockPosition, image: ContainerImage) -> Result<()> {
+        ensure!(
+            image.position == p
+                && container_kind(image.state) == Some(image.kind)
+                && image.slots.len() == 27,
+            "installed container owner/state/slots differ"
+        );
+        let key = self
+            .next_container_owner_key
+            .checked_add(1)
+            .context("native container object identity exhausted")?;
+        self.next_container_owner_key = key;
+        self.entries.insert(
+            p,
+            NativeContainer {
+                image,
+                owner_key: ContainerOwnerKey(key),
+                viewers: BTreeSet::new(),
+                next_recheck: None,
+            },
+        );
+        Ok(())
+    }
+    fn validate_closed_container_removal_profile(
+        &self,
+        p: BlockPosition,
+        state: u32,
+    ) -> Result<()> {
+        self.validate_at(p, state)?;
+        let entry = self.entry(p)?;
+        ensure!(entry.image.position == p, "container position differs");
+        ensure!(
+            entry.owner_key.0 != 0,
+            "native container object identity missing"
+        );
+        ensure!(
+            entry.viewers.is_empty(),
+            "active container removal requires actual retained menu owners"
+        );
+        match entry.image.kind {
+            ContainerKind::Chest => {
+                ensure!(
+                    inventory::block_state_property(state, "type").as_deref() == Some("single"),
+                    "paired chest removal requires actual combined-container owner"
+                );
+                ensure!(
+                    inventory::block_state_property(state, "waterlogged").as_deref()
+                        == Some("false"),
+                    "waterlogged chest removal requires actual fluid callback composition"
+                );
+            }
+            ContainerKind::Barrel => ensure!(
+                inventory::block_state_property(state, "open").as_deref() == Some("false"),
+                "open barrel removal requires actual opener callback composition"
+            ),
+        }
+        for stack in &entry.image.slots {
+            stack.encode_canonical()?;
+        }
+        if let Some(raw) = &entry.image.retained_nbt {
+            let Tag::Compound(values) = NbtRoot::decode(raw)?.tag else {
+                bail!("container retained tag is not compound")
+            };
+            ensure!(
+                !values
+                    .iter()
+                    .any(|(name, _)| name.as_str() == Some("LootTable")),
+                "container removal requires actual unresolved loot-table owner"
+            );
+        }
+        Ok(())
+    }
+    /// Capture the actual 27-slot owner before different-block replacement.
+    /// Same-block state changes preserve that object and do not drop contents.
+    /// This bounded path rejects viewers, paired/waterlogged chests and open
+    /// barrels before any caller consumes shared RNG or allocates item IDs.
+    pub fn prepare_container_removal(
+        &self,
+        p: BlockPosition,
+        old: u32,
+        new: u32,
+    ) -> Result<Option<ContainerRemovalSnapshot>> {
+        let Some(kind) = container_kind(old) else {
+            ensure!(
+                !self.entries.contains_key(&p),
+                "orphan container at non-container removal state"
+            );
+            return Ok(None);
+        };
+        self.validate_at(p, old)?;
+        ensure!(
+            inventory::block_state_name(new).is_some(),
+            "unknown container replacement state"
+        );
+        if container_kind(new) == Some(kind) {
+            return Ok(None);
+        }
+        self.validate_closed_container_removal_profile(p, old)?;
+        let entry = self.entry(p)?;
+        Ok(Some(ContainerRemovalSnapshot {
+            image: entry.image.clone(),
+            owner_key: entry.owner_key,
+            replacement_state: new,
+            viewers: entry.viewers.iter().copied().collect(),
+            next_recheck: entry.next_recheck,
+        }))
+    }
+    pub fn validate_container_removal(&self, removal: &ContainerRemovalSnapshot) -> Result<()> {
+        self.validate_closed_container_removal_profile(
+            removal.image.position,
+            removal.image.state,
+        )?;
+        let entry = self.entry(removal.image.position)?;
+        ensure!(
+            entry.owner_key == removal.owner_key,
+            "container removal object identity changed"
+        );
+        ensure!(
+            entry.image == removal.image,
+            "container removal owner image changed"
+        );
+        ensure!(
+            entry
+                .viewers
+                .iter()
+                .copied()
+                .eq(removal.viewers.iter().copied())
+                && removal.viewers.is_empty(),
+            "container removal viewer ownership changed"
+        );
+        ensure!(
+            entry.next_recheck == removal.next_recheck,
+            "container removal recheck ownership changed"
+        );
+        ensure!(
+            inventory::block_state_name(removal.replacement_state).is_some()
+                && container_kind(removal.replacement_state) != Some(entry.image.kind),
+            "container removal receipt retains the same block identity"
+        );
+        Ok(())
+    }
+    /// Drain only a PRIVATE staged clone after preparing the real drop batch.
+    /// Its caller must immediately perform the captured block replacement and
+    /// publish only the final world in the shared item/random transaction.
+    /// Ordinary transition guards still reject nonempty containers and viewers.
+    pub fn drain_container_removal(&mut self, removal: &ContainerRemovalSnapshot) -> Result<()> {
+        self.validate_container_removal(removal)?;
+        self.entries
+            .get_mut(&removal.image.position)
+            .expect("validated exact container owner")
+            .image
+            .slots
+            .fill(ItemStack::empty());
+        Ok(())
+    }
     pub fn images(&self) -> Vec<ContainerImage> {
         self.entries.values().map(|e| e.image.clone()).collect()
     }
@@ -586,22 +781,18 @@ impl NativeBlockEntities {
                         return Ok(());
                     }
                 }
-                self.entries.insert(
+                self.install_container(
                     p,
-                    NativeContainer {
-                        image: ContainerImage {
-                            position: p,
-                            state: new,
-                            kind,
-                            slots: vec![ItemStack::empty(); 27],
-                            custom_name: None,
-                            lock: String::new(),
-                            retained_nbt: None,
-                        },
-                        viewers: BTreeSet::new(),
-                        next_recheck: None,
+                    ContainerImage {
+                        position: p,
+                        state: new,
+                        kind,
+                        slots: vec![ItemStack::empty(); 27],
+                        custom_name: None,
+                        lock: String::new(),
+                        retained_nbt: None,
                     },
-                );
+                )?;
             }
             None => {
                 self.entries.remove(&p);
@@ -618,7 +809,12 @@ impl NativeBlockEntities {
             saved.format == "mc121-native-containers-v1",
             "unknown native container save"
         );
-        let mut next = Self::default();
+        let mut next = Self {
+            // A restore in this running process replaces objects even when
+            // their serialized images are equal. Old receipts must not revive.
+            next_container_owner_key: self.next_container_owner_key,
+            ..Self::default()
+        };
         for image in saved.entries {
             ensure!(
                 !next.entries.contains_key(&image.position),
@@ -637,14 +833,7 @@ impl NativeBlockEntities {
                 Tag::decode_anonymous(n)?;
             }
             let p = image.position;
-            next.entries.insert(
-                p,
-                NativeContainer {
-                    image,
-                    viewers: BTreeSet::new(),
-                    next_recheck: None,
-                },
-            );
+            next.install_container(p, image)?;
         }
         // Legacy record order is an observed restore encounter order only;
         // it cannot recover a ticker order never stored by that older build.
@@ -761,22 +950,18 @@ impl NativeBlockEntities {
             tag,
         }
         .encode()?;
-        self.entries.insert(
+        self.install_container(
             p,
-            NativeContainer {
-                image: ContainerImage {
-                    position: p,
-                    state,
-                    kind,
-                    slots,
-                    custom_name: name,
-                    lock,
-                    retained_nbt: Some(retained),
-                },
-                viewers: BTreeSet::new(),
-                next_recheck: None,
+            ContainerImage {
+                position: p,
+                state,
+                kind,
+                slots,
+                custom_name: name,
+                lock,
+                retained_nbt: Some(retained),
             },
-        );
+        )?;
         Ok(())
     }
     pub fn resolve(
