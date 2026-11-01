@@ -1,0 +1,939 @@
+{
+  "scope_version": 1,
+  "total_points": 100,
+  "metric": "100 named unweighted delivery items; planning-checklist completion only",
+  "not_behavior_coverage": true,
+  "not_engineering_effort_percentage": true,
+  "rules": [
+    "One point per named delivery; all100items defined before tracking changes",
+    "Ported means callable native implementation for this delivery; main_integrated means production callsites invoke it",
+    "Dependencies and unsupported remainder remain separate items, not silently counted complete",
+    "Counts do not measure Java classes/methods, gameplay correctness, engineering effort or remaining time",
+    "Any scope change increments scope_version and invalidates direct cross-version delta comparisons",
+    "Tests deferred per user; no test-count-derived percentages"
+  ],
+  "baseline_commit": "b9e494e52e8a477b3e43a61703639a4aff3977b0",
+  "code_ported_points": 55,
+  "main_integrated_points": 50,
+  "note": "Public planning snapshot; the original named delivery definitions are preserved verbatim. Only the integration coordinator updates completion after actual source and Main evidence. Counts do not measure functional Minecraft compatibility.",
+  "rows": [
+    {
+      "id": "network.1",
+      "area": "network",
+      "delivery": "Handshake, status i ping",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "network.2",
+      "area": "network",
+      "delivery": "Ramki VarInt i kompresja",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "network.3",
+      "area": "network",
+      "delivery": "Konfiguracja rejestrów i PLAY",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "network.4",
+      "area": "network",
+      "delivery": "Keepalive i opóźnienia",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "network.5",
+      "area": "network",
+      "delivery": "Rekonfiguracja, cookies i resource packs",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "authentication.1",
+      "area": "authentication",
+      "delivery": "Offline UUID/profile",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "authentication.2",
+      "area": "authentication",
+      "delivery": "RSA/AES i signed server hash",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "authentication.3",
+      "area": "authentication",
+      "delivery": "Session service verification",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "authentication.4",
+      "area": "authentication",
+      "delivery": "Secure chat i podpisane wiadomości",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "authentication.5",
+      "area": "authentication",
+      "delivery": "Pełne limity, bany i administracja logowaniem",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "registries.1",
+      "area": "registries",
+      "delivery": "Identyfikatory i właściwości bloków",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "registries.2",
+      "area": "registries",
+      "delivery": "Rejestry itemów, biomów i wymiarów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "registries.3",
+      "area": "registries",
+      "delivery": "Kodeki komponentów Slot",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "registries.4",
+      "area": "registries",
+      "delivery": "Pełna tożsamość złożonych komponentów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "registries.5",
+      "area": "registries",
+      "delivery": "Dynamiczne rejestry i przeładowanie datapacków",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_storage.1",
+      "area": "world_storage",
+      "delivery": "NBT i kompresja",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_storage.2",
+      "area": "world_storage",
+      "delivery": "Regiony Anvil i chunk sections",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_storage.3",
+      "area": "world_storage",
+      "delivery": "Heightmap updates",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_storage.4",
+      "area": "world_storage",
+      "delivery": "Pełny level.dat i saved-data lifecycle",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_storage.5",
+      "area": "world_storage",
+      "delivery": "Runtime block entities i ich zapis",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native Chest/Barrel BE owner, real menu inventory, typed save/restore and source-image binding. Other BE types and full ticking remain incomplete."
+    },
+    {
+      "id": "chunk_lifecycle.1",
+      "area": "chunk_lifecycle",
+      "delivery": "Bilety ładowania i dystanse",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "chunk_lifecycle.2",
+      "area": "chunk_lifecycle",
+      "delivery": "Futures i potwierdzenia gotowości",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "chunk_lifecycle.3",
+      "area": "chunk_lifecycle",
+      "delivery": "Batch sender i ACK klienta",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "chunk_lifecycle.4",
+      "area": "chunk_lifecycle",
+      "delivery": "Pełny cykl wyładowania encji/chunków",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "chunk_lifecycle.5",
+      "area": "chunk_lifecycle",
+      "delivery": "Generowanie brakujących chunków w runtime",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_generation.1",
+      "area": "world_generation",
+      "delivery": "RNG i noise primitives",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_generation.2",
+      "area": "world_generation",
+      "delivery": "Density functions i router definitions",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_generation.3",
+      "area": "world_generation",
+      "delivery": "NoiseChunk, aquifery i powierzchnia",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_generation.4",
+      "area": "world_generation",
+      "delivery": "Pełne biomy, carving i features",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "world_generation.5",
+      "area": "world_generation",
+      "delivery": "Struktury i kompletne wymiary generatora",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "lighting.1",
+      "area": "lighting",
+      "delivery": "Reguły propagacji i zasłaniania",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "lighting.2",
+      "area": "lighting",
+      "delivery": "Światło zapisane w chunkach",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "lighting.3",
+      "area": "lighting",
+      "delivery": "Żywe przeliczenie po edycji świata",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "lighting.4",
+      "area": "lighting",
+      "delivery": "Kolejka oświetlenia z chunk lifecycle",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "lighting.5",
+      "area": "lighting",
+      "delivery": "Aktualizacje światła do wszystkich klientów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "block_interactions.1",
+      "area": "block_interactions",
+      "delivery": "Podstawowe stawianie i creative break",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "block_interactions.2",
+      "area": "block_interactions",
+      "delivery": "Strukturalne aktualizacje sąsiadów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "block_interactions.3",
+      "area": "block_interactions",
+      "delivery": "Drzwi, klapy i furtki",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "block_interactions.4",
+      "area": "block_interactions",
+      "delivery": "Pełny survival breaking, drops i narzędzia",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "block_interactions.5",
+      "area": "block_interactions",
+      "delivery": "Pełne callbacki wszystkich bloków",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "fluids.1",
+      "area": "fluids",
+      "delivery": "Zapytania przepływu i wysokości płynów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "fluids.2",
+      "area": "fluids",
+      "delivery": "Ruch encji w wodzie/lawie",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Real native Player body invokes water/lava travel for the creative unmounted profile with no active effects; full survival/vehicles remain incomplete."
+    },
+    {
+      "id": "fluids.3",
+      "area": "fluids",
+      "delivery": "Scheduled water/lava spread i konwersje",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "fluids.4",
+      "area": "fluids",
+      "delivery": "Wiadra i użytkowe interakcje płynów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "fluids.5",
+      "area": "fluids",
+      "delivery": "Pełne waterlogging i tick lifecycle w serwerze",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "player_motion.1",
+      "area": "player_motion",
+      "delivery": "Geometria i kolizje encji",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "player_motion.2",
+      "area": "player_motion",
+      "delivery": "Pozy, crouch i lot creative",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "player_motion.3",
+      "area": "player_motion",
+      "delivery": "Pełny handler ruchu i korekty",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "player_motion.4",
+      "area": "player_motion",
+      "delivery": "Skok, upadek i teleport lifecycle",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "player_motion.5",
+      "area": "player_motion",
+      "delivery": "Pełne podróże, pojazdy i atrybuty ruchu",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "inventory.1",
+      "area": "inventory",
+      "delivery": "Inventory.add i układ 46 slotów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "inventory.2",
+      "area": "inventory",
+      "delivery": "Wszystkie tryby kliknięć gracza",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "inventory.3",
+      "area": "inventory",
+      "delivery": "Lokalna i zdalna synchronizacja menu",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "inventory.4",
+      "area": "inventory",
+      "delivery": "Skrzynie, piece i pozostałe menu bloków",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "inventory.5",
+      "area": "inventory",
+      "delivery": "Bundles i kompletne interakcje specjalne",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "crafting.1",
+      "area": "crafting",
+      "delivery": "Dopasowanie receptur i crafting2x2",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "crafting.2",
+      "area": "crafting",
+      "delivery": "Specjalne/trim receptury i kontekst",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "crafting.3",
+      "area": "crafting",
+      "delivery": "Recipe book init/settings/seen",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "crafting.4",
+      "area": "crafting",
+      "delivery": "Vanilla advancement unlocks/rewards",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "crafting.5",
+      "area": "crafting",
+      "delivery": "Crafting3x3 i wszystkie stacje",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "items.1",
+      "area": "items",
+      "delivery": "Wyrzucanie, fizyka i podnoszenie",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "items.2",
+      "area": "items",
+      "delivery": "Łączenie stosów encji",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "items.3",
+      "area": "items",
+      "delivery": "Używanie jedzenia i przedmiotów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "items.4",
+      "area": "items",
+      "delivery": "Durability, enchantments i narzędzia",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "items.5",
+      "area": "items",
+      "delivery": "Broń dystansowa i pociski",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "entities.1",
+      "area": "entities",
+      "delivery": "Indeks, ticklist i kolejność encji",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "entities.2",
+      "area": "entities",
+      "delivery": "Replikacja gracza i item entities",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "entities.3",
+      "area": "entities",
+      "delivery": "Zapis i przywracanie item entities",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "entities.4",
+      "area": "entities",
+      "delivery": "Łodzie, minecarts i pasażerowie",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "entities.5",
+      "area": "entities",
+      "delivery": "Pozostałe typy encji i ich lifecycle",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "mobs_ai.1",
+      "area": "mobs_ai",
+      "delivery": "Naturalny spawning i limity mobów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "mobs_ai.2",
+      "area": "mobs_ai",
+      "delivery": "Pathfinding i nawigacja",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "mobs_ai.3",
+      "area": "mobs_ai",
+      "delivery": "Cele i zachowania AI",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "mobs_ai.4",
+      "area": "mobs_ai",
+      "delivery": "Zwierzęta i rozmnażanie",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "mobs_ai.5",
+      "area": "mobs_ai",
+      "delivery": "Wrogowie, bossowie i walka mobów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "survival_combat.1",
+      "area": "survival_combat",
+      "delivery": "FoodData i reguły głodu",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "survival_combat.2",
+      "area": "survival_combat",
+      "delivery": "Formuły zdrowia i obrażeń",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "survival_combat.3",
+      "area": "survival_combat",
+      "delivery": "Kompletny damage/death/respawn",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "survival_combat.4",
+      "area": "survival_combat",
+      "delivery": "Efekty mikstur i atrybuty",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "survival_combat.5",
+      "area": "survival_combat",
+      "delivery": "XP, loot i reguły survival",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "environment.1",
+      "area": "environment",
+      "delivery": "Zegar, granica świata i game rules podstawowe",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "environment.2",
+      "area": "environment",
+      "delivery": "Timery pogody i pakiety",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "environment.3",
+      "area": "environment",
+      "delivery": "Ekspozycja deszczu i dźwięki itemów",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "environment.4",
+      "area": "environment",
+      "delivery": "Pioruny, śnieg, lód i opady",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "environment.5",
+      "area": "environment",
+      "delivery": "Sen, portale i przejścia wymiarów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "simulation.1",
+      "area": "simulation",
+      "delivery": "Kolejki scheduled/random ticks",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native scheduled block/fluid and random tick queues invoked by Main; unsupported individual callbacks remain explicit."
+    },
+    {
+      "id": "simulation.2",
+      "area": "simulation",
+      "delivery": "Pełny redstone",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "simulation.3",
+      "area": "simulation",
+      "delivery": "Tłoki i ruchome kolizje",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "simulation.4",
+      "area": "simulation",
+      "delivery": "Pełny ticking block entities",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "simulation.5",
+      "area": "simulation",
+      "delivery": "Pełne fazy świata i serwera",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "commands_data.1",
+      "area": "commands_data",
+      "delivery": "Komendy i uprawnienia operatorów",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "commands_data.2",
+      "area": "commands_data",
+      "delivery": "Funkcje i datapack reload",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "commands_data.3",
+      "area": "commands_data",
+      "delivery": "Scoreboard objectives i teams",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "commands_data.4",
+      "area": "commands_data",
+      "delivery": "Advancements i kryteria",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "commands_data.5",
+      "area": "commands_data",
+      "delivery": "Loot tables, predicates i item modifiers",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "persistence_ops.1",
+      "area": "persistence_ops",
+      "delivery": "Native zapis gracza i statystyk",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "persistence_ops.2",
+      "area": "persistence_ops",
+      "delivery": "Restart świata i źródeł runtime",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "persistence_ops.3",
+      "area": "persistence_ops",
+      "delivery": "Recipe book persistence",
+      "points": 1,
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "final validation deferred",
+      "scope_note": "Native supported profile; unsupported callbacks remain explicit. See docs/CURRENT_WORK.md; final validation deferred."
+    },
+    {
+      "id": "persistence_ops.4",
+      "area": "persistence_ops",
+      "delivery": "Pełne Java player.dat/region/entity interoperability",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    },
+    {
+      "id": "persistence_ops.5",
+      "area": "persistence_ops",
+      "delivery": "Pełna administracja, save i graceful shutdown",
+      "points": 1,
+      "code_ported": false,
+      "main_integrated": false,
+      "verification": "final validation deferred"
+    }
+  ]
+}
