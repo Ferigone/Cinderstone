@@ -499,7 +499,9 @@ mod tests {
         let encoded = writer.into_inner();
         assert!(Reader::new(&encoded).string(1).is_err());
         assert_eq!(Reader::new(&encoded).string(2).unwrap(), "😀");
-        assert!(Reader::new(&[1, 0xff]).string(1).is_err());
+        // Java's Utf8String.read replaces malformed UTF-8 (docs/reference/connection-utf8.md)
+        // instead of rejecting the field; the length bounds still apply.
+        assert_eq!(Reader::new(&[1, 0xff]).string(1).unwrap(), "\u{fffd}");
         assert!(Reader::new(&[2, b'a']).string(2).is_err());
         assert!(Reader::new(&[0xff, 0xff, 0xff, 0xff, 0x0f])
             .string(5)

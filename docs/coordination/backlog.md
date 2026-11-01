@@ -154,6 +154,24 @@ Rows tracked by team issues keep that owner: `world_generation.3` (#2), `invento
 `crafting.2`, `crafting.5` (#3), `survival_combat.2` Main (#4, with WP-S3).
 WP-F10 (explosions) has no dedicated row; the coordinator decides its mapping.
 
+## CI gate (WP-P1)
+
+`.github/workflows/ci.yml` runs on every pull request and push to `master`:
+
+- **repository hygiene** (`.github/scripts/repo_hygiene.py`): fails on tracked archives,
+  Java binaries, world/player saves, credential files or secret patterns, raw JVM
+  disassembly, missing license/notice files, and on any structural change to the fixed
+  checklist (`scope_version` must stay 1, 100 rows, summary counts equal to the rows).
+  It reads only tracked files and never needs the Java server JAR. A sanitized, public
+  exception goes into `.github/hygiene-allowlist.txt` with a reason and is reviewed.
+- **build**: the Dockerfile's Rust version, `cargo check --locked --bins --lib`,
+  `cargo check --locked --all-targets`, `cargo test --locked --lib` and
+  `cargo test --locked --bin mc121-rust`. These are build and regression gates,
+  not a measure of behavioral compatibility or progress.
+
+Railway redeploys every push to `master`. The repository owner should require both CI
+jobs in branch protection; the planner has no tool for repository settings.
+
 ## Claiming and supervision
 
 1. Pick a work package whose blockers are satisfied and verify it against current `master`.

@@ -85,12 +85,25 @@ fn setup(
             LegacyRandomSource::new(query["seed"].as_i64().unwrap()),
         )
         .unwrap();
-    (
-        players,
-        WorldBackend::Fixture(FlatWorld::new(0, 1, 10, 9, 39)),
-        sender,
-        receiver,
-    )
+    let world = WorldBackend::Fixture(FlatWorld::new(0, 1, 10, 9, 39));
+    // Production item-world simulation requires the complete native item
+    // source. Install the real fresh-world owner (neither storage file exists)
+    // instead of leaving it absent.
+    let directory = std::env::temp_dir().join(format!(
+        "mc121-rain-context-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    let store = EntityDataStore::new(directory.join("entities.json"));
+    players.entity_source = Some(
+        store
+            .fresh_source(&directory.join("world.json"), &world)
+            .unwrap(),
+    );
+    (players, world, sender, receiver)
 }
 fn settle(
     players: &mut LivePlayers,
