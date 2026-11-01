@@ -78,6 +78,29 @@ pub struct NoiseGrid {
     pub cell_width: i32,
     pub cell_height: i32,
 }
+/// The fifteen functions of the seeded `NoiseRouter`, in its record order.
+///
+/// Node IDs belong to the graph that returned this router. They retain marker
+/// nodes: chunk owners must sample through `ChunkDensity` for interpolation and
+/// caches, rather than treating raw graph evaluation as generated terrain.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DensityRouter {
+    pub barrier: NodeId,
+    pub fluid_level_floodedness: NodeId,
+    pub fluid_level_spread: NodeId,
+    pub lava: NodeId,
+    pub temperature: NodeId,
+    pub vegetation: NodeId,
+    pub continents: NodeId,
+    pub erosion: NodeId,
+    pub depth: NodeId,
+    pub ridges: NodeId,
+    pub initial_density_without_jaggedness: NodeId,
+    pub final_density: NodeId,
+    pub vein_toggle: NodeId,
+    pub vein_ridged: NodeId,
+    pub vein_gap: NodeId,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MarkerKind {
     Interpolated,
@@ -583,6 +606,45 @@ impl DensityGraph {
     }
     pub fn roots(&self) -> &BTreeMap<String, NodeId> {
         &self.roots
+    }
+    /// Return all original router fields, rejecting a partial/custom graph.
+    /// This does not wrap its functions for any chunk or supply biome,
+    /// structure-beardifier or nonempty Blender state.
+    pub fn router(&self) -> Result<DensityRouter> {
+        let required = |name: &str| {
+            self.root(name)
+                .ok_or_else(|| anyhow!("missing noise router field {name}"))
+        };
+        Ok(DensityRouter {
+            barrier: required("barrier")?,
+            fluid_level_floodedness: required("fluid_level_floodedness")?,
+            fluid_level_spread: required("fluid_level_spread")?,
+            lava: required("lava")?,
+            temperature: required("temperature")?,
+            vegetation: required("vegetation")?,
+            continents: required("continents")?,
+            erosion: required("erosion")?,
+            depth: required("depth")?,
+            ridges: required("ridges")?,
+            initial_density_without_jaggedness: required("initial_density_without_jaggedness")?,
+            final_density: required("final_density")?,
+            vein_toggle: required("vein_toggle")?,
+            vein_ridged: required("vein_ridged")?,
+            vein_gap: required("vein_gap")?,
+        })
+    }
+    /// World seed used to bind the graph's noise holders and terrain noise.
+    pub fn seed(&self) -> i64 {
+        self.seed
+    }
+    pub fn uses_legacy_random_source(&self) -> bool {
+        self.legacy
+    }
+    /// RandomState's positional root after the algorithm(seed) positional fork.
+    /// Copying this immutable factory consumes no sequential random state.
+    /// Aquifer, ore and surface owners derive their own named streams from it.
+    pub fn positional_random_factory(&self) -> PositionalRandomFactory {
+        self.factory
     }
     pub fn root(&self, name: &str) -> Option<NodeId> {
         self.roots.get(name).copied()
