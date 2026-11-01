@@ -12,7 +12,32 @@ use crate::{
     workstations::menu::{MenuRemovalEvent, MenuSync, SyncEvent, WorkstationKind},
 };
 use anyhow::{ensure, Result};
-use std::{collections::BTreeSet, fmt::Debug};
+use std::{
+    collections::BTreeSet,
+    fmt::Debug,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+// Native menu-object lifetime, not a world/container identity. Private staging
+// clones retain it; every newly prepared UI receives a different value.
+static NEXT_STORAGE_MENU_INSTANCE: AtomicU64 = AtomicU64::new(1);
+fn allocate_menu_instance() -> Result<u64> {
+    let mut current = NEXT_STORAGE_MENU_INSTANCE.load(Ordering::Relaxed);
+    loop {
+        let next = current
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("storage menu instance identity exhausted"))?;
+        match NEXT_STORAGE_MENU_INSTANCE.compare_exchange_weak(
+            current,
+            next,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(_) => return Ok(current),
+            Err(actual) => current = actual,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum StorageMenuKind {
@@ -202,6 +227,7 @@ pub struct StoragePublication<K> {
 }
 #[derive(Clone, Debug)]
 pub struct StorageMenu<K> {
+    instance: u64,
     sync: MenuSync,
     owner_key: K,
     kind: StorageMenuKind,
@@ -240,8 +266,10 @@ impl<K: Clone + Eq + Debug> PreparedStorageOpen<K> {
         );
         Ok(())
     }
-    /// The host must stage StartOpen with its actual container/player/world
-    /// owners before commit. Main's OpenScreen and initial sync follow it.
+    /// The host must bind this single-use open plan to its actual active-player,
+    /// window and session transition, then stage StartOpen with those real
+    /// container/player/world owners before commit. A different viewer's open
+    /// does not invalidate this plan. Main's OpenScreen and initial sync follow.
     pub fn commit(
         self,
         owner: &impl StorageContainer<Key = K>,
@@ -275,6 +303,7 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
         let kind = owner.kind();
         let key = owner.owner_key().clone();
         let menu = Self {
+            instance: allocate_menu_instance()?,
             sync: MenuSync::new(window_id, kind.sync_kind())?,
             owner_key: key.clone(),
             kind,
@@ -298,6 +327,11 @@ impl<K: Clone + Eq + Debug> StorageMenu<K> {
                 },
             }],
         })
+    }
+    /// Identity of this retained native UI lifetime, distinct from the window
+    /// number (which may be reused) and actual block-container owner key.
+    pub fn instance_id(&self) -> u64 {
+        self.instance
     }
     pub fn window_id(&self) -> u8 {
         self.sync.window_id()
@@ -532,7 +566,8 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
         inventory: &PlayerInventory,
     ) -> Result<()> {
         ensure!(
-            menu.owner_key == self.expected_menu.owner_key
+            menu.instance == self.expected_menu.instance
+                && menu.owner_key == self.expected_menu.owner_key
                 && menu.kind == self.expected_menu.kind
                 && menu.revision == self.expected_menu.revision
                 && menu.sync == self.expected_menu.sync
@@ -862,12 +897,15 @@ impl<K: Clone + Eq + Debug> PreparedStorageAction<K> {
             }
         } else if self.may_place(slot, &carried, owner)? {
             if source.same_item_same_components(&carried)? {
+                // Slot.safeInsert preserves a negative capacity for an actual
+                // overfull target: shrink(-n) grows the cursor, grow(-n) lowers
+                // the slot. Even zero transfer still invokes setByPlayer.
                 let amount = (if button == 0 { carried.count } else { 1 })
-                    .min((self.limit(slot, &carried)? - source.count).max(0));
+                    .min(self.limit(slot, &carried)?.wrapping_sub(source.count));
                 self.next_menu
                     .sync
-                    .set_carried(counted(&carried, carried.count - amount));
-                self.set_by_player(slot, counted(&source, source.count + amount));
+                    .set_carried(counted(&carried, carried.count.wrapping_sub(amount)));
+                self.set_by_player(slot, counted(&source, source.count.wrapping_add(amount)));
             } else if carried.count <= self.limit(slot, &carried)? {
                 self.next_menu.sync.set_carried(source);
                 self.set_by_player(slot, carried);
@@ -1644,6 +1682,112 @@ mod tests {
         assert!(owner.slots[1].is_empty() && owner.slots[2].is_empty());
         Ok(())
     }
+    #[test]
+    fn closed_menu_plans_cannot_replay_after_same_window_and_owner_reopen() -> Result<()> {
+        let mut owner = TestContainer::new(StorageMenuKind::Hopper);
+        let mut inventory = PlayerInventory::new();
+        let (mut first, _) =
+            StorageMenu::prepare_open(1, &owner, &inventory)?.commit(&owner, &inventory)?;
+        first.initialize(&owner, &inventory)?;
+        let old_action = first.prepare_click(
+            &click(&first, 0, 0, ClickType::Pickup),
+            &owner,
+            &inventory,
+            false,
+        )?;
+        let old_close =
+            first.prepare_close(&owner, &inventory, MenuCloseContext::AliveConnected)?;
+        first
+            .prepare_close(&owner, &inventory, MenuCloseContext::AliveConnected)?
+            .commit(&mut first, &mut owner, &mut inventory)?;
+        let (mut reopened, _) =
+            StorageMenu::prepare_open(1, &owner, &inventory)?.commit(&owner, &inventory)?;
+        reopened.initialize(&owner, &inventory)?;
+        assert_eq!(first.window_id(), reopened.window_id());
+        assert_eq!(first.owner_key(), reopened.owner_key());
+        assert_ne!(first.instance_id(), reopened.instance_id());
+        assert!(old_action
+            .commit(&mut reopened, &mut owner, &mut inventory)
+            .is_err());
+        assert!(old_close
+            .commit(&mut reopened, &mut owner, &mut inventory)
+            .is_err());
+        assert!(reopened.active);
+        assert!(reopened
+            .prepare_click(
+                &click(&reopened, 0, 0, ClickType::Pickup),
+                &owner,
+                &inventory,
+                false,
+            )
+            .is_ok());
+        assert!(owner.slots.iter().all(ItemStack::is_empty));
+        assert!(inventory.slots().iter().all(ItemStack::is_empty));
+        Ok(())
+    }
+
+    #[test]
+    fn pickup_preserves_signed_capacity_and_zero_transfer_callbacks() -> Result<()> {
+        for initial_target in [64, 99] {
+            let mut owner = TestContainer::new(StorageMenuKind::Hopper);
+            owner.slots[0] = stack("stone", initial_target);
+            let mut inventory = PlayerInventory::new();
+            inventory.set_slot_authoritative(9, stack("stone", 1));
+            let (mut menu, _) =
+                StorageMenu::prepare_open(8, &owner, &inventory)?.commit(&owner, &inventory)?;
+            menu.initialize(&owner, &inventory)?;
+            action(
+                &mut menu,
+                &mut owner,
+                &mut inventory,
+                5,
+                0,
+                ClickType::Pickup,
+            )?;
+            let publication = action(
+                &mut menu,
+                &mut owner,
+                &mut inventory,
+                0,
+                0,
+                ClickType::Pickup,
+            )?;
+            let expected_cursor = initial_target + 1 - 64;
+            let mut setters = 0;
+            let mut dirty = 0;
+            for event in &publication.events {
+                if let StorageMenuEvent::Container {
+                    operation, phase, ..
+                } = event
+                {
+                    match operation {
+                        StorageOperation::SetItem {
+                            slot: 0,
+                            stack: actual,
+                        } => {
+                            setters += 1;
+                            assert_eq!(actual, &stack("stone", 64));
+                        }
+                        StorageOperation::SetChanged => dirty += 1,
+                        _ => continue,
+                    }
+                    assert_eq!(phase.block_slots[0], stack("stone", 64));
+                    assert_eq!(phase.carried, stack("stone", expected_cursor));
+                    assert!(phase.player_inventory.slot(9).unwrap().is_empty());
+                    assert_eq!(
+                        phase.block_slots[0].count + phase.carried.count,
+                        initial_target + 1
+                    );
+                }
+            }
+            assert_eq!((setters, dirty), (1, 2));
+            assert_eq!(owner.slots[0], stack("stone", 64));
+            assert_eq!(menu.carried(), &stack("stone", expected_cursor));
+            assert!(publication.outcome.drops.is_empty());
+        }
+        Ok(())
+    }
+
     #[test]
     fn cross_owner_callback_phases_and_overfull_self_swap_are_conservative() -> Result<()> {
         let mut owner = TestContainer::new(StorageMenuKind::Hopper);

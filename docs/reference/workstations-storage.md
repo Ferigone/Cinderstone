@@ -172,3 +172,34 @@ returns only that remainder. A focused two-iron-sword fixture becomes one sword
 in the original hotbar slot and one in the next free slot, with two inventory
 change callbacks and no duplicated item. All focused storage flows passed after
 these corrections. No Main or network-client observation is implied.
+
+## Signed safe-insertion capacity
+
+`Slot.safeInsert` (`crq.b(ItemStack,int)`) computes the minimum of the requested
+count and `slotMaximum - existingCount` without clamping a negative capacity.
+For an actual default stone stack of 99 and one cursor stone, the amount is
+-35: shrinking the cursor by -35 leaves 36, growing the target by -35 leaves
+64, and source `setByPlayer` then both dirty boundaries observe those counts.
+A full 64-stack plus one cursor stone transfers zero but still invokes
+`setByPlayer` and its dirty callback, then the final pickup dirty callback.
+The native pickup merge preserves Java signed integer arithmetic in both paths.
+A focused native regression checks the final counts, conservation, unchanged
+source inventory, one setter/two dirty calls and each callback's block/cursor
+phase. This remains an explicit native test-owner flow, not Main gameplay.
+
+## Retained UI lifetime and reused window IDs
+
+Each newly prepared storage UI receives a checked, nonreused native instance
+identity. Staging clones retain that identity. Action and close validation now
+checks it in addition to the real block owner, window/synchronization state,
+content/menu revisions and actual player inventory. Closing and reopening the
+same block with the same reused window number cannot make an old action or
+close plan valid again, even when all contents and initial state IDs coincide.
+A focused native regression rejects both old plans after such a reopen while
+leaving the new menu and canonical contents untouched.
+
+The opening plan remains single-use. Its existing actual block/inventory
+validation does not invent a player-session owner: Main must bind and validate
+the real active-player/window/session transition before committing an open.
+Opening another viewer does not globally invalidate an independent plan. The
+new UI identity is not a substitute for actual persistent world-container keys.
