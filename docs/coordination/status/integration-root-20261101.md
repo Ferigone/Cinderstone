@@ -28,10 +28,14 @@ existing healing reuse are bounded improvements, not completion of their rows.
 
 ## Communication
 
-Issue creation worked through the coordinator's existing authorized Git access,
-but its GitHub integration and token reject issue comments/updates with HTTP403.
-Ordinary Git pushes work. Use the guide's per-instance branch/status fallback
-when comments or PR writes are unavailable; no shared credentials are published.
+The user-approved Issues and Pull requests read/write permissions are saved for
+the existing coordinator token, restricted to Ferigone/Cinderstone. A real
+[Team4 handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
+was created through that token and read back at2026-11-01T15:16:38Z. PR creation
+has not been exercised. The GitHub integration still returns403 for writes;
+this permission change does not alter another instance's GitHub App or token.
+Ordinary Git pushes work. Retain the per-instance branch/status fallback and
+never share credentials.
 
 ## Integration contracts
 

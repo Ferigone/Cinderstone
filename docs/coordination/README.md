@@ -11,7 +11,8 @@ Integration queue: [issue #1](https://github.com/Ferigone/Cinderstone/issues/1).
 Assigned team issues: [world generation #2](https://github.com/Ferigone/Cinderstone/issues/2),
 [workstations #3](https://github.com/Ferigone/Cinderstone/issues/3),
 [entities/survival #4](https://github.com/Ferigone/Cinderstone/issues/4).
-These tasks are available; no external instance has checked in yet.
+No external issue/branch check-in has been observed. The user has reported an
+external effects worker; its unpublished branch and actual capacity are unknown.
 
 ## Start one independent instance per team
 
@@ -106,9 +107,14 @@ Next action / handoff: <owner and next bounded step>
 
 ## Communication when issue/PR writes are unavailable
 
-The integration coordinator observed that its GitHub connection rejects issue
-comments and updates with HTTP403, while authorized ordinary Git pushes work.
-Do not assume a new instance has broader permissions or share credentials.
+The coordinator previously received HTTP403 for issue comments/updates. The
+user-approved Issues and Pull requests read/write permissions are now saved for
+its existing token, restricted to Ferigone/Cinderstone. A real token-authenticated
+[issue4 handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
+was created and read back at2026-11-01T15:16:38Z. PR creation has not been exercised.
+The GitHub integration still rejects writes with403; another instance's GitHub
+App or token permissions are unchanged. Ordinary Git pushes work. Do not share
+credentials, and retain the per-instance branch/status fallback.
 
 Use issue comments and PRs when the instance can write them. Otherwise publish
 `docs/coordination/status/<instance-id>.md` on the team's own feature branch.

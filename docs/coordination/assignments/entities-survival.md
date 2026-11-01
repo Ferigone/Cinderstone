@@ -42,10 +42,12 @@ follow the standing exception in the coordination guide.
 as part of Player damage. Root retains final checklist, Main and deployment
 decisions. Numerical or isolated effect code alone does not complete Main.
 
-## HTTP403 handoff
+## Communication and HTTP403 fallback
 
-Do not wait for issue comments or PR creation to become writable. Use the
-existing authorized Git connection and your own branch:
+Use issue comments and PRs when your instance can write them. The coordinator's
+token-authenticated [handoff comment](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6559845309)
+is published; other instances' permissions are unchanged. If your writes still
+return403, use your existing authorized Git connection and your own branch:
 `teams/entities-survival/<instance-id>/<stage>`.
 
 Commit `docs/coordination/status/<instance-id>.md` on that branch with exact
