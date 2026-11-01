@@ -146,6 +146,14 @@ impl LoomRuntime {
     }
     pub(super) fn has_open(&self, id: i32) -> bool { self.menus.contains_key(&id) }
     pub(super) fn pending_players(&self) -> Vec<i32> { self.menus.keys().copied().collect() }
+    pub(super) fn preflight_close_return_stacks(&self, id: i32,
+        check: &mut dyn FnMut(&ItemStack) -> Result<()>) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) {
+            check(open.menu.carried())?;
+            for stack in open.menu.state().inputs() { check(stack)?; }
+        }
+        Ok(())
+    }
     pub(super) fn inventory_snapshot(&self, id: i32, inventory: &PlayerInventory) -> PlayerInventory {
         self.menus.get(&id).map_or_else(|| inventory.clone(), |open| {
             inventory.snapshot_with_carried(open.menu.carried())
@@ -179,6 +187,25 @@ fn publish(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet
     }
 }
 
+/// Preserve the kernel's source images while completing the transient counter
+/// obligations owned by Main, without replacing a slot/cursor or firing hooks.
+fn project_inventory_counter(events: &mut [LoomMenuEvent], inventory: &mut PlayerInventory, before: i32) -> Result<()> {
+    ensure!(inventory.get_times_changed() == before, "loom kernel counter ownership changed");
+    let mut preceding = 0_usize;
+    for event in events {
+        let marker = matches!(event, LoomMenuEvent::PlayerInventoryChanged { .. });
+        let phase = match event {
+            LoomMenuEvent::Source { phase, .. } | LoomMenuEvent::PlayerInventoryChanged { phase }
+            | LoomMenuEvent::Sync { phase, .. } | LoomMenuEvent::TakeSound { phase, .. }
+            | LoomMenuEvent::Drop { phase, .. } => phase,
+        };
+        ensure!(phase.player_inventory.get_times_changed() == before, "loom phase counter requires a new kernel handoff");
+        for _ in 0..preceding { phase.player_inventory.set_changed(); }
+        if marker { inventory.set_changed(); preceding += 1; }
+    }
+    Ok(())
+}
+
 struct PreparedLoomCommit<'a> {
     items: PreparedItemBatch<'a>,
     player_random: &'a mut LegacyRandomSource,
@@ -196,6 +223,7 @@ struct PreparedLoomCommit<'a> {
     stats_after_event: Vec<PlayerStats>,
     drop_ordinals: Vec<Option<usize>>,
     sound_recipients: Arc<Vec<i32>>,
+    final_inventory: PlayerInventory,
 }
 impl PreparedLoomCommit<'_> {
     fn commit(self, id: i32, uuid: [u8; 16], events: &broadcast::Sender<PlayerEvent>, canonical_menu: &mut PlayerContainer) {
@@ -203,7 +231,7 @@ impl PreparedLoomCommit<'_> {
             items, player_random, next_player_random, next_world_random,
             entity_counter, next_entity_id, gameplay, menus, next_open,
             close, close_packet, publication, callbacks, stats_after_event,
-            drop_ordinals, sound_recipients,
+            drop_ordinals, sound_recipients, final_inventory,
         } = self;
         *player_random = next_player_random;
         entity_counter.store(next_entity_id, Ordering::Relaxed);
@@ -221,6 +249,7 @@ impl PreparedLoomCommit<'_> {
                 while cursor < publication.events.len() {
                     let index = cursor;
                     let event = &publication.events[index];
+                    canonical_menu.inventory = loom_event_phase(event).player_inventory.clone();
                     if let LoomMenuEvent::Drop { index: drop_index, .. } = event {
                         if let Some(expected) = drop_ordinals[*drop_index] {
                             assert_eq!(expected, ordinal, "validated loom indexed drop order");
@@ -263,6 +292,9 @@ impl PreparedLoomCommit<'_> {
                 }
             });
         assert!(pending_drop.is_none() && cursor == publication.events.len());
+        assert_eq!(canonical_menu.inventory.get_times_changed(), final_inventory.get_times_changed(),
+            "loom source counter timeline differs from its prepared owner");
+        canonical_menu.inventory = final_inventory;
     }
 }
 
@@ -361,6 +393,7 @@ impl Server {
         } = players;
         let actual_player_random = player_random.get_mut(&id).context("loom player RNG missing")?;
         shared.transact_with_menu_commit(move |menu| {
+            let counter_before = menu.inventory.get_times_changed();
             let mut next_open = open;
             let full_state = matches!(&request, LoomRequest::Resync)
                 || spectator && matches!(&request, LoomRequest::Click(_));
@@ -392,6 +425,7 @@ impl Server {
                     plan.commit(&mut next_open.menu, &mut menu.inventory, &next_open.context)?
                 }
             };
+            project_inventory_counter(&mut publication.events, &mut menu.inventory, counter_before)?;
             ensure!(publication.outcome.packets.is_empty(), "loom packets have more than one publication owner");
             let callbacks = PreparedLoomCallbacks::prepare(gameplay, next_open.context.patterns(), &publication.events, &next_open.context)?;
             let _ = loom_local_changes(&publication.events)?;
@@ -451,12 +485,13 @@ impl Server {
                     &mut || random_seed::create_random().map_err(anyhow::Error::from))?
                     .context("nonempty loom drop did not construct an item")?);
             }
+            let final_inventory = menu.inventory.clone();
             let items = item_runtime.prepare_items(entries)?;
             Ok((PreparedLoomCommit {
                 items, player_random: actual_player_random, next_player_random, next_world_random,
                 entity_counter: &self.entities, next_entity_id, gameplay,
                 menus: &mut looms.menus, next_open, close, close_packet, publication,
-                callbacks, stats_after_event, drop_ordinals, sound_recipients,
+                callbacks, stats_after_event, drop_ordinals, sound_recipients, final_inventory,
             }, vec![]))
         }, |prepared, menu| prepared.commit(id, player.profile.uuid, &self.entity_events, menu))
     }

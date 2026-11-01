@@ -282,9 +282,8 @@ impl Server {
         let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
         *players.player_last_actions.get_mut(&id)
             .context("stonecutter click last-action owner missing")? = self.epoch.elapsed().as_millis() as i64;
-        if players.stonecutters.window_id(id) != Some(click.window_id) {
-            return Ok(false);
-        }
+        let Some(window) = players.stonecutters.window_id(id) else { return Ok(false); };
+        if window != click.window_id { return Ok(true); }
         if let Err(error) = self.stonecutter_action_locked(
             &mut world, &mut players, id, StonecutterRequest::Click(click), now, border,
         ) {

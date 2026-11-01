@@ -176,9 +176,46 @@ impl RecipeBook {
                 .expect("known recipe and smithing slot")
         })
     }
+    /// Registry-aware repair/trim route. Other serializers explicitly error;
+    /// this never falls back to the captured default registry metadata.
+    pub fn evaluate_with_special_registry<
+        R: crate::workstations::special_recipe_context::SpecialRecipeRegistry,
+    >(
+        &self,
+        id: &str,
+        input: &RecipeInput,
+        context: &crate::workstations::special_recipe_context::SpecialRecipeContext<'_, R>,
+    ) -> Result<Option<CraftResult>> {
+        let recipe = self
+            .recipes
+            .get(&canonical(id))
+            .ok_or_else(|| anyhow!("unknown recipe {id}"))?;
+        match recipe.kind.as_str() {
+            "crafting_special_repairitem" => {
+                crate::workstations::special_recipe_context::repair(self, input, context)
+            }
+            "smithing_trim" => {
+                let RecipeInput::Smithing { template, base, addition } = input else {
+                    context.validate_book(self)?;
+                    return Ok(None);
+                };
+                let matched = accepts(&recipe.template, template)
+                    && accepts(&recipe.base, base)
+                    && accepts(&recipe.addition, addition);
+                crate::workstations::special_recipe_context::trim(
+                    self, template, base, addition, matched, context,
+                )
+            }
+            kind => bail!("registry-aware special context does not support serializer {kind}"),
+        }
+    }
+    /// Captured shipped-default evaluator. Repair curse tags and trim holders
+    /// here use pinned metadata; actual registry contexts use the additive route.
     pub fn evaluate(&self, id: &str, input: &RecipeInput) -> Result<Option<CraftResult>> {
         self.evaluate_with_context(id, input, &RecipeContext::default())
     }
+    /// Captured shipped-default registries plus caller-supplied map data.
+    /// This compatibility entry point does not bind live registry reloads.
     pub fn evaluate_with_context(
         &self,
         id: &str,
@@ -515,8 +552,13 @@ impl RecipeBook {
                         .as_i64()
                         .unwrap() as i32,
                 ];
+                let enchantment_component = if Some(a.item_id) == self.item_id("enchanted_book") {
+                    23
+                } else {
+                    9
+                };
                 for input in [a, b] {
-                    if let Some(data) = component(input, 9)? {
+                    if let Some(data) = component(input, enchantment_component)? {
                         let mut r = Reader::new(&data);
                         let count = r.varint()?;
                         ensure!(count >= 0, "negative enchantment length");
@@ -537,7 +579,7 @@ impl RecipeBook {
                         w.varint(id).varint(level);
                     }
                     w.bool(true);
-                    set_component(&mut output, 9, w.into_inner());
+                    set_component(&mut output, enchantment_component, w.into_inner());
                 }
                 output
             }

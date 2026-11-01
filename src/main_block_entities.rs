@@ -521,9 +521,10 @@ impl Server {
         let Some(open) = players.native_containers.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|w| w != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
+        }
+        if close.is_some_and(|w| w != open.menu.window_id) {
             return Ok(false);
         }
         let player = players

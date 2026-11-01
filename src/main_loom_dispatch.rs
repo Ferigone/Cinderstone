@@ -134,7 +134,8 @@ impl Server {
         let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
         *players.player_last_actions.get_mut(&id).context("loom click last-action owner missing")? =
             self.epoch.elapsed().as_millis() as i64;
-        if players.looms.window_id(id) != Some(click.window_id) { return Ok(false); }
+        let Some(window) = players.looms.window_id(id) else { return Ok(false); };
+        if window != click.window_id { return Ok(true); }
         if let Err(error) = self.loom_action_locked(&mut world, &mut players, id,
             LoomRequest::Click(click), now, border) {
             self.retire_unsupported_loom_reach_locked(&mut world, &mut players, id,

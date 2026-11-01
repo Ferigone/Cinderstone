@@ -261,9 +261,8 @@ impl Server {
         let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
         *players.player_last_actions.get_mut(&id)
             .context("smithing click last-action owner missing")? = self.epoch.elapsed().as_millis() as i64;
-        if players.smithing_tables.window_id(id) != Some(click.window_id) {
-            return Ok(false);
-        }
+        let Some(window) = players.smithing_tables.window_id(id) else { return Ok(false); };
+        if window != click.window_id { return Ok(true); }
         if let Err(error) = self.smithing_action_locked(
             &mut world, &mut players, id, SmithingRequest::Click(click), now, border,
         ) {

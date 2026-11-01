@@ -17,8 +17,11 @@ source-phased callbacks and the existing item/sound owners. Full Main build and
 [local protocol flow](docs/validation/loom-flow.json) passed: patterned banner
 component49, ingredient consumption, sound1429 and close/disconnect/native restart
 conserved owned items without duplicating the preview. See
-[production scope](docs/reference/loom-production.md). This source stage is under
-publication; templates, custom contexts and broader runtime paths remain open.
+[production scope](docs/reference/loom-production.md). A current-kernel recheck
+also passed: stale window0 clicks do not mutate the inactive menu, and all seven
+fixture stones remain owned. Source phases retain the real inventory-counter
+timeline; internal counter instrumentation is not claimed. This source stage is
+under publication; templates/custom and broader runtime paths remain open.
 
 ## Native Smithing Main
 

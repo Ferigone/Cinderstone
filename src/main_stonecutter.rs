@@ -31,6 +31,14 @@ impl StonecutterRuntime {
     }
     pub(super) fn has_open(&self, id: i32) -> bool { self.menus.contains_key(&id) }
     pub(super) fn pending_players(&self) -> Vec<i32> { self.menus.keys().copied().collect() }
+    pub(super) fn preflight_close_return_stacks(&self, id: i32,
+        check: &mut dyn FnMut(&ItemStack) -> Result<()>) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) {
+            check(open.menu.carried())?;
+            check(open.menu.state().input())?;
+        }
+        Ok(())
+    }
     pub(super) fn inventory_snapshot(&self, id: i32, inventory: &PlayerInventory) -> PlayerInventory {
         self.menus.get(&id).map_or_else(
             || inventory.clone(),
@@ -79,6 +87,26 @@ fn publish(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet
     }
 }
 
+/// The source kernel emits each Inventory.setChanged boundary but leaves the
+/// borrowed owner's transient counter to Main. Change only these observation
+/// counters: slots, raw empty stacks and both cursor owners stay untouched.
+fn project_inventory_counter(events: &mut [StonecutterMenuEvent], inventory: &mut PlayerInventory, before: i32) -> Result<()> {
+    ensure!(inventory.get_times_changed() == before, "stonecutter kernel counter ownership changed");
+    let mut preceding = 0_usize;
+    for event in events {
+        let marker = matches!(event, StonecutterMenuEvent::PlayerInventoryChanged { .. });
+        let phase = match event {
+            StonecutterMenuEvent::Sync { phase, .. } | StonecutterMenuEvent::Effect { phase, .. }
+            | StonecutterMenuEvent::InputChanged { phase } | StonecutterMenuEvent::PlayerInventoryChanged { phase }
+            | StonecutterMenuEvent::Drop { phase, .. } | StonecutterMenuEvent::ItemCraftedBeforeQuickMove { phase, .. } => phase,
+        };
+        ensure!(phase.inventory.get_times_changed() == before, "stonecutter phase counter requires a new kernel handoff");
+        for _ in 0..preceding { phase.inventory.set_changed(); }
+        if marker { inventory.set_changed(); preceding += 1; }
+    }
+    Ok(())
+}
+
 struct PreparedStonecutterCommit<'a> {
     items: PreparedItemBatch<'a>,
     player_random: &'a mut LegacyRandomSource,
@@ -97,6 +125,7 @@ struct PreparedStonecutterCommit<'a> {
     stats_after_event: Vec<PlayerStats>,
     drop_ordinals: Vec<Option<usize>>,
     sound_recipients: Arc<Vec<i32>>,
+    final_inventory: PlayerInventory,
 }
 
 impl PreparedStonecutterCommit<'_> {
@@ -105,7 +134,7 @@ impl PreparedStonecutterCommit<'_> {
             items, player_random, next_player_random, next_world_random,
             entity_counter, next_entity_id, gameplay, recipe_book, menus,
             next_open, close, close_packet, publication, callbacks,
-            stats_after_event, drop_ordinals, sound_recipients,
+            stats_after_event, drop_ordinals, sound_recipients, final_inventory,
         } = self;
         *player_random = next_player_random;
         entity_counter.store(next_entity_id, Ordering::Relaxed);
@@ -129,6 +158,7 @@ impl PreparedStonecutterCommit<'_> {
                 while cursor < publication.events.len() {
                     let index = cursor;
                     let event = &publication.events[index];
+                    canonical_menu.inventory = main_stonecutter_recipes::stonecutter_event_phase(event).inventory.clone();
                     if let StonecutterMenuEvent::Drop { index: drop_index, .. } = event {
                         if let Some(expected) = drop_ordinals[*drop_index] {
                             assert_eq!(expected, ordinal, "validated indexed drop publication order");
@@ -174,6 +204,9 @@ impl PreparedStonecutterCommit<'_> {
                 }
             });
         assert!(pending_drop.is_none() && cursor == publication.events.len());
+        assert_eq!(canonical_menu.inventory.get_times_changed(), final_inventory.get_times_changed(),
+            "stonecutter source counter timeline differs from its prepared owner");
+        canonical_menu.inventory = final_inventory;
         *recipe_book = callbacks.into_book();
     }
 }
@@ -266,6 +299,7 @@ impl Server {
         let actual_player_random = player_random.get_mut(&id).context("stonecutter player RNG missing")?;
         let book = recipe_books.get_mut(&player.profile.uuid).context("stonecutter actual recipe book missing")?;
         shared.transact_with_menu_commit(move |menu| {
+            let counter_before = menu.inventory.get_times_changed();
             let mut next_open = open;
             let full_state = matches!(&request, StonecutterRequest::Resync)
                 || spectator && matches!(&request, StonecutterRequest::Click(_));
@@ -305,6 +339,7 @@ impl Server {
                     plan.commit(&mut next_open.menu, &mut menu.inventory)?
                 }
             };
+            project_inventory_counter(&mut publication.events, &mut menu.inventory, counter_before)?;
             ensure!(publication.outcome.packets.is_empty(), "stonecutter has two packet publication owners");
             ensure!(publication.outcome.crafted.is_empty(), "stonecutter crafted callbacks require their indexed source events");
             let callbacks = PreparedStonecutterCallbacks::prepare(gameplay, book, &publication.events)?;
@@ -367,12 +402,13 @@ impl Server {
                 entries.push(entry);
             }
             callbacks.validate_book(book)?;
+            let final_inventory = menu.inventory.clone();
             let items = item_runtime.prepare_items(entries)?;
             Ok((PreparedStonecutterCommit {
                 items, player_random: actual_player_random, next_player_random, next_world_random,
                 entity_counter: &self.entities, next_entity_id, gameplay, recipe_book: book,
                 menus: &mut stonecutters.menus, next_open, close, close_packet, publication,
-                callbacks, stats_after_event, drop_ordinals, sound_recipients,
+                callbacks, stats_after_event, drop_ordinals, sound_recipients, final_inventory,
             }, vec![]))
         }, |prepared, menu| prepared.commit(id, player.profile.uuid, &self.entity_events, menu))
     }

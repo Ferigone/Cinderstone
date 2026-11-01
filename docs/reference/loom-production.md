@@ -10,6 +10,14 @@ This records the bounded production paths and observations below. It does not
 complete an aggregate inventory/crafting checklist row or establish full vanilla
 compatibility. Earlier source ledgers' unexported-stage wording is historical.
 
+The later composition recheck also passed at source
+`972cf8b9fb43e3f1a266e176d1eb37789b438c4b`, tree
+`1e702a720ff44cf462d52dae3af641e828e136d2`, using binary SHA-256
+`0008b1ac57e5e84a5e9d0a1e5b9e6d71c9b95ca666e62931dd04d1498a715e27`.
+It includes refreshed shared MenuSync layouts, the actual Loom wrong-window
+click guard and the source-phase counter projection described below. The
+initial `17f1fa6` source/binary/report remain separate historical evidence.
+
 ## Actual Main entries and retained ownership
 
 | Production entry | Actual owner and behavior |
@@ -17,7 +25,7 @@ compatibility. Earlier source ledgers' unexported-stage wording is historical.
 | `main.rs`, `LivePlayers.looms` | Retain one `OpenLoom { position, menu, context }` per current Loom user |
 | PLAY block use `0x38` | `use_native_loom` checks the real block, actor, hand/sneak/reach and configured source, retires a prior external menu, then opens the actual Loom |
 | Container button `0x0d` | Decode two VarInts and dispatch `loom_button` against the actual matching window and selected configured pattern index |
-| Container click `0x0e` | Validate component predictions, then dispatch `click_native_loom` before other owners and inactive InventoryMenu fallback |
+| Container click `0x0e` | Validate component predictions, then dispatch `click_native_loom`; when Loom is current, a mismatched wire window is handled by ignoring it before inactive InventoryMenu fallback |
 | Container close `0x0f` | Capture and retire the sole current server menu under one operation/world/player interval; the wire window does not choose the owner |
 | Real player menu phase | `tick_native_loom_menu_for_player_locked` broadcasts, observes fresh block/reach validity, then closes invalid access |
 | Actual native-body and connection pickup paths | Select `broadcast_for_inventory` for this current menu with the same canonical inventory and gameplay frame |
@@ -98,6 +106,26 @@ not impersonate player inventory. `PlayerInventoryChanged` calls `set_changed`
 on the actual shared `PlayerInventory`, preserving the transient signed
 wrapping counter independently of protocol state IDs and criteria. Pure pickup
 broadcasts add no artificial counter, recomputation, sound or item take.
+
+At source `972cf8b`, Main also projects the transient counter through each
+historical phase. It first verifies that this kernel handoff left the prepared
+inventory and all emitted phase counters at the original counter value. Each
+phase receives only the preceding `PlayerInventoryChanged` increments; that
+marker's own phase is its before-image. Commit installs the actual event's
+inventory image into the same canonical owner before callbacks, then executes
+that marker's `set_changed`. Later events therefore see the source after-image.
+The final counter is checked against the prepared final inventory before that
+final image is installed. A kernel that starts advancing these counters itself
+requires an explicit new handoff, rather than silently doubling increments.
+These are source-code/precondition contracts. The protocol flow below does not
+independently instrument `Inventory.timesChanged` or every internal phase;
+protocol state IDs are not substituted as evidence for that transient counter.
+
+The refreshed shared `MenuSync` retains explicit layout fields for top slots,
+player range and data slots. Existing Loom remains its actual registered kind,
+with top 4, player slots 4..39 and one data slot; other new layouts do not alter
+Loom's 40-slot contract. The composed runtime observation below checks that
+actual Loom layout, not the correctness of every newly available menu layout.
 
 Normal result taking removes one banner and then one dye with each real input
 callback, adjusts unavailable selection, dispatches the captured-level take
@@ -222,6 +250,50 @@ remain unexercised. Custom/reentrant/unknown source profiles and multi-target
 drag remain unsupported. Java saves, public/graphical clients, deployment
 behavior, complete workstations, performance and aggregate checklist completion
 are not established by this local witness.
+
+## Later composition and wrong-window regression
+
+The [separate composed report](../validation/loom-stale-click-flow.json) completed
+at `2026-11-01T23:46:20.279010+00:00` on source
+`972cf8b9fb43e3f1a266e176d1eb37789b438c4b`, tree
+`1e702a720ff44cf462d52dae3af641e828e136d2`, binary SHA-256
+`0008b1ac57e5e84a5e9d0a1e5b9e6d71c9b95ca666e62931dd04d1498a715e27`.
+Its distinct private harness SHA-256 is
+`286d2e28c24d9ccad709c3eed64ee9f21bfe08a13e91cdb473043b523859cfda`.
+The original `17f1fa6` flow/harness were preserved unchanged.
+
+When Loom is current, `click_native_loom` now returns handled for an unequal
+wire window, without dispatching a click to that menu or falling through to the
+inactive InventoryMenu. With no retained Loom, it returns unhandled so actual
+other-owner dispatch can proceed. The runtime scenario placed 7 stone in
+canonical slot 11, then opened the real Loom with its actual banner/dye inputs.
+It sent a well-formed window 0, slot 11 PICKUP payload `0006000b00000000` while the
+current Loom window was 1. A wrong fallback would have picked up those stones
+through the inactive InventoryMenu.
+
+The scenario used actual normal close and a fresh Loom full-state reopen as its
+observation barrier, requiring canonical slot 11 still to contain 7 stone and
+both the actual cursor and retained window 0 cursor to remain empty. This is an
+ordered protocol/state observation, not a sleep-based race campaign or a
+fabricated resync call. The reopened actual Loom used window 2 and continued the
+original no-template index 0→holder 26/color 14 flow.
+
+The complete original ownership expectations passed again: one patterned
+banner taken, one banner/dye consumed, actual sound 1429/BLOCKS 4, connected close,
+PLAY cold restart, open-menu disconnect and final no-PLAY checkpoint retention.
+Every native save retained all 7 stone in the player with none in world items or
+cursor. Patterned/banner/dye ownership remained unchanged from the initial
+scenario; crafted entries and recipe awards/highlights stayed empty, XP stayed 0,
+and every isolated process exited 0 through its actual SIGINT path.
+
+This runtime witness covers only the current Loom wrong-window case. Analogous
+changes in the other four menu families have no new runtime witness here. It
+does not instrument the internal counter/phase timeline, prove every new
+MenuSync layout, exercise template/drag/reach/pickup/refusal-resync cases or
+establish full sound RNG/audience behavior. The final no-PLAY restart retains
+its native checkpoint-count boundary, without restored item tracking/ticking,
+Java-save or public/graphical-client claims. No aggregate checklist completion
+or progress percentage is changed by this composition recheck.
 
 Source inspection is direct JDK 21 `javap` and bounded original bootstrap/registry
 execution, not REA MCP. The original 1.21 artifacts and mappings are pinned in

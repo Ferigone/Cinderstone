@@ -18,6 +18,19 @@ close/disconnect/native-restart conservation. Crafted/recipe/highlight/XP owners
 remained empty as this source path requires. The result preview never became a
 second owned item. All isolated processes exited normally.
 
+The later current-kernel build and one stale-window regression passed on
+`972cf8b9fb43e3f1a266e176d1eb37789b438c4b`, tree
+`1e702a720ff44cf462d52dae3af641e828e136d2`, binary
+`0008b1ac57e5e84a5e9d0a1e5b9e6d71c9b95ca666e62931dd04d1498a715e27`.
+[The separate report](validation/loom-stale-click-flow.json) completed at
+`2026-11-01T23:46:20.279010+00:00`: actual current Loom ignored a valid window0
+click, kept seven stones and empty cursor, then passed the original banner/dye/
+pattern/sound/close/disconnect/native-restart math. The other four old-family
+wrong-window fixes are source-reviewed, not runtime-certified by that result.
+Current source also replays before-marker/later inventory-counter phases and
+restores the final canonical image; no independent counter instrumentation is
+claimed. All current upstream controller/ore source remains preserved.
+
 [Production source and limits](reference/loom-production.md) document real
 configured HolderSet/template binding, default-listener phases, actual counter,
 indexed drops and independent sound RNG. Templates, custom/reentrant contexts,

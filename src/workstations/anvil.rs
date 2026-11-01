@@ -1,7 +1,7 @@
 //! Bounded Java 1.21 anvil result computation.
 //!
 //! Inputs are owned by the menu; `AnvilPreview` is derived and must never be
-//! returned on close. Enchantment merging is an explicit unsupported boundary.
+//! returned on close. Enchantment merging requires its actual registry/map owner.
 //! The host supplies actual item repair rules and hover-name resolution rather
 //! than a second native copy of item/translation/registry ownership.
 
@@ -11,6 +11,7 @@ use crate::{
     protocol::{Reader, Writer},
 };
 use anyhow::{bail, ensure, Result};
+use std::{any::Any, fmt::Debug, sync::Arc};
 
 /// Source menu-field mutations before actual item/text callbacks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -19,12 +20,92 @@ pub enum AnvilComputationChange {
     RepairMaterialCount(i32),
 }
 
+/// Opaque actual-owner value. Native code never fabricates protocol-ID handles
+/// or treats wire equality as holder/snapshot identity. Owners downcast their
+/// own canonical references and reject foreign values.
+pub trait AnvilOwnerValue: Any + Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+}
+impl<T: Any + Debug + Send + Sync> AnvilOwnerValue for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+pub type AnvilEnchantmentHolder = Arc<dyn AnvilOwnerValue>;
+pub type AnvilEnchantmentSnapshot = Arc<dyn AnvilOwnerValue>;
+#[derive(Clone, Debug)]
+pub struct AnvilEnchantmentEntry {
+    pub holder: AnvilEnchantmentHolder,
+    pub level: i32,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct AnvilEnchantmentDefinition {
+    pub max_level: i32,
+    pub anvil_cost: i32,
+}
+/// A source ItemEnchantments.Mutable scratch map over the ACTUAL captured
+/// registry/holder/component owner. It does not own an input or result stack.
+/// All queries are pure and must reject unknown/foreign holders or snapshots.
+pub trait AnvilEnchantmentSession: Debug {
+    /// EnchantmentHelper.getEnchantments(addition): stored only for the exact
+    /// enchanted-book item, normal otherwise; preserve actual map entry order.
+    fn incoming_entries(&self) -> Result<Vec<AnvilEnchantmentEntry>>;
+    /// True only when the actual holder/hash/map owner certifies that order.
+    /// Protocol IDs, wire order and lexicographic sorting are not certificates.
+    fn incoming_encounter_order_certified(&self) -> bool;
+    /// Actual current mutable-map key encounter order, after previous setters.
+    fn current_holders(&self) -> Result<Vec<AnvilEnchantmentHolder>>;
+    fn same_holder(&self, a: &AnvilEnchantmentHolder, b: &AnvilEnchantmentHolder) -> Result<bool>;
+    fn current_level(&self, holder: &AnvilEnchantmentHolder) -> Result<i32>;
+    fn definition(&self, holder: &AnvilEnchantmentHolder) -> Result<AnvilEnchantmentDefinition>;
+    /// Actual Enchantment.canEnchant(base): supported_items membership.
+    fn can_enchant(&self, holder: &AnvilEnchantmentHolder, base: &ItemStack) -> Result<bool>;
+    /// Both actual exclusive sets; equality is skipped by the kernel first.
+    fn are_compatible(
+        &self,
+        a: &AnvilEnchantmentHolder,
+        b: &AnvilEnchantmentHolder,
+    ) -> Result<bool>;
+    /// Exact Mutable.set: remove <=0, otherwise put(min(level,255)), NOT upgrade.
+    fn set_level(&mut self, holder: &AnvilEnchantmentHolder, level: i32) -> Result<()>;
+    /// Actual EnchantmentHelper.setEnchantments on only the selected output
+    /// component (9 or23), preserving the copied base tooltip flag and all
+    /// unrelated components. This must encode this map's actual holder bindings.
+    fn write_back(&self, output: &mut ItemStack) -> Result<()>;
+}
+
 /// Actual item and text owners consulted by `AnvilMenu.createResult`.
 pub trait AnvilContext {
     /// Standalone computation has no menu observer. Production controllers
     /// override this hook and forward every change to their actual phase owner.
     fn observe_computation_change(&mut self, _: AnvilComputationChange) -> Result<()> {
         Ok(())
+    }
+
+    /// None is an explicit absent capability, not a synthetic default registry.
+    fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+        Ok(None)
+    }
+    fn validate_enchantment_snapshot(
+        &self,
+        snapshot: Option<&AnvilEnchantmentSnapshot>,
+    ) -> Result<()> {
+        ensure!(
+            snapshot.is_none() && self.enchantment_snapshot()?.is_none(),
+            "anvil enchantment snapshot validation requires its actual owner"
+        );
+        Ok(())
+    }
+    /// Copy the actual base map/tooltip and read the addition against this same
+    /// canonical registry snapshot. Returned scratch ownership must not borrow
+    /// or replace live item/player/world owners; queries consume no randomness.
+    fn begin_enchantment_merge(
+        &mut self,
+        _: &ItemStack,
+        _: &ItemStack,
+        _: &AnvilEnchantmentSnapshot,
+    ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+        bail!("anvil enchantment combining requires actual enchantment registry/holder ownership")
     }
 
     fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool>;
@@ -128,10 +209,9 @@ pub fn increased_repair_cost(cost: i32) -> i32 {
     ((i64::from(cost) * 2 + 1).min(i64::from(i32::MAX))) as i32
 }
 
-/// Compute the no-enchantment-merge branch of AnvilMenu.createResult.
-/// Existing enchantments on the base are preserved, including a rename or
-/// material repair of an enchanted item. An enchanted sacrifice requires the
-/// actual registry/holder-compatible merge owner and is rejected explicitly.
+/// Single AnvilMenu result computation. Existing base enchantments survive
+/// supported repair/rename without a merge owner. Sacrifice combining additionally
+/// requires the actual registry/holder/map/component capability below.
 struct AnvilComputation {
     preview: AnvilPreview,
     broadcast_after: bool,
@@ -189,6 +269,10 @@ fn compute_result(
     let mut operation_cost: i32 = 0;
     let mut rename_cost: i32 = 0;
     let mut repair_material_count = 0;
+    let mut pending_enchantments: Option<(
+        Box<dyn AnvilEnchantmentSession>,
+        AnvilEnchantmentSnapshot,
+    )> = None;
     // The source resets this field only AFTER the first-input guard and before
     // isValidRepairItem. A previous repair count must not reach that callback.
     context.observe_computation_change(AnvilComputationChange::RepairMaterialCount(0))?;
@@ -231,10 +315,7 @@ fn compute_result(
             } else {
                 9
             };
-            if stored || has_enchantments(addition, addition_enchantments)? {
-                bail!("anvil enchantment combining requires actual enchantment registry/holder ownership");
-            }
-            if output.is_damageable()? {
+            if output.is_damageable()? && !stored {
                 let max_damage = int_component(&output, 2, 0)?;
                 let durability_a = max_damage.wrapping_sub(base.damage_value()?);
                 let durability_b =
@@ -246,6 +327,79 @@ fn compute_result(
                     set_int_component(&mut output, 3, damage.clamp(0, max_damage));
                     operation_cost = operation_cost.wrapping_add(2);
                 }
+            }
+            if stored || has_enchantments(addition, addition_enchantments)? {
+                let snapshot = context.enchantment_snapshot()?.ok_or_else(|| anyhow::anyhow!(
+                    "anvil enchantment combining requires actual enchantment registry/holder ownership"))?;
+                context.validate_enchantment_snapshot(Some(&snapshot))?;
+                let mut session = context.begin_enchantment_merge(base, addition, &snapshot)?;
+                let entries = session.incoming_entries()?;
+                ensure!(
+                    entries.len() <= 1 || session.incoming_encounter_order_certified(),
+                    "multiple anvil enchantments require actual holder-map encounter order"
+                );
+                let mut accepted = false;
+                let mut rejected = false;
+                for entry in entries {
+                    ensure!(
+                        (0..=255).contains(&entry.level),
+                        "invalid actual incoming enchantment level"
+                    );
+                    let old = session.current_level(&entry.holder)?;
+                    ensure!(
+                        (0..=255).contains(&old),
+                        "invalid actual base enchantment level"
+                    );
+                    let mut level = if old == entry.level {
+                        entry.level.wrapping_add(1)
+                    } else {
+                        old.max(entry.level)
+                    };
+                    // Source calls canEnchant even when creative/book overrides
+                    // its result. Compatibility remains mandatory in both cases.
+                    let mut allowed = session.can_enchant(&entry.holder, base)?;
+                    if player.instabuild || base.item_id == enchanted_book {
+                        allowed = true;
+                    }
+                    for current in session.current_holders()? {
+                        if !session.same_holder(&entry.holder, &current)?
+                            && !session.are_compatible(&entry.holder, &current)?
+                        {
+                            allowed = false;
+                            operation_cost = operation_cost.wrapping_add(1);
+                        }
+                    }
+                    if !allowed {
+                        rejected = true;
+                        continue;
+                    }
+                    accepted = true;
+                    let definition = session.definition(&entry.holder)?;
+                    ensure!(
+                        (1..=255).contains(&definition.max_level) && definition.anvil_cost >= 0,
+                        "invalid actual anvil enchantment definition"
+                    );
+                    level = level.min(definition.max_level);
+                    session.set_level(&entry.holder, level)?;
+                    let multiplier = if stored {
+                        (definition.anvil_cost / 2).max(1)
+                    } else {
+                        definition.anvil_cost
+                    };
+                    operation_cost = operation_cost.wrapping_add(multiplier.wrapping_mul(level));
+                    if base.count > 1 {
+                        operation_cost = 40;
+                    }
+                }
+                context.validate_enchantment_snapshot(Some(&snapshot))?;
+                if rejected && !accepted {
+                    return Ok(AnvilComputation {
+                        preview: AnvilPreview::empty(),
+                        broadcast_after: false,
+                        retain_material_count: false,
+                    });
+                }
+                pending_enchantments = Some((session, snapshot));
             }
         }
     }
@@ -283,6 +437,13 @@ fn compute_result(
             repair_cost = increased_repair_cost(repair_cost);
         }
         set_int_component(&mut output, 16, repair_cost);
+        if let Some((session, snapshot)) = &pending_enchantments {
+            context.validate_enchantment_snapshot(Some(snapshot))?;
+            session.write_back(&mut output)?;
+        }
+    }
+    if let Some((_, snapshot)) = &pending_enchantments {
+        context.validate_enchantment_snapshot(Some(snapshot))?;
     }
     Ok(AnvilComputation {
         preview: AnvilPreview {
@@ -685,4 +846,419 @@ pub fn finish_anvil_take(instabuild: bool, access: &mut impl AnvilWorldAccess) -
         access.level_event(1030, 0)?;
     }
     Ok(())
+}
+
+/// Restricted native owner used only by focused tests. Numeric IDs come from
+/// the pinned registry metadata; max-level/anvil-cost facts were read directly
+/// from the original sharpness/smite/unbreaking enchantment resources. The
+/// limited item/exclusive sets and map order below are explicit test fixtures,
+/// never a production registry, Fastutil order certificate or gameplay oracle.
+#[cfg(test)]
+pub(crate) mod enchantment_fixture {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    #[derive(Debug)]
+    struct Holder {
+        owner: u64,
+        id: i32,
+    }
+    #[derive(Debug, PartialEq, Eq)]
+    struct Snapshot {
+        owner: u64,
+        epoch: u64,
+    }
+    #[derive(Clone, Debug)]
+    pub struct Owner {
+        owner: u64,
+        pub epoch: u64,
+        pub certify_multi: bool,
+        holders: Vec<AnvilEnchantmentHolder>,
+    }
+    pub fn id(name: &str) -> i32 {
+        let metadata: serde_json::Value =
+            serde_json::from_str(include_str!("../../tools/crafting_metadata.json")).unwrap();
+        metadata["registries"]["minecraft:enchantment"][format!("minecraft:{name}")]
+            .as_i64()
+            .unwrap() as i32
+    }
+    pub fn enchanted(mut stack: ItemStack, entries: &[(&str, i32)], tooltip: bool) -> ItemStack {
+        let component = if Some(stack.item_id)
+            == crate::crafting::RecipeBook::vanilla().item_id("enchanted_book")
+        {
+            23
+        } else {
+            9
+        };
+        let mut writer = Writer::new();
+        writer.varint(entries.len() as i32);
+        for (name, level) in entries {
+            writer.varint(id(name)).varint(*level);
+        }
+        writer.bool(tooltip);
+        set_component(&mut stack, component, writer.into_inner());
+        stack
+    }
+    pub fn entries(stack: &ItemStack) -> Result<(Vec<(i32, i32)>, bool)> {
+        let component = if Some(stack.item_id)
+            == crate::crafting::RecipeBook::vanilla().item_id("enchanted_book")
+        {
+            23
+        } else {
+            9
+        };
+        let Some(bytes) = stack.effective_component_bytes(component) else {
+            return Ok((vec![], true));
+        };
+        let mut reader = Reader::new(bytes);
+        let count = reader.varint()?;
+        ensure!(count >= 0, "fixture map length");
+        let mut out = vec![];
+        for _ in 0..count {
+            out.push((reader.varint()?, reader.varint()?));
+        }
+        let tooltip = reader.bool()?;
+        reader.finish()?;
+        Ok((out, tooltip))
+    }
+    impl Owner {
+        pub fn new() -> Self {
+            static NEXT: AtomicU64 = AtomicU64::new(1);
+            let owner = NEXT.fetch_add(1, Ordering::Relaxed);
+            Self {
+                owner,
+                epoch: 1,
+                certify_multi: false,
+                holders: ["sharpness", "smite", "unbreaking"]
+                    .into_iter()
+                    .map(|name| {
+                        Arc::new(Holder {
+                            owner,
+                            id: id(name),
+                        }) as AnvilEnchantmentHolder
+                    })
+                    .collect(),
+            }
+        }
+        fn holder(&self, id: i32) -> Result<AnvilEnchantmentHolder> {
+            self.holders
+                .iter()
+                .find(|h| h.as_ref().as_any().downcast_ref::<Holder>().unwrap().id == id)
+                .cloned()
+                .ok_or_else(|| anyhow::anyhow!("fixture holder unavailable"))
+        }
+        fn holder_id(&self, h: &AnvilEnchantmentHolder) -> Result<i32> {
+            let value = h
+                .as_ref()
+                .as_any()
+                .downcast_ref::<Holder>()
+                .ok_or_else(|| anyhow::anyhow!("foreign fixture holder"))?;
+            ensure!(
+                value.owner == self.owner && self.holders.iter().any(|known| Arc::ptr_eq(known, h)),
+                "foreign fixture holder owner"
+            );
+            Ok(value.id)
+        }
+    }
+    impl AnvilContext for Owner {
+        fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+            Ok(Some(Arc::new(Snapshot {
+                owner: self.owner,
+                epoch: self.epoch,
+            })))
+        }
+        fn validate_enchantment_snapshot(
+            &self,
+            snapshot: Option<&AnvilEnchantmentSnapshot>,
+        ) -> Result<()> {
+            let value = snapshot
+                .and_then(|s| s.as_ref().as_any().downcast_ref::<Snapshot>())
+                .ok_or_else(|| anyhow::anyhow!("missing fixture snapshot"))?;
+            ensure!(
+                *value
+                    == Snapshot {
+                        owner: self.owner,
+                        epoch: self.epoch
+                    },
+                "fixture registry epoch/owner changed"
+            );
+            Ok(())
+        }
+        fn begin_enchantment_merge(
+            &mut self,
+            base: &ItemStack,
+            addition: &ItemStack,
+            snapshot: &AnvilEnchantmentSnapshot,
+        ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+            self.validate_enchantment_snapshot(Some(snapshot))?;
+            let (base_entries, tooltip) = entries(base)?;
+            let (incoming, _) = entries(addition)?;
+            let map = base_entries
+                .into_iter()
+                .map(|(id, level)| Ok((self.holder(id)?, level)))
+                .collect::<Result<Vec<_>>>()?;
+            let incoming = incoming
+                .into_iter()
+                .map(|(id, level)| {
+                    Ok(AnvilEnchantmentEntry {
+                        holder: self.holder(id)?,
+                        level,
+                    })
+                })
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Box::new(Session {
+                owner: self.clone(),
+                map,
+                incoming,
+                tooltip,
+            }))
+        }
+        fn is_valid_repair_item(&mut self, _: &ItemStack, _: &ItemStack) -> Result<bool> {
+            Ok(false)
+        }
+        fn hover_name(&mut self, _: &ItemStack) -> Result<JavaString> {
+            Ok("Original".into())
+        }
+    }
+    #[derive(Debug)]
+    struct Session {
+        owner: Owner,
+        map: Vec<(AnvilEnchantmentHolder, i32)>,
+        incoming: Vec<AnvilEnchantmentEntry>,
+        tooltip: bool,
+    }
+    impl AnvilEnchantmentSession for Session {
+        fn incoming_entries(&self) -> Result<Vec<AnvilEnchantmentEntry>> {
+            Ok(self.incoming.clone())
+        }
+        fn incoming_encounter_order_certified(&self) -> bool {
+            self.owner.certify_multi
+        }
+        fn current_holders(&self) -> Result<Vec<AnvilEnchantmentHolder>> {
+            Ok(self.map.iter().map(|(h, _)| h.clone()).collect())
+        }
+        fn same_holder(
+            &self,
+            a: &AnvilEnchantmentHolder,
+            b: &AnvilEnchantmentHolder,
+        ) -> Result<bool> {
+            self.owner.holder_id(a)?;
+            self.owner.holder_id(b)?;
+            Ok(Arc::ptr_eq(a, b))
+        }
+        fn current_level(&self, holder: &AnvilEnchantmentHolder) -> Result<i32> {
+            self.owner.holder_id(holder)?;
+            Ok(self
+                .map
+                .iter()
+                .find(|(h, _)| Arc::ptr_eq(h, holder))
+                .map(|(_, l)| *l)
+                .unwrap_or(0))
+        }
+        fn definition(
+            &self,
+            holder: &AnvilEnchantmentHolder,
+        ) -> Result<AnvilEnchantmentDefinition> {
+            let value = self.owner.holder_id(holder)?;
+            Ok(if value == id("sharpness") {
+                AnvilEnchantmentDefinition {
+                    max_level: 5,
+                    anvil_cost: 1,
+                }
+            } else if value == id("smite") {
+                AnvilEnchantmentDefinition {
+                    max_level: 5,
+                    anvil_cost: 2,
+                }
+            } else {
+                AnvilEnchantmentDefinition {
+                    max_level: 3,
+                    anvil_cost: 2,
+                }
+            })
+        }
+        fn can_enchant(&self, holder: &AnvilEnchantmentHolder, base: &ItemStack) -> Result<bool> {
+            self.owner.holder_id(holder)?;
+            Ok(Some(base.item_id) == crate::crafting::RecipeBook::vanilla().item_id("iron_sword"))
+        }
+        fn are_compatible(
+            &self,
+            a: &AnvilEnchantmentHolder,
+            b: &AnvilEnchantmentHolder,
+        ) -> Result<bool> {
+            let a = self.owner.holder_id(a)?;
+            let b = self.owner.holder_id(b)?;
+            Ok(!((a == id("sharpness") && b == id("smite"))
+                || (a == id("smite") && b == id("sharpness"))))
+        }
+        fn set_level(&mut self, holder: &AnvilEnchantmentHolder, level: i32) -> Result<()> {
+            self.owner.holder_id(holder)?;
+            if level <= 0 {
+                self.map.retain(|(h, _)| !Arc::ptr_eq(h, holder));
+            } else if let Some((_, old)) = self.map.iter_mut().find(|(h, _)| Arc::ptr_eq(h, holder))
+            {
+                *old = level.min(255);
+            } else {
+                self.map.push((holder.clone(), level.min(255)));
+            }
+            Ok(())
+        }
+        fn write_back(&self, output: &mut ItemStack) -> Result<()> {
+            let component = if Some(output.item_id)
+                == crate::crafting::RecipeBook::vanilla().item_id("enchanted_book")
+            {
+                23
+            } else {
+                9
+            };
+            let mut writer = Writer::new();
+            writer.varint(self.map.len() as i32);
+            for (holder, level) in &self.map {
+                writer.varint(self.owner.holder_id(holder)?).varint(*level);
+            }
+            writer.bool(self.tooltip);
+            set_component(output, component, writer.into_inner());
+            Ok(())
+        }
+    }
+}
+
+#[cfg(test)]
+mod enchantment_tests {
+    use super::enchantment_fixture::{enchanted, entries, id, Owner};
+    use super::*;
+    fn item(name: &str) -> ItemStack {
+        ItemStack::new(
+            crate::crafting::RecipeBook::vanilla()
+                .item_id(name)
+                .unwrap(),
+            1,
+        )
+        .unwrap()
+    }
+    const PLAYER: AnvilPlayer = AnvilPlayer {
+        instabuild: false,
+        experience_level: 100,
+    };
+    #[test]
+    fn actual_owner_book_cost_level_set_tooltip_and_presence_rules() -> Result<()> {
+        let mut owner = Owner::new();
+        let base = enchanted(item("iron_sword"), &[("sharpness", 2)], false);
+        let addition = enchanted(item("enchanted_book"), &[("sharpness", 2)], true);
+        let result = create_result(&[base.clone(), addition.clone()], None, PLAYER, &mut owner)?;
+        assert_eq!(result.level_cost, 3);
+        assert_eq!(entries(&result.stack)?, (vec![(id("sharpness"), 3)], false));
+        let mut damaged_base = base.clone();
+        let mut damaged_sacrifice = enchanted(item("iron_sword"), &[("sharpness", 2)], true);
+        set_int_component(&mut damaged_base, 3, 100);
+        set_int_component(&mut damaged_sacrifice, 3, 100);
+        let combined = create_result(&[damaged_base, damaged_sacrifice], None, PLAYER, &mut owner)?;
+        assert_eq!(combined.level_cost, 5); // durability2 + normal anvil_cost1 * level3
+        assert_eq!(combined.stack.damage_value()?, 0);
+        assert_eq!(entries(&combined.stack)?.0, vec![(id("sharpness"), 3)]);
+        let overlevel = enchanted(item("iron_sword"), &[("sharpness", 9)], false);
+        let result = create_result(
+            &[
+                overlevel,
+                enchanted(item("enchanted_book"), &[("sharpness", 1)], true),
+            ],
+            None,
+            PLAYER,
+            &mut owner,
+        )?;
+        assert_eq!(result.level_cost, 5);
+        assert_eq!(entries(&result.stack)?.0, vec![(id("sharpness"), 5)]); // set, not upgrade
+        let bookbase = enchanted(item("enchanted_book"), &[("sharpness", 2)], false);
+        let result = create_result(
+            &[
+                bookbase,
+                enchanted(item("enchanted_book"), &[("unbreaking", 1)], true),
+            ],
+            None,
+            PLAYER,
+            &mut owner,
+        )?;
+        assert_eq!(result.stack.item_id, item("enchanted_book").item_id);
+        assert_eq!(entries(&result.stack)?.0.len(), 2);
+        // Presence on an arbitrary addition enables the discount, but its
+        // actual normal9 map is read; stored23 is selected only for exact book.
+        let mut arbitrary = enchanted(item("stone"), &[("unbreaking", 1)], true);
+        let mut empty = Writer::new();
+        empty.varint(0).bool(true);
+        set_component(&mut arbitrary, 23, empty.into_inner());
+        let mut damaged = item("iron_sword");
+        set_int_component(&mut damaged, 3, 100);
+        let result = create_result(&[damaged, arbitrary], None, PLAYER, &mut owner)?;
+        assert_eq!(result.level_cost, 1);
+        assert_eq!(result.stack.damage_value()?, 100);
+        assert_eq!(entries(&result.stack)?.0, vec![(id("unbreaking"), 1)]);
+        let bad = enchanted(item("enchanted_book"), &[("smite", 1)], true);
+        let result = create_result(
+            &[base.clone(), bad],
+            Some(&"Named".into()),
+            AnvilPlayer {
+                instabuild: true,
+                ..PLAYER
+            },
+            &mut owner,
+        )?;
+        assert!(result.stack.is_empty());
+        assert_eq!(result.level_cost, 0); // creative still incompatible; before rename
+        let mut expensive = base;
+        set_int_component(&mut expensive, 16, 40);
+        let result = create_result(
+            &[expensive.clone(), addition.clone()],
+            None,
+            PLAYER,
+            &mut owner,
+        )?;
+        assert!(result.stack.is_empty());
+        assert_eq!(result.level_cost, 43);
+        let result = create_result(
+            &[expensive, addition],
+            None,
+            AnvilPlayer {
+                instabuild: true,
+                ..PLAYER
+            },
+            &mut owner,
+        )?;
+        assert!(!result.stack.is_empty());
+        assert_eq!(int_component(&result.stack, 16, 0)?, 81);
+        Ok(())
+    }
+    #[test]
+    fn only_owner_certified_multi_entry_order_can_select_conflicting_enchantments() -> Result<()> {
+        let mut owner = Owner::new();
+        let mut state = AnvilState::default();
+        state.set_input(0, item("iron_sword"), PLAYER, &mut owner)?;
+        let addition = enchanted(
+            item("enchanted_book"),
+            &[("sharpness", 1), ("smite", 1)],
+            true,
+        );
+        assert!(state
+            .set_input(1, addition.clone(), PLAYER, &mut owner)
+            .is_err());
+        assert!(state.inputs()[1].is_empty());
+        owner.certify_multi = true;
+        state.set_input(1, addition, PLAYER, &mut owner)?;
+        assert_eq!(state.preview().level_cost, 2);
+        assert_eq!(
+            entries(&state.preview().stack)?.0,
+            vec![(id("sharpness"), 1)]
+        );
+        state.set_input(
+            1,
+            enchanted(
+                item("enchanted_book"),
+                &[("smite", 1), ("sharpness", 1)],
+                true,
+            ),
+            PLAYER,
+            &mut owner,
+        )?;
+        assert_eq!(state.preview().level_cost, 2);
+        assert_eq!(entries(&state.preview().stack)?.0, vec![(id("smite"), 1)]);
+        Ok(())
+    }
 }

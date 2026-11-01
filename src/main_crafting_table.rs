@@ -309,9 +309,10 @@ impl Server {
         let Some(open) = players.crafting_tables.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|window| window != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
+        }
+        if close.is_some_and(|window| window != open.menu.window_id) {
             return Ok(false);
         }
         let player = players

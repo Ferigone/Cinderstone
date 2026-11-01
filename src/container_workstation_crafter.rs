@@ -589,6 +589,13 @@ impl<R: CrafterRecipes, C: CrafterMenuCallbacks> Action<'_, R, C> {
             return Ok(ItemStack::empty());
         }
         let source = self.slot(slot);
+        // crq.tryRemove: preview mayPickup=false was handled above; for
+        // ordinary slots allowModification is their current mayPlace value.
+        // A native imported occupied-disabled slot still requires enough
+        // destination capacity for its entire current stack before splitting.
+        if !self.may_place(slot) && maximum < source.count {
+            return Ok(ItemStack::empty());
+        }
         let n = source.count.min(amount).min(maximum);
         if source.is_empty() || n <= 0 {
             return Ok(ItemStack::empty());
@@ -728,6 +735,21 @@ impl<R: CrafterRecipes, C: CrafterMenuCallbacks> Action<'_, R, C> {
                 } else if carried.count <= limit(&carried)? {
                     self.menu.sync.set_carried(source);
                     self.set(slot, carried)?;
+                }
+            } else if source.same_item_same_components(&carried)? {
+                // cpu's matching-removal branch remains available when this
+                // occupied slot rejects placement. tryRemove enforces whole
+                // destination capacity before the source split.
+                let taken = self.try_remove(
+                    slot,
+                    source.count,
+                    carried.max_stack_size()?.wrapping_sub(carried.count),
+                )?;
+                if !taken.is_empty() {
+                    self.menu
+                        .sync
+                        .set_carried(counted(&carried, carried.count.wrapping_add(taken.count)));
+                    self.slot_changed(slot)?; // Slot.onTake, after cursor grow
                 }
             }
         }
@@ -1549,6 +1571,125 @@ mod tests {
             );
             assert_eq!(state.inputs()[4], item("oak_log", 2));
         }
+        Ok(())
+    }
+
+    #[test]
+    fn public_native_import_occupied_disabled_slot_retains_source_removal_capacity_guard(
+    ) -> Result<()> {
+        // This is an explicit public native serde import, NOT vanilla NBT
+        // loading or a normal gameplay state: restore/setters prevent occupied
+        // disabled slots. The currently admitted Deserialize route can form it.
+        let mut dirt = item("dirt", 2);
+        let mut maximum = Writer::new();
+        maximum.varint(99);
+        dirt.components.push(crate::inventory::Component {
+            type_id: 1,
+            data: maximum.into_inner(),
+        });
+        assert_eq!(dirt.max_stack_size()?, 99);
+        let mut image = serde_json::to_value(CrafterState::default())?;
+        image["inputs"][0] = serde_json::to_value(&dirt)?;
+        image["disabled"][0] = serde_json::json!(true);
+        let mut state: CrafterState = serde_json::from_value(image)?;
+        assert!(state.is_slot_disabled(0));
+        assert_eq!(state.inputs()[0], dirt);
+        let mut canonical_inputs = std::array::from_fn(|_| ItemStack::empty());
+        canonical_inputs[0] = dirt.clone();
+        assert!(!CrafterState::restore(canonical_inputs, &[0], 0, 0)?.is_slot_disabled(0));
+        let callbacks = Callbacks(true, 1);
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, counted(&dirt, 98));
+        let mut menu = CrafterMenu::new(3, &callbacks)?;
+        menu.initialize(&state, &inventory, &callbacks, &mut Recipes)?;
+        click(&mut menu, &mut state, &mut inventory, 9, ClickType::Pickup)?;
+        inventory.set_slot_authoritative(10, item("quartz", 2));
+        let ordinary = click(&mut menu, &mut state, &mut inventory, 0, ClickType::Pickup)?;
+        assert_eq!(state.inputs()[0].count, 2);
+        assert_eq!(menu.sync().carried().count, 98);
+        let dirty = ordinary
+            .events
+            .iter()
+            .enumerate()
+            .filter_map(|(i, event)| {
+                matches!(event, CrafterMenuEvent::BlockEntityChanged { .. }).then_some(i)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(dirty.len(), 1); // ordinary PICKUP retains final Slot.changed
+        let listener = ordinary
+            .events
+            .iter()
+            .position(|event| {
+                matches!(
+                    event,
+                    CrafterMenuEvent::Sync {
+                        event: SyncEvent::SlotListener { menu_slot: 10, .. },
+                        ..
+                    }
+                )
+            })
+            .expect("pending inventory listener after ordinary final dirty");
+        assert!(dirty[0] < listener);
+        let CrafterMenuEvent::BlockEntityChanged { phase } = &ordinary.events[dirty[0]] else {
+            unreachable!()
+        };
+        assert_eq!(
+            (phase.state.inputs()[0].count, phase.carried.count),
+            (2, 98)
+        );
+        assert!(phase.state.is_slot_disabled(0));
+        let refused = click(
+            &mut menu,
+            &mut state,
+            &mut inventory,
+            11,
+            ClickType::PickupAll,
+        )?;
+        assert_eq!(
+            (state.inputs()[0].count, menu.sync().carried().count),
+            (2, 98)
+        );
+        assert!(state.is_slot_disabled(0));
+        assert!(!refused.events.iter().any(|event| matches!(
+            event,
+            CrafterMenuEvent::BlockEntityChanged { .. }
+                | CrafterMenuEvent::PlayerInventoryChanged { .. }
+                | CrafterMenuEvent::Drop { .. }
+        ))); // PICKUP_ALL has no unconditional final Slot.changed
+        assert!(refused.drops.is_empty());
+        assert!(menu.preview().is_empty());
+        // Capacity equal to the whole source count is allowed: this guard does
+        // not invent mayPickup=false for an imported disabled input.
+        custom_click(
+            &mut menu,
+            &mut state,
+            &mut inventory,
+            9,
+            1,
+            ClickType::Pickup,
+            false,
+        )?;
+        assert_eq!(menu.sync().carried().count, 97);
+        let taken = click(&mut menu, &mut state, &mut inventory, 0, ClickType::Pickup)?;
+        let dirty = taken
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                CrafterMenuEvent::BlockEntityChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert!(dirty.len() >= 3);
+        assert_eq!(dirty.first().unwrap().carried.count, 97); // remove precedes cursor grow
+        assert!(dirty
+            .iter()
+            .rev()
+            .take(2)
+            .all(|phase| phase.carried.count == 99)); // onTake then final changed
+        assert!(state.inputs()[0].is_empty());
+        assert_eq!(menu.sync().carried().count, 99);
+        assert_eq!(inventory.slot(9).unwrap().count, 1);
+        assert!(!state.is_slot_disabled(0)); // source empty-slot setter enables it
         Ok(())
     }
 
