@@ -80,8 +80,9 @@ identifies the exact binary and scope. It also exercised the normal 20 TPS
 deadline clock. Sprint/freeze tick control and complete Java task-queue semantics
 remain outside that bounded clock change. The family remains partial. Saved
 native state retains block-entity registration order; legacy records restore
-their recorded order. The result does not establish graphical-client or Railway
-validation for this batch.
+their recorded order. The result does not establish graphical-client or public
+gameplay validation. Hosted release startup is recorded separately in the
+[deployment observation](validation/railway-preview.json).
 
 ## 5. Redstone, TNT and moving blocks — Partial
 

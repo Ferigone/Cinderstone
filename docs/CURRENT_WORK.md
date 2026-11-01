@@ -39,8 +39,8 @@ The observed scope was:
 The saved partial furnace had cooking progress 13/200 and 1,110 burn ticks
 remaining. The report records two XP points before restart and four after the
 continued flow. These observations apply to the recorded binary and path. The
-probe was a protocol client, not a graphical vanilla-client session; Railway
-deployment of this batch is not established by this result. Source behavior and
+probe was a protocol client, not a graphical vanilla-client session. Hosted
+startup is recorded separately below. Source behavior and
 evidence boundaries are described in the
 [furnace reference ledger](reference/furnaces.md).
 
@@ -110,13 +110,14 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) describes its exact
-recorded release and live join. The new local furnace flow passed, but that older
-deployment observation does not establish Railway deployment of this batch.
-Direct external status/pong
-probing from the development environment previously failed DNS resolution;
-live joins were observed through deployment logs. A successful join does not
-establish complete gameplay compatibility.
+The [deployment observation](validation/railway-preview.json) records the current
+furnace batch: optimized release build, successful automatic deployment, one
+running replica and native offline listening on `0.0.0.0:25565` at
+03:33:55 UTC on 1 November 2026. The persistent volume is retained. The current
+release has no observed public PLAY join in that snapshot; the earlier offline
+join remains explicitly historical. A fresh external status/pong probe failed
+DNS resolution from the development environment. Local gameplay, hosted startup
+and public gameplay are separate evidence scopes.
 
 ## Remaining scope and checklist
 

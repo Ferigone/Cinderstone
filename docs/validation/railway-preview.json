@@ -1,16 +1,18 @@
 {
-  "observed_at": "2026-11-01T02:34:27.444091+00:00",
-  "source_commit": "1ac097c70d77fae79879d8bd274cb0a649a7edf3",
-  "deployment_id": "a6e7a646-0f52-4711-b1df-9ede309097a8",
+  "observed_at": "2026-11-01T03:34:53.843135+00:00",
+  "source_commit": "36ad0e07b7d8b98111565afee9a20f5970e4f135",
+  "native_integration_commit": "74c69d02e5a6516c157b6f2f2490438d61b81365",
+  "deployment_id": "2a8bdd72-4647-48f8-b865-3705f08453d8",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
+  "release_build_passed": true,
   "native_listening": {
     "address": "0.0.0.0:25565",
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T02:33:24.302255407Z"
+    "event_timestamp": "2026-11-01T03:33:55.569444565Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
@@ -23,6 +25,11 @@
   "public_player_data_redeploy_verified": false,
   "full_vanilla_parity": false,
   "online_mode": false,
-  "deployment_play_join_observed": true,
-  "deployment_play_join_timestamp": "2026-11-01T02:33:31.721552847Z"
+  "deployment_play_join_observed": false,
+  "historical_public_play_join": {
+    "deployment_id": "a6e7a646-0f52-4711-b1df-9ede309097a8",
+    "timestamp": "2026-11-01T02:33:31.721552847Z",
+    "mode": "offline"
+  },
+  "verification_scope": "Optimized release build, successful autodeploy, one running replica, retained persistent volume and native offline listening. The furnace gameplay flow was local, as recorded separately; current public gameplay was not observed."
 }

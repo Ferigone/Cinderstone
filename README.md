@@ -55,8 +55,9 @@ save/cold restart. The same binary uses the normal 20 TPS deadline and overload
 clock. See the [flow report](docs/validation/furnace-preview-flow.json),
 [current work](docs/CURRENT_WORK.md) and
 [furnace source ledger](docs/reference/furnaces.md). This does not establish full
-vanilla compatibility, a graphical-client check or deployment of this batch to
-Railway.
+vanilla compatibility or a graphical-client check. The
+[deployment observation](docs/validation/railway-preview.json) records the hosted
+release build and offline startup separately.
 
 Furnace block destruction, including nonempty contents and recorded rewards,
 comparator receivers, Mending repairs and custom datapacks remain unsupported.
