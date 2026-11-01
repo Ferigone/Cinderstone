@@ -26,12 +26,14 @@ impl Server {
         enum CurrentMenu {
             Furnace,
             Stonecutter,
+            Smithing,
             CraftingTable,
             NativeContainer,
         }
         let mut owners = [
             players.furnaces.window_id(id).map(|_| CurrentMenu::Furnace),
             players.stonecutters.window_id(id).map(|_| CurrentMenu::Stonecutter),
+            players.smithing_tables.window_id(id).map(|_| CurrentMenu::Smithing),
             players.crafting_tables.window_id(id).map(|_| CurrentMenu::CraftingTable),
             players.native_containers.window_id(id).map(|_| CurrentMenu::NativeContainer),
         ].into_iter().flatten();
@@ -45,6 +47,9 @@ impl Server {
                 &mut world, &mut players, id, now, border,
             ),
             Some(CurrentMenu::Stonecutter) => self.resync_native_stonecutter_locked(
+                &mut world, &mut players, id, now, border,
+            ),
+            Some(CurrentMenu::Smithing) => self.resync_native_smithing_locked(
                 &mut world, &mut players, id, now, border,
             ),
             Some(CurrentMenu::CraftingTable) => self.resync_native_crafting_table_locked(

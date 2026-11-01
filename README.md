@@ -10,6 +10,16 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Smithing Main
+
+The three-input Smithing controller is connected to actual Main owners. A full
+Main build and [local protocol flow](docs/validation/smithing-flow.json) passed:
+netherite-sword transformation, actual level event1044, crafted statistics,
+current-menu close, disconnect and native cold restart preserved owned items.
+[Production scope](docs/reference/smithing-production.md) separates that observed
+path from unexercised trim, custom component, pickup and range contexts. Its
+source PR is under publication; a hosted Smithing release is not yet verified.
+
 ## Native Stonecutter Main
 
 The native Stonecutter now uses the real shared player inventory, recipe book,
@@ -20,8 +30,11 @@ passed the same flow and the equipped-range retirement regression.
 See [production scope and exact evidence](docs/reference/stonecutter-production.md).
 Custom component reference identity, custom interaction ranges and arbitrary
 reentrant callbacks remain unsupported; this is a bounded workstation delivery.
-Its Railway release is pending verification. Smithing Main is the next assembly
-stage. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
+Railway deployment `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` for master
+`dddc0e7` reached SUCCESS and native offline listening at
+`2026-11-01T22:05:31.290410832Z`, with one running replica and the existing volume.
+The external status probe still fails DNS resolution; public gameplay remains
+unverified. Smithing Main has separately passed its local flow. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
 
 ## Native connection transport
 

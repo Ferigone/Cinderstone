@@ -1,0 +1,28 @@
+{
+  "observed_at": "2026-11-01T22:14:50.558859+00:00",
+  "source_commit": "dddc0e7807bf8caa91d5b57232e0535e6519f5ed",
+  "pull_request": 72,
+  "deployment_id": "f1add0f5-552d-41f5-9dd6-e1aa36a1b201",
+  "status": "SUCCESS",
+  "native_listening_at": "2026-11-01T22:05:31.290410832Z",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "mode": "offline",
+  "listen_address": "0.0.0.0:25565",
+  "environment": {
+    "state": "online",
+    "running_replicas": 1,
+    "crashed_replicas": 0,
+    "has_volume": true,
+    "pending_work": []
+  },
+  "public_status_probe": {
+    "checked_at": "2026-11-01T22:12:30.901917+00:00",
+    "endpoint": "hopper.proxy.rlwy.net:24418",
+    "protocol": 767,
+    "ok": false,
+    "error": "socket.gaierror: [Errno -3] Temporary failure in name resolution"
+  },
+  "public_graphical_or_real_account_login_verified": false,
+  "settings_note": "This source stage changed no volume/deployment configuration. Missing server.properties uses actual source defaults; observed startup/listen succeeded."
+}
