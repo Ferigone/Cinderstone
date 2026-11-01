@@ -1,0 +1,95 @@
+{
+  "pr": 6,
+  "source_commit": "741da48efc13a28208a8ceb1809a29fd3f145e96",
+  "master_reviewed": "47182b236135a295ab17a2d64aaedd425f960869",
+  "user_authorization": "User explicitly authorized self-review, merge and autonomous documented continuation; this supersedes the prior team no-merge handoff rule for this stage.",
+  "review_scopes": [
+    "RNG worker independently reviewed surface numeric/callback behavior",
+    "Surface worker independently reviewed aquifer pressure/cache/overflow behavior",
+    "Density worker independently reviewed generator/material/heightmap/NoCells behavior",
+    "Composition worker independently reviewed density cache/wrapping behavior",
+    "NoiseChunk worker reviewed phase/dependency owners against original lifecycle",
+    "Aquifer worker reviewed validation tools and original-evidence limits"
+  ],
+  "production_findings": "No new material defect found in the reviewed supported empty-context paths.",
+  "validation_findings_fixed": [
+    {
+      "finding": "Duplicate SURFACE check used an always-failing MissingBiome, allowing a false pass",
+      "resolution": "Reuse valid successful biome context; require exact stage error, zero callbacks, and unchanged image/stage/both heightmaps/postprocessing"
+    },
+    {
+      "finding": "Surface postprocessing evidence compared only counts but field implied full equality",
+      "resolution": "Rename report field to surface_postprocessing_count_equal and document no positional/order proof"
+    },
+    {
+      "finding": "Original surface oracle imports NOISE bytes and creates a fresh original NoiseChunk",
+      "resolution": "Document that original cross-stage cache-owner continuity is not observed by this oracle"
+    }
+  ],
+  "checks": [
+    {
+      "command": "cargo build --locked --bin mc121-rust",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo test --locked --lib worldgen::",
+      "exit_code": 0
+    },
+    {
+      "command": "cargo test --locked --lib density::chunk::tests",
+      "exit_code": 0
+    },
+    {
+      "command": "python src/worldgen/validation/check.py --oracle-dir <verified-original-artifacts>",
+      "exit_code": 0
+    }
+  ],
+  "compiler_log_sha256": "b46c86d43feb3bf395dc0ce07250f453480c5c85a910f040011767028d0aac7f",
+  "stage_report_sha256": "01f81d15222244beef5de34f5cc6a48211048d9b0594cbf2d1d3d9e4b6597940",
+  "source_sha256": {
+    "src/worldgen/aquifer.rs": "347ddc1fef2b5cd140a094f119ae668f375d9d569a1487ee91e1e0600e912b58",
+    "src/worldgen/generator.rs": "40688b93b15d5b0c71e7f7e8673ae854815591fb163e11b50f2a9047bc870e7b",
+    "src/worldgen/mod.rs": "625a6d89dfa74a13d59454ffc1e8ac7d4c592a2b558c28e278b1edb7c9bbec4e",
+    "src/worldgen/noise_chunk.rs": "0385ac80bef3fd237742ae8859fe6ec7a96fa4a2b0805ef0c5be329d6a3e170b",
+    "src/worldgen/random_state.rs": "048144db7e25704a6e3dc256b5b30e4af2110cad917c894edafb5fe651835523",
+    "src/worldgen/surface/mod.rs": "04191126d40c6adcca21eb55ac8d4788ee2c57ef313a35c61061a051061129b4",
+    "src/worldgen/surface/rules.rs": "292cc4b35136e2310b38c38813b1e47ab64ed5752cf88c183efacf0970b66d3f",
+    "src/worldgen/validation/no_cells_probe.rs": "a309fb749c86cf82957eeea535b57c2f3dcafc5eb0b2696884660480a4ac4ddc",
+    "src/worldgen/validation/noise_probe.rs": "7c8d8db8d3b0c0b3a9751d27e5bd7ebbb339fa2bd28a340b3ce2ea139fee3ab0",
+    "src/worldgen/validation/surface_probe.rs": "1bb068d6975c8bbbcd9001fe30b1a64a3bd35cae319ed4e991febc7557c400e4",
+    "src/density.rs": "664e062fbde4d4b24fa2b5087e2259ca993476f0dde776ec3a98e1c401aa1e0a",
+    "src/density/chunk.rs": "3f7ef226e0332d7167ded190362798e2b7f62d43bb1485e5c8cb5f07c9bfe0d7",
+    "src/noise.rs": "151878d794840d269ca4dead58490e7fc79ee7bb43cc0e151a78fc3337896660",
+    "src/random.rs": "417b2461a9f298c8ee17fb4932a22c3bbcdba0ddecdd130c30b3ce46fe21aa64",
+    "src/lib.rs": "2868d78e9e357cf0d31b843f5ad7432f21f2681bdd3a0a79cc26b0216e951d0f",
+    "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
+    "fixtures/density_builtin-1.21.json": "4bf8649303f74a80c45e95009432bfa33c7eb2cb2f099139004aceb1720acc1d",
+    "fixtures/noise_parameters-1.21.json": "e969eaedde0a43b2bca3b3b43fd98af08824e8472ca2181cc10b16d86b9add0a",
+    "fixtures/world-generation-surface-rules.json": "fc6fe5ac86446e6aea7ca18fb13fdcb8eeae46775c8e613b239111e26c2785a5",
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/placement-1.21.json": "e044d4bdf90cfcae62043b630b1c673bb3582025b684a7fbe5878fe6747e8a50",
+    "fixtures/world-generation-aquifer-vectors.json": "e2fd0d31f0348c4b74ddebf9c3e4f85e0080d1799eb9e296402a73480138e3b4",
+    "fixtures/world-generation-noise-chunk.json": "47ce0ca0a40d07e2dd56e765b56fac61ac49505e46728e059440344b68e9963b",
+    "fixtures/world-generation-aquifer-quantization.json": "2eba9d54e4254c240ae9beb8e44e01cf7b6169d5202f44e9304a456ab255ce37",
+    "fixtures/world-generation-density-rewrite.json": "977a65bc959f9e8088e1ede4b021ccf48c4f001ac45ce4b86a2ca8516412ec01",
+    "fixtures/world-generation-no-cells.json": "5a9b6a005ae0854295017a1823d6633fd11ba8968402f32d00f6b4f55d921827",
+    "src/worldgen/validation/WorldgenNoiseOracle.java": "6e26753182abc56134b5bb1f9c7db977eb9c93cd64857dc9d8b9426e82c9dc57",
+    "src/worldgen/validation/WorldgenSurfaceOracle.java": "100480786bb78fea77884b55b386af1d9eecd84ac7ba43f11249b509c2219e09",
+    "src/worldgen/validation/WorldgenNoCellsOracle.java": "4073d20755135ea125991b7fe6574bc25c1a3735fe4469002172d8bbbc62c4dc",
+    "src/worldgen/validation/check.py": "185ae89d25a81bb8d22a0b59e3cdf561e883b687d6172e99e4b4fa5f623ef424"
+  },
+  "merge_conflict_resolution": "src/lib.rs retains every current master connection/chat/admission export and adds worldgen; no export removed.",
+  "main_generation_connected": false,
+  "full_chunk_publication": false,
+  "checklist_changed": false,
+  "remaining": [
+    "Real per-world seed/settings/dimension/height and job lifetime",
+    "Actual ProtoChunk/BIOMES/dependency owners and positive-generation witnesses",
+    "Real zoomed-biome/thermal context in production",
+    "Scheduler/storage/persistence/readiness and remaining generation stages"
+  ],
+  "next_owned_stage": "Arc-owned terrain moves the exact existing density/cache/image into owned NOISE-to-SURFACE output; no self-reference/reseed/cache rebuild/FULL claim.",
+  "prior_review_source": "5598475e739c92677712a4fc95547f82c4b20667",
+  "prior_master_reviewed": "e8e8bc92a242eef8d568675bf94b0b1aae3ae336",
+  "concurrent_source": "Effects/damage PR7/8 composed; all central and team exports retained; full Main/focused/original stage checks passed again."
+}
