@@ -24,7 +24,7 @@ impl RedstoneWorld for Host<'_>{
 #[derive(Clone,Copy)]enum Action{Changed(P,u32,u32),Neighbors(P,u32),Tick(P),Use(P,bool,Option<i32>),Inside(P),Placed(P,u32)}
 impl LivePlayers{
  fn redstone_frame(&mut self,world:&mut WorldBackend,now:i64,border:CollisionBorder,events:&broadcast::Sender<PlayerEvent>,action:Action,override_body:Option<&mc121_rust::entity_state::EntityPhysicalState>)->Result<bool>{
-  if let Action::Changed(_,old,new)=action{let a=redstone::block(old)?;let b=redstone::block(new)?;if (a.min==b.min||matches!(a.on_remove.as_str(),"dtb"|"dfy"))&&matches!(b.on_place.as_str(),"dtb"|"dfy"){return Ok(true)}}
+  if let Action::Changed(_,old,new)=action{let a=redstone::block(old)?;let b=redstone::block(new)?;if (a.min==b.min||matches!(a.on_remove.as_str(),"dtb"|"dfy"))&&matches!(b.on_place.as_str(),"dtb"|"dfy"|"dko"){return Ok(true)}}
   if let Action::Use(p,..)=action{if !matches!(redstone::block(world.block(p.0,p.1,p.2)?)?.class.as_str(),"dkl"|"dgi"|"dmg"){return Ok(false)}}
   if let Action::Inside(p)=action{if !matches!(redstone::block(world.block(p.0,p.1,p.2)?)?.class.as_str(),"dlw"|"dpp"|"dgi"){return Ok(false)}}
   self.redstone_runtime.require_healthy()?;self.gameplay.require_supported_floor()?;
@@ -39,7 +39,7 @@ impl LivePlayers{
   block_runtime.mark_used();if let Some(source)=entity_source.as_mut(){source.observe_block_scheduler_use();}let exclude=if let Action::Use(_,_,id)=action{id}else{None};
   let fluid=main_fluid_simulation::MainFluidHost{chunks:chunk_runtime,gameplay,interactions:world_interactions,entity_source,revision:world_revision,events,players:snapshots,active_items:item_runtime.item_count(),border,random_ticks:Some(random_block_ticks)};
   let mut host=Host{world,fluid,queue:&mut block_runtime.queue,order:&mut fluid_runtime.sub_tick_order,sounds:item_runtime,now,bodies,limit:redstone_runtime.limit,count:0,working:false,pending:Vec::new(),exclude,fluid_done:matches!(action,Action::Neighbors(..))};
-  let result=match action{Action::Changed(p,a,b)=>redstone::on_changed(&mut host,p,a,b).map(|_|true),Action::Neighbors(p,s)=>host.notify(p,s,None).map(|_|true),Action::Tick(p)=>redstone::scheduled_tick(&mut redstone_runtime.engine,&mut host,p,now).map(|_|true),Action::Use(p,may_build,_)=>redstone::use_block(&mut host,p,may_build),Action::Inside(p)=>redstone::entity_inside(&mut host,p),Action::Placed(p,s)=>redstone::placed_by(&mut host,p,s).map(|_|true)};
+  let result=match action{Action::Changed(p,a,b)=>redstone::on_changed_after_fluid(&mut host,p,a,b).map(|_|true),Action::Neighbors(p,s)=>host.notify(p,s,None).map(|_|true),Action::Tick(p)=>redstone::scheduled_tick(&mut redstone_runtime.engine,&mut host,p,now).map(|_|true),Action::Use(p,may_build,_)=>redstone::use_block(&mut host,p,may_build),Action::Inside(p)=>redstone::entity_inside(&mut host,p),Action::Placed(p,s)=>redstone::placed_by(&mut host,p,s).map(|_|true)};
   if let Err(e)=&result{redstone_runtime.stopped=Some(format!("{e:#}"));}result
  }
  pub(super) fn observe_redstone_change(&mut self,w:&mut WorldBackend,p:P,old:u32,new:u32,now:i64,border:CollisionBorder,e:&broadcast::Sender<PlayerEvent>)->Result<()>{self.redstone_frame(w,now,border,e,Action::Changed(p,old,new),None).map(|_|())}

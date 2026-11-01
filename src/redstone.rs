@@ -79,8 +79,20 @@ pub fn use_block(w:&mut impl RedstoneWorld,p:Position,may_build:bool)->Result<bo
 "dkl"=>{let on=!yes(s,"powered")?;let next=set(s,"powered",on)?;w.set_block(p,next,3)?;switch_neighbors(w,p,next)?;w.sound(p,facts().lever_sound,0.3,if on{0.6}else{0.5})?;w.game_event(p,if on{"minecraft:block_activate"}else{"minecraft:block_deactivate"})?;Ok(true)},
 "dgi"=>{if !yes(s,"powered")?{let next=set(s,"powered",true)?;w.set_block(p,next,3)?;switch_neighbors(w,p,next)?;w.schedule(p,s,b.pressed_time,TickPriority::Normal)?;w.sound(p,b.on_sound,1.,1.)?;w.game_event(p,"minecraft:block_activate")?;}Ok(true)},
 "dmg"=>{if may_build{w.set_block(p,set(s,"delay",prop(s,"delay")?.parse::<i32>()?%4+1)?,3)?;}Ok(true)},_=>Ok(false)}}
-pub fn on_changed(w:&mut impl RedstoneWorld,p:Position,old:u32,new:u32)->Result<()>{let a=block(old)?;let b=block(new)?;if a.min!=b.min{match a.on_remove.as_str(){"dtb"|"dfy"=>{},"dkl"|"dgi"=>{if yes(old,"powered")?{switch_neighbors(w,p,old)?;}},"dfm"=>{if plate_power(old)?>0{w.update_neighbors(p,old,None)?;w.update_neighbors(step(p,Direction::Down),old,None)?;}},"dmd"|"dme"=>{for d in DIRECTIONS{w.update_neighbors(step(p,d),old,None)?;}},"dia" if a.name=="minecraft:repeater"=>diode_output(w,p,old)?,other=>bail!("unported onRemove {other} for {}",a.name)}}match b.on_place.as_str(){"dtb"|"dfy"=>{},"dia" if b.name=="minecraft:repeater"=>diode_output(w,p,new)?,"dmd"|"dme"=>{if a.min!=b.min{for d in DIRECTIONS{w.update_neighbors(step(p,d),new,None)?;}}},other=>bail!("unported onPlace {other} for {}",b.name)}Ok(())}
+pub fn on_changed(w:&mut impl RedstoneWorld,p:Position,old:u32,new:u32)->Result<()>{on_changed_with_fluid_owner(w,p,old,new,false)}
+/// The host invokes this only after its actual FluidSimulation callback has
+/// executed LiquidBlock.onPlace. Old block removal still executes here.
+pub fn on_changed_after_fluid(w:&mut impl RedstoneWorld,p:Position,old:u32,new:u32)->Result<()>{on_changed_with_fluid_owner(w,p,old,new,true)}
+fn on_changed_with_fluid_owner(w:&mut impl RedstoneWorld,p:Position,old:u32,new:u32,fluid_done:bool)->Result<()>{let a=block(old)?;let b=block(new)?;if a.min!=b.min{match a.on_remove.as_str(){"dtb"|"dfy"=>{},"dkl"|"dgi"=>{if yes(old,"powered")?{switch_neighbors(w,p,old)?;}},"dfm"=>{if plate_power(old)?>0{w.update_neighbors(p,old,None)?;w.update_neighbors(step(p,Direction::Down),old,None)?;}},"dmd"|"dme"=>{for d in DIRECTIONS{w.update_neighbors(step(p,d),old,None)?;}},"dia" if a.name=="minecraft:repeater"=>diode_output(w,p,old)?,other=>bail!("unported onRemove {other} for {}",a.name)}}match b.on_place.as_str(){"dtb"|"dfy"=>{},"dko" if fluid_done=>{},"dia" if b.name=="minecraft:repeater"=>diode_output(w,p,new)?,"dmd"|"dme"=>{if a.min!=b.min{for d in DIRECTIONS{w.update_neighbors(step(p,d),new,None)?;}}},other=>bail!("unported onPlace {other} for {}",b.name)}Ok(())}
 pub fn owns_placed_by(s:u32)->Result<bool>{Ok(block(s)?.name=="minecraft:repeater")}
 pub fn placed_by(w:&mut impl RedstoneWorld,p:Position,s:u32)->Result<()>{ensure!(owns_placed_by(s)?,"unported setPlacedBy");if diode_input(w,p,s)?{w.schedule(p,s,1,TickPriority::Normal)?;}Ok(())}
 pub fn static_conductor(state:u32)->Result<bool>{conductor(state)}
 pub fn owns_change_callbacks(old:u32,new:u32)->Result<bool>{let a=block(old)?;let b=block(new)?;Ok((a.min==b.min||matches!(a.on_remove.as_str(),"dtb"|"dfy"|"dkl"|"dgi"|"dfm"|"dmd"|"dme")||a.name=="minecraft:repeater")&&(matches!(b.on_place.as_str(),"dtb"|"dfy"|"dmd"|"dme")||b.name=="minecraft:repeater"))}
+
+/// Combined callback ownership when Main retains the real fluid-before-
+/// redstone dispatcher. This claims only LiquidBlock's actual declaring class.
+pub fn owns_change_callbacks_after_fluid(old:u32,new:u32)->Result<bool>{
+ let a=block(old)?;let b=block(new)?;
+ Ok((a.min==b.min||matches!(a.on_remove.as_str(),"dtb"|"dfy"|"dkl"|"dgi"|"dfm"|"dmd"|"dme")||a.name=="minecraft:repeater")
+   &&(matches!(b.on_place.as_str(),"dtb"|"dfy"|"dmd"|"dme"|"dko")||b.name=="minecraft:repeater"))
+}

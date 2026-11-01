@@ -36,8 +36,11 @@ pub(super) fn callbacks_can_complete(world: &WorldBackend, plan: &InteractionPla
     // These proofs only read states and redstone. Entity-placement facts are
     // deliberately unavailable in this callback-only query.
     let mut query = CallbackQuery(&mut staged);
+    // Main appends every ordered Write as a FluidBlockChanged effect; its
+    // drain executes the real fluid callback before redstone. Fluid-owned
+    // LiquidBlock.onPlace must therefore not be claimed by redstone twice.
     for event in &plan.events {
-        if let InteractionEvent::Write{old_state,state,..}=event {ensure!(mc121_rust::redstone::owns_change_callbacks(*old_state,*state)?,"unported native onPlace/onRemove owner");}
+        if let InteractionEvent::Write{old_state,state,..}=event {ensure!(mc121_rust::redstone::owns_change_callbacks_after_fluid(*old_state,*state)?,"unported native onPlace/onRemove owner");}
         if let InteractionEvent::NeighbourNotice {
             position,
             source_state,
@@ -61,37 +64,44 @@ impl LivePlayers {
         world: &WorldBackend,
         plan: &InteractionPlan,
     ) -> Result<Option<PreparedNativeSourceEdit>> {
-        let validation = (|| -> Result<PreparedNativeSourceEdit> {
-            self.gameplay.require_supported_floor()?;
-            self.fluid_runtime.require_healthy()?;
-            self.require_native_fire_source_owner()?;
-            let WorldBackend::Fixture(flat) = world else {
-                bail!("native source requires fixture backend");
-            };
-            self.chunk_runtime
-                .native_lighting_mut()?
-                .require_current(flat)?;
-            self.entity_source
-                .as_ref()
-                .context("complete native item source unavailable")?
-                .require_fluid_history(world, &self.world_interactions.fluid_shapes)?;
-            callbacks_can_complete(world, plan)?;
-            let token = self
-                .entity_source
-                .as_ref()
-                .context("complete native item source unavailable")?
-                .prepare_owned_edit_with_block_ticks(world, plan, &self.block_runtime)?;
-            if token.requires_fire_owner()? {
-                self.fire_runtime.require_healthy()?;
-            }
-            token.require_fluid_history(&self.world_interactions.fluid_shapes)?;
-            Ok(token)
-        })();
+        let validation = self.prepare_required_native_source_edit(world, plan);
         match validation {
             Ok(token) => Ok(Some(token)),
             Err(error) if self.item_runtime.item_count() != 0 => Err(error),
             Err(_) => Ok(None),
         }
+    }
+    /// A player mutation must not publish a changed world after source
+    /// validation failed just because no item entity currently exists.
+    pub(super) fn prepare_required_native_source_edit(
+        &mut self,
+        world: &WorldBackend,
+        plan: &InteractionPlan,
+    ) -> Result<PreparedNativeSourceEdit> {
+        self.gameplay.require_supported_floor()?;
+        self.fluid_runtime.require_healthy()?;
+        self.require_native_fire_source_owner()?;
+        let WorldBackend::Fixture(flat) = world else {
+            bail!("native source requires fixture backend");
+        };
+        self.chunk_runtime
+            .native_lighting_mut()?
+            .require_current(flat)?;
+        self.entity_source
+            .as_ref()
+            .context("complete native item source unavailable")?
+            .require_fluid_history(world, &self.world_interactions.fluid_shapes)?;
+        callbacks_can_complete(world, plan)?;
+        let token = self
+            .entity_source
+            .as_ref()
+            .context("complete native item source unavailable")?
+            .prepare_owned_edit_with_block_ticks(world, plan, &self.block_runtime)?;
+        if token.requires_fire_owner()? {
+            self.fire_runtime.require_healthy()?;
+        }
+        token.require_fluid_history(&self.world_interactions.fluid_shapes)?;
+        Ok(token)
     }
     pub(super) fn observe_native_source_edit(
         &mut self,

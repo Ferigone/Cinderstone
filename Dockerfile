@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM rust:1.99.1-bookworm AS builder
+FROM rust:1.99.1-trixie AS builder
 
 WORKDIR /build
 RUN apt-get update \
     && apt-get install -y --no-install-recommends pkg-config libssl-dev \
+    && pkg-config --atleast-version=3.2 openssl \
     && rm -rf /var/lib/apt/lists/*
 ENV OPENSSL_NO_VENDOR=1
 
@@ -24,9 +25,9 @@ COPY tools/crafting_metadata.json \
 RUN cargo build --locked --release --bin mc121-rust \
     && strip target/release/mc121-rust
 
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates libssl3 libgcc-s1 tini \
+    && apt-get install -y --no-install-recommends ca-certificates libssl3t64 libgcc-s1 tini \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/fixtures /app/deploy /data
 WORKDIR /app

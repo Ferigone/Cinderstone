@@ -29,8 +29,8 @@ TCP proxy. Enter `hostname:external-port` in a Java 1.21 client's server list.
 An HTTP domain is not a Minecraft endpoint. The proxy target remains 25565
 inside the container; its public port may differ.
 
-Mount the volume before the first server start. The image's `VOLUME` declaration
-does not provision a Railway volume. All of these paths belong to the same
+Mount the Railway volume before the first server start. Persistent storage is
+configured on the service; the Dockerfile does not declare a Docker volume. All of these paths belong to the same
 persistent volume and must be preserved together:
 
 - `/data/world.json`: native world changes and simulation owners.
@@ -92,8 +92,8 @@ Use `docker stop --time 60 cinderstone` to stop it gracefully. Connect a
 Java 1.21 client to `localhost:25565`. Local startup uses the same online
 authentication as Railway.
 
-The multi-stage build pins Rust 1.99.1 on Debian Bookworm. It builds with
-`cargo build --locked --release`, uses system OpenSSL during compilation, and
+The multi-stage build pins Rust 1.99.1 on Debian Trixie. It builds with
+`cargo build --locked --release`, uses system OpenSSL 3.2 or newer during compilation, and
 copies only the native executable, generated data and entrypoint into the final
 image. Java analysis tools, Oracle JARs, local saves and build caches are excluded.
 

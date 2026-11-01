@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "full_vanilla_parity": false,
+  "scope": "Limited native client flow: join/move, buckets, chest transfer, crafting3x3, milk use, save/cold restart.",
+  "shutdown_signal": "SIGTERM",
+  "checks": {
+    "native_join_and_movement": true,
+    "packet_angle_bucket_roundtrip": true,
+    "chest_authoritative_inventory": true,
+    "crafting3x3_furnace_and_shift_transfer": true,
+    "milk_native_use_finished": true,
+    "native_block_entities_saved": true,
+    "player_crafted_item_and_chest_cold_restart": true
+  },
+  "binary_sha256": "59e5e7aea32f4d17e7580b32b1abeccbbf016266de05ff6c5561b2bb04df09e0",
+  "completed_at": "2026-11-01T02:12:45.223Z"
+}

@@ -1,6 +1,6 @@
 {
   "format": "mc121-port-progress-v1",
-  "updated_at": "2026-11-01T01:52:53.154725+00:00",
+  "updated_at": "2026-11-01T02:13:37.244799+00:00",
   "scope_version": 1,
   "metric": "100 named unweighted delivery items; planning-checklist completion only",
   "not_behavior_coverage": true,

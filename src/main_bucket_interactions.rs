@@ -200,9 +200,12 @@ impl Server {
             return Ok(MainInteractionResult::Unsupported);
         }
         players.random_block_ticks.prepare_plan(&mut world, &plan)?;
-        let source_edit = match players.prepare_native_source_edit(&world, &plan) {
-            Ok(token) => token,
-            Err(_) => return Ok(MainInteractionResult::Unsupported),
+        let source_edit = match players.prepare_required_native_source_edit(&world, &plan) {
+            Ok(token) => Some(token),
+            Err(error) => {
+                eprintln!("{}", json!({"event":"bucket_interaction_unsupported","entity_id":id,"reason":format!("{error:#}")}));
+                return Ok(MainInteractionResult::Unsupported);
+            }
         };
         players.world_interactions.can_append(plan.events.len())?;
         let Some((staged_world, changes)) = stage_fixture_bucket(&world, &plan)? else {
