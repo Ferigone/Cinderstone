@@ -93,3 +93,4 @@ pub mod world;
 pub mod world_context;
 pub mod world_rules;
 pub mod workstations;
+pub mod container_workstation_stonecutter;

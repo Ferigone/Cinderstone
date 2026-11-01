@@ -99,3 +99,9 @@ the menu, selects slabs and shift-crafts exactly six owned slabs into the shared
 inventory, with one same-tick sound callback. A previously prepared selection
 transaction is rejected after the crafting action commits. This is a native
 transaction check, not an unchanged Java server or graphical-client observation.
+
+Validation observed in this session: `cargo test --lib stonecutter` passed the
+core ownership flow; `cargo test --lib container_workstation_` passed the
+stonecutter authoritative adapter flow along with the smithing adapter flows.
+These observations are native unit/transaction execution, not production Main
+callsite or Minecraft network-client evidence.
