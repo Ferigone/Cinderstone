@@ -1,8 +1,8 @@
 {
-  "observed_at": "2026-11-01T03:34:53.843135+00:00",
-  "source_commit": "36ad0e07b7d8b98111565afee9a20f5970e4f135",
-  "native_integration_commit": "74c69d02e5a6516c157b6f2f2490438d61b81365",
-  "deployment_id": "2a8bdd72-4647-48f8-b865-3705f08453d8",
+  "observed_at": "2026-11-01T10:50:28.776033+00:00",
+  "source_commit": "a312e05dc79b4c8ca958f5ca23fb2c640b6e4645",
+  "native_integration_commit": "6eaf7487ffcca7856f233280a1e3e1b7d1ec192d",
+  "deployment_id": "4a013aa1-1b90-4c72-b6d4-1b30ce4711f0",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
@@ -12,7 +12,7 @@
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T03:33:55.569444565Z"
+    "event_timestamp": "2026-11-01T10:49:40.702364796Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
@@ -31,5 +31,5 @@
     "timestamp": "2026-11-01T02:33:31.721552847Z",
     "mode": "offline"
   },
-  "verification_scope": "Optimized release build, successful autodeploy, one running replica, retained persistent volume and native offline listening. The furnace gameplay flow was local, as recorded separately; current public gameplay was not observed."
+  "verification_scope": "Optimized release build, successful furnace-removal autodeploy, one running replica, retained persistent volume and native offline listening. Removal and conservation gameplay were validated locally, as recorded separately; current public gameplay was not observed."
 }

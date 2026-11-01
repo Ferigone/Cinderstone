@@ -1,0 +1,170 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "scope": "Closed-menu creative removal of furnace/smoker/blast furnace with actual inventory drops and stored recipe XP; canonical item/XP conservation, normal cursor close and native cold restart.",
+  "full_vanilla_parity": false,
+  "checks": {
+    "native_join": true,
+    "normal_close_returns_cursor": true,
+    "sword_guard_rejects_without_drops_or_experience": true,
+    "recipe_experience_emitted_at_block_center": true,
+    "three_closed_menu_furnace_types_removed": true,
+    "lit_transition_preserves_contents_and_owner": true,
+    "actual_item_and_experience_entities_observed": true,
+    "creative_contents_and_recipe_xp_conserved": true,
+    "removed_blocks_and_block_entities_absent_from_save": true,
+    "remaining_item_entities_and_xp_survive_cold_restart": true
+  },
+  "binary_sha256": "46a3514fd9906ed975e44c1e6577dc2fa021fcead1ca659a456e0d0053c50b8f",
+  "completed_at": "2026-11-01T10:47:29.217Z",
+  "source_commit": "6eaf7487ffcca7856f233280a1e3e1b7d1ec192d",
+  "build_profile": "debug",
+  "method": "Bounded local real-time minecraft-protocol client flow. No graphical Java client, public-network gameplay or throughput comparison.",
+  "performance_benchmark": false,
+  "observed": {
+    "removals": [
+      {
+        "block": "furnace",
+        "position": {
+          "x": 12,
+          "y": 64,
+          "z": 8
+        },
+        "contents": {
+          "dirt": 17,
+          "coal": 2,
+          "diamond": 1
+        },
+        "newItemIds": [
+          2,
+          3,
+          4
+        ],
+        "newXpOrbs": [
+          {
+            "entityId": 5,
+            "value": 1,
+            "x": 12.5,
+            "y": 64.5,
+            "z": 8.5
+          }
+        ]
+      },
+      {
+        "block": "smoker",
+        "position": {
+          "x": 12,
+          "y": 64,
+          "z": 9
+        },
+        "contents": {
+          "dirt": 17,
+          "coal": 2,
+          "cooked_beef": 1
+        },
+        "newItemIds": [
+          6,
+          7,
+          8
+        ],
+        "newXpOrbs": []
+      },
+      {
+        "block": "blast_furnace",
+        "position": {
+          "x": 12,
+          "y": 64,
+          "z": 10
+        },
+        "contents": {
+          "dirt": 17,
+          "coal": 2,
+          "netherite_scrap": 1
+        },
+        "newItemIds": [
+          9,
+          10,
+          11
+        ],
+        "newXpOrbs": [
+          {
+            "entityId": 12,
+            "value": 1,
+            "x": 12.5,
+            "y": 64.5,
+            "z": 10.5
+          },
+          {
+            "entityId": 13,
+            "value": 1,
+            "x": 12.5,
+            "y": 64.5,
+            "z": 10.5
+          }
+        ]
+      }
+    ],
+    "beforeRestart": {
+      "itemTotals": {
+        "dirt": 51,
+        "coal": 6,
+        "diamond": 1,
+        "cooked_beef": 1,
+        "netherite_scrap": 1,
+        "quartz": 5
+      },
+      "totalXp": 3,
+      "playerXp": 1,
+      "orbXp": 2,
+      "savedItems": 9,
+      "savedOrbs": 2,
+      "itemIds": [
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    "afterRestart": {
+      "itemTotals": {
+        "dirt": 51,
+        "coal": 6,
+        "diamond": 1,
+        "cooked_beef": 1,
+        "netherite_scrap": 1,
+        "quartz": 5
+      },
+      "totalXp": 3,
+      "playerXp": 1,
+      "orbXp": 2,
+      "savedItems": 9,
+      "savedOrbs": 2,
+      "itemIds": [
+        2,
+        3,
+        4,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    }
+  },
+  "shutdown_signal": "SIGTERM",
+  "remaining_limits": [
+    "All viewing menus must be closed before removal",
+    "Survival breaking and other removal contexts",
+    "Comparator receivers and Mending repairs",
+    "Menu output-XP transactions that also drop items",
+    "Custom cooking datapacks and dynamic recipe reload",
+    "Complete server-phase and Java-world interoperability"
+  ]
+}

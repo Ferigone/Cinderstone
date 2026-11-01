@@ -62,10 +62,12 @@ release build and offline startup separately.
 The current removal implementation adds bounded creative destruction of native
 furnaces, smokers and blast furnaces, staging their actual contents and stored
 recipe XP in one entity/random transaction. It does not drop the furnace block
-itself in creative mode. The focused removal runtime check is **IN PROGRESS**;
-the earlier processing-flow result does not validate this new removal path.
-A furnace must have no active menu viewers before it is broken; removal with an
-open menu remains unsupported.
+itself in creative mode. The [focused local removal flow](docs/validation/furnace-removal-flow.json)
+passed for all three furnace types, actual item/XP entities and native cold
+restart with item and experience conservation. This result applies to its
+recorded binary; hosted deployment verification is separate. A furnace must
+have no active menu viewers before it is broken; removal with an open menu
+remains unsupported.
 
 Comparator receivers, Mending repairs, custom datapacks and survival furnace
 breaking remain unsupported. Menu actions combining output XP with item drops

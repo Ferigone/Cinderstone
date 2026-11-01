@@ -65,7 +65,7 @@ status effects. Implemented numerical survival routines do not remove that limit
       authoritative three-slot menus, processing ticks, counters and lit states.
 - [x] Native furnace persistence and real experience-orb reward integration.
 - [x] Bounded creative furnace destruction with owned contents and stored recipe
-      XP; the focused removal runtime check is in progress.
+      XP, with a recorded local item/experience-conservation and cold-restart flow.
 - [ ] Furnace removal with active menu viewers, survival breaking and remaining
       world-removal contexts.
 - [ ] Comparator receivers, Mending repairs and combined menu output-XP/item-drop paths.
@@ -78,8 +78,11 @@ status effects. Implemented numerical survival routines do not remove that limit
 
 The new creative block-removal implementation requires every furnace menu viewer
 to close first. It stages actual container contents and stored recipe XP without
-awarding the furnace block's loot item in creative mode. Its focused runtime check
-is **IN PROGRESS**; the earlier processing flow below does not validate it.
+awarding the furnace block's loot item in creative mode. Its
+[focused local flow](validation/furnace-removal-flow.json) passed for all three
+furnace types, actual item/XP entities, normal cursor return, the sword guard and
+cold restart with conserved item/experience totals. Hosted deployment remains a
+separate verification scope; this result does not establish full vanilla parity.
 
 The earlier bounded furnace Main integration passed its local protocol-client flow:
 all three cooking types, menu transfers, lit/light updates, XP pickup and native

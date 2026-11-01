@@ -5,7 +5,7 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Furnace block removal — implemented; runtime check in progress
+## Furnace block removal — bounded runtime flow passed
 
 The current implementation connects creative destruction of owned native
 furnaces, smokers and blast furnaces to their real inventory contents and stored
@@ -15,10 +15,31 @@ the block entity and its ticker with the world change. A privately drained
 staging image is never published as a live furnace state. Creative destruction
 does not award a loot item for the furnace block itself.
 
-The focused removal runtime check is **IN PROGRESS**. There is no recorded
-end-to-end removal pass or hosted deployment result for this new batch yet.
-The earlier processing, XP-pickup and cold-restart observations below apply to
-their recorded binary; they do not validate the new destruction transaction.
+The [focused local removal flow](validation/furnace-removal-flow.json) **passed**
+on 1 November 2026 at 11:47:29 Europe/Warsaw, for source commit
+`6eaf7487ffcca7856f233280a1e3e1b7d1ec192d` and debug binary SHA-256
+`46a3514fd9906ed975e44c1e6577dc2fa021fcead1ca659a456e0d0053c50b8f`.
+The recorded scope includes:
+
+- Closed-menu destruction of all three furnace types, actual item entities and
+  recipe-experience orbs emitted at the block center.
+- Normal menu closure returning the cursor stack, plus the creative sword guard
+  acknowledging the request without removing the furnace or spawning items/XP.
+- Lit-state changes retaining the furnace contents and owner.
+- Item conservation across player inventory and native entities before and after
+  cold restart: 51 dirt, six coal, one diamond, one cooked beef, one netherite
+  scrap and five quartz. The remaining item-entity IDs were preserved.
+- Experience conservation across the same restart: one player XP point plus two
+  points in saved orbs, totaling three both before and after restart.
+- Removed blocks and block entities absent from the checkpoint, with clean
+  SIGTERM shutdown after draining actual pending world/scheduler work before
+  menu closure and checkpointing.
+
+This is a local protocol-client result. The optimized hosted release and native
+offline startup are verified separately below. The result does not establish a graphical vanilla-client
+session, public-network gameplay, complete scheduler equivalence or a throughput
+advantage. The earlier processing observations below retain their original
+binary and scope.
 
 This path is restricted to the supported native creative-player profile and
 furnaces with no active menu viewers. Close every menu viewing the furnace before
@@ -67,9 +88,8 @@ evidence boundaries are described in the
 
 Remaining furnace limits are explicit:
 
-- The new bounded creative removal path is described above; its focused runtime
-  check remains in progress. Open-menu, survival and other removal contexts are
-  unsupported.
+- The new bounded creative removal path passed its recorded local flow above.
+  Open-menu, survival and other removal contexts remain unsupported.
 - Comparator receivers and Mending experience repairs are unsupported.
 - Menu actions combining furnace output experience and item drops are rejected
   before commit. The new block-removal transaction is a separate path.
@@ -132,10 +152,10 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) records the earlier
-furnace processing batch: optimized release build, successful automatic deployment,
+The [deployment observation](validation/railway-preview.json) records the furnace
+removal batch: optimized release build, successful automatic deployment,
 one running replica and native offline listening on `0.0.0.0:25565` at
-03:33:55 UTC on 1 November 2026. The persistent volume is retained. The current
+10:49:40 UTC on 1 November 2026. The persistent volume is retained. The current
 release has no observed public PLAY join in that snapshot; the earlier offline
 join remains explicitly historical. A fresh external status/pong probe failed
 DNS resolution from the development environment. Local gameplay, hosted startup
