@@ -1,0 +1,85 @@
+{
+  "ok": true,
+  "completed_at": "2026-11-01T03:27:37.807Z",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "method": "Local real-time protocol-767 client flow using minecraft-protocol; not a desktop-client or public-network run.",
+  "scope": "One bounded real-time flow: native furnace/smoker/blast processing, authoritative menus, light/lit, XP entities and pickup, furnace/player persistence plus chest regression.",
+  "full_vanilla_parity": false,
+  "performance_benchmark": false,
+  "binary_sha256": "46340001f58f69500955c0f8e278b4670c707c18279a0cab1768e5c8044489b4",
+  "checks": {
+    "native_join": true,
+    "native_xp_spawn_pickup_and_experience_packet": true,
+    "three_native_cooking_types_and_authoritative_menus": true,
+    "lit_and_light_updates": true,
+    "chest_inventory_regression": true,
+    "native_furnace_and_xp_saved": true,
+    "restored_chunk_block_entity_types": true,
+    "partial_burn_cooking_output_recipe_and_player_xp_cold_restart": true
+  },
+  "cooking": [
+    {
+      "block": "furnace",
+      "menu": 14,
+      "cook_ticks": 200,
+      "expected_fuel_ticks": 1600,
+      "native_cooking_ticks": 200,
+      "burn_at_first_tick": 1600,
+      "burn_at_completion": 1401,
+      "observed_world_age_delta": 200,
+      "world_age_resolution_ticks": 20,
+      "elapsed_ms": 10001.741411000003,
+      "steady_segment": false,
+      "wall_minimum_applied": false
+    },
+    {
+      "block": "smoker",
+      "menu": 22,
+      "cook_ticks": 100,
+      "expected_fuel_ticks": 800,
+      "native_cooking_ticks": 100,
+      "burn_at_first_tick": 800,
+      "burn_at_completion": 701,
+      "observed_world_age_delta": 100,
+      "world_age_resolution_ticks": 20,
+      "elapsed_ms": 4983.585850999996,
+      "steady_segment": false,
+      "wall_minimum_applied": false
+    },
+    {
+      "block": "blast_furnace",
+      "menu": 10,
+      "cook_ticks": 100,
+      "expected_fuel_ticks": 800,
+      "native_cooking_ticks": 100,
+      "burn_at_first_tick": 800,
+      "burn_at_completion": 701,
+      "observed_world_age_delta": 100,
+      "world_age_resolution_ticks": 20,
+      "elapsed_ms": 4985.528190999998,
+      "steady_segment": false,
+      "wall_minimum_applied": false
+    }
+  ],
+  "saved_partial": {
+    "cooking_progress": 13,
+    "cooking_total_time": 200,
+    "lit_time": 1110
+  },
+  "player_experience": {
+    "before_restart": 2,
+    "after_restart": 4
+  },
+  "timing_note": "Exact cooking counters and fuel decrements were checked. World age has 20-tick packet resolution. Wall time was recorded; packet-arrival intervals were not sufficiently steady to apply a universal wall-time minimum. The native overload deadline correction was active. This is not a throughput comparison.",
+  "remaining_limits": [
+    "Furnace block destruction with owned inventory drops and stored recipe rewards",
+    "Comparator receivers",
+    "Mending repairs",
+    "Combined furnace output XP and item-drop transactions",
+    "Custom cooking datapacks and dynamic recipe reload",
+    "Complete survival and full Java-world interoperability"
+  ],
+  "build_profile": "debug",
+  "source_commit": "74c69d02e5a6516c157b6f2f2490438d61b81365"
+}

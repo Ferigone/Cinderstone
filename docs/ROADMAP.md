@@ -60,12 +60,28 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [x] 2×2 inventory crafting and bounded recipe-book state.
 - [x] 3×3 crafting table, recipe remainders and shift crafting.
 - [x] Single/double chest and barrel owners, menus and native persistence.
-- [ ] Furnaces, smokers, blast furnaces and their processing ticks.
+- [ ] Complete furnace-family processing, rewards and world interactions.
+- [x] Bounded furnace/smoker/blast-furnace engines, default recipes/fuels,
+      authoritative three-slot menus, processing ticks, counters and lit states.
+- [x] Native furnace persistence and real experience-orb reward integration.
+- [ ] Furnace destruction with owned item drops and recorded rewards.
+- [ ] Comparator receivers, Mending repairs and combined output-XP/item-drop paths.
+- [ ] Custom cooking datapacks and dynamic recipe reload.
 - [ ] Hoppers and inventory transfer between block entities.
 - [ ] All remaining menus, workstations and special containers.
 - [ ] Full recipe-book placement, unlocks, advancement rewards and limited crafting.
 - [ ] Remaining complex item components and context-dependent recipe processing.
 - [ ] Full loot, enchantment, durability and tool behavior.
+
+The bounded furnace Main integration passed its local protocol-client flow:
+all three cooking types, menu transfers, lit/light updates, XP pickup and native
+save/cold restart. The [recorded flow](validation/furnace-preview-flow.json)
+identifies the exact binary and scope. It also exercised the normal 20 TPS
+deadline clock. Sprint/freeze tick control and complete Java task-queue semantics
+remain outside that bounded clock change. The family remains partial. Saved
+native state retains block-entity registration order; legacy records restore
+their recorded order. The result does not establish graphical-client or Railway
+validation for this batch.
 
 ## 5. Redstone, TNT and moving blocks — Partial
 
@@ -85,8 +101,10 @@ status effects. Implemented numerical survival routines do not remove that limit
 A supported signal query does not establish that the block producing the signal
 has its complete runtime lifecycle. Unported receivers must remain explicit.
 
-## 6. Mobs, entities and AI — Planned
+## 6. Mobs, entities and AI — Partial foundations
 
+- [x] Bounded experience-orb creation, shared ticking, pickup and tracking for the
+      supported native player profile.
 - [ ] Remaining entity types and their complete persistence/replication lifecycle.
 - [ ] Natural spawning, mob caps and despawning.
 - [ ] Pathfinding, navigation, goals, sensors and behavior trees.
@@ -119,7 +137,8 @@ exists. Missing chunks must not silently turn into flat terrain.
 - [x] Persistent native checkpoint owners for the supported profile.
 - [x] Publish normal source files in the public repository.
 - [ ] Establish reproducible CI builds.
-- [x] Deploy the online-mode server with persistent storage and a configured public TCP endpoint.
+- [x] Deploy the server with explicit login-mode configuration, persistent storage
+      and a public TCP endpoint.
 - [x] Connect repository updates to automatic deployment.
 - [ ] Verify restart/redeploy behavior against persistent data.
 - [ ] Complete administration, graceful shutdown and observability.

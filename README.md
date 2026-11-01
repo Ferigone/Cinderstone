@@ -39,10 +39,29 @@ The compiled server connects these systems to its main runtime:
   remainders, shift crafting and real shared-inventory transactions.
 - Single/double chests and barrels with owned contents, menu interactions,
   viewers, sounds and native persistence.
+- A bounded furnace, smoker and blast-furnace family: captured vanilla recipes
+  and fuels, processing ticks, three-slot menus, cooking/burn counters, lit-state
+  changes and native persistence.
+- Furnace reward experience through real orb creation, shared ticking, pickup
+  and tracking for the supported native player profile.
 - One BLOCK tick queue shared by fire, supported redstone and container rechecks.
   Basic redstone includes levers, buttons, lamps, repeaters and torches.
 - Native player, statistics, recipe-book, world and dropped-item persistence;
   bounded Java `player.dat` import/export for DataVersion 3953.
+
+The furnace Main integration passed a bounded local protocol-client flow covering
+all three cooking types, menu transfers, lit/light updates, real XP pickup and
+save/cold restart. The same binary uses the normal 20 TPS deadline and overload
+clock. See the [flow report](docs/validation/furnace-preview-flow.json),
+[current work](docs/CURRENT_WORK.md) and
+[furnace source ledger](docs/reference/furnaces.md). This does not establish full
+vanilla compatibility, a graphical-client check or deployment of this batch to
+Railway.
+
+Furnace block destruction, including nonempty contents and recorded rewards,
+comparator receivers, Mending repairs and custom datapacks remain unsupported.
+Transactions combining furnace output XP with item drops are rejected before
+commit. The recipe catalog represents the captured default vanilla data.
 
 These features have explicit limits. The full survival damage/death/respawn
 pipeline, mobs and AI, complete terrain generation, all menus and block entities,
@@ -100,8 +119,8 @@ For a public server that accepts offline accounts:
 
 Public preview: **`hopper.proxy.rlwy.net:24418`**, using an unchanged Minecraft
 Java **1.21** client. The preview accepts offline accounts: a Mojang session or
-valid Java account is not required. Railway keeps
-the world on persistent storage and deploys updates from `master`. See
+valid Java account is not required. Railway keeps the world on persistent storage
+and deploys updates from `master`. See
 [operational status](docs/CURRENT_WORK.md) for deployment verification.
 
 Offline mode does not authenticate nicknames. Player UUIDs are derived from the
