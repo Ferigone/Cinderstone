@@ -83,7 +83,10 @@ impl LivePlayers {
             }
         }
         for (min, max) in query_regions {
-            self.chunk_runtime.certify_query_region(
+            // New admission tickets may be queued between the ordinary chunk
+            // poll and this locked entity phase. They do not invalidate the
+            // current FULL/light/source owners used by the actual bodies.
+            self.chunk_runtime.certify_current_query_region(
                 world,
                 &mut self.chunk_transports,
                 events,
