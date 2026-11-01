@@ -1,0 +1,62 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "implementation_commit": "e85dc966d887a9a9a72ed1b804795c9537bf494a",
+  "runtime_source_note": "Runtime observed the exact implementation bytes committed as implementation_commit; later composition adds central Main only.",
+  "composed_source_commit": "ea7a04a7b8b80c5b2adb257264b829c3ba50e0b4",
+  "base_master": "005e7592cd13d3d8edfa9fe0f875404bfa038b91",
+  "checked_at_utc": "2026-11-01T22:27:23.807925+00:00",
+  "passed": true,
+  "commands": [
+    "cargo build --locked --bin mc121-rust --lib",
+    "cargo test --locked --lib worldgen::carver::",
+    "cargo test --locked --lib worldgen::generator::tests",
+    "python3 src/worldgen/validation/check_carvers.py --oracle-dir <verified-original> --skip-build --write-report <sanitized-report>"
+  ],
+  "log_sha256": {
+    "corrected_library_and_original_native_pair": "68964f4454161a9c21decb70192952a0d1d6c865039c9a2ba5818c81529978fc",
+    "composed_main_and_focused_checks": "162f4b04b394126361d866244154aff1c40bc756fde67e76cba93d888e87be68"
+  },
+  "harness_correction": "An initial parent build selected the binary without refreshing Cargo's unversioned lib artifact. That probe import failed; explicit cargo build --lib corrected the artifact selection before the successful paired run. No native equality was claimed from the failed attempt.",
+  "source_sha256": {
+    "src/worldgen/carver/mod.rs": "28655620b53ef726b0b955e60643118ed75e80a0169d0b6551efcd3fd3911b3d",
+    "src/worldgen/carver/providers.rs": "5b854da0ed4f930fa4e643a83908e336fa251bd546526dad522ba197442aa2f4",
+    "src/worldgen/carver/config.rs": "73d9197562dbacf5c94d6421f8f39ebb9669394b7edb86cc6c8e6e79d5cbf780",
+    "src/worldgen/carver/host.rs": "c8312afff074154cf4d12277f0a8ada5f7c918207b2a2239eecd0b282fdccb30",
+    "src/worldgen/carver/mask.rs": "6e485f2fab619e58dbd11c68a92fa3f545db2addeb68fbe84149d2bcd50954a3",
+    "src/worldgen/carver/world_carver.rs": "aa17a7617cca501c2c163221a5eadc1c49ba04124bd14b6c4a20f2a18d2454f5",
+    "src/worldgen/carver/cave.rs": "d182623cc9e59f3772c9fe2737250d0b6674261b58bb4b74225daeb864a23134",
+    "src/worldgen/carver/nether.rs": "7409d8f57cbaa9fdf7de261fe0918cd2842ed3a9d70741ad476020e85b936a16",
+    "src/worldgen/carver/canyon.rs": "c3a09f7aad37b9b617b67f778463158a49fb06d0001882a539136f1e4a66096d",
+    "src/worldgen/generator.rs": "46bdc3b8498e1977279542f110f178043f1d9c6415852cd00fb593021474360b",
+    "src/worldgen/biomes.rs": "5f8a5b15f6c0478b37cceab52b986fcd7381cde33189b6f24698393757adce40",
+    "src/worldgen/biome_source.rs": "d86204cc9eda41b80233c2f4406b799b6e8369c657b61dd7463a9fe9ce72e23f",
+    "src/worldgen/mod.rs": "6848652441fd2a1938efc4328d20d92174befa881344921a64000ff5af44f0fb",
+    "fixtures/world-generation-configured-carvers.json": "a5f727fab771df5d6f98be9d805c0566780740b66b4a41715a94cb72906c7ead",
+    "src/worldgen/validation/WorldgenCarverOracle.java": "e499cc33dbc1449bda3e15846a18e2911af8b203846c1bc8cbcfff8a2128fc86",
+    "src/worldgen/validation/carver_probe.rs": "35901f93b77953fd4f4717f85b0a7caf60f0c155a1767e09b8e0277370d6b73a",
+    "src/worldgen/validation/check_carvers.py": "4f3addd8c46d6b4d18d39708b745aa7b4635f324e168e95d3ccefaa3609f2a02",
+    "fixtures/world-generation-carver-runtime.json": "88540143f3daf940de42ca724d715be12647a622e7d677446141fc239f36993f"
+  },
+  "reviews": [
+    "Independent cave/Nether geometry and RNG review clean.",
+    "Independent canyon width/path/draw-order review clean.",
+    "Independent shared material/mask ordering review clean.",
+    "Independent config/provider/debug/tag review clean.",
+    "Independent retained-owner/orchestration and original-harness false-pass review clean."
+  ],
+  "observations": [
+    "Actual original bound block/fluid tags and protected replacement membership confirmed before carving.",
+    "Complete blocks/masks/liveWG heights/section queues/rawbiome queries/ordered attempts/invocation RNG counts and deterministic post-reseed state agree.",
+    "Source-observed cases include actual mask contributions from every configured carver and314 new postprocessing entries.",
+    "Actual289 neighbors/cached settings and AIR-only order retain same target density/aquifer/mask/world seed owners.",
+    "Source one-step global unique-seed transition is witnessed; numerical clock outputs intentionally excluded, actual native process factory preserved in source."
+  ],
+  "limitations": [
+    "Controlled region availability; no real WorldGenRegion/ChunkStep/Main/status completion proof.",
+    "Old/nonempty blending/structure/retrogen and dynamic registry overrides remain unsupported.",
+    "Runtime cases use debug_mode=false; custom debug/additional-filter runtime branches need separate original evidence.",
+    "UniformHeight diagnostic warning-once cache is omitted; returned value and RNG state preserve source.",
+    "Features/decoration/structures/lighting/persistence/FULL and full dimension completeness remain pending."
+  ]
+}
