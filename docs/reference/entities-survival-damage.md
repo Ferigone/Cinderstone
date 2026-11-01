@@ -232,6 +232,18 @@ it, and ordering against exceptional cancellation needs a declared contract.
 These findings are static current-source observations and integration requests;
 no new Main behavior is claimed.
 
+At later master `1e726940db75ea1bd9c6ece3f03f4886ef1b3a90`, the same shared
+operation/FIFO contract remains. New connection transport additionally owns
+actual packet dispatch counting and safe frame writes in the connection task's
+`send`/`send_packets` path (`main.rs`, 2740–2768). Gameplay callbacks enqueue;
+they must not increment send counters or call the frame codec directly.
+WorldAudience handling is now at 3802 onward. Rate termination can interrupt a
+batch between frames, and raw inactivity can close without a disconnect packet.
+These terminal outcomes do not roll back already completed damage or totem
+consumption. Same-connection respawn must retain connection-lifetime rate and
+inactivity owners. New attack/respawn/beacon wire validation supplies no gameplay
+executor, death lifecycle or active-effect owner.
+
 ## Focused validation
 
 Full library compilation passed after installing a local Rust toolchain suitable
@@ -244,6 +256,14 @@ Compatibility check: the source-only damage diff from base `f1432ed` through
 `cargo check --locked --bin mc121-rust` passed there with Rust 1.99.1 and the
 unchanged lockfile. This was an uncommitted validation composition, not a merge
 into master, a published branch or a production runtime flow.
+
+Publication validation also composed both published source branches, including
+the mechanical effects export, onto `f40d8bf`: full Main compiler check and
+focused `effects::`, `damage`, `combat::` checks passed. After observing the new
+connection-transport master `1e72694`, the paired source overlay applied cleanly
+and full Main compiler check passed there too. Component code did not change;
+the later check establishes compiler compatibility with that recorded master,
+not runtime damage/effect integration. Draft PRs are #7 (effects) and #8 (damage).
 
 Focused native checks cover actual callback argument/order and failure prefixes,
 not fabricated production actors. Totem checks distinguish main/offhand
