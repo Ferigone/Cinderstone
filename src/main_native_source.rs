@@ -75,6 +75,7 @@ impl LivePlayers {
         world: &WorldBackend,
         at: (i32,i32,i32),
         plan: &InteractionPlan,
+        retention: &mc121_rust::native_block_entities::FurnaceViewerRetention,
     ) -> Result<PreparedNativeSourceEdit> {
         self.require_current_native_source(world)?;
         let WorldBackend::Fixture(flat) = world else { bail!("native furnace removal requires fixture backend") };
@@ -85,10 +86,10 @@ impl LivePlayers {
         let receipt = flat.native_block_entities().prepare_furnace_removal(at, flat.block(at.0,at.1,at.2), replacement)?
             .context("furnace removal owner absent")?;
         let mut drained = flat.clone();
-        drained.native_block_entities_mut().drain_furnace_removal(&receipt)?;
+        drained.native_block_entities_mut().drain_furnace_removal_retaining_viewers(&receipt, retention)?;
         callbacks_can_complete_except_furnace_removal(&WorldBackend::Fixture(drained), plan, Some(at))?;
         let token = self.entity_source.as_ref().context("native furnace source absent")?
-            .prepare_owned_furnace_removal_with_block_ticks(world, at, plan, &self.block_runtime)?;
+            .prepare_owned_furnace_removal_retaining_viewers_with_block_ticks(world, at, plan, &self.block_runtime, retention)?;
         if token.requires_fire_owner()? { self.fire_runtime.require_healthy()?; }
         token.require_fluid_history(&self.world_interactions.fluid_shapes)?;
         Ok(token)

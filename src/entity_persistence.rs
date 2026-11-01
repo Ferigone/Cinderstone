@@ -424,6 +424,28 @@ impl NativeEntitySource {
         plan: &crate::world_interactions::InteractionPlan,
         block_ticks: &impl NativeBlockTickOwner,
     ) -> Result<PreparedNativeSourceEdit> {
+        self.prepare_owned_furnace_removal_impl(world, at, plan, block_ticks, None)
+    }
+    /// The dedicated menu owner retains exactly the removed object's viewers.
+    /// Ordinary transitions and the closed-menu API keep their strict guards.
+    pub fn prepare_owned_furnace_removal_retaining_viewers_with_block_ticks(
+        &self,
+        world: &RuntimeWorld,
+        at: (i32, i32, i32),
+        plan: &crate::world_interactions::InteractionPlan,
+        block_ticks: &impl NativeBlockTickOwner,
+        retention: &crate::native_block_entities::FurnaceViewerRetention,
+    ) -> Result<PreparedNativeSourceEdit> {
+        self.prepare_owned_furnace_removal_impl(world, at, plan, block_ticks, Some(retention))
+    }
+    fn prepare_owned_furnace_removal_impl(
+        &self,
+        world: &RuntimeWorld,
+        at: (i32, i32, i32),
+        plan: &crate::world_interactions::InteractionPlan,
+        block_ticks: &impl NativeBlockTickOwner,
+        retention: Option<&crate::native_block_entities::FurnaceViewerRetention>,
+    ) -> Result<PreparedNativeSourceEdit> {
         use crate::world_interactions::InteractionEvent;
         self.require_owned_callback_world(world)?;
         let before = WorldImage::capture(world)?;
@@ -441,7 +463,11 @@ impl NativeEntitySource {
             .context("furnace removal does not replace a furnace identity")?;
         let before_furnaces = flat.native_block_entities().furnace_images();
         let mut staged = flat.clone();
-        staged.native_block_entities_mut().drain_furnace_removal(&receipt)?;
+        if let Some(retention) = retention {
+            staged.native_block_entities_mut().drain_furnace_removal_retaining_viewers(&receipt, retention)?;
+        } else {
+            staged.native_block_entities_mut().drain_furnace_removal(&receipt)?;
+        }
         let staged = RuntimeWorld::Fixture(staged);
         let mut private_source = Self {
             history: self.history.clone(),

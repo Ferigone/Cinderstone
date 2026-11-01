@@ -186,6 +186,21 @@ impl PlayerContainer {
         self.remote_slots[slot] = copy_stack(self.inventory.slot(slot).unwrap());
         Ok(())
     }
+    /// AbstractContainerMenu.transferState copies both old slot baselines for
+    /// matching container/index pairs. It neither assigns live inventory nor
+    /// invokes a slot listener or synchronizer; carried/data/state IDs remain
+    /// owned by the receiving menu.
+    pub fn transfer_external_slot_state(
+        &mut self,
+        slot: usize,
+        last: &ItemStack,
+        remote: &ItemStack,
+    ) -> Result<()> {
+        ensure!(slot < INVENTORY_SLOTS, "invalid transferred inventory slot");
+        self.local_last_slots[slot] = copy_stack(last);
+        self.remote_slots[slot] = copy_stack(remote);
+        Ok(())
+    }
     /// Bind the single ServerPlayer-style local observer. Like addSlotListener,
     /// first registration broadcasts changes; repeated registration is a no-op.
     pub fn enable_local_slot_events(&mut self) -> Result<Vec<Packet>> {

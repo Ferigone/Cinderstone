@@ -1236,7 +1236,8 @@ impl Server {
             .players
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
-        players.simulate_item_world(&mut world, game_time, border, &self.entity_events)
+        players.simulate_item_world_with_player_menus(&mut world, game_time, border, &self.entity_events,
+            |players, world, id| self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border))
     }
 
     async fn tick_connection_phase(&self) -> Result<()> {
@@ -3354,7 +3355,16 @@ async fn play(
                         finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                     },
                     0x0f => {
-                        let window=fields.u8()?; fields.finish()?;
+                        let _requested_window=fields.u8()?; fields.finish()?;
+                        // handleContainerClose closes the current menu; its
+                        // packet ID never selects or revives an older owner.
+                        let window = {
+                            let players=server.players.read().map_err(|_|anyhow!("players poisoned"))?;
+                            players.furnaces.window_id(entity_id)
+                                .or_else(||players.crafting_tables.window_id(entity_id))
+                                .or_else(||players.native_containers.window_id(entity_id))
+                                .unwrap_or(0)
+                        };
                         if server.close_native_furnace(entity_id,window,false).await? {continue;}
                         if server.close_native_crafting_table(entity_id,window,false).await? {continue;}
                         if server.close_native_container(entity_id,window,false).await? {continue;}

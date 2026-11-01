@@ -28,6 +28,8 @@ pub struct FurnaceMenu {
     pub window_id: u8,
     state_id: i32,
     carried: ItemStack,
+    last: Vec<ItemStack>,
+    local_initialized: bool,
     remote: Vec<ItemStack>,
     remote_carried: ItemStack,
     remote_data: [i32; 4],
@@ -43,6 +45,8 @@ impl FurnaceMenu {
             window_id,
             state_id: 0,
             carried: ItemStack::empty(),
+            last: vec![ItemStack::empty(); MENU_SLOTS],
+            local_initialized: false,
             remote: vec![ItemStack::empty(); MENU_SLOTS],
             remote_carried: ItemStack::empty(),
             remote_data: [0; 4],
@@ -71,6 +75,12 @@ impl FurnaceMenu {
         inventory: &PlayerInventory,
     ) -> Result<Vec<Packet>> {
         let mut work = Engine::new(self, furnace, inventory);
+        // Opening attaches the ServerPlayer slot listener before installing
+        // the synchronizer. Later sendAllDataToRemote calls (e.g. spectator
+        // resync) only refresh remote state, not the local listener baseline.
+        if !work.local_initialized {
+            work.capture_last_slots();
+        }
         let mut packets = vec![work.full_sync()?];
         work.sync_data(furnace.data(), true, &mut packets);
         work.commit_menu(self);
@@ -127,6 +137,9 @@ impl FurnaceMenu {
             }
         }
         if stale {
+            // broadcastFullState runs local slot listeners before sending
+            // all remote data, unlike sendAllDataToRemote alone.
+            work.capture_last_slots();
             out.packets.push(work.full_sync()?);
             work.sync_data(next.data(), true, &mut out.packets);
         } else {
@@ -141,17 +154,97 @@ impl FurnaceMenu {
     pub fn close(&mut self, inventory: &mut PlayerInventory) -> Result<ClickOutcome> {
         // AbstractContainerMenu.removed returns only the carried stack. The
         // three block-entity slots remain in the live furnace owner.
-        let mut carried = self.carried.clone();
-        let mut player = crate::container::PlayerContainer::from_inventory(inventory.clone());
-        player.add_pickup_to_inventory(&mut carried, false)?;
         let mut out = ClickOutcome::default();
-        drop_stack(&mut out, carried, false);
-        *inventory = player.inventory;
+        let mut next_inventory = inventory.clone();
+        let mut carried = self.carried.clone();
+        return_carried_to_inventory(&mut next_inventory, &mut carried, &mut out)?;
+        *inventory = next_inventory;
         self.carried = ItemStack::empty();
         self.quickcraft_status = 0;
         self.quickcraft_slots.clear();
         Ok(out)
     }
+    /// AbstractContainerMenu.transferState matches slots by their actual
+    /// inventory container/index. A furnace shares only the 36 main/hotbar
+    /// slots with InventoryMenu; carried state and offhand are not transferred.
+    /// Both listener and remote baselines retain the OLD menu values, so the
+    /// next actual player broadcast observes the cursor-return inventory edits.
+    pub fn transfer_inventory_remote_state(
+        &self,
+        player: &mut crate::container::PlayerContainer,
+    ) -> Result<()> {
+        for slot in 3..MENU_SLOTS {
+            player.transfer_external_slot_state(slot + 6, &self.last[slot], &self.remote[slot])?;
+        }
+        Ok(())
+    }
+}
+
+/// Inventory.placeItemBackInInventory(stack, true). The selected merge stack
+/// and offhand precede raw inventory slots 0..35; free slots use only 0..35.
+/// Each source split is added to its selected slot before its explicit -2
+/// packet. No ordinary Inventory.add(-1) or immediate window-0 sync is used.
+fn return_carried_to_inventory(
+    inventory: &mut PlayerInventory,
+    stack: &mut ItemStack,
+    out: &mut ClickOutcome,
+) -> Result<()> {
+    while !stack.is_empty() {
+        let order = (36..45).chain(9..36).collect::<Vec<_>>();
+        let mut candidates = vec![36 + inventory.selected_hotbar(), 45];
+        candidates.extend(order.iter().copied());
+        let mut destination = None;
+        for slot in candidates {
+            let existing = inventory.slot(slot).unwrap();
+            if !existing.is_empty()
+                && existing.is_stackable()?
+                && existing.same_item_same_components(stack)?
+                && existing.count < existing.max_stack_size()?.min(99)
+            {
+                destination = Some(slot);
+                break;
+            }
+        }
+        if destination.is_none() {
+            destination = order
+                .into_iter()
+                .find(|slot| inventory.slot(*slot).unwrap().is_empty());
+        }
+        let Some(slot) = destination else {
+            drop_stack(out, std::mem::take(stack), false);
+            break;
+        };
+        let existing = inventory.slot(slot).unwrap().count.max(0);
+        let maximum = stack.max_stack_size()?;
+        ensure!(
+            (1..=99).contains(&maximum),
+            "invalid native cursor stack limit"
+        );
+        let amount = stack.count.min(maximum - existing);
+        ensure!(amount > 0, "selected cursor-return slot has no capacity");
+        // The chosen slot guarantees add(slot, split) succeeds. Its damaged
+        // branch copies the split whole; its resource branch fills this same
+        // capacity. Source add also sets transient popTime(5); this native
+        // inventory has no transient animation field. It is not a component
+        // and does not alter the encoded Slot data.
+        inventory.set_slot_authoritative(slot, with_count(stack, existing + amount));
+        *stack = with_count(stack, stack.count - amount);
+        let raw_slot = match slot {
+            36..=44 => slot - 36,
+            45 => 40,
+            _ => slot,
+        };
+        let mut w = Writer::new();
+        w.i8(-2)
+            .varint(0)
+            .i16(raw_slot as i16)
+            .raw(&inventory.slot(slot).unwrap().encode_canonical()?);
+        out.packets.push(Packet {
+            id: 0x15,
+            payload: w.into_inner(),
+        });
+    }
+    Ok(())
 }
 #[derive(Debug)]
 struct WorkingInventory {
@@ -181,6 +274,8 @@ struct Engine {
     kind: FurnaceKind,
     window_id: u8,
     state_id: i32,
+    last: Vec<ItemStack>,
+    local_initialized: bool,
     remote: Vec<ItemStack>,
     remote_carried: ItemStack,
     remote_data: [i32; 4],
@@ -204,6 +299,8 @@ impl Engine {
             kind: furnace.kind,
             window_id: menu.window_id,
             state_id: menu.state_id,
+            last: menu.last.clone(),
+            local_initialized: menu.local_initialized,
             remote: menu.remote.clone(),
             remote_carried: menu.remote_carried.clone(),
             remote_data: menu.remote_data,
@@ -222,6 +319,8 @@ impl Engine {
     }
     fn commit_menu(self, menu: &mut FurnaceMenu) {
         menu.state_id = self.state_id;
+        menu.last = self.last;
+        menu.local_initialized = self.local_initialized;
         menu.carried = self.inventory.carried;
         menu.remote = self.remote;
         menu.remote_carried = self.remote_carried;
@@ -285,6 +384,7 @@ impl Engine {
     }
 
     fn synchronize(&mut self, packets: &mut Vec<Packet>) -> Result<()> {
+        self.capture_last_slots();
         for slot in 0..MENU_SLOTS {
             if !stack_matches(&self.inventory.slots[slot], &self.remote[slot])? {
                 self.remote[slot] = copy_stack(&self.inventory.slots[slot]);
@@ -314,6 +414,14 @@ impl Engine {
             });
         }
         Ok(())
+    }
+
+    fn capture_last_slots(&mut self) {
+        self.last = self.inventory.slots[..MENU_SLOTS]
+            .iter()
+            .map(copy_stack)
+            .collect();
+        self.local_initialized = true;
     }
 
     fn reset_quickcraft(&mut self) {

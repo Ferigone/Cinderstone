@@ -2,8 +2,9 @@
 //!
 //! Container splits and recipe XP are prepared in source order against the
 //! actual level RNG, shared class index and entity counter. No drained block
-//! entity image is ever published. Active viewers and unowned callbacks remain
-//! explicit boundaries; Java closes invalid menus in its later menu phase.
+//! entity image is ever published. Existing viewers retain the removed
+//! container object until Java's normal later menu-validity phase closes it.
+//! Unowned callbacks remain explicit boundaries.
 use super::*;
 use mc121_rust::{
     container_drops, native_block_entities,
@@ -12,9 +13,13 @@ use mc121_rust::{
 
 impl Server {
     fn correct_native_furnace_break(&self, id: i32, at: (i32, i32, i32), state: u32) {
-        let packet = Packet { id: 0x09, payload: world::block_update_payload(at.0, at.1, at.2, state) };
+        let packet = Packet {
+            id: 0x09,
+            payload: world::block_update_payload(at.0, at.1, at.2, state),
+        };
         let _ = self.entity_events.send(PlayerEvent::WorldAudience {
-            recipients: Arc::new(vec![id]), packets: Arc::new(vec![packet]),
+            recipients: Arc::new(vec![id]),
+            packets: Arc::new(vec![packet]),
         });
     }
 
@@ -84,10 +89,20 @@ impl Server {
                 .prepare_furnace_removal(at, old, replacement)?
                 .context("furnace removal did not change block identity")?
         };
-        if !snapshot.viewers().is_empty() {
-            self.correct_native_furnace_break(id, at, old);
-            return Ok(Outcome::Unsupported);
-        }
+        // Native viewers and live menus must identify the same actual block
+        // entity. Position alone is insufficient: a new furnace at this spot
+        // must never become the old menu's container.
+        let viewers = players.furnaces.viewer_ids_for_owner(snapshot.owner_key());
+        let retention = {
+            let WorldBackend::Fixture(flat) = &*world else {
+                unreachable!("native furnace backend was validated")
+            };
+            flat.native_block_entities()
+                .prepare_furnace_viewer_retention(&snapshot, &viewers)?
+        };
+        let retired_menus = players
+            .furnaces
+            .prepare_removal_retirement(&snapshot, &retention)?;
 
         // playerWillDestroy posts BLOCK_DESTROY before removeBlock. Its real
         // empty native registry has no RNG/listener side effects, so certify
@@ -136,7 +151,7 @@ impl Server {
             unreachable!()
         };
         flat.native_block_entities_mut()
-            .drain_furnace_removal(&snapshot)?;
+            .drain_furnace_removal_retaining_viewers(&snapshot, &retention)?;
         let plan = {
             let mut query = RuntimeInteractionWorld::new(
                 &mut drained,
@@ -151,8 +166,8 @@ impl Server {
         let mut changes = main_world_interactions::commit_fixture_plan(&mut final_world, &plan)?
             .context("furnace removal requires native rollback world")?;
         self.notify_native_furnace_changed_locked(&mut final_world, players, at)?;
-        let source =
-            players.prepare_required_native_furnace_removal_source_edit(world, at, &plan)?;
+        let source = players
+            .prepare_required_native_furnace_removal_source_edit(world, at, &plan, &retention)?;
         players.world_interactions.can_append(plan.events.len())?;
 
         let counter_before = self.entities.load(Ordering::Acquire);
@@ -221,6 +236,10 @@ impl Server {
         // addFreshEntity's current native outbox/pairing listeners do not read
         // the removed block entity; broader such callbacks remain unsupported.
         *world = final_world;
+        // The real old container has had its slots consumed by dropContents.
+        // Keep that object (including timers and RecipesUsed) for each old
+        // menu; do not invent an immediate close or rebind by coordinates.
+        players.furnaces.commit_removal_retirement(retired_menus);
         if !break_recipients.is_empty() {
             let _ = self.entity_events.send(PlayerEvent::WorldAudience {
                 recipients: Arc::new(break_recipients),

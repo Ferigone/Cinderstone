@@ -31,6 +31,19 @@ impl LivePlayers {
         border: CollisionBorder,
         events: &broadcast::Sender<PlayerEvent>,
     ) -> Result<()> {
+        self.simulate_item_world_with_player_menus(world, game_time, border, events, |players, _, id| {
+            ensure!(!players.furnaces.has_open(id), "active furnace requires its actual level-player menu owner");
+            Ok(())
+        })
+    }
+    pub(super) fn simulate_item_world_with_player_menus(
+        &mut self,
+        world: &mut WorldBackend,
+        game_time: i64,
+        border: CollisionBorder,
+        events: &broadcast::Sender<PlayerEvent>,
+        mut menu_tick: impl FnMut(&mut LivePlayers, &mut WorldBackend, i32) -> Result<()>,
+    ) -> Result<()> {
         if self.gameplay.require_supported_floor().is_err() {
             ensure!(
                 self.item_runtime.item_count() == 0 && self.experience_runtime.count() == 0,
@@ -131,6 +144,13 @@ impl LivePlayers {
                         events,
                     )?;
                 } else {
+                    let external_menu = kind == EntityKind::Player && self.furnaces.has_open(handle.id);
+                    if kind == EntityKind::Player {
+                        // ServerPlayer.tick broadcasts the current menu and
+                        // then validates it at this entry's actual position in
+                        // the shared Item/Player/XP level tick iteration.
+                        menu_tick(self, world, handle.id)?;
+                    }
                     // Release these item-host borrows before the next XP body
                     // mutates the same section index or actual world owners.
                     let Self {
@@ -152,6 +172,7 @@ impl LivePlayers {
                         .map(|frame| frame as &mut dyn RainExposure);
                     let mut frame = gameplay.frame(registry, manager, true);
                     let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                    if external_menu { host = host.with_external_player_menu(handle.id); }
                     item_runtime.simulate_level_entry_with_context(
                         handle,
                         world,

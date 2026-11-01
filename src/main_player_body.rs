@@ -541,10 +541,15 @@ impl PlayerBodyHooks for BodyHooks<'_> {
                 for handle in candidates {
                     match self.players.item_runtime.entity_kind(handle) {
                         Some(mc121_rust::runtime_entity_index::EntityKind::Item) => {
-                            let LivePlayers { registry, gameplay, item_runtime, containers, chunk_runtime, .. } = &mut *self.players;
+                            let active_furnace = self.players.furnaces.has_open(self.id);
+                            let actor_id = self.id;
+                            let LivePlayers { registry, gameplay, item_runtime, containers, chunk_runtime, furnaces, .. } = &mut *self.players;
                             let mut frame = gameplay.frame_current(registry, &chunk_runtime.manager, true,
                                 self.region.context("body pickup requires loaded region")?);
                             let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                            let mut menu_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
+                                furnaces.broadcast_for_inventory(&*w, actor_id, inventory);
+                            if active_furnace { host = host.with_external_menu_sync(actor_id, &mut menu_sync); }
                             item_runtime.player_touch_item(handle, pickup, &mut host)?;
                         }
                         Some(mc121_rust::runtime_entity_index::EntityKind::ExperienceOrb) => {

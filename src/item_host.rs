@@ -14,6 +14,7 @@ use crate::{
     item_entity::{ItemState, Pickup},
     metadata::MetadataValue,
     player_inventory::SharedContainer,
+    protocol::Packet,
     runtime_entities::{EffectDelivery, PickupPlayer, RuntimeEntityHost},
     runtime_entity_index::EntityHandle,
     runtime_item_world::RuntimeItemEffect,
@@ -72,6 +73,8 @@ pub struct RuntimeInventoryHost<'a, H: RuntimeGameplayHooks + ?Sized> {
     players: &'a EntityRegistry,
     containers: &'a BTreeMap<i32, SharedContainer>,
     hooks: &'a mut H,
+    external_menu_player: Option<i32>,
+    external_menu_sync: Option<(i32, &'a mut dyn FnMut(&PlayerInventory) -> Result<Vec<Packet>>)>,
 }
 
 impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
@@ -84,7 +87,27 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
             players,
             containers,
             hooks,
+            external_menu_player: None,
+            external_menu_sync: None,
         }
+    }
+    /// The actual active block-menu owner already performed this player's
+    /// ServerPlayer.tick menu broadcast/validity phase. Do not also broadcast
+    /// the inactive inventory menu through the ordinary inventory-only host.
+    pub fn with_external_player_menu(mut self, player: i32) -> Self {
+        self.external_menu_player = Some(player);
+        self
+    }
+    /// ServerPlayer.take broadcasts the actual current menu synchronously.
+    /// The callback owns that menu's captured container and baselines; the
+    /// ordinary inactive InventoryMenu must not be synchronized in its place.
+    pub fn with_external_menu_sync(
+        mut self,
+        player: i32,
+        sync: &'a mut dyn FnMut(&PlayerInventory) -> Result<Vec<Packet>>,
+    ) -> Self {
+        self.external_menu_sync = Some((player, sync));
+        self
     }
 
     fn player(&self, player: PickupPlayer) -> Result<&PlayerState> {
@@ -108,6 +131,11 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
 
     fn sync_menu(&mut self, player: PickupPlayer) -> Result<()> {
         let container = self.container(player)?.clone();
+        if let Some((id, sync)) = &mut self.external_menu_sync {
+            if *id == player.entity_id {
+                return container.transact(|menu| Ok(((), sync(&menu.inventory)?)));
+            }
+        }
         container.transact(|menu| {
             let packets = menu.broadcast_changes()?;
             for change in menu.take_local_slot_changes() {
@@ -128,6 +156,9 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
 impl<H: RuntimeGameplayHooks + ?Sized> RuntimeEntityHost for RuntimeInventoryHost<'_, H> {
     fn level_player_tick(&mut self, player: EntityHandle) -> Result<()> {
         self.hooks.level_player_tick(player)?;
+        if self.external_menu_player == Some(player.id) {
+            return Ok(());
+        }
         let current = self
             .players
             .get(player.id)

@@ -7,7 +7,9 @@ use mc121_rust::{
     container_furnace::FurnaceMenu,
     furnace::{FurnaceKind, FurnaceState},
     inventory::PlayerInventory,
-    native_block_entities::{self, FurnaceImage},
+    native_block_entities::{
+        self, FurnaceImage, FurnaceOwnerKey, FurnaceRemovalSnapshot, FurnaceViewerRetention,
+    },
     server_recipe_book::{RecipeBookHost, RecipeBookPacket, RecipeDescriptor, RecipeId},
 };
 use std::cell::RefCell;
@@ -15,14 +17,118 @@ type P = (i32, i32, i32);
 #[derive(Clone, Debug)]
 struct OpenFurnace {
     position: P,
+    owner_key: FurnaceOwnerKey,
     menu: FurnaceMenu,
     spectator: bool,
 }
 #[derive(Default)]
 pub(super) struct FurnaceRuntime {
     menus: BTreeMap<i32, OpenFurnace>,
+    retired: BTreeMap<FurnaceOwnerKey, RetiredFurnace>,
+}
+#[derive(Clone, Debug)]
+struct RetiredFurnace {
+    position: P,
+    state: FurnaceState,
+    viewers: BTreeSet<i32>,
+}
+pub(super) struct PreparedFurnaceMenuRetirement {
+    owner_key: FurnaceOwnerKey,
+    retired: RetiredFurnace,
 }
 impl FurnaceRuntime {
+    /// Existing menus retain the removed BE object, not a new BE at its position.
+    pub(super) fn prepare_removal_retirement(
+        &self,
+        snapshot: &FurnaceRemovalSnapshot,
+        retention: &FurnaceViewerRetention,
+    ) -> Result<PreparedFurnaceMenuRetirement> {
+        let owner_key = snapshot.owner_key();
+        ensure!(
+            retention.owner_key() == owner_key,
+            "retained furnace identity differs"
+        );
+        ensure!(
+            retention.image().position == snapshot.image().position,
+            "retained furnace position differs"
+        );
+        ensure!(
+            !self.retired.contains_key(&owner_key),
+            "furnace owner already retired"
+        );
+        let viewers = self
+            .menus
+            .iter()
+            .filter_map(|(&id, open)| (open.owner_key == owner_key).then_some(id))
+            .collect::<Vec<_>>();
+        ensure!(
+            viewers.as_slice() == snapshot.viewers() && viewers.as_slice() == retention.viewers(),
+            "furnace menu/viewer ownership differs"
+        );
+        ensure!(
+            self.menus
+                .values()
+                .filter(|open| open.owner_key == owner_key)
+                .all(|open| open.position == snapshot.image().position),
+            "furnace menu position differs from actual owner"
+        );
+        let state = retention.image().furnace_state.clone();
+        state.validate()?;
+        ensure!(
+            state.slots.iter().all(ItemStack::is_empty),
+            "retired furnace still owns dropped contents"
+        );
+        Ok(PreparedFurnaceMenuRetirement {
+            owner_key,
+            retired: RetiredFurnace {
+                position: snapshot.image().position,
+                state,
+                viewers: viewers.into_iter().collect(),
+            },
+        })
+    }
+    /// Called only after full preflight while the world/player locks remain held.
+    pub(super) fn commit_removal_retirement(&mut self, prepared: PreparedFurnaceMenuRetirement) {
+        if !prepared.retired.viewers.is_empty() {
+            assert!(
+                self.retired
+                    .insert(prepared.owner_key, prepared.retired)
+                    .is_none(),
+                "exclusive prepared furnace retirement"
+            );
+        }
+    }
+    pub(super) fn viewer_ids_for_owner(&self, owner_key: FurnaceOwnerKey) -> Vec<i32> {
+        self.menus
+            .iter()
+            .filter_map(|(&id, open)| (open.owner_key == owner_key).then_some(id))
+            .collect()
+    }
+    pub(super) fn retired_owner_count(&self) -> usize {
+        self.retired.len()
+    }
+    /// ServerPlayer.take synchronizes its current container immediately. This
+    /// uses the captured live/retired furnace owner without moving the later
+    /// level-phase stillValid/close check into the pickup callback.
+    pub(super) fn broadcast_for_inventory(
+        &mut self,
+        world: &WorldBackend,
+        id: i32,
+        inventory: &PlayerInventory,
+    ) -> Result<Vec<Packet>> {
+        let open = self
+            .menus
+            .get(&id)
+            .cloned()
+            .context("current furnace menu absent")?;
+        let engine = open_state(world, self, &open)?;
+        self.menus
+            .get_mut(&id)
+            .expect("exclusive current furnace menu")
+            .menu
+            .broadcast_changes(&engine, inventory)
+    }
+
     pub fn window_id(&self, id: i32) -> Option<u8> {
         self.menus.get(&id).map(|v| v.menu.window_id)
     }
@@ -47,14 +153,24 @@ fn send(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet>) 
         });
     }
 }
-fn still_valid(world: &mut WorldBackend, player: &PlayerState, p: P) -> Result<bool> {
+fn still_valid(
+    world: &WorldBackend,
+    player: &PlayerState,
+    open: &OpenFurnace,
+    furnaces: &FurnaceRuntime,
+) -> Result<bool> {
+    if furnaces.retired.contains_key(&open.owner_key) {
+        return Ok(false);
+    }
+    let p = open.position;
     let WorldBackend::Fixture(flat) = &*world else {
         return Ok(false);
     };
-    if flat
-        .native_block_entities()
-        .furnace_validate_at(p, flat.block(p.0, p.1, p.2))
-        .is_err()
+    if flat.native_block_entities().furnace_owner_key(p).ok() != Some(open.owner_key)
+        || flat
+            .native_block_entities()
+            .furnace_validate_at(p, flat.block(p.0, p.1, p.2))
+            .is_err()
     {
         return Ok(false);
     }
@@ -86,6 +202,29 @@ fn state(world: &WorldBackend, p: P) -> Result<FurnaceState> {
         .image
         .furnace_state
         .clone())
+}
+fn open_state(
+    world: &WorldBackend,
+    furnaces: &FurnaceRuntime,
+    open: &OpenFurnace,
+) -> Result<FurnaceState> {
+    if let Some(retired) = furnaces.retired.get(&open.owner_key) {
+        ensure!(
+            retired.position == open.position,
+            "retired furnace position differs"
+        );
+        return Ok(retired.state.clone());
+    }
+    let WorldBackend::Fixture(flat) = world else {
+        bail!("native furnace backend changed")
+    };
+    ensure!(
+        flat.native_block_entities()
+            .furnace_owner_key(open.position)?
+            == open.owner_key,
+        "open furnace no longer references its actual owner"
+    );
+    state(world, open.position)
 }
 fn write_state(world: &mut WorldBackend, p: P, next: FurnaceState) -> Result<()> {
     let WorldBackend::Fixture(flat) = world else {
@@ -242,12 +381,14 @@ impl Server {
         let WorldBackend::Fixture(flat) = &mut *world else {
             unreachable!()
         };
+        let owner_key = flat.native_block_entities().furnace_owner_key(target)?;
         flat.native_block_entities_mut()
             .furnace_start_open(target, id)?;
         players.furnaces.menus.insert(
             id,
             OpenFurnace {
                 position: target,
+                owner_key,
                 menu,
                 spectator: player.gamemode == 3,
             },
@@ -323,27 +464,24 @@ impl Server {
         let Some(open) = players.furnaces.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|w| w != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
-            return Ok(false);
+        // handleContainerClick ignores an ID mismatch; handleContainerClose
+        // invokes doCloseContainer for the actual menu regardless of packet ID.
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
         }
         let player = players
             .registry
             .get(id)
             .context("furnace actor absent")?
             .clone();
-        if click.is_some() && !still_valid(world, &player, open.position)? {
-            return self.furnace_menu_action_locked(
-                world,
-                players,
-                id,
-                None,
-                Some(open.menu.window_id),
-                true,
-                now,
-                border,
-            );
+        // Spectator full-sync precedes stillValid in handleContainerClick.
+        // An invalid non-spectator click is ignored; the Level player tick owns
+        // broadcastChanges followed by the eventual closeContainer call.
+        if click.is_some()
+            && !open.spectator
+            && !still_valid(world, &player, &open, &players.furnaces)?
+        {
+            return Ok(true);
         }
         players.require_current_native_source(world)?;
         players.gameplay.require_supported_floor()?;
@@ -353,7 +491,8 @@ impl Server {
             .context("furnace shared inventory absent")?
             .clone();
         let baseline = shared.read(|m| m.inventory.clone())?;
-        let old_state = state(world, open.position)?;
+        let detached = players.furnaces.retired.contains_key(&open.owner_key);
+        let old_state = open_state(world, &players.furnaces, &open)?;
         let before = images(world)?;
         let mut next_inventory = baseline.clone();
         let mut next_state = old_state.clone();
@@ -378,7 +517,7 @@ impl Server {
             output_events.is_empty() || outcome.drops.iter().all(|d| d.stack.is_empty()),
             "furnace output XP plus item drop requires the combined native RNG transaction"
         );
-        if next_state.slots != old_state.slots {
+        if !detached && next_state.slots != old_state.slots {
             self.notify_native_furnace_changed_locked(world, players, open.position)?;
         }
         let mut rewards = Vec::new();
@@ -442,6 +581,16 @@ impl Server {
             around: false,
             trace_item: false,
         };
+        let close_packet = if send_close && close.is_some() {
+            let mut w = Writer::new();
+            w.u8(open.menu.window_id);
+            Some(Packet {
+                id: 0x12,
+                payload: w.into_inner(),
+            })
+        } else {
+            None
+        };
         let staged = RefCell::new((next_open, next_state));
         let world_slot = RefCell::new(world);
         let packets = RefCell::new(Vec::new());
@@ -476,9 +625,14 @@ impl Server {
                     );
                     m.inventory = next_inventory;
                     let mut outcome = outcome;
-                    let inventory_packets = m.broadcast_changes()?;
                     if close.is_some() {
-                        outcome.packets.extend(inventory_packets);
+                        // doCloseContainer transfers the old menu's shared
+                        // local/remote slot baselines, without broadcasting the
+                        // inventory menu now. Raw Inventory return packets are
+                        // already in the removed callback's outcome.
+                        staged.borrow().0.menu.transfer_inventory_remote_state(m)?;
+                    } else {
+                        let _ = m.broadcast_changes()?;
                     }
                     *packets.borrow_mut() = std::mem::take(&mut outcome.packets);
                     Ok(outcome)
@@ -521,27 +675,52 @@ impl Server {
                         )
                     },
                     before_spawn: || {
-                        let s = staged.borrow();
-                        let mut w = world_slot.borrow_mut();
-                        let WorldBackend::Fixture(flat) = &mut **w else {
-                            unreachable!()
-                        };
-                        flat.native_block_entities_mut()
-                            .furnace_set_state(s.0.position, s.1.clone())
-                            .expect("prevalidated furnace state");
-                        if close.is_some() {
-                            flat.native_block_entities_mut()
-                                .furnace_stop_open(s.0.position, id)
-                                .expect("actual furnace viewer owner");
-                            furnaces.menus.remove(&id);
-                        } else {
-                            furnaces.menus.insert(id, s.0.clone());
+                        if let Some(packet) = &close_packet {
+                            send(&self.entity_events, id, vec![packet.clone()]);
                         }
-                        entity_source
-                            .as_mut()
-                            .expect("validated furnace source")
-                            .observe_owned_furnace_change(&w, &before)
-                            .expect("exclusive owned furnace mutation");
+                        let s = staged.borrow();
+                        if detached {
+                            let remove_owner = {
+                                let retired = furnaces
+                                    .retired
+                                    .get_mut(&s.0.owner_key)
+                                    .expect("exclusive retained furnace owner");
+                                retired.state = s.1.clone();
+                                if close.is_some() {
+                                    retired.viewers.remove(&id);
+                                }
+                                retired.viewers.is_empty()
+                            };
+                            if close.is_some() {
+                                furnaces.menus.remove(&id);
+                            } else {
+                                furnaces.menus.insert(id, s.0.clone());
+                            }
+                            if remove_owner {
+                                furnaces.retired.remove(&s.0.owner_key);
+                            }
+                        } else {
+                            let mut w = world_slot.borrow_mut();
+                            let WorldBackend::Fixture(flat) = &mut **w else {
+                                unreachable!()
+                            };
+                            flat.native_block_entities_mut()
+                                .furnace_set_state(s.0.position, s.1.clone())
+                                .expect("prevalidated furnace state");
+                            if close.is_some() {
+                                flat.native_block_entities_mut()
+                                    .furnace_stop_open(s.0.position, id)
+                                    .expect("actual furnace viewer owner");
+                                furnaces.menus.remove(&id);
+                            } else {
+                                furnaces.menus.insert(id, s.0.clone());
+                            }
+                            entity_source
+                                .as_mut()
+                                .expect("validated furnace source")
+                                .observe_owned_furnace_change(&w, &before)
+                                .expect("exclusive owned furnace mutation");
+                        }
                     },
                     commit: |p: main_item_gameplay::PreparedGameplayMenu<'_>| p.commit(),
                 },
@@ -564,34 +743,53 @@ impl Server {
             observe(players, world, &before).expect("exclusive owned furnace reward clear");
         }
         send(&self.entity_events, id, packets.into_inner());
-        if send_close && close.is_some() {
-            let mut w = Writer::new();
-            w.u8(open.menu.window_id);
-            send(
-                &self.entity_events,
-                id,
-                vec![Packet {
-                    id: 0x12,
-                    payload: w.into_inner(),
-                }],
-            );
-        }
-        self.sync_native_furnaces_locked(world, players)?;
         Ok(true)
     }
-    fn sync_native_furnaces_locked(
+    /// Exact ServerPlayer.tick menu phase in the shared level-entity pass:
+    /// broadcast the captured container first, then test identity/range and
+    /// close. A newly placed BE at the same coordinates is a different owner.
+    pub(super) fn tick_native_furnace_menu_for_player_locked(
         &self,
-        world: &WorldBackend,
+        world: &mut WorldBackend,
         players: &mut LivePlayers,
+        id: i32,
+        now: i64,
+        border: CollisionBorder,
     ) -> Result<()> {
-        for id in players.furnaces.pending_players() {
-            let Some(shared) = players.containers.get(&id).cloned() else {
-                continue;
-            };
-            let open = players.furnaces.menus.get_mut(&id).unwrap();
-            let engine = state(world, open.position)?;
-            let packets = shared.read(|m| open.menu.broadcast_changes(&engine, &m.inventory))??;
-            send(&self.entity_events, id, packets);
+        let Some(open) = players.furnaces.menus.get(&id).cloned() else {
+            return Ok(());
+        };
+        let shared = players
+            .containers
+            .get(&id)
+            .context("furnace shared inventory absent")?
+            .clone();
+        let engine = open_state(world, &players.furnaces, &open)?;
+        let packets = {
+            let actual = players
+                .furnaces
+                .menus
+                .get_mut(&id)
+                .expect("actual furnace menu");
+            shared.read(|m| actual.menu.broadcast_changes(&engine, &m.inventory))??
+        };
+        send(&self.entity_events, id, packets);
+        let player = players
+            .registry
+            .get(id)
+            .context("orphan furnace menu")?
+            .clone();
+        if !still_valid(world, &player, &open, &players.furnaces)? {
+            self.furnace_menu_action_locked(
+                world,
+                players,
+                id,
+                None,
+                Some(open.menu.window_id),
+                true,
+                now,
+                border,
+            )?;
         }
         Ok(())
     }
@@ -631,26 +829,6 @@ impl Server {
             .map_err(|_| anyhow!("players poisoned"))?;
         if self.shutting_down.load(Ordering::Acquire) {
             return Ok(());
-        }
-        for id in players.furnaces.pending_players() {
-            let open = players.furnaces.menus.get(&id).cloned().unwrap();
-            let player = players
-                .registry
-                .get(id)
-                .context("orphan furnace menu")?
-                .clone();
-            if !still_valid(&mut world, &player, open.position)? {
-                self.furnace_menu_action_locked(
-                    &mut world,
-                    &mut players,
-                    id,
-                    None,
-                    Some(open.menu.window_id),
-                    true,
-                    now,
-                    border,
-                )?;
-            }
         }
         let positions = {
             let WorldBackend::Fixture(flat) = &*world else {
@@ -720,6 +898,6 @@ impl Server {
                 );
             }
         }
-        self.sync_native_furnaces_locked(&world, &mut players)
+        Ok(())
     }
 }
