@@ -2997,7 +2997,19 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
             client_information, admission, address, &mut protocol, &mut packs,
         ).await? {
-            PlayExit::Disconnected => return Ok(()),
+            PlayExit::Disconnected => {
+                // Retain the actual framing reader while half-closing output.
+                // Dropping a socket with unread client input can turn an already
+                // written disconnect reason into TCP RST. Late packets are
+                // drained here without dispatching any more gameplay callbacks.
+                let _ = time::timeout(WRITE_DEADLINE, writer.shutdown()).await;
+                let _ = time::timeout(Duration::from_secs(1), async {
+                    while let Some(packet) = packets.recv().await {
+                        if packet.is_err() { break; }
+                    }
+                }).await;
+                return Ok(());
+            },
             PlayExit::Reconfigure(info) => {
                 client_information = main_configuration::configure(
                     &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, info, false,
