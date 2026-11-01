@@ -243,7 +243,7 @@ impl<'a> Reader<'a> {
         bail!("VarInt exceeds five bytes")
     }
 
-    /// Match Java's UTF-16 String length limit, including surrogate pairs.
+    /// Match Java's replacement UTF-8 decoding and UTF-16 String length limit.
     pub fn string(&mut self, max_chars: usize) -> Result<String> {
         let length = self.varint()?;
         if length < 0 {
@@ -256,11 +256,11 @@ impl<'a> Reader<'a> {
         if length > max_bytes {
             bail!("string exceeds maximum encoded byte length");
         }
-        let text = std::str::from_utf8(self.bytes(length)?).context("invalid UTF-8 string")?;
+        let text = decode_java_utf8(self.bytes(length)?);
         if text.encode_utf16().count() > max_chars {
             bail!("string exceeds maximum Java character length");
         }
-        Ok(text.to_owned())
+        Ok(text)
     }
 
     // FriendlyByteBuf.readBoolean treats any nonzero byte as true.
@@ -294,6 +294,71 @@ impl<'a> Reader<'a> {
     pub fn uuid(&mut self) -> Result<[u8; 16]> {
         self.take()
     }
+}
+
+/// `Utf8String.read` delegates to Netty's Java UTF-8 string decoder. Java
+/// replaces each malformed prefix, including one replacement for an encoded
+/// surrogate; Rust's `from_utf8_lossy` instead splits that surrogate's bytes.
+fn decode_java_utf8(input: &[u8]) -> String {
+    if let Ok(text) = std::str::from_utf8(input) {
+        return text.to_owned();
+    }
+    let mut text = String::with_capacity(input.len());
+    let mut offset = 0;
+    while offset < input.len() {
+        let first = input[offset];
+        if first < 0x80 {
+            text.push(char::from(first));
+            offset += 1;
+            continue;
+        }
+        let (width, second_min, second_max) = match first {
+            0xc2..=0xdf => (2, 0x80, 0xbf),
+            0xe0 => (3, 0xa0, 0xbf),
+            0xe1..=0xef => (3, 0x80, 0xbf),
+            0xf0 => (4, 0x90, 0xbf),
+            0xf1..=0xf3 => (4, 0x80, 0xbf),
+            0xf4 => (4, 0x80, 0x8f),
+            _ => {
+                text.push('\u{fffd}');
+                offset += 1;
+                continue;
+            }
+        };
+        if !input
+            .get(offset + 1)
+            .is_some_and(|&second| (second_min..=second_max).contains(&second))
+        {
+            text.push('\u{fffd}');
+            offset += 1;
+            continue;
+        }
+        // Consume a valid prefix as one malformed unit if the next byte is
+        // absent or is not a continuation. Leave the offending byte for the
+        // next iteration, preserving Java's replacement grouping.
+        let mut consumed = 2;
+        while consumed < width
+            && input
+                .get(offset + consumed)
+                .is_some_and(|&byte| byte & 0xc0 == 0x80)
+        {
+            consumed += 1;
+        }
+        if consumed < width {
+            text.push('\u{fffd}');
+            offset += consumed;
+            continue;
+        }
+        let mut scalar = u32::from(first & (0x7f >> width));
+        for &byte in &input[offset + 1..offset + width] {
+            scalar = (scalar << 6) | u32::from(byte & 0x3f);
+        }
+        // A complete UTF-8 encoding of a UTF-16 surrogate consumes all three
+        // bytes and produces one U+FFFD in Java, rather than a Rust char.
+        text.push(char::from_u32(scalar).unwrap_or('\u{fffd}'));
+        offset += width;
+    }
+    text
 }
 
 #[derive(Debug, Clone, Default)]

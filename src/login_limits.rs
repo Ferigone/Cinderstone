@@ -142,8 +142,9 @@ impl ConnectionPacketRate {
     }
 
     /// Record a decoded packet only if the active listener accepted it. Java
-    /// increments after dispatch/scheduling, including its rescheduling escape;
-    /// a rejected listener packet, partial frame or raw byte is not an event.
+    /// increments after dispatch/scheduling, including the handled rescheduling,
+    /// rejected-execution and class-cast paths. An unhandled dispatch exception,
+    /// rejected listener packet, partial frame or raw byte is not an event.
     pub fn accepted_packet_received(&mut self) {
         self.received_packets = self.received_packets.wrapping_add(1);
     }
