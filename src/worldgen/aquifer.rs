@@ -414,7 +414,7 @@ impl NoiseBasedAquifer {
                 point.z.div_euclid(16),
             ),
         )? * 10.0;
-        let quantized = ((spread / 3.0).floor() as i32).wrapping_mul(3);
+        let quantized = quantize_spread(spread);
         Ok(min_surface.min(
             point
                 .y
@@ -424,6 +424,20 @@ impl NoiseBasedAquifer {
                 .wrapping_add(quantized),
         ))
     }
+}
+
+// Mth.quantize(spread, 3) uses Mth.floor: narrow to int first, then
+// conditionally decrement with Java int wrapping. floor() before narrowing
+// differs for negative values beyond the int range, including -infinity.
+fn quantize_spread(spread: f64) -> i32 {
+    let scaled = spread / 3.0;
+    let truncated = scaled as i32;
+    let floor = if scaled < f64::from(truncated) {
+        truncated.wrapping_sub(1)
+    } else {
+        truncated
+    };
+    floor.wrapping_mul(3)
 }
 
 fn similarity(first: i32, second: i32) -> f64 {
@@ -544,6 +558,27 @@ mod tests {
             // Production passes the current NoiseChunk and uses sample() instead.
             Ok(self.chunk.sample_external(self.graph, self.graph.root("barrier").unwrap(), point)?)
         }
+    }
+    #[derive(Deserialize)]
+    struct QuantizationFixture {
+        rows: Vec<QuantizationRow>,
+    }
+    #[derive(Deserialize)]
+    struct QuantizationRow {
+        name: String,
+        input_bits: String,
+        quantized: i32,
+    }
+    #[test]
+    fn spread_quantization_matches_original_java_narrowing_and_wrapping() -> Result<()> {
+        let fixture: QuantizationFixture = serde_json::from_str(include_str!(
+            "../../fixtures/world-generation-aquifer-quantization.json"
+        ))?;
+        for row in fixture.rows {
+            let spread = f64::from_bits(row.input_bits.parse()?);
+            assert_eq!(quantize_spread(spread), row.quantized, "{}", row.name);
+        }
+        Ok(())
     }
     #[test]
     fn actual_original_aquifer_decisions_and_update_flags() -> Result<()> {

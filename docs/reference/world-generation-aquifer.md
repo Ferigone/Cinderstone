@@ -60,3 +60,17 @@ probe hashes plus the ordered results. The in-module focused check replays
 those observations with the same router and preliminary-surface queries. This
 isolated oracle execution is separate from the generator's interpolation-loop
 comparison and does not establish Main integration.
+
+A targeted arithmetic audit found a difference outside the bounded built-in
+noise values: Rust `floor()` followed by an integer cast differs from the
+original `Mth.floor(double)` for values below the integer range. The original
+casts first and then conditionally decrements the integer with wrapping. Spread
+quantization now preserves that order. Direct reflection into the unchanged
+original `Mth.quantize(double, int)` (`ayo.a`, divisor 3) observed −Infinity and
+−1e20 produce `2147483645`, while floor-then-cast produced `−2147483648`.
+`fixtures/world-generation-aquifer-quantization.json` records the actual source
+results, including ordinary values, integer conversion limits, adjacent IEEE
+values, signed zero, NaN and infinities. Inputs use bit strings so the fixture
+contains no nonfinite JSON numbers. This correction preserves the public
+context's Java arithmetic; it is not evidence of an error in the selected
+bounded built-in terrain comparisons or a broader completion claim.
