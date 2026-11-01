@@ -58,6 +58,7 @@ pub mod level;
 pub mod lighting;
 pub mod living_damage;
 pub mod living_entities;
+pub mod mobs;
 pub mod metadata;
 pub mod nbt;
 pub mod noise;
