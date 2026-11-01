@@ -70,7 +70,10 @@ pub enum BrewingEffect {
 }
 
 /// The actual block/world owner must stage every effect in order, preserving
-/// captured block identity and all item/RNG/entity owners. An error must publish
+/// captured block-entity identity and all item/RNG/entity owners. The caller
+/// must bind the plan to that actual owner: structural state equality cannot
+/// distinguish an identical newly placed container at the same coordinates.
+/// An error must publish
 /// neither the callbacks nor the new state. No-op implementations are only
 /// suitable for explicitly labeled isolated kernel checks.
 pub trait BrewingTickHost {
@@ -277,10 +280,13 @@ impl BrewingState {
         for slot in 0..3 {
             self.slots[slot] = canonical(brewing.mix(&ingredient, &self.slots[slot])?);
         }
-        // This existing pinned catalog records Item.craftingRemainingItem for
-        // all items; the function name does not impose furnace-only membership.
-        let remainder = smelting::fuel_remainder(&ingredient)?;
+        // Source queries getItem().hasCraftingRemainingItem AFTER shrinking.
+        // An exhausted stack's getItem() is AIR, so the final dragon breath
+        // produces no bottle remainder in this exact 1.21 artifact.
         shrink(&mut self.slots[INGREDIENT_SLOT], 1);
+        // The pinned catalog covers every item's static craftingRemainingItem;
+        // this helper returns empty for the post-shrink empty/AIR stack.
+        let remainder = smelting::fuel_remainder(&self.slots[INGREDIENT_SLOT])?;
         if !remainder.is_empty() {
             if self.slots[INGREDIENT_SLOT].is_empty() {
                 self.slots[INGREDIENT_SLOT] = remainder;
@@ -461,13 +467,13 @@ mod tests {
         let saved = state.save_values();
         assert_eq!(saved.brew_time, 0);
         assert_eq!(saved.fuel, 7);
-        // Exhausting the ingredient retains the fresh remainder in slot three.
+        // Java queries the post-shrink item: an exhausted stack resolves to AIR.
         let mut saved = saved;
         saved.slots[0] = item("potion", 1);
         saved.brew_time = 1;
         state = BrewingState::from_saved(saved);
         tick(&mut state, &mixes, &mut host)?;
-        assert!(is_item(&state.slots()[3], "glass_bottle"));
+        assert!(state.slots()[3].is_empty());
         assert!(!host
             .events
             .iter()

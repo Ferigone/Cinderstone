@@ -8,7 +8,8 @@ This stage directly inspected **JDK 21 `javap -p -c`** output for
 `BrewingStandBlockEntity` (`dqk`), its data adapter (`dqk$1`),
 `BrewingStandMenu` (`cqa`), its fuel/ingredient/potion slots (`cqa$a/b/c`),
 `PotionBrewing` (`cwt`) and `BaseContainerBlockEntity` (`dqb`). No REA inspection,
-Java server-tick execution or gameplay observation is claimed. Raw disassembly
+Java server-tick execution or gameplay observation is claimed. A separate small
+direct item-method observation is labeled below. Raw disassembly
 and Java artifacts remain outside the source checkout.
 
 ## Tick ordering
@@ -38,12 +39,22 @@ fuel 4. There is no derived result inventory or second potion owner.
 
 Completion calls the actual `PotionBrewing.mix(ingredient, bottle)` for all three
 slots, including empty or unchanged bottles. It then consumes one ingredient.
-A fresh static `Item.craftingRemainingItem` replaces an exhausted ingredient;
-otherwise it enters real `Containers.dropItemStack` at integer block x/y/z
-before Level event **1035**, data **0**. The engine reuses the existing pinned
-static remainder catalog through `smelting::fuel_remainder`; that helper accepts
-all registered items, despite its furnace-oriented name. It transfers no input
-component patch to the remainder.
+The remainder query occurs **after shrinking**: `ItemStack.getItem` returns AIR
+when the count is zero. Consequently, exhausting the final dragon breath yields
+no glass-bottle remainder in this exact artifact. When dragon breath remains,
+its fresh static `Item.craftingRemainingItem` enters real
+`Containers.dropItemStack` at integer block x/y/z before Level event **1035**,
+data **0**. The engine reuses the existing pinned static remainder catalog
+through `smelting::fuel_remainder`, queried against the post-shrink stack; that
+helper accepts all registered items, despite its furnace-oriented name. It
+transfers no input component patch to the remainder.
+
+This quirk is supported by `dqk.doBrew` offsets 52–78 and `cuq.getItem`'s
+empty-stack branch. A temporary reflection harness additionally called the
+unchanged `ItemStack.shrink/getItem/Item.hasCraftingRemainingItem` methods:
+starting with one dragon breath returned count zero, empty true, remainder false;
+starting with two returned count one, empty false, remainder true. This is a
+small direct item-method observation, not an executed brewing-world tick.
 
 The mix owner must reproduce the source's assembly. In particular, `cwt.mix`
 creates a fresh result with the new base potion for successful container/potion
@@ -83,14 +94,17 @@ to the native block-entity registry or checkpoint format in this stage.
 single-use before/after plan and ordered `BrewingEffect`s. Dirty effects retain
 the slots/counters observed at that exact callback. `commit_tick` rejects a
 changed state and asks `BrewingTickHost` to atomically commit the real world
-effects before publishing the new state. Its contract requires captured block
+effects before publishing the new state. Its contract requires captured block-entity
 identity, actual item/RNG/entity owners for a remainder drop, real dirty and
 comparator callbacks, event publication and property updates in source order.
 A failed transaction must publish neither the effects nor the new state.
+The caller must bind each plan to the actual captured block-entity owner key or
+epoch; structural state equality alone cannot distinguish an identical newly
+placed container at the same coordinates.
 
 Focused native scenarios cover idle refueling, the 400-tick countdown, ordinary
-ingredient abort, final-tick ingredient switching, a drop-versus-slot ingredient
-remainder, signed save values, stale plans and rejected world transactions.
+ingredient abort, final-tick ingredient switching, the remaining-versus-exhausted ingredient
+remainder distinction, signed save values, stale plans and rejected world transactions.
 Their explicitly labeled fixture mix and recording host test the state engine;
 they establish neither a production potion recipe owner nor live world behavior.
 
