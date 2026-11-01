@@ -1,7 +1,7 @@
 //! Native1.21 CraftingMenu. Canonical inventory is borrowed only for each
 //! atomic menu action; the retained owner stores its grid/cursor/remote baseline.
 use crate::{
-    container::{ClickOutcome, ClickType, ContainerClick, DroppedStack},
+    container::{ClickOutcome, ClickType, ContainerClick, DroppedStack, MenuCloseContext},
     crafting::{CraftResult, RecipeBook, RecipeContext, RecipeInput},
     inventory::{self, ItemStack, PlayerInventory},
     protocol::{Packet, Writer},
@@ -16,6 +16,8 @@ pub struct CraftingTableMenu {
     inputs: Vec<ItemStack>,
     result: ItemStack,
     carried: ItemStack,
+    last: Vec<ItemStack>,
+    local_initialized: bool,
     remote: Vec<ItemStack>,
     remote_carried: ItemStack,
     quickcraft_status: u8,
@@ -33,6 +35,8 @@ impl CraftingTableMenu {
             inputs: vec![ItemStack::empty(); 9],
             result: ItemStack::empty(),
             carried: ItemStack::empty(),
+            last: vec![ItemStack::empty(); MENU_SLOTS],
+            local_initialized: false,
             remote: vec![ItemStack::empty(); 46],
             remote_carried: ItemStack::empty(),
             quickcraft_status: 0,
@@ -49,6 +53,11 @@ impl CraftingTableMenu {
     }
     pub fn full_sync(&mut self, inventory: &PlayerInventory) -> Result<Packet> {
         let mut work = Engine::new(self, inventory);
+        // Opening installs the player's slot listener before the synchronizer.
+        // A later sendAllDataToRemote refreshes only the remote baseline.
+        if !work.local_initialized {
+            work.capture_last_slots();
+        }
         let packet = work.full_sync()?;
         work.commit_menu(self);
         Ok(packet)
@@ -92,6 +101,8 @@ impl CraftingTableMenu {
         }
         work.remote_carried = copy_stack(&click.carried);
         if stale {
+            // broadcastFullState observes local slots before sending remote data.
+            work.capture_last_slots();
             out.packets.push(work.full_sync()?);
         } else {
             work.synchronize(&mut out.packets)?;
@@ -101,14 +112,24 @@ impl CraftingTableMenu {
         Ok(out)
     }
     pub fn close(&mut self, inventory: &mut PlayerInventory) -> Result<ClickOutcome> {
+        self.close_with_context(inventory, MenuCloseContext::AliveConnected)
+    }
+    pub fn close_with_context(
+        &mut self,
+        inventory: &mut PlayerInventory,
+        context: MenuCloseContext,
+    ) -> Result<ClickOutcome> {
         let mut work = Engine::new(self, inventory);
         let mut out = ClickOutcome::default();
         work.reset_quickcraft();
+        // CraftingMenu.removed invokes AbstractContainerMenu.removed first,
+        // then clearContainer on the actual nine-slot input container. The
+        // result is a recipe preview, never an additional owned drop.
         let mut carried = std::mem::take(&mut work.inventory.carried);
-        work.return_to_inventory(&mut carried, &mut out)?;
+        work.return_or_drop(&mut carried, context, &mut out)?;
         for slot in 1..10 {
             let mut stack = std::mem::take(&mut work.inventory.slots[slot]);
-            work.return_to_inventory(&mut stack, &mut out)?;
+            work.return_or_drop(&mut stack, context, &mut out)?;
         }
         work.inventory.slots[0] = ItemStack::empty();
         work.crafting = None;
@@ -116,6 +137,18 @@ impl CraftingTableMenu {
         work.commit_inventory(inventory);
         work.commit_menu(self);
         Ok(out)
+    }
+    /// Match the old menu's actual shared container/index pairs. Only its 36
+    /// inventory slots belong to InventoryMenu; the grid/result/cursor do not.
+    /// Returning the grid/cursor does not overwrite these old sync baselines.
+    pub fn transfer_inventory_remote_state(
+        &self,
+        player: &mut crate::container::PlayerContainer,
+    ) -> Result<()> {
+        for slot in 10..MENU_SLOTS {
+            player.transfer_external_slot_state(slot - 1, &self.last[slot], &self.remote[slot])?;
+        }
+        Ok(())
     }
 }
 #[derive(Debug)]
@@ -148,6 +181,8 @@ struct Engine {
     inventory: WorkingInventory,
     window_id: u8,
     state_id: i32,
+    last: Vec<ItemStack>,
+    local_initialized: bool,
     remote: Vec<ItemStack>,
     remote_carried: ItemStack,
     quickcraft_status: u8,
@@ -159,6 +194,22 @@ struct Engine {
     pending_packets: Vec<Packet>,
 }
 impl Engine {
+    fn return_or_drop(
+        &mut self,
+        stack: &mut ItemStack,
+        context: MenuCloseContext,
+        out: &mut ClickOutcome,
+    ) -> Result<()> {
+        match context {
+            MenuCloseContext::AliveConnected => self.return_to_inventory(stack, out),
+            MenuCloseContext::DeadOrDisconnected => {
+                // Player.drop(stack, false): around=false, traceItem=false.
+                // The Main host owns the real Item/RNG transaction.
+                drop_stack(out, std::mem::take(stack), false);
+                Ok(())
+            }
+        }
+    }
     /// Inventory.placeItemBackInInventory(stack, true), including the explicit
     /// inventory-index packet after every successful insertion.
     fn return_to_inventory(&mut self, stack: &mut ItemStack, out: &mut ClickOutcome) -> Result<()> {
@@ -172,7 +223,7 @@ impl Engine {
                 if !existing.is_empty()
                     && existing.is_stackable()?
                     && existing.same_item_same_components(stack)?
-                    && existing.count < existing.max_stack_size()?
+                    && existing.count < existing.max_stack_size()?.min(99)
                 {
                     destination = Some(slot);
                     break;
@@ -188,7 +239,9 @@ impl Engine {
                 break;
             };
             let existing = self.inventory.slots[slot].count.max(0);
-            let amount = stack.count.min((stack.max_stack_size()? - existing).max(0));
+            let maximum = stack.max_stack_size()?;
+            ensure!((1..=99).contains(&maximum), "invalid native cursor stack limit");
+            let amount = stack.count.min(maximum - existing);
             ensure!(
                 amount > 0,
                 "no room in selected native inventory destination"
@@ -225,6 +278,8 @@ impl Engine {
             },
             window_id: menu.window_id,
             state_id: menu.state_id,
+            last: menu.last.clone(),
+            local_initialized: menu.local_initialized,
             remote: menu.remote.clone(),
             remote_carried: menu.remote_carried.clone(),
             quickcraft_status: menu.quickcraft_status,
@@ -247,6 +302,8 @@ impl Engine {
         menu.inputs = self.inventory.slots[1..10].to_vec();
         menu.result = self.inventory.slots[0].clone();
         menu.carried = self.inventory.carried;
+        menu.last = self.last;
+        menu.local_initialized = self.local_initialized;
         menu.remote = self.remote;
         menu.remote_carried = self.remote_carried;
         menu.quickcraft_status = self.quickcraft_status;
@@ -279,6 +336,7 @@ impl Engine {
         })
     }
     fn synchronize(&mut self, packets: &mut Vec<Packet>) -> Result<()> {
+        self.capture_last_slots();
         for slot in 0..MENU_SLOTS {
             if !stack_matches(&self.inventory.slots[slot], &self.remote[slot])? {
                 self.remote[slot] = copy_stack(&self.inventory.slots[slot]);
@@ -308,6 +366,13 @@ impl Engine {
             });
         }
         Ok(())
+    }
+    fn capture_last_slots(&mut self) {
+        self.last = self.inventory.slots[..MENU_SLOTS]
+            .iter()
+            .map(copy_stack)
+            .collect();
+        self.local_initialized = true;
     }
     fn refresh_crafting(&mut self, context: &RecipeContext) -> Result<()> {
         let input = RecipeInput::crafting(3, 3, self.inventory.slots[1..10].to_vec())?;

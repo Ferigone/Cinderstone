@@ -131,7 +131,8 @@ impl Server {
         if let Some(window) = players.furnaces.window_id(id) {
             self.furnace_menu_action_locked(&mut world, &mut players, id, None, Some(window), true, now, border)?;
         }
-        self.close_inventory_menu_locked(&mut world, &mut players, id, now, border)?;
+        // ServerPlayer.openMenu leaves the retained InventoryMenu untouched.
+        // Its own cursor and 2x2 inputs are not owned by this external menu.
         let window = players.native_containers.allocate_window(id);
         let mut menu = CraftingTableMenu::new(window)?;
         let initial = shared.read(|m| menu.full_sync(&m.inventory))??;
@@ -229,6 +230,30 @@ impl Server {
         now: i64,
         border: CollisionBorder,
     ) -> Result<bool> {
+        self.crafting_table_action_with_close_context_locked(
+            world,
+            players,
+            id,
+            click,
+            close,
+            send_close,
+            now,
+            border,
+            mc121_rust::container::MenuCloseContext::AliveConnected,
+        )
+    }
+    pub(super) fn crafting_table_action_with_close_context_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        click: Option<&ContainerClick>,
+        close: Option<u8>,
+        send_close: bool,
+        now: i64,
+        border: CollisionBorder,
+        close_context: mc121_rust::container::MenuCloseContext,
+    ) -> Result<bool> {
         let Some(open) = players.crafting_tables.menus.get(&id).cloned() else {
             return Ok(false);
         };
@@ -287,6 +312,16 @@ impl Server {
             crafting_tables,
             ..
         } = players;
+        let close_packet = if send_close && close.is_some() {
+            let mut w = Writer::new();
+            w.u8(staged.borrow().menu.window_id);
+            Some(Packet {
+                id: 0x12,
+                payload: w.into_inner(),
+            })
+        } else {
+            None
+        };
         menu_action_with_items(
             &shared,
             DropCommitOwner {
@@ -301,7 +336,7 @@ impl Server {
             |m| {
                 let mut s = staged.borrow_mut();
                 let outcome = if close.is_some() {
-                    s.menu.close(&mut m.inventory)?
+                    s.menu.close_with_context(&mut m.inventory, close_context)?
                 } else if player.gamemode == 3 {
                     ClickOutcome {
                         packets: vec![s.menu.full_sync(&m.inventory)?],
@@ -315,7 +350,11 @@ impl Server {
                         &RecipeContext::default(),
                     )?
                 };
-                let _ = m.broadcast_changes()?;
+                if close.is_some() {
+                    s.menu.transfer_inventory_remote_state(m)?;
+                } else {
+                    let _ = m.broadcast_changes()?;
+                }
                 Ok(outcome)
             },
             |_| {
@@ -323,7 +362,7 @@ impl Server {
                     rain_available,
                     "crafting item drop requires actual rain context"
                 );
-                chunk_runtime.certify_query_region(
+                chunk_runtime.certify_current_query_region(
                     &mut world_slot.borrow_mut(),
                     chunk_transports,
                     &self.entity_events,
@@ -336,7 +375,7 @@ impl Server {
                         ((player.position.x + 18.).floor() as i32).div_euclid(16),
                         ((player.position.z + 18.).floor() as i32).div_euclid(16),
                     ),
-                )
+                ).map(|_| ())
             },
             || random_seed::create_random().map_err(anyhow::Error::from),
             DropCommitCallbacks {
@@ -355,6 +394,9 @@ impl Server {
                     )
                 },
                 before_spawn: || {
+                    if let Some(packet) = &close_packet {
+                        send(&self.entity_events, id, vec![packet.clone()]);
+                    }
                     let s = staged.borrow();
                     if close.is_some() {
                         crafting_tables.menus.remove(&id);
@@ -365,18 +407,6 @@ impl Server {
                 commit: |p: main_item_gameplay::PreparedGameplayMenu<'_>| p.commit(),
             },
         )?;
-        if send_close && close.is_some() {
-            let mut w = Writer::new();
-            w.u8(staged.borrow().menu.window_id);
-            send(
-                &self.entity_events,
-                id,
-                vec![Packet {
-                    id: 0x12,
-                    payload: w.into_inner(),
-                }],
-            );
-        }
         Ok(true)
     }
     pub(super) fn close_crafting_tables_for_save_locked(

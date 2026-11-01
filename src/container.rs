@@ -11,6 +11,14 @@ use crate::{
 use anyhow::{bail, ensure, Result};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Actual owner state supplied by the player/connection lifecycle when a menu
+/// is removed. A client close packet alone does not indicate disconnection.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MenuCloseContext {
+    AliveConnected,
+    DeadOrDisconnected,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ClickType {
     Pickup,
@@ -123,6 +131,70 @@ impl ClickOutcome {
             trace_item,
         });
     }
+}
+
+/// Inventory.placeItemBackInInventory(stack, true), used by actual menu
+/// removal callbacks. The selected merge slot and offhand precede raw slots
+/// 0..35; empty destinations use only raw slots 0..35. Each insertion sends
+/// its explicit raw-inventory -2 packet without advancing menu state IDs.
+pub fn return_to_inventory_on_menu_close(
+    inventory: &mut PlayerInventory,
+    stack: &mut ItemStack,
+    out: &mut ClickOutcome,
+) -> Result<()> {
+    while !stack.is_empty() {
+        let selected = 36 + inventory.selected_hotbar();
+        let mut destination = None;
+        for slot in std::iter::once(selected)
+            .chain(std::iter::once(45))
+            .chain((36..45).chain(9..36))
+        {
+            let existing = inventory.slot(slot).expect("actual player inventory slot");
+            if !existing.is_empty()
+                && existing.is_stackable()?
+                && existing.same_item_same_components(stack)?
+                && existing.count < existing.max_stack_size()?.min(99)
+            {
+                destination = Some(slot);
+                break;
+            }
+        }
+        if destination.is_none() {
+            destination = (36..45)
+                .chain(9..36)
+                .find(|slot| inventory.slot(*slot).unwrap().is_empty());
+        }
+        let Some(slot) = destination else {
+            out.drop_stack(std::mem::take(stack), false);
+            break;
+        };
+        let existing = inventory.slot(slot).unwrap().count.max(0);
+        let maximum = stack.max_stack_size()?;
+        ensure!((1..=99).contains(&maximum), "invalid menu-return stack limit");
+        let amount = stack.count.min(maximum - existing);
+        ensure!(amount > 0, "selected menu-return slot has no capacity");
+        // The selected destination guarantees Inventory.add(slot, split)
+        // succeeds. popTime(5) is a transient client-animation field, not a
+        // serialized component or an authoritative count mutation.
+        inventory.set_slot_authoritative(slot, with_count(stack, existing + amount));
+        *stack = with_count(stack, stack.count - amount);
+        let raw_slot = match slot {
+            36..=44 => slot - 36,
+            45 => 40,
+            _ => slot,
+        };
+        let mut packet = Writer::new();
+        packet
+            .i8(-2)
+            .varint(0)
+            .i16(raw_slot as i16)
+            .raw(&inventory.slot(slot).unwrap().encode_canonical()?);
+        out.packets.push(Packet {
+            id: 0x15,
+            payload: packet.into_inner(),
+        });
+    }
+    Ok(())
 }
 
 #[derive(Clone, Debug)]
@@ -362,32 +434,50 @@ impl PlayerContainer {
         }
         Ok(outcome)
     }
-    /// Close window0 for a living connected player. Carried items return first,
-    /// then the four crafting inputs; unplaceable items are returned as drops.
+    /// InventoryMenu.removed for an alive, connected owner. Its callback does
+    /// not broadcast the inventory menu; the actual later player phase does.
     pub fn close(&mut self) -> Result<ClickOutcome> {
+        self.close_with_context(MenuCloseContext::AliveConnected)
+    }
+    /// Remove the cursor first, clear the nonowned result cache, then remove
+    /// the four actual crafting inputs in ascending grid order. A disconnected
+    /// or dead owner drops these stacks instead of adding them to inventory.
+    pub fn close_with_context(&mut self, context: MenuCloseContext) -> Result<ClickOutcome> {
+        // A codec/capacity error must not leave a partly cleared authoritative
+        // menu even when this callable core is used outside a host transaction.
+        let mut next = self.clone();
         let mut out = ClickOutcome::default();
-        self.reset_quickcraft();
-        let creative = self.creative_mode;
-        self.creative_mode = false;
-        let mut carried = self.inventory.carried().clone();
-        self.inventory.set_carried_authoritative(ItemStack::empty());
-        self.add_to_inventory(&mut carried)?;
-        if !carried.is_empty() {
-            out.drop_stack(carried, false);
-        }
-        self.inventory.set_slot_authoritative(0, ItemStack::empty());
-        self.crafting = None;
-        for slot in 1..5 {
-            let mut item = self.inventory.slot(slot).unwrap().clone();
-            self.inventory
-                .set_slot_authoritative(slot, ItemStack::empty());
-            self.add_to_inventory(&mut item)?;
-            if !item.is_empty() {
-                out.drop_stack(item, false);
+        next.reset_quickcraft();
+        let mut carried = next.inventory.carried().clone();
+        match context {
+            MenuCloseContext::AliveConnected => {
+                return_to_inventory_on_menu_close(&mut next.inventory, &mut carried, &mut out)?;
+            }
+            MenuCloseContext::DeadOrDisconnected => {
+                if !carried.is_empty() {
+                    out.drop_stack(carried, false);
+                }
             }
         }
-        self.creative_mode = creative;
-        self.synchronize(&mut out.packets)?;
+        next.inventory.set_carried_authoritative(ItemStack::empty());
+        next.inventory.set_slot_authoritative(0, ItemStack::empty());
+        next.crafting = None;
+        for slot in 1..5 {
+            let mut item = next.inventory.slot(slot).unwrap().clone();
+            next.inventory
+                .set_slot_authoritative(slot, ItemStack::empty());
+            match context {
+                MenuCloseContext::AliveConnected => {
+                    return_to_inventory_on_menu_close(&mut next.inventory, &mut item, &mut out)?;
+                }
+                MenuCloseContext::DeadOrDisconnected => {
+                    if !item.is_empty() {
+                        out.drop_stack(item, false);
+                    }
+                }
+            }
+        }
+        *self = next;
         Ok(out)
     }
     /// Recalculate and send only changed slots after an external grid edit.

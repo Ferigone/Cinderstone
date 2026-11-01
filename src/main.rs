@@ -2164,6 +2164,10 @@ impl Server {
         if let Some(reason)=reason {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
         }
+        // Player.remove first invokes InventoryMenu.removed, then removes the
+        // actual external menu. Keep that order for carried/grid drop RNG and
+        // shared entity allocation even when a block menu remains current.
+        self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         if let Some(window)=players.furnaces.window_id(id) {
             // This actor is leaving after EOF, disconnect, or duplicate-login
             // replacement. Its carried stack follows Player.drop(stack,false),
@@ -2171,12 +2175,11 @@ impl Server {
             self.furnace_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container_furnace::FurnaceMenuCloseContext::DeadOrDisconnected)?;
         }
         if let Some(window)=players.crafting_tables.window_id(id) {
-            self.crafting_table_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;
+            self.crafting_table_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
         if let Some(window)=players.native_containers.window_id(id) {
-            self.native_menu_action_locked(&mut world,&mut players,id,None,Some(window),false,now,border)?;
+            self.native_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
-        self.close_inventory_menu_locked(&mut world,&mut players,id,now,border)?;
         self.save_player_locked(&mut players,id)?;
         players.remove_runtime_player(id)?;
         if let Some(event)=players.registry.remove(id) {

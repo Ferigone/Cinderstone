@@ -13,13 +13,8 @@ use std::collections::BTreeSet;
 const MENU_SLOTS: usize = 39;
 const OFFHAND: usize = 39;
 
-/// The actual owner condition at AbstractContainerMenu.removed. The caller
-/// supplies this from player/connection lifecycle state, not the close packet.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum FurnaceMenuCloseContext {
-    AliveConnected,
-    DeadOrDisconnected,
-}
+/// Compatibility name for the shared actual menu-owner lifecycle condition.
+pub use crate::container::MenuCloseContext as FurnaceMenuCloseContext;
 
 /// Actual FurnaceResultSlot.checkTakeAchievements callback. The host must
 /// consume these in order with its real item-crafting, XP, recipe and RNG owners.

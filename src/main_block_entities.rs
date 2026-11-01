@@ -96,10 +96,34 @@ impl Server {
         now: i64,
         border: CollisionBorder,
     ) -> Result<()> {
+        self.close_inventory_menu_with_context_locked(
+            world,
+            players,
+            id,
+            now,
+            border,
+            mc121_rust::container::MenuCloseContext::AliveConnected,
+        )
+    }
+    pub(super) fn close_inventory_menu_with_context_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        now: i64,
+        border: CollisionBorder,
+        close_context: mc121_rust::container::MenuCloseContext,
+    ) -> Result<()> {
         ensure!(
-            !players.native_containers.has_open(id) && !players.crafting_tables.has_open(id) && !players.furnaces.has_open(id),
+            close_context == mc121_rust::container::MenuCloseContext::DeadOrDisconnected
+                || (!players.native_containers.has_open(id)
+                    && !players.crafting_tables.has_open(id)
+                    && !players.furnaces.has_open(id)),
             "close actual native menu before InventoryMenu cleanup"
         );
+        // Player.remove cleans the retained InventoryMenu before the actual
+        // external menu. Only its own cursor and 2x2 inputs belong to this call;
+        // the active menu's separate cursor is handled by its later removal.
         let Some(player) = players.registry.get(id).cloned() else {
             return Ok(());
         };
@@ -112,7 +136,7 @@ impl Server {
             || players.chunk_runtime.require_supported_lighting().is_err()
             || players.require_current_native_source(world).is_err()
         {
-            return menu_without_world_drops(&shared, PlayerContainer::close);
+            return menu_without_world_drops(&shared, |m| m.close_with_context(close_context));
         }
         let facts = players.world_context.item_facts(now, border, false)?;
         let rain_available = matches!(
@@ -148,10 +172,10 @@ impl Server {
                 entity_counter: &self.entities,
             },
             drop,
-            PlayerContainer::close,
+            |m| m.close_with_context(close_context),
             |_| {
                 ensure!(rain_available, "closing inventory drop rain owner missing");
-                chunk_runtime.certify_query_region(
+                chunk_runtime.certify_current_query_region(
                     world,
                     chunk_transports,
                     &self.entity_events,
@@ -164,7 +188,7 @@ impl Server {
                         ((player.position.x + 18.).floor() as i32).div_euclid(16),
                         ((player.position.z + 18.).floor() as i32).div_euclid(16),
                     ),
-                )
+                ).map(|_| ())
             },
             || random_seed::create_random().map_err(anyhow::Error::from),
             DropCommitCallbacks {
@@ -290,7 +314,8 @@ impl Server {
         if let Some(window) = players.furnaces.window_id(id) {
             self.furnace_menu_action_locked(&mut world, &mut players, id, None, Some(window), true, now, border)?;
         }
-        self.close_inventory_menu_locked(&mut world, &mut players, id, now, border)?;
+        // Opening an external menu does not invoke InventoryMenu.removed; its
+        // retained cursor and 2x2 inputs remain separate from this menu.
         let next = players.native_containers.allocate_window(id);
         let mut menu = GenericContainerMenu::new(next, top.len() / 9)?;
         let initial = shared.read(|m| menu.full_sync(&top, &m.inventory))??;
@@ -405,6 +430,30 @@ impl Server {
         now: i64,
         border: CollisionBorder,
     ) -> Result<bool> {
+        self.native_menu_action_with_close_context_locked(
+            world,
+            players,
+            id,
+            click,
+            close,
+            send_close,
+            now,
+            border,
+            mc121_rust::container::MenuCloseContext::AliveConnected,
+        )
+    }
+    pub(super) fn native_menu_action_with_close_context_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        click: Option<&ContainerClick>,
+        close: Option<u8>,
+        send_close: bool,
+        now: i64,
+        border: CollisionBorder,
+        close_context: mc121_rust::container::MenuCloseContext,
+    ) -> Result<bool> {
         let Some(open) = players.native_containers.menus.get(&id).cloned() else {
             return Ok(false);
         };
@@ -469,6 +518,16 @@ impl Server {
             entity_source,
             ..
         } = players;
+        let close_packet = if send_close && close.is_some() {
+            let mut w = Writer::new();
+            w.u8(staged.borrow().0.menu.window_id);
+            Some(Packet {
+                id: 0x12,
+                payload: w.into_inner(),
+            })
+        } else {
+            None
+        };
         menu_action_with_items(
             &shared,
             DropCommitOwner {
@@ -483,8 +542,8 @@ impl Server {
             |m| {
                 let mut s = staged.borrow_mut();
                 let (open, top) = &mut *s;
-                let mut outcome = if close.is_some() {
-                    open.menu.close(&mut m.inventory)?
+                let outcome = if close.is_some() {
+                    open.menu.close_with_context(&mut m.inventory, close_context)?
                 } else if open.spectator {
                     ClickOutcome {
                         packets: vec![open.menu.full_sync(top, &m.inventory)?],
@@ -498,15 +557,16 @@ impl Server {
                         player.gamemode == 1,
                     )?
                 };
-                let inventory_packets = m.broadcast_changes()?;
                 if close.is_some() {
-                    outcome.packets.extend(inventory_packets);
+                    open.menu.transfer_inventory_remote_state(m)?;
+                } else {
+                    let _ = m.broadcast_changes()?;
                 }
                 Ok(outcome)
             },
             |_| {
                 ensure!(rain_available, "native menu drop requires rain exposure");
-                chunk_runtime.certify_query_region(
+                chunk_runtime.certify_current_query_region(
                     &mut world_slot.borrow_mut(),
                     chunk_transports,
                     &self.entity_events,
@@ -519,7 +579,7 @@ impl Server {
                         ((player.position.x + 18.).floor() as i32).div_euclid(16),
                         ((player.position.z + 18.).floor() as i32).div_euclid(16),
                     ),
-                )
+                ).map(|_| ())
             },
             || random_seed::create_random().map_err(anyhow::Error::from),
             DropCommitCallbacks {
@@ -541,6 +601,9 @@ impl Server {
                     )
                 },
                 before_spawn: || {
+                    if let Some(packet) = &close_packet {
+                        send_private(&self.entity_events, id, vec![packet.clone()]);
+                    }
                     let s = staged.borrow();
                     let mut w = world_slot.borrow_mut();
                     let WorldBackend::Fixture(flat) = &mut **w else {
@@ -567,22 +630,10 @@ impl Server {
                 commit: |p: main_item_gameplay::PreparedGameplayMenu<'_>| p.commit(),
             },
         )?;
-        let (open, _) = staged.into_inner();
+        let _ = staged.into_inner();
         let world = world_slot.into_inner();
         let effects = effects_slot.into_inner();
         self.emit_native_container_effects(world, players, effects, now, border)?;
-        if send_close && close.is_some() {
-            let mut w = Writer::new();
-            w.u8(open.menu.window_id);
-            send_private(
-                &self.entity_events,
-                id,
-                vec![Packet {
-                    id: 0x12,
-                    payload: w.into_inner(),
-                }],
-            );
-        }
         self.sync_native_containers_locked(world, players)?;
         Ok(true)
     }

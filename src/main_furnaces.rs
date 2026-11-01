@@ -362,7 +362,6 @@ impl Server {
                 border,
             )?;
         }
-        self.close_inventory_menu_locked(&mut world, &mut players, id, now, border)?;
         let window = players.native_containers.allocate_window(id);
         let mut menu = FurnaceMenu::new(window)?;
         let engine = state(&world, target)?;

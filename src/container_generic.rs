@@ -2,7 +2,10 @@
 //! chest/barrel slots. The canonical player inventory is borrowed per operation;
 //! only the menu cursor, drag state and remote synchronization baseline live here.
 use crate::{
-    container::{ClickOutcome, ClickType, ContainerClick, DroppedStack, PlayerContainer},
+    container::{
+        return_to_inventory_on_menu_close, ClickOutcome, ClickType, ContainerClick, DroppedStack,
+        MenuCloseContext, PlayerContainer,
+    },
     inventory::{ItemStack, PlayerInventory},
     protocol::{Packet, Writer},
 };
@@ -15,6 +18,8 @@ pub struct GenericContainerMenu {
     pub rows: usize,
     state_id: i32,
     carried: ItemStack,
+    last: Vec<ItemStack>,
+    local_initialized: bool,
     remote: Vec<ItemStack>,
     remote_carried: ItemStack,
     drag_status: u8,
@@ -106,6 +111,8 @@ impl GenericContainerMenu {
             rows,
             state_id: 0,
             carried: ItemStack::empty(),
+            last: vec![ItemStack::empty(); rows * 9 + 36],
+            local_initialized: false,
             remote: vec![ItemStack::empty(); rows * 9 + 36],
             remote_carried: ItemStack::empty(),
             drag_status: 0,
@@ -130,6 +137,12 @@ impl GenericContainerMenu {
     }
     pub fn full_sync(&mut self, top: &[ItemStack], inventory: &PlayerInventory) -> Result<Packet> {
         let slots = self.slots(top, inventory)?;
+        // Initial addSlotListener observes the actual slots. Later spectator
+        // sendAllDataToRemote calls change only the remote baseline.
+        if !self.local_initialized {
+            self.last = slots.clone();
+            self.local_initialized = true;
+        }
         self.remote = slots.clone();
         self.remote_carried = canonical(&self.carried);
         let state = self.next_state();
@@ -152,6 +165,8 @@ impl GenericContainerMenu {
         inventory: &PlayerInventory,
     ) -> Result<Vec<Packet>> {
         let slots = self.slots(top, inventory)?;
+        self.last = slots.clone();
+        self.local_initialized = true;
         let mut out = Vec::new();
         for (i, s) in slots.iter().enumerate() {
             if !matches(s, &self.remote[i])? {
@@ -221,6 +236,10 @@ impl GenericContainerMenu {
         }
         self.remote_carried = canonical(&click.carried);
         if stale {
+            // broadcastFullState runs local slot listeners before its remote
+            // full update; it is not spectator sendAllDataToRemote alone.
+            self.last = self.slots(top, inventory)?;
+            self.local_initialized = true;
             out.packets.push(self.full_sync(top, inventory)?);
         } else {
             out.packets.extend(self.broadcast_changes(top, inventory)?);
@@ -491,15 +510,46 @@ impl GenericContainerMenu {
         }
         Ok(())
     }
-    /// Same Inventory.placeItemBackInInventory owner as InventoryMenu.close.
+    /// AbstractContainerMenu.removed handles only this menu's carried stack;
+    /// the chest/barrel contents remain in their actual block-entity owner.
     pub fn close(&mut self, inventory: &mut PlayerInventory) -> Result<ClickOutcome> {
-        let mut c = std::mem::take(&mut self.carried);
-        let mut menu = PlayerContainer::from_inventory(inventory.clone());
-        menu.add_pickup_to_inventory(&mut c, false)?;
-        *inventory = menu.inventory;
-        self.reset_drag();
+        self.close_with_context(inventory, MenuCloseContext::AliveConnected)
+    }
+    pub fn close_with_context(
+        &mut self,
+        inventory: &mut PlayerInventory,
+        context: MenuCloseContext,
+    ) -> Result<ClickOutcome> {
         let mut out = ClickOutcome::default();
-        drop_stack(&mut out, c, false);
+        match context {
+            MenuCloseContext::AliveConnected => {
+                let mut next_inventory = inventory.clone();
+                let mut carried = canonical(&self.carried);
+                return_to_inventory_on_menu_close(&mut next_inventory, &mut carried, &mut out)?;
+                *inventory = next_inventory;
+            }
+            MenuCloseContext::DeadOrDisconnected => {
+                // Player.drop(carried, false), not Inventory.add. The host
+                // commits the real Item through its existing drop transaction.
+                drop_stack(&mut out, canonical(&self.carried), false);
+            }
+        }
+        self.carried = ItemStack::empty();
+        self.reset_drag();
         Ok(out)
+    }
+    /// AbstractContainerMenu.transferState matches the old menu's player
+    /// inventory object/index pairs. The 36 shared slots retain both OLD
+    /// listener and synchronizer baselines; top slots and cursor do not move.
+    pub fn transfer_inventory_remote_state(&self, player: &mut PlayerContainer) -> Result<()> {
+        let start = self.rows * 9;
+        for offset in 0..36 {
+            player.transfer_external_slot_state(
+                9 + offset,
+                &self.last[start + offset],
+                &self.remote[start + offset],
+            )?;
+        }
+        Ok(())
     }
 }
