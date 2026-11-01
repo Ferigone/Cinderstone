@@ -309,6 +309,24 @@ impl RuntimeEntities {
     pub fn prepare_experience_index(&self) -> Result<RuntimeEntityIndex> {
         self.index.snapshot_for_preparation()
     }
+    /// Validate the whole mixed Item/XP insertion before either owner commits.
+    pub fn validate_entity_registration_batch(&self, ids: impl IntoIterator<Item = i32>) -> Result<()> {
+        self.index.validate_registration_batch(ids)
+    }
+    /// Temporary shared index after the planned Item additions. The caller
+    /// commits those exact items first, so subsequent XP gets the same section
+    /// encounter order and generation sequence as this preparation.
+    pub fn prepare_index_after_items(&self, entries: &[(ItemState, LegacyRandomSource)]) -> Result<RuntimeEntityIndex> {
+        let mut index = self.index.snapshot_for_preparation()?;
+        index.validate_registration_batch(entries.iter().map(|(state, _)| state.entity_id))?;
+        for (state, _) in entries {
+            state.validate()?;
+            ensure!(!state.removed, "cannot stage a removed item");
+            index.register(state.entity_id, EntityKind::Item, state.position_vec(), false,
+                |chunk| self.experience_chunk_visibility(chunk))?;
+        }
+        Ok(index)
+    }
     pub fn experience_chunk_visibility(&self, chunk: (i32, i32)) -> Visibility {
         self.chunk_visibility
             .get(&chunk)

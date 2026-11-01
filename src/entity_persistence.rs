@@ -414,6 +414,46 @@ impl NativeEntitySource {
             requires_fire_queue,
         })
     }
+    /// Prepare one actual furnace onRemove transaction without certifying an
+    /// emptied live block entity. Only a private clone is drained to let the
+    /// ordinary ordered-write validator calculate its final removed image.
+    pub fn prepare_owned_furnace_removal_with_block_ticks(
+        &self,
+        world: &RuntimeWorld,
+        at: (i32, i32, i32),
+        plan: &crate::world_interactions::InteractionPlan,
+        block_ticks: &impl NativeBlockTickOwner,
+    ) -> Result<PreparedNativeSourceEdit> {
+        use crate::world_interactions::InteractionEvent;
+        self.require_owned_callback_world(world)?;
+        let before = WorldImage::capture(world)?;
+        let RuntimeWorld::Fixture(flat) = world else {
+            anyhow::bail!("furnace removal requires the actual native world")
+        };
+        let writes = plan.events.iter().filter_map(|event| match event {
+            InteractionEvent::Write { position, old_state, state, .. } if *position == at => Some((*old_state, *state)),
+            _ => None,
+        }).collect::<Vec<_>>();
+        ensure!(writes.len() == 1, "furnace removal must own exactly one target write");
+        let (old, replacement) = writes[0];
+        ensure!(flat.block(at.0, at.1, at.2) == old, "furnace removal old state differs");
+        let receipt = flat.native_block_entities().prepare_furnace_removal(at, old, replacement)?
+            .context("furnace removal does not replace a furnace identity")?;
+        let before_furnaces = flat.native_block_entities().furnace_images();
+        let mut staged = flat.clone();
+        staged.native_block_entities_mut().drain_furnace_removal(&receipt)?;
+        let staged = RuntimeWorld::Fixture(staged);
+        let mut private_source = Self {
+            history: self.history.clone(),
+            pending_world: self.pending_world.clone(),
+            pending_fluid_seen: self.pending_fluid_seen,
+            pending_fire_seen: self.pending_fire_seen,
+        };
+        private_source.observe_owned_furnace_change(&staged, &before_furnaces)?;
+        let mut token = private_source.prepare_owned_edit_with_block_ticks(&staged, plan, block_ticks)?;
+        token.before = before;
+        Ok(token)
+    }
     pub fn observe_owned_commit(
         &mut self,
         prepared: PreparedNativeSourceEdit,

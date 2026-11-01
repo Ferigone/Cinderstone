@@ -84,6 +84,8 @@ mod main_player_body;
 mod main_block_entities;
 mod main_crafting_table;
 mod main_furnaces;
+mod main_furnace_removal;
+mod main_shutdown_chunks;
 mod main_furnace_notifications;
 mod main_server_timing;
 mod main_experience;
@@ -1981,6 +1983,7 @@ impl Server {
                 .write()
                 .map_err(|_| anyhow!("player registry lock poisoned"))?;
             if self.shutting_down.load(Ordering::Acquire) {
+                self.finish_shutdown_chunk_tasks_locked(&mut world, &mut players, clock.game_time)?;
                 self.close_furnaces_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_crafting_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_native_containers_for_save_locked(&mut world,&mut players,clock.game_time)?;
@@ -1989,6 +1992,7 @@ impl Server {
                 for player in players.registry.snapshot() {
                     self.close_inventory_menu_locked(&mut world,&mut players,player.entity_id,clock.game_time,border)?;
                 }
+                self.finish_shutdown_chunk_tasks_locked(&mut world, &mut players, clock.game_time)?;
             }
             let ids = players
                 .registry

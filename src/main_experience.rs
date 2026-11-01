@@ -11,7 +11,7 @@ use mc121_rust::{
     item_entity::FullItemWorld,
     item_host::RuntimeGameplayHooks,
     item_use::JdkMathRandom,
-    runtime_entity_index::{EntityHandle, EntityKind},
+    runtime_entity_index::{EntityHandle, EntityKind, RuntimeEntityIndex},
     runtime_item_world::{ItemWorldFacts, RuntimeItemEffect, RuntimeItemHost, RuntimeItemWorld},
 };
 
@@ -148,6 +148,11 @@ pub(super) struct PreparedFurnaceExperience {
     deliveries: Vec<(Vec<i32>, Vec<Packet>)>,
 }
 impl PreparedFurnaceExperience {
+    /// Combined container-removal preflight includes these IDs after the staged
+    /// ItemEntity IDs, before committing either native owner.
+    pub(super) fn registration_ids(&self) -> impl Iterator<Item = i32> + '_ {
+        self.new_ids.iter().copied()
+    }
     pub(super) fn commit(self, players: &mut LivePlayers, events: &broadcast::Sender<PlayerEvent>) -> Result<()> {
         self.commit_parts(&mut players.experience_runtime, &mut players.item_runtime,
             players.math_random.as_ref().context("actual Math.random owner missing")?, events)
@@ -173,23 +178,67 @@ impl PreparedFurnaceExperience {
     }
 }
 
+fn require_furnace_experience_world(world: &WorldBackend, players: &LivePlayers) -> Result<()> {
+    players.gameplay.require_supported_floor()?;
+    ensure!(matches!(world, WorldBackend::Fixture(_)), "native XP requires an owned native world");
+    players.entity_source.as_ref().context("native XP source missing")?.require_owned_callback_world(world)
+}
+
 pub(super) fn prepare_furnace_experience(
     world: &mut WorldBackend, players: &mut LivePlayers, id: i32,
     rewards: &[mc121_rust::furnace::FurnaceRecipeReward], entities: &AtomicI32,
 ) -> Result<PreparedFurnaceExperience> {
-    players.gameplay.require_supported_floor()?;
-    ensure!(matches!(world, WorldBackend::Fixture(_)), "native XP requires an owned native world");
-    players.entity_source.as_ref().context("native XP source missing")?.require_owned_callback_world(world)?;
+    require_furnace_experience_world(world, players)?;
     let player = players.registry.get(id).context("XP actor missing")?;
     require_no_mending(players.containers.get(&id).context("XP actor inventory missing")?)?;
     let at = Vec3::new(player.position.x, player.position.y, player.position.z);
     ensure!(players.native_body_ready.contains(&id), "XP actor body is not FULL-ready");
+    let index = players.item_runtime.prepare_experience_index()?;
+    let level_random = players.item_runtime.world_random_mut().clone();
+    let math_random = players.math_random.as_ref().context("actual Math.random owner missing")?
+        .with_random(|r| Ok(r.clone()))?;
+    prepare_furnace_experience_at(players, at, rewards,
+        || Ok(entities.fetch_add(1, Ordering::Relaxed)), index, level_random, math_random)
+}
+
+/// AbstractFurnaceBlock.onRemove invokes getRecipesToAwardAndPopExperience at
+/// Vec3.atCenterOf(blockPos), after Containers.dropContents. Unlike result-slot
+/// reward collection, it has no actor, recipe unlock or Mending precondition.
+/// The caller retains recipesUsed until the actual block entity is removed.
+///
+/// `index_after_drops` is a transaction-local copy of the actual shared index
+/// with every staged ItemEntity registered in source order. Both RNG inputs are
+/// their post-drop states; commit_parts checks against those states only after
+/// the caller commits the staged drops. `next_entity_id` is the same staged
+/// counter used for those Items; the caller reserves the complete range only
+/// after all fallible preflight. This token does not clear recipesUsed.
+pub(super) fn prepare_furnace_block_experience_after_drops(
+    world: &mut WorldBackend, players: &mut LivePlayers, position: (i32, i32, i32),
+    rewards: &[mc121_rust::furnace::FurnaceRecipeReward], next_entity_id: &mut i32,
+    index_after_drops: RuntimeEntityIndex,
+    level_after_drops: &LegacyRandomSource, math_after_drops: &LegacyRandomSource,
+) -> Result<PreparedFurnaceExperience> {
+    require_furnace_experience_world(world, players)?;
+    let at = Vec3::new(f64::from(position.0) + 0.5, f64::from(position.1) + 0.5,
+        f64::from(position.2) + 0.5);
+    prepare_furnace_experience_at(players, at, rewards, || {
+        let id = *next_entity_id;
+        ensure!(id > 0 && id < i32::MAX, "entity ID exhausted");
+        *next_entity_id = id + 1;
+        Ok(id)
+    }, index_after_drops, level_after_drops.clone(), math_after_drops.clone())
+}
+
+fn prepare_furnace_experience_at(
+    players: &mut LivePlayers, at: Vec3,
+    rewards: &[mc121_rust::furnace::FurnaceRecipeReward],
+    mut next_entity_id: impl FnMut() -> Result<i32>, mut index: RuntimeEntityIndex, mut level_random: LegacyRandomSource,
+    mut math_random: LegacyRandomSource,
+) -> Result<PreparedFurnaceExperience> {
+    ensure!(at.x.is_finite() && at.y.is_finite() && at.z.is_finite(), "nonfinite XP award position");
     let mut staged = players.experience_runtime.clone();
-    let mut index = players.item_runtime.prepare_experience_index()?;
-    let world_before = players.item_runtime.world_random_state48();
-    let mut level_random = players.item_runtime.world_random_mut().clone();
-    let math = players.math_random.as_ref().context("actual Math.random owner missing")?;
-    let (math_before, mut math_random) = math.with_random(|r| Ok((r.state48(), r.clone())))?;
+    let world_before = level_random.state48();
+    let math_before = math_random.state48();
     let mut new_ids = Vec::new();
     let mut deliveries = Vec::new();
     for reward in rewards {
@@ -204,7 +253,7 @@ pub(super) fn prepare_furnace_experience(
                 let orb = staged.orbs.get_mut(&handle.id).context("XP merge owner missing")?;
                 orb.state.count = orb.state.count.wrapping_add(1); orb.state.age = 0;
             } else {
-                let entity_id = entities.fetch_add(1, Ordering::Relaxed);
+                let entity_id = next_entity_id()?;
                 ensure!(entity_id > 0 && entity_id < i32::MAX, "entity ID exhausted");
                 let mut random = random_seed::create_random()?;
                 let state = ExperienceOrbState::new(entity_id, at, value, &mut random)?;

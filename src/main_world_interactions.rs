@@ -541,11 +541,18 @@ impl Server {
         if !query.inside_world_border(at)? {
             return Ok(MainInteractionResult::Rejected);
         }
-        let state = if state == 0 {
-            world_interactions::removed_replacement(query.block(at)?)?
+        let old_state = query.block(at)?;
+        let removing = state == 0;
+        let state = if removing {
+            world_interactions::removed_replacement(old_state)?
         } else {
             state
         };
+        if removing && mc121_rust::native_block_entities::furnace_kind(old_state).is_some() {
+            drop(query);
+            let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
+            return self.try_remove_native_furnace_locked(&mut world, &mut players, id, at, now, border);
+        }
         let plan = world_interactions::plan_edit(at, state, 3, &mut query)?;
         self.commit_world_interaction(&mut world, &mut players, id, plan)
     }
