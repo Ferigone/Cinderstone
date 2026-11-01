@@ -24,7 +24,7 @@ pub trait GrindstoneEnchantments {
     fn minimum_cost(&self, enchantment: i32, level: i32) -> Result<i32>;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GrindstoneState {
     inputs: [ItemStack; INPUT_SLOTS],
     preview: ItemStack,
@@ -101,15 +101,48 @@ impl GrindstoneState {
         Ok(())
     }
 
+    /// Source in-place stack mutation; deliberately no container notification.
+    /// The controller separately preserves SimpleContainer/Slot callback phases.
+    pub(crate) fn mutate_input_in_place(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        ensure!(slot < INPUT_SLOTS, "invalid grindstone input slot");
+        self.inputs[slot] = canonical(stack);
+        Ok(())
+    }
+
+    /// SimpleContainer.setItem clamps without consulting Slot.mayPlace.
+    pub(crate) fn set_container_input(&mut self, slot: usize, mut stack: ItemStack) -> Result<()> {
+        if !stack.is_empty() {
+            stack.count = stack.count.min(stack.max_stack_size()?.min(99));
+        }
+        self.mutate_input_in_place(slot, stack)
+    }
+
+    /// The single ResultContainer stack, including in-place shift leftovers.
+    pub(crate) fn mutate_result_in_place(&mut self, stack: ItemStack) {
+        self.preview = canonical(stack);
+    }
+
+    /// Result onTake reads the CURRENT inputs, even after earlier PickupAll
+    /// removals. The actual Level RNG owner supplies each positive-bound draw.
+    pub(crate) fn experience_bound(
+        &self,
+        enchantments: &impl GrindstoneEnchantments,
+    ) -> Result<i32> {
+        let sum = experience_from_item(&self.inputs[0], enchantments)?
+            .wrapping_add(experience_from_item(&self.inputs[1], enchantments)?);
+        Ok(if sum <= 0 { 0 } else { sum / 2 + sum % 2 })
+    }
+
     /// Used when the actual registry/tag owner changes; no input is consumed.
     pub fn recompute(&mut self, enchantments: &impl GrindstoneEnchantments) -> Result<()> {
         self.preview = compute_result(&self.inputs[0], &self.inputs[1], enchantments)?;
         Ok(())
     }
 
-    /// `amount` is Slot.remove's actual removed count, including a possible
-    /// partial take of a count-two nondamageable result. Java still clears both
-    /// inputs after such a take; the remaining derived preview is not an item.
+    /// `amount` is the actual destination transfer count. Ordinary extraction
+    /// uses ResultContainer.removeItem and removes the WHOLE result regardless
+    /// of the requested amount. A partial count is possible only during
+    /// quick-move; onTake then clears both inputs and discards leftover preview.
     pub fn prepare_take(
         &self,
         amount: i32,
@@ -267,7 +300,9 @@ fn remove_non_curses(
     }
     let mut cost = 0_i32;
     for _ in 0..enchantments.levels.len() {
-        cost = cost.wrapping_mul(2).wrapping_add(1);
+        // cqt.removeNonCurses calls AnvilMenu.calculateIncreasedRepairCost
+        // (cpw.e): multiply as long, saturate at Integer.MAX_VALUE, then narrow.
+        cost = (i64::from(cost) * 2 + 1).min(i64::from(i32::MAX)) as i32;
     }
     set_int_component(&mut result, 16, cost);
     Ok(result)
@@ -450,6 +485,49 @@ mod tests {
             state.drain_inputs_on_close(),
             [ItemStack::empty(), ItemStack::empty()]
         );
+        Ok(())
+    }
+
+    #[test]
+    fn retained_curse_repair_cost_saturates_for_actual_holder_tag_fixture() -> Result<()> {
+        // Actual registered holder IDs, with an explicitly restricted fixture
+        // curse-tag assignment. This is not vanilla's two-entry curse tag or
+        // an original-Java gameplay observation; tags belong to the real host.
+        struct TaggedRegistry(std::collections::BTreeSet<i32>);
+        impl GrindstoneEnchantments for TaggedRegistry {
+            fn is_curse(&self, id: i32) -> Result<bool> {
+                Ok(self.0.contains(&id))
+            }
+            fn minimum_cost(&self, _: i32, _: i32) -> Result<i32> {
+                anyhow::bail!("fixture retained curses do not query minimum costs")
+            }
+        }
+        let metadata: serde_json::Value =
+            serde_json::from_str(include_str!("../../tools/crafting_metadata.json"))?;
+        let ids = metadata["registries"]["minecraft:enchantment"]
+            .as_object()
+            .unwrap()
+            .values()
+            .map(|value| value.as_i64().unwrap() as i32)
+            .take(32)
+            .collect::<std::collections::BTreeSet<_>>();
+        ensure!(
+            ids.len() == 32,
+            "fixture requires32 actual registered holders"
+        );
+        let registry = TaggedRegistry(ids.clone());
+        let mut sword = item("iron_sword");
+        set_enchantments(
+            &mut sword,
+            9,
+            Enchantments {
+                levels: ids.into_iter().map(|id| (id, 1)).collect(),
+                show_in_tooltip: true,
+            },
+        );
+        let result = compute_result(&sword, &ItemStack::empty(), &registry)?;
+        assert_eq!(read_enchantments(&result, 9)?.levels.len(), 32);
+        assert_eq!(int_component(&result, 16)?, i32::MAX);
         Ok(())
     }
 
