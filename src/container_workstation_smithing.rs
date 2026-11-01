@@ -8,7 +8,7 @@ use crate::{
     container::{ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer},
     inventory::{self, ItemStack, PlayerInventory},
     workstations::{
-        menu::{MenuSync, SyncEvent, WorkstationAccess, WorkstationKind},
+        menu::{MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess, WorkstationKind},
         smithing::{
             SmithingEffect, SmithingRecipeOrder, SmithingState, SmithingTakeKind, SmithingTakePlan,
             RESULT_SLOT,
@@ -32,14 +32,76 @@ pub struct SmithingMenu {
     quickcraft_type: u8,
     quickcraft_slots: BTreeSet<usize>,
 }
+/// Read-only observations of actual staged owners; no snapshot creates items.
+/// PlayerInventory retains window0's carried value, while carried is this
+/// external menu's cursor. Inputs/result retain their source callback phase.
+#[derive(Clone, Debug)]
+pub struct SmithingPhase {
+    pub inputs: [ItemStack; 3],
+    pub result_preview: ItemStack,
+    pub player_inventory: PlayerInventory,
+    pub carried: ItemStack,
+}
 #[derive(Clone, Debug)]
 pub enum SmithingMenuEvent {
-    Effect(SmithingEffect),
-    Sync(SyncEvent),
-    /// Resolve this index in outcome.drops; stage each actual drop once.
-    Drop {
-        index: usize,
+    Effect {
+        effect: SmithingEffect,
+        phase: SmithingPhase,
     },
+    Sync {
+        event: SyncEvent,
+        phase: SmithingPhase,
+    },
+    /// Actual Inventory.setChanged/timesChanged, distinct from slot listeners.
+    PlayerInventoryChanged { phase: SmithingPhase },
+    /// Resolve this index in outcome.drops; stage each actual drop once.
+    Drop { index: usize, phase: SmithingPhase },
+}
+impl SmithingPhase {
+    /// Observe a raw per-insertion packet without sending it. Returning is an
+    /// observation of either the carried object or a removed grid stack.
+    fn observe_return_packet(
+        &mut self,
+        packet: &crate::protocol::Packet,
+        returning: &mut ItemStack,
+    ) -> Result<()> {
+        ensure!(packet.id == 0x15, "unsupported smithing close packet phase");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        ensure!(
+            reader.i8()? == -2 && reader.varint()? == 0,
+            "smithing close requires raw inventory packet"
+        );
+        let raw = reader.i16()?;
+        let slot = match raw {
+            0..=8 => 36 + raw as usize,
+            9..=35 => raw as usize,
+            40 => 45,
+            _ => bail!("unsupported smithing close raw slot"),
+        };
+        let stack = ItemStack::decode_exact(reader.remaining())?;
+        let old = self.player_inventory.slot(slot).unwrap();
+        ensure!(
+            stack.same_item_same_components(returning)?,
+            "smithing close changed return identity"
+        );
+        let old_count = if old.is_empty() {
+            0
+        } else {
+            ensure!(
+                old.same_item_same_components(&stack)?,
+                "smithing close overwrote owned stack"
+            );
+            old.count
+        };
+        let added = stack.count - old_count;
+        ensure!(
+            added > 0 && added <= returning.count,
+            "invalid smithing close insertion amount"
+        );
+        self.player_inventory.set_slot_authoritative(slot, stack);
+        *returning = counted(returning, returning.count - added);
+        Ok(())
+    }
 }
 #[derive(Debug, Default)]
 pub struct SmithingActionOutcome {
@@ -169,16 +231,67 @@ impl SmithingMenu {
             .ok_or_else(|| anyhow::anyhow!("smithing menu revision exhausted"))?;
         Ok(())
     }
-    pub fn initialize(&mut self, inventory: &PlayerInventory) -> Result<Vec<SyncEvent>> {
+    fn phase(&self, inventory: &PlayerInventory) -> SmithingPhase {
+        SmithingPhase {
+            inputs: self.station.inputs().clone(),
+            result_preview: self.station.result().clone(),
+            player_inventory: inventory.clone(),
+            carried: self.sync.carried().clone(),
+        }
+    }
+    fn player_changed(&self, inventory: &PlayerInventory, outcome: &mut SmithingActionOutcome) {
+        outcome
+            .events
+            .push(SmithingMenuEvent::PlayerInventoryChanged {
+                phase: self.phase(inventory),
+            });
+    }
+    fn player_changed_with_source(
+        &self,
+        inventory: &PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+        source_slot: usize,
+        source: &ItemStack,
+    ) {
+        let mut phase = self.phase(inventory);
+        if source_slot < RESULT_SLOT {
+            phase.inputs[source_slot] = source.clone();
+        } else if source_slot == RESULT_SLOT {
+            phase.result_preview = source.clone();
+        }
+        outcome
+            .events
+            .push(SmithingMenuEvent::PlayerInventoryChanged { phase });
+    }
+    pub fn initialize(&mut self, inventory: &PlayerInventory) -> Result<Vec<SmithingMenuEvent>> {
         let mut next = self.clone();
         let events = next.sync.initialize(&next.top(), inventory, &[])?;
+        let phase = next.phase(inventory);
+        let events = events
+            .into_iter()
+            .map(|event| SmithingMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect();
         next.advance_revision()?;
         *self = next;
         Ok(events)
     }
-    pub fn broadcast_changes(&mut self, inventory: &PlayerInventory) -> Result<Vec<SyncEvent>> {
+    pub fn broadcast_changes(
+        &mut self,
+        inventory: &PlayerInventory,
+    ) -> Result<Vec<SmithingMenuEvent>> {
         let mut next = self.clone();
         let events = next.sync.broadcast_changes(&next.top(), inventory, &[])?;
+        let phase = next.phase(inventory);
+        let events = events
+            .into_iter()
+            .map(|event| SmithingMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect();
         next.advance_revision()?;
         *self = next;
         Ok(events)
@@ -214,11 +327,15 @@ impl SmithingMenu {
             &mut inv,
             &mut outcome,
         )?;
+        let phase = next.phase(&inv);
         outcome.events.extend(
             next.sync
                 .finish_click(click, state_before, &next.top(), &inv, &[])?
                 .into_iter()
-                .map(SmithingMenuEvent::Sync),
+                .map(|event| SmithingMenuEvent::Sync {
+                    event,
+                    phase: phase.clone(),
+                }),
         );
         next.advance_revision()?;
         Ok(SmithingActionPlan {
@@ -245,13 +362,19 @@ impl SmithingMenu {
         // Preserve per-stack packet/drop interleaving: cursor first, then each
         // original input. A partial alive insertion can send raw slots before
         // its overflow drop; later inputs follow that drop, not the reverse.
-        let closed = next.sync.close_inputs(&mut [], &mut inv, context)?;
-        Self::append_close(&mut outcome, closed);
-        for input in &mut inputs {
-            let closed = next
-                .sync
-                .close_inputs(std::slice::from_mut(input), &mut inv, context)?;
-            Self::append_close(&mut outcome, closed);
+        let mut phase = self.phase(inventory);
+        let mut returning = phase.carried.clone();
+        let removal = next.sync.close_inputs_ordered(&mut [], &mut inv, context)?;
+        Self::append_close(&mut outcome, removal, &mut phase, &mut returning, true)?;
+        for (slot, input) in inputs.iter_mut().enumerate() {
+            // clearContainer removes only this owned input before returning it;
+            // later inputs and the old derived preview still exist at callbacks.
+            phase.inputs[slot] = ItemStack::empty();
+            let mut returning = input.clone();
+            let removal =
+                next.sync
+                    .close_inputs_ordered(std::slice::from_mut(input), &mut inv, context)?;
+            Self::append_close(&mut outcome, removal, &mut phase, &mut returning, false)?;
         }
         next.advance_revision()?;
         Ok(SmithingActionPlan {
@@ -262,18 +385,47 @@ impl SmithingMenu {
             outcome,
         })
     }
-    fn append_close(outcome: &mut SmithingActionOutcome, closed: crate::container::ClickOutcome) {
-        outcome.events.extend(
-            closed
-                .packets
-                .into_iter()
-                .map(|p| SmithingMenuEvent::Sync(SyncEvent::Packet(p))),
-        );
-        for drop in closed.drops {
-            let index = outcome.drops.len();
-            outcome.drops.push(drop);
-            outcome.events.push(SmithingMenuEvent::Drop { index });
+    fn append_close(
+        outcome: &mut SmithingActionOutcome,
+        removal: crate::workstations::menu::MenuRemoval,
+        phase: &mut SmithingPhase,
+        returning: &mut ItemStack,
+        is_cursor: bool,
+    ) -> Result<()> {
+        let drop_base = outcome.drops.len();
+        outcome.drops.extend(removal.outcome.drops);
+        for event in removal.events {
+            match event {
+                MenuRemovalEvent::Packet { index } => {
+                    let packet = removal.outcome.packets[index].clone();
+                    phase.observe_return_packet(&packet, returning)?;
+                    if is_cursor {
+                        phase.carried = returning.clone();
+                    }
+                    outcome.events.push(SmithingMenuEvent::Sync {
+                        event: SyncEvent::Packet(packet),
+                        phase: phase.clone(),
+                    });
+                }
+                MenuRemovalEvent::Drop { index } => {
+                    if is_cursor {
+                        phase.carried = outcome.drops[drop_base + index].stack.clone();
+                    }
+                    outcome.events.push(SmithingMenuEvent::Drop {
+                        index: drop_base + index,
+                        phase: phase.clone(),
+                    });
+                    *returning = ItemStack::empty();
+                    if is_cursor {
+                        phase.carried = ItemStack::empty();
+                    }
+                }
+            }
         }
+        if is_cursor {
+            phase.carried = ItemStack::empty();
+        }
+        Ok(())
     }
     fn slot(&self, slot: usize, inventory: &PlayerInventory) -> ItemStack {
         if slot < 3 {
@@ -326,6 +478,8 @@ impl SmithingMenu {
         if slot < RESULT_SLOT {
             let effects = self.station.input_changed_observed()?;
             self.observe_effects(effects, inventory, outcome)?;
+        } else if slot > RESULT_SLOT {
+            self.player_changed(inventory, outcome);
         }
         Ok(())
     }
@@ -335,22 +489,44 @@ impl SmithingMenu {
         inventory: &PlayerInventory,
         outcome: &mut SmithingActionOutcome,
     ) -> Result<()> {
+        let phase = self.phase(inventory);
+        self.observe_effects_from(effects, inventory, outcome, phase)
+    }
+    fn observe_effects_from(
+        &mut self,
+        effects: Vec<SmithingEffect>,
+        inventory: &PlayerInventory,
+        outcome: &mut SmithingActionOutcome,
+        mut phase: SmithingPhase,
+    ) -> Result<()> {
         for effect in effects {
             if let SmithingEffect::BeforeCreateResult {
                 inputs,
                 previous_result,
             } = effect
             {
+                phase.inputs = inputs.clone();
+                phase.result_preview = previous_result.clone();
                 let [template, base, addition] = inputs;
                 let top = [template, base, addition, previous_result];
                 outcome.events.extend(
                     self.sync
                         .broadcast_changes(&top, inventory, &[])?
                         .into_iter()
-                        .map(SmithingMenuEvent::Sync),
+                        .map(|event| SmithingMenuEvent::Sync {
+                            event,
+                            phase: phase.clone(),
+                        }),
                 );
             } else {
-                outcome.events.push(SmithingMenuEvent::Effect(effect));
+                if matches!(effect, SmithingEffect::LevelEvent { .. }) {
+                    phase.inputs = self.station.inputs().clone();
+                    phase.result_preview = self.station.result().clone();
+                }
+                outcome.events.push(SmithingMenuEvent::Effect {
+                    effect,
+                    phase: phase.clone(),
+                });
             }
         }
         Ok(())
@@ -361,8 +537,10 @@ impl SmithingMenu {
         inventory: &PlayerInventory,
         outcome: &mut SmithingActionOutcome,
     ) -> Result<ItemStack> {
+        let mut phase = self.phase(inventory);
+        phase.result_preview = ItemStack::empty();
         let (output, effects) = plan.commit(&mut self.station)?;
-        self.observe_effects(effects, inventory, outcome)?;
+        self.observe_effects_from(effects, inventory, outcome, phase)?;
         Ok(output)
     }
     fn may_place(&self, slot: usize, stack: &ItemStack) -> Result<bool> {
@@ -376,7 +554,12 @@ impl SmithingMenu {
         self.quickcraft_status = 0;
         self.quickcraft_slots.clear();
     }
-    fn drop_stack(outcome: &mut SmithingActionOutcome, stack: ItemStack) {
+    fn drop_stack(
+        &self,
+        outcome: &mut SmithingActionOutcome,
+        stack: ItemStack,
+        inventory: &PlayerInventory,
+    ) {
         if !stack.is_empty() {
             let index = outcome.drops.len();
             outcome.drops.push(DroppedStack {
@@ -384,7 +567,10 @@ impl SmithingMenu {
                 around: false,
                 trace_item: true,
             });
-            outcome.events.push(SmithingMenuEvent::Drop { index });
+            outcome.events.push(SmithingMenuEvent::Drop {
+                index,
+                phase: self.phase(inventory),
+            });
         }
     }
     fn may_pickup(&self, slot: usize) -> Result<bool> {
@@ -465,8 +651,13 @@ impl SmithingMenu {
                     } else {
                         1.min(carried.count)
                     };
-                    self.sync.set_carried(counted(&carried, carried.count - n));
-                    Self::drop_stack(outcome, counted(&carried, n));
+                    if button == 0 {
+                        self.drop_stack(outcome, counted(&carried, n), inventory);
+                        self.sync.set_carried(ItemStack::empty());
+                    } else {
+                        self.sync.set_carried(counted(&carried, carried.count - n));
+                        self.drop_stack(outcome, counted(&carried, n), inventory);
+                    }
                 } else if slot >= 0 {
                     if kind == ClickType::Pickup {
                         self.pickup(slot as usize, button as i8, inventory, outcome)?;
@@ -495,7 +686,7 @@ impl SmithingMenu {
                 reject_bundle(&source)?;
                 let amount = if button == 0 { 1 } else { source.count };
                 let taken = self.take_slot(slot as usize, amount, i32::MAX, inventory, outcome)?;
-                Self::drop_stack(outcome, taken);
+                self.drop_stack(outcome, taken, inventory);
             }
             ClickType::PickupAll if slot >= 0 => {
                 self.pickup_all(slot as usize, button, inventory, outcome)?
@@ -548,8 +739,8 @@ impl SmithingMenu {
         } else if self.may_place(slot, &carried)? {
             if source.is_empty() || source.same_item_same_components(&carried)? {
                 let max = limit(&carried)?;
-                let n = (if button == 0 { carried.count } else { 1 })
-                    .min((max - source.count.max(0)).max(0));
+                let n =
+                    (if button == 0 { carried.count } else { 1 }).min(max - source.count.max(0));
                 self.sync.set_carried(counted(&carried, carried.count - n));
                 self.put_slot(
                     slot,
@@ -590,7 +781,7 @@ impl SmithingMenu {
                     let amount = stack.count.min((limit(stack)? - target.count).max(0));
                     if amount > 0 {
                         *stack = counted(stack, stack.count - amount);
-                        if slot < RESULT_SLOT && source_slot > RESULT_SLOT {
+                        if source_slot > RESULT_SLOT {
                             inventory.set_slot_authoritative(source_slot + 5, stack.clone());
                         }
                         // moveItemStackTo merges by mutating the existing stack
@@ -601,6 +792,9 @@ impl SmithingMenu {
                             inventory,
                             outcome,
                         )?;
+                        if slot > RESULT_SLOT {
+                            self.player_changed_with_source(inventory, outcome, source_slot, stack);
+                        }
                     }
                     if stack.is_empty() {
                         break;
@@ -614,10 +808,17 @@ impl SmithingMenu {
                     let n = stack.count.min(limit(stack)?);
                     let inserted = counted(stack, n);
                     *stack = counted(stack, stack.count - n);
-                    if slot < RESULT_SLOT && source_slot > RESULT_SLOT {
+                    if source_slot > RESULT_SLOT {
                         inventory.set_slot_authoritative(source_slot + 5, stack.clone());
                     }
-                    self.put_slot(slot, inserted, inventory, outcome)?;
+                    if slot > RESULT_SLOT {
+                        self.change_slot(slot, inserted, inventory, outcome)?;
+                        self.player_changed_with_source(inventory, outcome, source_slot, stack);
+                        self.player_changed_with_source(inventory, outcome, source_slot, stack);
+                    } else {
+                        self.put_slot(slot, inserted, inventory, outcome)?;
+                        self.slot_changed(slot, inventory, outcome)?;
+                    }
                     break;
                 }
             }
@@ -683,6 +884,9 @@ impl SmithingMenu {
                     self.put_slot(slot, moving, inventory, outcome)?;
                 } else {
                     self.change_slot(slot, moving, inventory, outcome)?;
+                    if slot > RESULT_SLOT {
+                        self.slot_changed(slot, inventory, outcome)?;
+                    }
                 }
                 self.slot_changed(slot, inventory, outcome)?; // ordinary Slot.onTake
                 if self.slot(slot, inventory).item_id != source.item_id {
@@ -706,6 +910,24 @@ impl SmithingMenu {
             36 + button as usize
         };
         if slot >= 4 && slot + 5 == player_slot {
+            let source = self.slot(slot, inventory);
+            if source.is_empty() {
+                return Ok(());
+            }
+            let maximum = limit(&source)?;
+            if source.count > maximum {
+                // Java's held/source variables alias the SAME stack. split
+                // leaves only the remainder in onTake/Inventory.add, never the
+                // original overfull count copied before that mutation.
+                let mut remainder = counted(&source, source.count - maximum);
+                self.put_slot(slot, counted(&source, maximum), inventory, outcome)?;
+                self.slot_changed(slot, inventory, outcome)?;
+                Self::add_to_inventory(&mut remainder, inventory, creative)?;
+                self.drop_stack(outcome, remainder, inventory);
+            } else {
+                self.put_slot(slot, source, inventory, outcome)?;
+                self.slot_changed(slot, inventory, outcome)?;
+            }
             return Ok(());
         }
         let source = self.slot(slot, inventory);
@@ -743,7 +965,7 @@ impl SmithingMenu {
                 self.slot_changed(slot, inventory, outcome)?;
                 let mut old = source;
                 Self::add_to_inventory(&mut old, inventory, creative)?;
-                Self::drop_stack(outcome, old);
+                self.drop_stack(outcome, old, inventory);
             } else {
                 inventory.set_slot_authoritative(player_slot, source);
                 self.put_slot(slot, held, inventory, outcome)?;
@@ -982,9 +1204,9 @@ mod tests {
         inv.set_slot_authoritative(10, item("diamond_sword", 1));
         inv.set_slot_authoritative(11, item("netherite_ingot", 3));
         let initialized = menu.initialize(&inv)?;
-        assert!(initialized
-            .iter()
-            .any(|e| matches!(e, SyncEvent::Packet(p) if p.id == 0x13)));
+        assert!(initialized.iter().any(
+            |e| matches!(e, SmithingMenuEvent::Sync {event:SyncEvent::Packet(p),..} if p.id == 0x13)
+        ));
         click(&mut menu, &mut inv, 4, ClickType::QuickMove)?;
         click(&mut menu, &mut inv, 5, ClickType::QuickMove)?;
         click(&mut menu, &mut inv, 6, ClickType::QuickMove)?;
@@ -1013,13 +1235,20 @@ mod tests {
             .outcome()
             .events
             .iter()
-            .all(|e| !matches!(e, SmithingMenuEvent::Effect(_))));
+            .all(|e| !matches!(e, SmithingMenuEvent::Effect { .. })));
         assert_eq!(menu.station().inputs()[0].count, 2);
         drop(no_capacity);
         let taken = click(&mut menu, &mut inv, 3, ClickType::QuickMove)?;
         assert!(matches!(
-            &taken.events[0],
-            SmithingMenuEvent::Effect(SmithingEffect::CraftedBy { amount: 0, .. })
+            taken
+                .events
+                .iter()
+                .find(|event| matches!(event, SmithingMenuEvent::Effect { .. }))
+                .unwrap(),
+            SmithingMenuEvent::Effect {
+                effect: SmithingEffect::CraftedBy { amount: 0, .. },
+                ..
+            }
         ));
         assert_eq!(
             inv.slot(44).unwrap().item_id,
@@ -1082,11 +1311,9 @@ mod tests {
             carried: ItemStack::empty(),
         };
         let plan = menu.prepare_click(&packet, &inv, false)?;
-        assert!(plan
-            .outcome()
-            .events
-            .iter()
-            .any(|e| matches!(e, SmithingMenuEvent::Sync(SyncEvent::Packet(p)) if p.id == 0x13)));
+        assert!(plan.outcome().events.iter().any(
+            |e| matches!(e, SmithingMenuEvent::Sync {event:SyncEvent::Packet(p),..} if p.id == 0x13)
+        ));
         assert_eq!(menu, before);
         inv.set_slot_authoritative(10, item("stone", 1));
         assert!(plan.commit(&mut menu, &mut inv).is_err());
@@ -1165,7 +1392,7 @@ mod tests {
         assert!(cloned
             .events
             .iter()
-            .all(|e| !matches!(e, SmithingMenuEvent::Effect(_))));
+            .all(|e| !matches!(e, SmithingMenuEvent::Effect { .. })));
         assert_eq!(
             menu.sync().carried().item_id,
             item("netherite_sword", 1).item_id
@@ -1179,7 +1406,10 @@ mod tests {
         );
         assert!(matches!(
             &swapped.events[0],
-            SmithingMenuEvent::Effect(SmithingEffect::CraftedBy { amount: 1, .. })
+            SmithingMenuEvent::Effect {
+                effect: SmithingEffect::CraftedBy { amount: 1, .. },
+                ..
+            }
         ));
         assert!(menu.station().result().is_empty());
         inv.set_slot_authoritative(9, item("netherite_upgrade_smithing_template", 1));
@@ -1192,7 +1422,7 @@ mod tests {
         let drop_event = thrown
             .events
             .iter()
-            .position(|e| matches!(e, SmithingMenuEvent::Drop { index: 0 }))
+            .position(|e| matches!(e, SmithingMenuEvent::Drop { index: 0, .. }))
             .unwrap();
         let world_event = thrown
             .events
@@ -1200,7 +1430,10 @@ mod tests {
             .position(|e| {
                 matches!(
                     e,
-                    SmithingMenuEvent::Effect(SmithingEffect::LevelEvent { event: 1044, .. })
+                    SmithingMenuEvent::Effect {
+                        effect: SmithingEffect::LevelEvent { event: 1044, .. },
+                        ..
+                    }
                 )
             })
             .unwrap();
@@ -1237,7 +1470,7 @@ mod tests {
         assert!(gathered
             .events
             .iter()
-            .all(|e| !matches!(e, SmithingMenuEvent::Effect(_))));
+            .all(|e| !matches!(e, SmithingMenuEvent::Effect { .. })));
         Ok(())
     }
     #[test]
@@ -1262,12 +1495,18 @@ mod tests {
         assert!(matches!(
             close.events.as_slice(),
             [
-                SmithingMenuEvent::Sync(SyncEvent::Packet(_)),
-                SmithingMenuEvent::Drop { index: 0 },
-                SmithingMenuEvent::Drop { index: 1 },
-                SmithingMenuEvent::Drop { index: 2 },
-                SmithingMenuEvent::Sync(SyncEvent::Packet(_)),
-                SmithingMenuEvent::Drop { index: 3 }
+                SmithingMenuEvent::Sync {
+                    event: SyncEvent::Packet(_),
+                    ..
+                },
+                SmithingMenuEvent::Drop { index: 0, .. },
+                SmithingMenuEvent::Drop { index: 1, .. },
+                SmithingMenuEvent::Drop { index: 2, .. },
+                SmithingMenuEvent::Sync {
+                    event: SyncEvent::Packet(_),
+                    ..
+                },
+                SmithingMenuEvent::Drop { index: 3, .. }
             ]
         ));
         assert_eq!(
@@ -1303,11 +1542,13 @@ mod tests {
             events
                 .iter()
                 .filter_map(|event| {
-                    if let SmithingMenuEvent::Sync(SyncEvent::SlotListener {
-                        menu_slot,
-                        stack,
+                    if let SmithingMenuEvent::Sync {
+                        event:
+                            SyncEvent::SlotListener {
+                                menu_slot, stack, ..
+                            },
                         ..
-                    }) = event
+                    } = event
                     {
                         Some((*menu_slot, stack.count))
                     } else {
@@ -1335,7 +1576,10 @@ mod tests {
             .position(|event| {
                 matches!(
                     event,
-                    SmithingMenuEvent::Effect(SmithingEffect::AwardRecipe { .. })
+                    SmithingMenuEvent::Effect {
+                        effect: SmithingEffect::AwardRecipe { .. },
+                        ..
+                    }
                 )
             })
             .unwrap();
@@ -1345,7 +1589,10 @@ mod tests {
             .position(|event| {
                 matches!(
                     event,
-                    SmithingMenuEvent::Sync(SyncEvent::SlotListener { .. })
+                    SmithingMenuEvent::Sync {
+                        event: SyncEvent::SlotListener { .. },
+                        ..
+                    }
                 )
             })
             .unwrap();
@@ -1355,7 +1602,10 @@ mod tests {
             .rposition(|event| {
                 matches!(
                     event,
-                    SmithingMenuEvent::Sync(SyncEvent::SlotListener { .. })
+                    SmithingMenuEvent::Sync {
+                        event: SyncEvent::SlotListener { .. },
+                        ..
+                    }
                 )
             })
             .unwrap();
@@ -1365,14 +1615,25 @@ mod tests {
             .position(|event| {
                 matches!(
                     event,
-                    SmithingMenuEvent::Effect(SmithingEffect::LevelEvent { event: 1044, .. })
+                    SmithingMenuEvent::Effect {
+                        effect: SmithingEffect::LevelEvent { event: 1044, .. },
+                        ..
+                    }
                 )
             })
             .unwrap();
         let first_packet = taken
             .events
             .iter()
-            .position(|event| matches!(event, SmithingMenuEvent::Sync(SyncEvent::Packet(_))))
+            .position(|event| {
+                matches!(
+                    event,
+                    SmithingMenuEvent::Sync {
+                        event: SyncEvent::Packet(_),
+                        ..
+                    }
+                )
+            })
             .unwrap();
         assert!(
             award < first_listener && last_listener < level_event && level_event < first_packet
@@ -1383,6 +1644,257 @@ mod tests {
         assert_eq!(menu.station().inputs()[2].count, 1);
         assert!(menu.station().result().is_empty());
         assert!(taken.drops.is_empty());
+        Ok(())
+    }
+    #[test]
+    fn signed_safe_insert_player_counter_phases_and_shared_self_swap_match_source() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        inv.set_slot_authoritative(9, item("stone", 4));
+        inv.set_carried_authoritative(item("emerald", 2));
+        menu.initialize(&inv)?;
+        let taken = click(&mut menu, &mut inv, 4, ClickType::Pickup)?;
+        let phases = taken
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(phases.len(), 3);
+        assert!(phases[0].carried.is_empty());
+        assert_eq!(phases[1].carried.count, 4);
+        assert_eq!(phases[2].carried.count, 4);
+        assert!(phases
+            .iter()
+            .all(|phase| phase.player_inventory.slot(9).unwrap().is_empty()
+                && phase.player_inventory.carried().count == 2));
+        let placed = click(&mut menu, &mut inv, 5, ClickType::Pickup)?;
+        assert_eq!(
+            placed
+                .events
+                .iter()
+                .filter(|event| matches!(event, SmithingMenuEvent::PlayerInventoryChanged { .. }))
+                .count(),
+            2
+        );
+        inv.set_slot_authoritative(36, item("stone", 3));
+        menu.broadcast_changes(&inv)?;
+        let same = custom_click(&mut menu, &mut inv, 31, 0, ClickType::Swap, false)?;
+        assert_eq!(
+            same.events
+                .iter()
+                .filter(|event| matches!(event, SmithingMenuEvent::PlayerInventoryChanged { .. }))
+                .count(),
+            2
+        );
+        assert_eq!(inv.slot(36).unwrap().count, 3);
+        // An actual owner can already hold an overfull stack. The creative
+        // packet rejects this assignment, so install the fixture authoritatively.
+        // Source safeInsert deliberately retains negative room.
+        inv.set_slot_authoritative(36, item("stone", 99));
+        inv.set_slot_authoritative(37, item("stone", 1));
+        menu.broadcast_changes(&inv)?;
+        click(&mut menu, &mut inv, 32, ClickType::Pickup)?;
+        assert_eq!(menu.sync().carried().count, 1);
+        let normalized = click(&mut menu, &mut inv, 31, ClickType::Pickup)?;
+        assert_eq!(inv.slot(36).unwrap().count, 64);
+        assert_eq!(menu.sync().carried().count, 36);
+        let normalized_phases = normalized
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(normalized_phases.len(), 2);
+        assert!(normalized_phases.iter().all(|phase| phase
+            .player_inventory
+            .slot(36)
+            .unwrap()
+            .count
+            == 64
+            && phase.carried.count == 36));
+        let full = click(&mut menu, &mut inv, 31, ClickType::Pickup)?;
+        let full_phases = full
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(full_phases.len(), 2);
+        assert!(full_phases
+            .iter()
+            .all(|phase| phase.player_inventory.slot(36).unwrap().count == 64
+                && phase.carried.count == 36));
+        let cursor_drop = custom_click(&mut menu, &mut inv, -999, 0, ClickType::Pickup, false)?;
+        assert_eq!(cursor_drop.drops[0].stack.count, 36);
+        inv.set_slot_authoritative(36, item("stone", 99));
+        inv.set_slot_authoritative(37, ItemStack::empty());
+        inv.set_slot_authoritative(10, ItemStack::empty());
+        menu.broadcast_changes(&inv)?;
+        let aliased = custom_click(&mut menu, &mut inv, 31, 0, ClickType::Swap, true)?;
+        assert_eq!(inv.slot(36).unwrap().count, 64);
+        assert_eq!(inv.slot(37).unwrap().count, 35);
+        assert_eq!(
+            inv.slot(36).unwrap().count + inv.slot(37).unwrap().count,
+            99
+        );
+        assert!(aliased.drops.is_empty());
+        let alias_phases = aliased
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(alias_phases.len(), 2);
+        assert!(alias_phases
+            .iter()
+            .all(|phase| phase.player_inventory.slot(36).unwrap().count == 64
+                && phase.player_inventory.slot(37).unwrap().is_empty()));
+        Ok(())
+    }
+    #[test]
+    fn repeated_result_transfer_callbacks_observe_each_actual_inventory_phase() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        inv.set_carried_authoritative(item("emerald", 2));
+        menu.station
+            .set_input(0, item("netherite_upgrade_smithing_template", 2))?;
+        let mut swords = item("diamond_sword", 2);
+        swords.components.push(crate::inventory::Component {
+            type_id: 1,
+            data: vec![2],
+        });
+        menu.station.set_input(1, swords)?;
+        menu.station.set_input(2, item("netherite_ingot", 2))?;
+        menu.initialize(&inv)?;
+        let moved = click(&mut menu, &mut inv, 3, ClickType::QuickMove)?;
+        let crafted = moved
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::Effect {
+                    effect: SmithingEffect::CraftedBy { amount: 0, .. },
+                    phase,
+                } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(crafted.len(), 2);
+        assert_eq!(crafted[0].inputs[0].count, 2);
+        assert_eq!(crafted[1].inputs[0].count, 1);
+        assert_eq!(crafted[0].player_inventory.slot(44).unwrap().count, 1);
+        assert_eq!(crafted[1].player_inventory.slot(44).unwrap().count, 2);
+        assert!(crafted.iter().all(|phase| phase.result_preview.is_empty()
+            && phase.carried.is_empty()
+            && phase.player_inventory.carried().count == 2));
+        let counters = moved
+            .events
+            .iter()
+            .filter_map(|event| match event {
+                SmithingMenuEvent::PlayerInventoryChanged { phase } => Some(phase),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(counters.len(), 3);
+        assert!(counters.iter().all(|phase| phase.result_preview.is_empty()));
+        assert!(menu.station().inputs().iter().all(ItemStack::is_empty));
+        assert_eq!(inv.slot(44).unwrap().count, 2);
+        Ok(())
+    }
+    #[test]
+    fn close_callback_phases_retain_later_grid_inputs_and_separate_returned_items() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        for slot in 9..45 {
+            inv.set_slot_authoritative(slot, item("stone", 64));
+        }
+        inv.set_slot_authoritative(36, item("netherite_upgrade_smithing_template", 63));
+        inv.set_slot_authoritative(37, item("netherite_ingot", 63));
+        inv.set_carried_authoritative(item("emerald", 2));
+        menu.station
+            .set_input(0, item("netherite_upgrade_smithing_template", 3))?;
+        menu.station.set_input(1, item("diamond_sword", 1))?;
+        menu.station.set_input(2, item("netherite_ingot", 2))?;
+        menu.sync
+            .set_carried(item("netherite_upgrade_smithing_template", 2));
+        let closed = menu
+            .prepare_close(&inv, MenuCloseContext::AliveConnected)?
+            .commit(&mut menu, &mut inv)?;
+        let phases = closed
+            .events
+            .iter()
+            .map(|event| match event {
+                SmithingMenuEvent::Sync { phase, .. } | SmithingMenuEvent::Drop { phase, .. } => {
+                    phase
+                }
+                _ => panic!("unexpected close owner callback"),
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(phases.len(), 6);
+        assert_eq!(phases[0].carried.count, 1);
+        assert_eq!(phases[1].carried.count, 1);
+        assert_eq!(
+            phases[1].inputs.iter().map(|s| s.count).collect::<Vec<_>>(),
+            [3, 1, 2]
+        );
+        assert_eq!(
+            phases[2].inputs.iter().map(|s| s.count).collect::<Vec<_>>(),
+            [0, 1, 2]
+        );
+        assert!(phases[2].carried.is_empty());
+        assert_eq!(
+            phases[3].inputs.iter().map(|s| s.count).collect::<Vec<_>>(),
+            [0, 0, 2]
+        );
+        assert!(phases[4].inputs.iter().all(ItemStack::is_empty));
+        assert!(phases[4].carried.is_empty());
+        assert!(phases[5].carried.is_empty());
+        assert!(phases
+            .iter()
+            .all(|phase| phase.player_inventory.carried().count == 2
+                && phase.result_preview.item_id == item("netherite_sword", 1).item_id));
+        assert_eq!(
+            closed
+                .drops
+                .iter()
+                .map(|drop| drop.stack.count)
+                .collect::<Vec<_>>(),
+            [1, 3, 1, 1]
+        );
+        Ok(())
+    }
+    #[test]
+    fn outside_whole_cursor_drop_precedes_clear_but_single_drop_observes_split() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        let mut inv = PlayerInventory::default();
+        menu.initialize(&inv)?;
+        menu.sync.set_carried(item("stone", 4));
+        let single = custom_click(&mut menu, &mut inv, -999, 1, ClickType::Pickup, false)?;
+        if let SmithingMenuEvent::Drop { phase, .. } = &single.events[0] {
+            assert_eq!(phase.carried.count, 3);
+        } else {
+            panic!("single drop event missing");
+        }
+        let all = custom_click(&mut menu, &mut inv, -999, 0, ClickType::Pickup, false)?;
+        if let SmithingMenuEvent::Drop { phase, .. } = &all.events[0] {
+            assert_eq!(phase.carried.count, 3);
+        } else {
+            panic!("whole drop event missing");
+        }
+        assert!(menu.sync().carried().is_empty());
+        assert_eq!(single.drops[0].stack.count + all.drops[0].stack.count, 4);
         Ok(())
     }
 }

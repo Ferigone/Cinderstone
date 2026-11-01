@@ -169,3 +169,43 @@ synchronization. These observations support non-reentrant actual owners; they
 do not execute mutating advancement or custom listener code against a later
 final-state snapshot. The ingredient quick-move transfer range is the selected starting
 input through the exclusive result slot, exactly as in the source base menu.
+
+## Player callbacks and exact observer phases
+
+`SmithingMenuEvent` carries a read-only `SmithingPhase` for every effect, sync,
+actual inventory-change callback and drop. The phase records the temporary
+inputs, current derived preview, canonical player inventory (including retained
+window0 cursor) and this external menu's separate carried stack. A host observes
+that phase while staging its actual owners; snapshots confer no owned items.
+`PlayerInventoryChanged` is the mandatory Inventory.setChanged/timesChanged
+operation, distinct from a slot listener. Full player-slot pickup preserves its
+three source calls; placement and a nonempty self-hotbar SWAP preserve two.
+Empty-target shift insertion keeps its extra Slot.setChanged after setByPlayer;
+merged targets retain just their source Slot.setChanged call.
+
+`Slot.safeInsert` retains signed capacity. For an admitted overfull player slot
+with99 stone and a matching cursor with1, left pickup moves the excess35 back to
+the cursor, leaving slot64/cursor36. It must not clamp the negative insertion
+amount to zero. A self-hotbar SWAP shares its held/source stack in Java: splitting
+99 to the clicked slot's64 leaves only35 for onTake/Inventory.add. Native code
+preserves that alias outcome instead of reinserting a cloned99. Focused checks
+observe the counter phases and verify64+35 conserves the original99.
+The overfull fixture comes from the canonical owner; the creative-slot packet
+itself rejects assigning more than the item's effective maximum. Zero-capacity
+matching insertion still preserves its two source player-change callbacks.
+
+Result shift callbacks observe each actual intermediate inventory, including one
+output during the first onTake and two during the next. The result preview is
+already empty when the removed output reaches callbacks; actual cursor pickup
+has installed its taken stack before onTake. Close phases retain all grid inputs
+during cursor callbacks, then remove only the current input before returning it,
+with later inputs still present. Grid returns use their own removed argument;
+they do not become an external cursor. The old preview remains derived during
+these callbacks and never enters the returned/dropped owned items. Whole-cursor
+outside drop observes the original cursor before clear; single-item drop first
+splits the cursor, so its callback observes the remainder.
+
+These phases and mandatory operations are integration contracts. Main remains
+unintegrated, and real player counter/stat/advancement and world/drop callbacks
+still require their actual runtime owners. Focused native checks establish the
+recorded transaction behavior, not complete vanilla compatibility.
