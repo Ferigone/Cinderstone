@@ -119,8 +119,9 @@ pub(super) fn anvil_still_valid(
 }
 
 impl Server {
-    /// Actual use-without-item dispatch. Root calls this after source packet
-    /// validation/teleport confirmation and before generic item/block fallback.
+    /// Actual use-without-item dispatch. Root must acknowledge the sequence and
+    /// validate the source hit-minus-block-centre bound before calling this,
+    /// after packet/teleport admission and before generic item/block fallback.
     pub(super) async fn use_native_anvil(
         &self,
         id: i32,
@@ -156,6 +157,13 @@ impl Server {
         if !access.player_can_interact_with_block(geometry::INTERACTION_VERIFICATION_BUFFER)? {
             return Ok(true);
         }
+        // aru.handleUseItemOn resets the actual connection action timer after
+        // successful reach/hit checks, before GameMode's hand/use decisions.
+        *players
+            .player_last_actions
+            .get_mut(&id)
+            .context("anvil use-on last-action owner missing")? =
+            self.epoch.elapsed().as_millis() as i64;
         if hand != 0 {
             return Ok(false);
         }
@@ -188,6 +196,7 @@ impl Server {
         enum Current {
             Anvil(u8),
             Stonecutter(u8),
+            Smithing(u8),
             CraftingTable(u8),
             Container(u8),
             Furnace(u8),
@@ -195,6 +204,7 @@ impl Server {
         let mut current = [
             players.anvils.window_id(id).map(Current::Anvil),
             players.stonecutters.window_id(id).map(Current::Stonecutter),
+            players.smithing_tables.window_id(id).map(Current::Smithing),
             players
                 .crafting_tables
                 .window_id(id)
@@ -250,6 +260,22 @@ impl Server {
                 )?,
                 "actual crafting-table owner changed during anvil open"
             ),
+            Some(Current::Smithing(window)) => {
+                let context = main_anvil_lifecycle::connected_anvil_close_context(&players, id)?;
+                ensure!(
+                    self.close_smithing_with_context_locked(
+                        &mut world,
+                        &mut players,
+                        id,
+                        window,
+                        true,
+                        now,
+                        border,
+                        context,
+                    )?,
+                    "actual smithing owner changed during anvil open"
+                );
+            }
             Some(Current::Container(window)) => ensure!(
                 self.native_menu_action_locked(
                     &mut world,

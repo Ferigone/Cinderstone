@@ -16,7 +16,12 @@ declarations/`players.anvils` field plus two requested pure gameplay methods to
 new temporary copies. Those methods reuse actual MainItemGameplay validation
 and prepare_menu_commit, dropping the prepared token without committing.
 This proves the proposed source composes; it does not prove actual master
-contains those methods, wires dispatch, or invokes the new namespace.
+contains those methods, wires dispatch, or invokes the new namespace. The
+later temporary proposal also connects actual use/click/rename, current-menu
+recovery, cross-open, real player body/pickup, close and save/shutdown phases.
+These remain new external source copies, never replacements for Root's files.
+Root's concurrent Loom PR81 changes several of the same callsites: compose its
+actual current-owner hooks rather than copying this older baseline over them.
 
 Final checks use an isolated target directory. A previous shared-target check
 resolved stale metadata from another checkout; that result was discarded.
@@ -25,6 +30,15 @@ by `cargo test --locked --bin mc121-rust main_anvil`. All focused native
 context/runtime/pickup/lifecycle cases passed. These execute real native
 SharedContainer, PreparedItemBatch, MainItemGameplay, core menu and owner
 fixtures. They are not a Java gameplay oracle or a production socket flow.
+
+After the source/callsite review, the same isolated filter passed all ten
+focused native cases, including removal/loan/restore of the actual physical
+owner. Corrections add Smithing close-before-Anvil, real LastAction reset and
+the genuine body-loan pickup admission. Independent source review found no
+remaining actionable defect in those three scoped changes. `rustfmt --check`
+on changed source and `git diff --check` passed. The matching isolated log is
+`/tmp/ws-anvil-final-wired-unit-flows.log`; it is local evidence, not a durable
+CI artifact. No full-conformance or production-client result is inferred.
 
 The composition records hashes of all five input modules. Root refreshes them
 after freeze, before handoff. No Java/class/language asset, private save,
@@ -41,7 +55,10 @@ fixtures.
 - Supply `MainItemGameplay::validate_active_player` and
   `MainGameplayFrame::preflight_inventory_slot_changes` from the precise
   requested actual-owner checks in issue3/6564847678. They remain probe-only
-  until central implements them or explicitly assigns those sections.
+  until central implements them or explicitly assigns those sections. Central
+  acknowledged exact implementation and receipt of9531608 in issue3/6565372188;
+  the corrective three-module delta was coordinated in6565534787 before
+  publication. Neither acknowledgement makes the methods present on master.
 - Run the actual incoming component/profile guard before each canonical slot
   or pickup mutation. A rejection must resync/retire the actual current Anvil,
   never fall through to hidden InventoryMenu state.

@@ -53,6 +53,17 @@ with Main's supported empty-criteria gameplay floor. It deliberately performs
 no current-block/reach check: even a removed anvil receives the immediate
 source take broadcast before the later tick closes it.
 
+The registered wrapper borrows the actual runtime physical owner and delegates
+to `preflight_anvil_pickup_with_body(players,id,candidate,&EntityPhysicalState)`.
+At the genuine `BodyHooks::Pickup` boundary, `tick_native_player_body` has
+temporarily removed its one motion entry from that map; the caller passes the
+actual borrowed `m.physical` instead. The shared guard validates its actual
+ID/UUID, alive/profile/lifecycle and UI/component owners. If a body is still
+registered, pointer equality additionally requires that exact registered
+object. No body clone, synthetic constructor or reinsertion is used to make
+admission pass. The narrow Main body caller must retain this real loan through
+its synchronous pickup phase; a packet cannot supply a physical owner.
+
 It inspects the actual canonical inventory (including the inactive retained
 InventoryMenu's cursor), current anvil inputs/result/cursor and candidate with
 the central recursive FOOD component20 admission policy. Stable prototype food
@@ -89,8 +100,9 @@ prepares/drops the existing actual gameplay menu token without observations.
 `MainItemGameplay.validate_active_player` also validates that registration
 before canonical pickup. Those central APIs are requested in
 [comment6564847678](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6564847678);
-their source grant/implementation is pending at this writing, so this adapter
-does not yet claim compilation or production wiring. It then invokes the existing
+central acknowledged implementation in comment6565372188. External composition
+with the precise proposed methods compiles; actual production wiring remains
+central. The adapter then invokes the existing
 inventory-slot listener owner for player-backed slots in source encounter
 order and installs the prepared baselines infallibly under the same exclusive
 owner locks. Top/result/data/cursor listeners do not become player-inventory
@@ -108,8 +120,14 @@ borrowed inventory: failed foreign-player preflight produces no observation,
 the admitted actual slot produces one inventory scan/criterion, and window7's
 slot3 packet preserves the external cursor, input/result preview and dirty
 counter. A mapping regression checks result-listener exclusion, main/hotbar
-backing and actual packet offsets. These tests are written but have not run
-until the requested core/central dependencies and exports are present.
-Compilation, the retained sync-plan flow and Root's actual callsite proof remain
-to be recorded after those dependencies freeze. This file does not claim Main wiring,
+backing and actual packet offsets. These cases passed in the isolated external
+Main composition; repository CI cannot compile the still-unexported namespace.
+The body-loan regression constructs actual native player/motion/context owners,
+removes the real motion entry as Main does, admits its borrowed physical state
+while the registered wrapper correctly reports absence, rejects wrong ID/UUID,
+and proves no menu-token advance or listener observation during admission.
+The complete focused native filter passed after this correction, including the
+retained sync-plan and body-loan cases. Exact composition provenance is recorded
+in [verification](anvil-verification.md). Root's actual callsite proof remains
+pending. This file does not claim production Main wiring,
 broader player profiles or a complete inventory/checklist delivery.

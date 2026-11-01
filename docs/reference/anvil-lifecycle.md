@@ -39,6 +39,12 @@ All locked methods take the existing `world -> players -> shared inventory`
 sequence and do not reacquire world/player locks. Async close first takes the
 existing chat sequencing guard, then those same actual owners.
 
+- `main_anvil_lifecycle::connected_anvil_close_context(players, id)` is exported
+  within Main for connected cross-open/current-close callers. It observes the
+  same actual finite health and matching physical identity/removed owners as
+  the lifecycle; it supplies no default when an owner is missing. The caller
+  establishes connection lifetime, and disconnect/removal supplies its explicit
+  `DeadOrDisconnected` context instead.
 - `Server::close_native_anvil(id, window, send_close)` handles a connected-player
   close using the actual retained window. It reads actual metadata health and
   native physical removed state with matching entity ID/UUID; a missing or

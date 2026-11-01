@@ -10,7 +10,10 @@ use mc121_rust::container::MenuCloseContext;
 /// Connected operations still use actual Player.isAlive semantics. Explicit
 /// disconnect/removal callers pass DeadOrDisconnected to the locked close hook
 /// instead of deriving connection state from a still-registered player record.
-fn connected_anvil_close_context(players: &LivePlayers, id: i32) -> Result<MenuCloseContext> {
+pub(super) fn connected_anvil_close_context(
+    players: &LivePlayers,
+    id: i32,
+) -> Result<MenuCloseContext> {
     let player = players
         .registry
         .get(id)

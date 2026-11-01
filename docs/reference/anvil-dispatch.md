@@ -27,6 +27,17 @@ admission. It never synthesizes a player, recipe, advancement, XP or RNG owner.
 Unsupported imported gameplay, abilities, body or active range modifiers remain
 explicit errors before opening. No broader player-mode coverage is inferred.
 
+The caller must first acknowledge the UseItemOn sequence and reject an invalid
+decoded hit-minus-block-centre coordinate: each absolute axis must be strictly
+less than `1.0000001`, as inspected in `aru.a(aie)` offsets 12–208. On the
+admitted actual anvil path, after its real reach succeeds and while retaining
+the same operation/world/player locks, dispatch resets the real
+`players.player_last_actions[id]` from `self.epoch.elapsed().as_millis() as i64`.
+A missing counter owner is an error. This precedes hand, sneak, use and menu
+open decisions, matching the source `aqv.H` phase. Invalid reach/hit must not
+reset it. Future common Root use-on wiring must preserve this caller
+precondition and must not reset the timer again. Rename never resets it.
+
 The actual current external menu is selected with a uniqueness check and closed
 through its real retained owner. The native shared window allocator supplies the
 next window. If InventoryMenu is current, opening does **not** invoke its
@@ -35,6 +46,16 @@ new external cursor. The runtime's `open_anvil_locked` is the sole opening
 publisher. It must enqueue OpenScreen type **8**, title `container.repair`, before
 `initMenu`'s actual local listener/synchronizer sequence. Dispatch neither creates
 a second menu nor emits a duplicate screen/content packet.
+
+The current selector includes Root's already merged SmithingRuntime as well as
+anvil, stonecutter, furnace, crafting table and generic native containers. A
+smithing-to-anvil handoff resolves the real connected health/entity-lifetime
+context through `main_anvil_lifecycle::connected_anvil_close_context`, then
+invokes `close_smithing_with_context_locked` on that exact retained window
+before allocating or opening the anvil. A second retained owner fails the
+uniqueness check; smithing contents/cursor are never stranded or copied into a
+replacement UI. Future menu families still need their own explicit central
+current-menu wiring when they are actually integrated.
 
 After successful runtime opening, dispatch increments the actual
 `minecraft:interact_with_anvil` statistic, then queries the post-use block and
@@ -94,7 +115,7 @@ The central owner must add these callsites before claiming production use:
   with its real default constructor, as owned by the central/runtime work.
 - In actual use-on-block routing, after packet/teleport admission and before
   generic item/block fallback, call `use_native_anvil`; acknowledge the source
-  sequence once when handled.
+  sequence once before hit validation or menu handling, including rejected hits.
 - In container-click routing, after shared prediction-component admission,
   try `click_native_anvil` before InventoryMenu fallback.
 - Decode ServerboundRenameItem using `decode_anvil_rename` and call

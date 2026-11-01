@@ -10,6 +10,7 @@ use main_item_gameplay::MainGameplayFrame;
 use mc121_rust::{
     container::LocalSlotChange,
     container_workstation_anvil::AnvilPhase,
+    entity_state::EntityPhysicalState,
     inventory::PlayerInventory,
     item_host::RuntimeGameplayHooks,
     runtime_entities::PickupPlayer,
@@ -81,6 +82,29 @@ pub(super) fn preflight_anvil_pickup(
     id: i32,
     candidate: &ItemStack,
 ) -> Result<()> {
+    let body = players
+        .player_motion_runtime
+        .physical(id)
+        .context("anvil pickup actual native body missing")?;
+    preflight_anvil_pickup_with_body(players, id, candidate, body)
+}
+
+/// Same admission while the real native body is loaned to Player.aiStep.
+/// The genuine Main body callback passes its actual `&m.physical`; do not
+/// construct, clone or reinsert a replacement physical owner for this call.
+/// A registered body, when present, must be this exact borrowed object.
+pub(super) fn preflight_anvil_pickup_with_body(
+    players: &LivePlayers,
+    id: i32,
+    candidate: &ItemStack,
+    body: &EntityPhysicalState,
+) -> Result<()> {
+    if let Some(registered) = players.player_motion_runtime.physical(id) {
+        ensure!(
+            std::ptr::eq(registered, body),
+            "anvil pickup does not borrow the actual registered body"
+        );
+    }
     let open = players
         .anvils
         .menus
@@ -111,10 +135,6 @@ pub(super) fn preflight_anvil_pickup(
         open.binding.dimension == lifecycle.dimension,
         "anvil pickup captured dimension changed"
     );
-    let body = players
-        .player_motion_runtime
-        .physical(id)
-        .context("anvil pickup actual native body missing")?;
     ensure!(
         body.entity_id == id
             && body.uuid == player.profile.uuid
@@ -463,6 +483,124 @@ mod tests {
         assert_eq!(sync.carried(), &retained.carried);
         assert_eq!(&sync.snapshot(&top, &inventory)?[..3], &top);
         assert_eq!(inventory.get_times_changed(), counter);
+        Ok(())
+    }
+
+    #[test]
+    fn actual_body_loan_admits_pickup_without_a_replacement_runtime_entry() -> Result<()> {
+        use main_anvil::OpenAnvil;
+        use main_anvil_context::{
+            NativeAnvilBinding, NativeAnvilGameplayCertificate, NativeAnvilHost,
+        };
+        use mc121_rust::{container_workstation_anvil::AnvilMenu, world::FlatWorld};
+        let (events, _) = broadcast::channel(16);
+        let mut players = LivePlayers::new(
+            LegacyRandomSource::new(11),
+            LegacyRandomSource::new(12),
+            WorldContext::new(
+                DimensionFacts {
+                    min_y: -64,
+                    height: 384,
+                    logical_height: 384,
+                    ultrawarm: false,
+                    has_skylight: true,
+                    has_ceiling: false,
+                },
+                WorldRules::default(),
+                WeatherState::default(),
+            ),
+            2,
+            true,
+            events,
+        );
+        let id = 42;
+        let player = PlayerState::new(
+            id,
+            PlayerProfile::offline("PickupLoan")?,
+            Position {
+                x: 0.5,
+                y: 64.,
+                z: 1.5,
+                yaw: 0.,
+                pitch: 0.,
+                on_ground: true,
+            },
+        )?;
+        let uuid = player.profile.uuid;
+        let lifecycle = PlayerLifecycle::new("minecraft:overworld", 1)?;
+        players.player_motion_runtime.register_native(
+            &player,
+            &lifecycle,
+            Vec3::ZERO,
+            [0.1, 0.2, 0.3],
+        )?;
+        players.registry.register(player.clone())?;
+        players.player_lifecycle.insert(uuid, lifecycle);
+        players.native_body_ready.insert(id);
+        players.gameplay.register_player(id, uuid)?;
+        players.containers.insert(id, SharedContainer::new().0);
+        let binding = NativeAnvilBinding {
+            player_id: id,
+            player_uuid: uuid,
+            position: (0, 64, 0),
+            window_id: 7,
+            dimension: "minecraft:overworld".into(),
+        };
+        let mut flat = FlatWorld::new(0, 1, 2, 3, 0);
+        let block = mc121_rust::inventory::item_default_block_state(item("anvil").item_id).unwrap();
+        flat.set_block(0, 64, 0, block);
+        let mut world = WorldBackend::Fixture(flat);
+        let host = NativeAnvilHost::new(
+            binding.clone(),
+            main_anvil_dispatch::anvil_access(&mut world, &player, binding.position)?,
+            PlayerInventory::new(),
+            LegacyRandomSource::new(13),
+            true,
+            0,
+            block,
+            NativeAnvilGameplayCertificate::new(&players.gameplay)?,
+            |_, _, _| bail!("read-only pickup admission must never publish a host action"),
+        )?;
+        let menu = AnvilMenu::new(binding.window_id, &host)?;
+        let token = menu.token();
+        players.anvils.menus.insert(
+            id,
+            OpenAnvil {
+                position: binding.position,
+                binding,
+                menu,
+            },
+        );
+        preflight_anvil_pickup(&players, id, &item("bread"))?;
+
+        // Exactly the production take/restore pattern: move the real entry
+        // out of its map, retain that owner, and borrow its physical field.
+        let mut actual = players.player_motion_runtime.players.remove(&id).unwrap();
+        assert!(players.player_motion_runtime.physical(id).is_none());
+        assert!(preflight_anvil_pickup(&players, id, &item("bread")).is_err());
+        preflight_anvil_pickup_with_body(&players, id, &item("bread"), &actual.motion.physical)?;
+        actual.motion.physical.entity_id = id + 1;
+        assert!(preflight_anvil_pickup_with_body(
+            &players,
+            id,
+            &item("bread"),
+            &actual.motion.physical
+        )
+        .is_err());
+        actual.motion.physical.entity_id = id;
+        actual.motion.physical.uuid = [0; 16];
+        assert!(preflight_anvil_pickup_with_body(
+            &players,
+            id,
+            &item("bread"),
+            &actual.motion.physical
+        )
+        .is_err());
+        actual.motion.physical.uuid = uuid;
+        assert_eq!(players.anvils.menus[&id].menu.token(), token);
+        assert!(players.gameplay.drain_observations().is_empty());
+        players.player_motion_runtime.players.insert(id, actual);
+        preflight_anvil_pickup(&players, id, &item("bread"))?;
         Ok(())
     }
 }
