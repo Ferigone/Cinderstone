@@ -3179,6 +3179,8 @@ async fn play(
             players.register_runtime_player(entity_id, position, admission, player_random, uuid)
         {
             players.registry.remove(entity_id);
+            players.chat.remove(entity_id);
+            players.player_last_actions.remove(&entity_id);
             return Err(error);
         }
         players.gameplay.install_player_stats(uuid, stats)?;
