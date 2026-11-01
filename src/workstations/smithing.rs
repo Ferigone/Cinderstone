@@ -29,6 +29,13 @@ pub struct SmithingRecipeOrder {
 }
 impl SmithingRecipeOrder {
     pub fn new(input_recipes: Vec<String>, result_recipes: Vec<String>) -> Result<Self> {
+        let canonical = |ids: Vec<String>| -> Result<Vec<String>> {
+            ids.into_iter()
+                .map(|id| Ok(crate::server_recipe_book::RecipeId::parse(&id)?.to_string()))
+                .collect()
+        };
+        let input_recipes = canonical(input_recipes)?;
+        let result_recipes = canonical(result_recipes)?;
         let book = RecipeBook::vanilla();
         let validate = |ids: &[String]| -> Result<BTreeSet<String>> {
             let mut seen = BTreeSet::new();

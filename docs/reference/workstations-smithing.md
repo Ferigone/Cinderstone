@@ -84,3 +84,44 @@ rejection and identical-trim/no-result behavior. Compiler/check results and exac
 commits are recorded by the workstation coordinator. These checks do not claim
 graphical client, original-server oracle execution or production Main integration.
 The broad `inventory.4`, `crafting.2` and `crafting.5` deliveries remain partial.
+
+## Bounded packet adapter contract
+
+`src/container_workstation_smithing.rs` connects the state to borrowed canonical
+`PlayerInventory` and shared `MenuSync`. `SmithingMenu.prepare_click` accepts
+PICKUP/QUICK_MOVE, prepares cursor/slot changes and ordered smithing callbacks,
+and computes prediction/state-ID synchronization without mutating live state.
+Its plan checks the complete menu snapshot, nonreused UI instance identity, checked
+monotonic revision and borrowed inventory before staging and again before commit.
+The host inspects the single ordered effect/sync event stream and drops, stages actual item/player/world owners,
+commits once, and dispatches the ordered sync events. The adapter never awards
+recipes, advances criteria, spawns items or selects a world position itself.
+
+The bounded adapter supports left/right pickup, cursor outside drops, ingredient
+shift routing, main/hotbar transfers, reverse output insertion and repeated
+smithing while the same result item remains available. Full player inventory
+leaves inputs and callbacks untouched. Bundle click overrides and SWAP, CLONE,
+THROW, QUICK_CRAFT and PICKUP_ALL currently fail before mutation. This explicit
+limit is why the adapter is not claimed as a complete smithing menu delivery.
+
+`prepare_close` stages the cursor first and owned input slots in order, using the
+actual alive/disconnected context supplied by Main. It excludes the preview.
+The host must publish a server-initiated close packet before those return/drop
+effects and transfer the old shared inventory baselines afterwards.
+
+Focused adapter checks cover actual native menu actions against a borrowed
+inventory, output placement and zero-count callback, no-capacity refusal,
+disconnected cursor/input conservation, stale inventory rejection and stale-ID
+full-state synchronization. This is an in-process native transaction check,
+not a protocol socket/client or original-server gameplay observation. The
+central Main block-open, packet dispatch, callback owners and player-phase
+validity/close callsites remain pending the integration contract.
+
+The adapter's callback contract is bounded to actual owners whose recipe and
+item callbacks do not reenter and mutate this inventory/menu during an action.
+The host must reject unsupported advancement-reward/reentrant contexts before
+staging; it must not ignore their effects. `ItemCombinerMenu.createResult` does
+not broadcast, so the recorded smithing callback events precede the final menu
+sync events; there are no synthetic intermediate slot packets between input
+decrements. The ingredient quick-move transfer range is the selected starting
+input through the exclusive result slot, exactly as in the source base menu.
