@@ -79,3 +79,17 @@ tick, pickup, persistence and disconnect routes are separate lifetime contracts.
 This source stage alone does not claim those Main routes or a whole checklist
 delivery. Focused compiler/runtime evidence is recorded by the coordinator after
 the shared modules are composed.
+
+## Unsupported equipped-reach transitions
+
+The actual applicable equipped attribute-6 modifier is outside the captured
+default-range capability. Its guard returns the typed `UnsupportedMenuReach`
+boundary, distinct from malformed state or other transaction failures. Both the
+actual player-menu tick and matching click/button wrappers retire that real
+menu through its ordered connected-player close owner, with a server close
+packet before cursor/input removal. The wrappers already hold the operation,
+world and player guards and do not reacquire them. A queued click/button that
+arrives before the next menu tick therefore cannot turn this declared boundary
+into an unintended whole-PLAY disconnect. Other failures retain their existing
+error paths. This is an explicit native capability limit, not implementation of
+custom interaction-range attributes.

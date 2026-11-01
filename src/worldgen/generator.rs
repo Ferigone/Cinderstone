@@ -500,11 +500,15 @@ impl NoiseGenerator {
             chunk_z: chunk.1,
             void_air: self.palette.void_air,
         };
-        // NoiseBasedChunkGenerator.buildSurface supplies false. This is not the
-        // old blending-height biome path, which requires its own dependencies.
-        let report = self
-            .surface
-            .build_surface(&mut host, chunk.0, chunk.1, false)?;
+        // NoiseBasedChunkGenerator.buildSurface forwards the settings'
+        // useLegacyRandomSource flag. It selects Y=0 for each column's initial
+        // biome lookup; the later rule-context lookups retain their actual Y.
+        let report = self.surface.build_surface(
+            &mut host,
+            chunk.0,
+            chunk.1,
+            self.graph.uses_legacy_random_source(),
+        )?;
         *image = staged;
         *stage = TerrainStage::Surface;
         Ok(report)
@@ -1128,6 +1132,55 @@ mod tests {
             OwnedNoiseFillOutcome::Generated(terrain) => terrain,
             OwnedNoiseFillOutcome::NoCells { .. } => panic!("expected a positive-cell stage"),
         }
+    }
+
+    #[test]
+    fn surface_initial_biome_y_uses_the_original_settings_flag() -> Result<()> {
+        struct ObserveFirstBiome(Option<DensityPoint>);
+        impl SurfaceContext for ObserveFirstBiome {
+            fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+                self.0 = Some(DensityPoint::new(x, y, z));
+                bail!("observed initial surface biome query")
+            }
+            fn cold_enough_to_snow(&mut self, _: &str, _: i32, _: i32, _: i32) -> Result<bool> {
+                bail!("initial biome failure must precede thermal queries")
+            }
+            fn should_melt_frozen_ocean_iceberg_slightly(
+                &mut self,
+                _: &str,
+                _: i32,
+                _: i32,
+                _: i32,
+            ) -> Result<bool> {
+                bail!("initial biome failure must precede iceberg queries")
+            }
+        }
+        for (settings, min_y, height, legacy) in
+            [("overworld", -64, 384, false), ("nether", 0, 128, true)]
+        {
+            let generator = NoiseGenerator::builtin(123456789, settings)?;
+            let mut terrain = generator.fill_noise(0, 0, min_y, height, observed_empty())?;
+            let first_available = terrain.world_surface_wg()[0];
+            assert_ne!(
+                first_available, 0,
+                "fixture must distinguish zero from the surface height"
+            );
+            let mut context = ObserveFirstBiome(None);
+            let error = generator
+                .build_surface(&mut terrain, &mut context)
+                .unwrap_err();
+            assert_eq!(error.to_string(), "observed initial surface biome query");
+            assert_eq!(
+                context.0,
+                Some(DensityPoint::new(
+                    0,
+                    if legacy { 0 } else { first_available },
+                    0
+                ))
+            );
+            assert_eq!(terrain.stage(), TerrainStage::Noise);
+        }
+        Ok(())
     }
 
     fn assert_same_image(a: &TerrainImage, b: &TerrainImage) {

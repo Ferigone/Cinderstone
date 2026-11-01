@@ -140,6 +140,24 @@ impl BrewingState {
         Ok(self.dirty_effect())
     }
 
+    /// Raw staged container mutation for actual in-place ItemStack operations.
+    /// It performs no clamp, dirty callback, tick or persistence reconstruction;
+    /// all brewing counters, ingredient identity and bottle-bit caches survive.
+    /// The menu/automation owner must emit the real source callback separately.
+    pub fn set_slot_raw(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        ensure!(slot < SLOT_COUNT, "invalid brewing raw slot");
+        self.slots[slot] = canonical(stack);
+        Ok(())
+    }
+    /// ItemStack.setCount semantics on the actual existing staged stack.
+    pub fn set_slot_count_raw(&mut self, slot: usize, count: i32) -> Result<()> {
+        ensure!(slot < SLOT_COUNT, "invalid brewing raw count slot");
+        let mut stack = self.slots[slot].clone();
+        stack.count = count;
+        self.slots[slot] = canonical(stack);
+        Ok(())
+    }
+
     pub fn menu_may_place(
         slot: usize,
         stack: &ItemStack,

@@ -1,0 +1,1654 @@
+//! Bounded Java 1.21 AnvilMenu over its actual temporary inputs and borrowed
+//! canonical player inventory. Every host owner is staged together; on error
+//! discard that entire stage and this menu clone before publication. The result
+//! is a derived preview, never a second output owner. See the source ledger.
+use crate::{
+    container::{ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer},
+    inventory::{self, ItemStack, PlayerInventory},
+    nbt::JavaString,
+    workstations::{
+        anvil::{
+            finish_anvil_take, AnvilComputationChange, AnvilContext, AnvilPlayer, AnvilState,
+            AnvilWorldAccess,
+        },
+        menu::{
+            require_component_context, MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess,
+            WorkstationKind,
+        },
+    },
+};
+use anyhow::{ensure, Result};
+use std::{
+    collections::BTreeSet,
+    fmt::Debug,
+    sync::atomic::{AtomicU64, Ordering},
+};
+pub const INPUT_SLOTS: usize = 2;
+pub const RESULT_SLOT: usize = 2;
+pub const MENU_SLOTS: usize = 39;
+
+/// Captured native dispatch identity; neither a reused protocol window nor
+/// equal contents can revive an action after another revision or reopening.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct AnvilMenuToken {
+    instance: u64,
+    revision: u64,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum AnvilMenuAction {
+    Initialize,
+    Broadcast,
+    Rename,
+    Click(ClickType),
+    Close(MenuCloseContext),
+}
+/// Read-only actual menu phase supplied while staging a callback. This is not
+/// another inventory/result owner. Host inventory getters always refer to the
+/// same canonical player inventory, already at this phase of the action.
+#[derive(Clone, Debug)]
+pub struct AnvilPhase {
+    pub inputs: [ItemStack; INPUT_SLOTS],
+    pub result_preview: ItemStack,
+    pub carried: ItemStack,
+    pub level_cost: i32,
+    pub repair_material_count: i32,
+}
+/// Implement using a single staged actual player/world/menu transaction. The
+/// binding identifies actual player + captured Level/position + menu lifetime;
+/// equal inventory contents do not establish identity. Unsupported/reentrant
+/// listeners must be rejected by preflight, not replayed against final state.
+pub trait AnvilMenuHost: AnvilContext + AnvilWorldAccess + WorkstationAccess {
+    type Binding: Clone + Eq + Debug;
+    fn binding(&self) -> &Self::Binding;
+    fn inventory(&self) -> &PlayerInventory;
+    fn inventory_mut(&mut self) -> &mut PlayerInventory;
+    fn player(&self) -> Result<AnvilPlayer>;
+    /// Validate actor/window/spectator/current actual owners. Rename and Click
+    /// also use the controller's actual block/reach validity check.
+    fn preflight_menu_action(&mut self, action: AnvilMenuAction) -> Result<()>;
+    /// Install a read-only view for actual item/text/XP/world callback owners.
+    /// Do not replace live ownership or allow reentry through this view.
+    fn observe_menu_phase(&mut self, phase: &AnvilPhase) -> Result<()>;
+    fn stage_sync_events(&mut self, events: Vec<SyncEvent>, phase: &AnvilPhase) -> Result<()>;
+    /// Actual SimpleContainer.setChanged listener phase, before slotsChanged.
+    fn input_container_set_changed(&mut self, phase: &AnvilPhase) -> Result<()>;
+    /// Actual Inventory.setChanged/timesChanged, distinct from SlotListener.
+    fn player_inventory_set_changed(&mut self, phase: &AnvilPhase) -> Result<()>;
+    /// Actual Player.giveExperienceLevels (including its actual XP fields).
+    fn give_experience_levels(&mut self, delta: i32, phase: &AnvilPhase) -> Result<()>;
+    /// Actual Inventory.add mutates this one owned stack to its remainder.
+    fn add_to_player_inventory(
+        &mut self,
+        stack: &mut ItemStack,
+        phase: &AnvilPhase,
+    ) -> Result<bool>;
+    fn stage_drop(&mut self, owned: DroppedStack, phase: &AnvilPhase) -> Result<()>;
+    /// Actual Slot-identity HashSet encounter order, exactly a permutation.
+    fn quickcraft_iteration_order(&self, selected: &[usize]) -> Result<Vec<usize>>;
+}
+#[derive(Debug)]
+pub struct AnvilMenu<K> {
+    binding: K,
+    token: AnvilMenuToken,
+    active: bool,
+    state: AnvilState,
+    sync: MenuSync,
+    drag_status: u8,
+    drag_type: u8,
+    drag_slots: BTreeSet<usize>,
+}
+struct ObservedContext<'a, H> {
+    actual: &'a mut H,
+    phase: AnvilPhase,
+}
+impl<H: AnvilMenuHost> AnvilContext for ObservedContext<'_, H> {
+    fn observe_computation_change(&mut self, change: AnvilComputationChange) -> Result<()> {
+        match change {
+            AnvilComputationChange::CostInitialized => self.phase.level_cost = 1,
+            AnvilComputationChange::RepairMaterialCount(count) => {
+                self.phase.repair_material_count = count
+            }
+        }
+        self.actual.observe_menu_phase(&self.phase)
+    }
+    fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
+        self.actual.is_valid_repair_item(base, addition)
+    }
+    fn hover_name(&mut self, item: &ItemStack) -> Result<JavaString> {
+        self.actual.hover_name(item)
+    }
+}
+
+fn counted(item: &ItemStack, count: i32) -> ItemStack {
+    if count <= 0 || item.is_empty() {
+        ItemStack::empty()
+    } else {
+        let mut out = item.clone();
+        out.count = count;
+        out
+    }
+}
+impl<K: Clone + Eq + Debug> AnvilMenu<K> {
+    pub fn new<H: AnvilMenuHost<Binding = K>>(window: u8, host: &H) -> Result<Self> {
+        static NEXT: AtomicU64 = AtomicU64::new(1);
+        let mut seen = NEXT.load(Ordering::Relaxed);
+        let instance = loop {
+            let next = seen
+                .checked_add(1)
+                .ok_or_else(|| anyhow::anyhow!("anvil UI identity exhausted"))?;
+            match NEXT.compare_exchange_weak(seen, next, Ordering::Relaxed, Ordering::Relaxed) {
+                Ok(_) => break seen,
+                Err(actual) => seen = actual,
+            }
+        };
+        Ok(Self {
+            binding: host.binding().clone(),
+            token: AnvilMenuToken {
+                instance,
+                revision: 0,
+            },
+            active: true,
+            state: AnvilState::default(),
+            sync: MenuSync::new(window, WorkstationKind::Anvil)?,
+            drag_status: 0,
+            drag_type: 0,
+            drag_slots: BTreeSet::new(),
+        })
+    }
+    fn staged_copy(&self) -> Self {
+        Self {
+            binding: self.binding.clone(),
+            token: self.token,
+            active: self.active,
+            state: self.state.clone(),
+            sync: self.sync.clone(),
+            drag_status: self.drag_status,
+            drag_type: self.drag_type,
+            drag_slots: self.drag_slots.clone(),
+        }
+    }
+    pub fn token(&self) -> AnvilMenuToken {
+        self.token
+    }
+    fn advance_revision(&mut self) -> Result<()> {
+        self.token.revision = self
+            .token
+            .revision
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("anvil revision exhausted"))?;
+        Ok(())
+    }
+    fn validate_token(&self, token: AnvilMenuToken) -> Result<()> {
+        ensure!(
+            self.active && token == self.token,
+            "stale or closed anvil UI action"
+        );
+        Ok(())
+    }
+    fn require_components<H: AnvilMenuHost<Binding = K>>(
+        &self,
+        host: &H,
+        click: Option<&ContainerClick>,
+    ) -> Result<()> {
+        let top = self.top();
+        for item in top
+            .iter()
+            .chain(std::iter::once(self.carried()))
+            .chain(host.inventory().slots().iter())
+            .chain(std::iter::once(host.inventory().carried()))
+        {
+            require_component_context(item)?;
+        }
+        if let Some(click) = click {
+            require_component_context(&click.carried)?;
+            for item in click.changed_slots.values() {
+                require_component_context(item)?;
+            }
+        }
+        Ok(())
+    }
+    fn validate_publish<H: AnvilMenuHost<Binding = K>>(&self, host: &H) -> Result<()> {
+        ensure!(
+            &self.binding == host.binding(),
+            "anvil binding changed during callback"
+        );
+        Ok(())
+    }
+    pub fn state(&self) -> &AnvilState {
+        &self.state
+    }
+    pub fn window_id(&self) -> u8 {
+        self.sync.window_id()
+    }
+    pub fn state_id(&self) -> i32 {
+        self.sync.state_id()
+    }
+    pub fn carried(&self) -> &ItemStack {
+        self.sync.carried()
+    }
+    pub fn phase(&self) -> AnvilPhase {
+        AnvilPhase {
+            inputs: self.state.inputs().clone(),
+            result_preview: self.state.preview().stack.clone(),
+            carried: self.carried().clone(),
+            level_cost: self.state.preview().level_cost,
+            repair_material_count: self.state.preview().repair_material_count,
+        }
+    }
+    fn top(&self) -> [ItemStack; 3] {
+        [
+            self.state.inputs()[0].clone(),
+            self.state.inputs()[1].clone(),
+            self.state.preview().stack.clone(),
+        ]
+    }
+    fn data(&self) -> [i32; 1] {
+        [self.state.preview().level_cost]
+    }
+    fn validate_host(&self, host: &impl AnvilMenuHost<Binding = K>) -> Result<()> {
+        ensure!(
+            self.active && &self.binding == host.binding(),
+            "anvil player/table/menu binding changed"
+        );
+        Ok(())
+    }
+    pub fn still_valid(&self, host: &impl AnvilMenuHost<Binding = K>) -> Result<bool> {
+        self.validate_host(host)?;
+        self.sync.still_valid(host)
+    }
+    pub fn transfer_inventory_state(&self, window0: &mut PlayerContainer) -> Result<()> {
+        self.sync.transfer_inventory_state(window0)
+    }
+    fn reset_drag(&mut self) {
+        self.drag_status = 0;
+        self.drag_slots.clear();
+    }
+    fn publish_sync<H: AnvilMenuHost<Binding = K>>(
+        &self,
+        events: Vec<SyncEvent>,
+        host: &mut H,
+    ) -> Result<()> {
+        host.stage_sync_events(events, &self.phase())
+    }
+    fn broadcast_inner<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+        let events = self
+            .sync
+            .broadcast_changes(&self.top(), host.inventory(), &self.data())?;
+        self.publish_sync(events, host)
+    }
+    pub fn initialize<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+        self.validate_host(host)?;
+        self.require_components(host, None)?;
+        host.preflight_menu_action(AnvilMenuAction::Initialize)?;
+        let mut next = self.staged_copy();
+        let events = next
+            .sync
+            .initialize(&next.top(), host.inventory(), &next.data())?;
+        next.publish_sync(events, host)?;
+        next.validate_publish(host)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(())
+    }
+    pub fn broadcast_changes<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+        self.validate_host(host)?;
+        self.require_components(host, None)?;
+        host.preflight_menu_action(AnvilMenuAction::Broadcast)?;
+        let mut next = self.staged_copy();
+        next.broadcast_inner(host)?;
+        next.validate_publish(host)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(())
+    }
+    pub fn set_item_name<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        token: AnvilMenuToken,
+        name: &JavaString,
+        host: &mut H,
+    ) -> Result<bool> {
+        self.validate_token(token)?;
+        self.validate_host(host)?;
+        self.require_components(host, None)?;
+        host.preflight_menu_action(AnvilMenuAction::Rename)?;
+        ensure!(self.still_valid(host)?, "anvil is no longer valid");
+        let mut next = self.staged_copy();
+        if !next.state.request_name_observed(name)? {
+            return Ok(false);
+        }
+        next.recompute(host)?;
+        next.validate_publish(host)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(true)
+    }
+    fn recompute<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+        let phase = self.phase();
+        let player = host.player()?;
+        if self.state.recompute_observed(
+            player,
+            &mut ObservedContext {
+                actual: host,
+                phase,
+            },
+        )? {
+            self.broadcast_inner(host)?;
+        }
+        Ok(())
+    }
+    pub fn click<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        token: AnvilMenuToken,
+        click: &ContainerClick,
+        host: &mut H,
+    ) -> Result<()> {
+        self.validate_token(token)?;
+        ensure!(click.window_id == self.window_id(), "wrong anvil window");
+        ensure!(click.slot < MENU_SLOTS as i16, "invalid anvil slot");
+        self.validate_host(host)?;
+        self.require_components(host, Some(click))?;
+        host.preflight_menu_action(AnvilMenuAction::Click(click.kind))?;
+        ensure!(self.still_valid(host)?, "anvil is no longer valid");
+        let mut next = self.staged_copy();
+        let before = next.state_id();
+        next.sync.suppress_remote_updates(true);
+        next.do_click(click, host)?;
+        let events =
+            next.sync
+                .finish_click(click, before, &next.top(), host.inventory(), &next.data())?;
+        next.publish_sync(events, host)?;
+        next.validate_publish(host)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(())
+    }
+    pub fn close<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        token: AnvilMenuToken,
+        context: MenuCloseContext,
+        host: &mut H,
+    ) -> Result<()> {
+        self.validate_token(token)?;
+        self.validate_host(host)?;
+        self.require_components(host, None)?;
+        host.preflight_menu_action(AnvilMenuAction::Close(context))?;
+        let mut next = self.staged_copy();
+        next.reset_drag();
+        // removed() returns cursor first. Input removeItemNoUpdate preserves
+        // old derived preview/cost at each subsequent return/drop callback.
+        next.close_return(&mut [], context, host)?;
+        for index in 0..INPUT_SLOTS {
+            let mut input = next.state.inputs()[index].clone();
+            next.state
+                .mutate_input_in_place(index, ItemStack::empty())?;
+            next.close_return(std::slice::from_mut(&mut input), context, host)?;
+        }
+        next.state.close_inputs();
+        next.active = false;
+        next.validate_publish(host)?;
+        next.advance_revision()?;
+        *self = next;
+        Ok(())
+    }
+    fn close_return<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        inputs: &mut [ItemStack],
+        context: MenuCloseContext,
+        host: &mut H,
+    ) -> Result<()> {
+        // Shared removal uses scratch snapshots. Replay onto the SAME canonical
+        // staged inventory before each actual callback; no second live owner.
+        let cursor = inputs.is_empty();
+        let mut returning = if cursor {
+            self.carried().clone()
+        } else {
+            inputs[0].clone()
+        };
+        let before = host.inventory().clone();
+        let removal = self
+            .sync
+            .close_inputs_ordered(inputs, host.inventory_mut(), context)?;
+        let after = host.inventory().clone();
+        *host.inventory_mut() = before;
+        if cursor {
+            self.sync.set_carried(returning.clone());
+        }
+        for event in removal.events {
+            match event {
+                MenuRemovalEvent::Packet { index } => {
+                    let packet = removal.outcome.packets[index].clone();
+                    let added = Self::observe_return_packet(&packet, &returning, host)?;
+                    returning = counted(&returning, returning.count - added);
+                    if cursor {
+                        self.sync.set_carried(returning.clone());
+                    }
+                    self.publish_sync(vec![SyncEvent::Packet(packet)], host)?;
+                }
+                MenuRemovalEvent::Drop { index } => {
+                    let dropped = removal.outcome.drops[index].clone();
+                    ensure!(dropped.stack == returning, "anvil close drop phase changed");
+                    host.stage_drop(dropped, &self.phase())?;
+                    returning = ItemStack::empty();
+                    if cursor {
+                        self.sync.set_carried(ItemStack::empty());
+                    }
+                }
+            }
+        }
+        *host.inventory_mut() = after;
+        if cursor {
+            self.sync.set_carried(ItemStack::empty());
+        }
+        Ok(())
+    }
+    fn observe_return_packet<H: AnvilMenuHost<Binding = K>>(
+        packet: &crate::protocol::Packet,
+        returning: &ItemStack,
+        host: &mut H,
+    ) -> Result<i32> {
+        ensure!(packet.id == 0x15, "unsupported anvil close packet");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        ensure!(
+            reader.i8()? == -2 && reader.varint()? == 0,
+            "expected raw inventory close packet"
+        );
+        let raw = reader.i16()?;
+        let slot = match raw {
+            0..=8 => 36 + raw as usize,
+            9..=35 => raw as usize,
+            40 => 45,
+            _ => anyhow::bail!("invalid anvil close raw slot"),
+        };
+        let stack = ItemStack::decode_exact(reader.remaining())?;
+        ensure!(
+            stack.same_item_same_components(returning)?,
+            "anvil close return item changed"
+        );
+        let old = host.inventory().slot(slot).expect("raw inventory slot");
+        let old_count = if old.is_empty() {
+            0
+        } else {
+            ensure!(
+                old.same_item_same_components(&stack)?,
+                "anvil close overwrote another item"
+            );
+            old.count
+        };
+        let added = stack.count - old_count;
+        ensure!(
+            added > 0 && added <= returning.count,
+            "invalid anvil close insertion count"
+        );
+        host.inventory_mut().set_slot_authoritative(slot, stack);
+        Ok(added)
+    }
+    fn slot<H: AnvilMenuHost<Binding = K>>(&self, index: usize, host: &H) -> ItemStack {
+        match index {
+            0 | 1 => self.state.inputs()[index].clone(),
+            RESULT_SLOT => self.state.preview().stack.clone(),
+            _ => host
+                .inventory()
+                .slot(index + 6)
+                .expect("validated anvil player slot")
+                .clone(),
+        }
+    }
+    fn may_place(index: usize, _: &ItemStack) -> bool {
+        index != RESULT_SLOT
+    }
+    fn limit(_: usize, item: &ItemStack) -> Result<i32> {
+        Ok(item.max_stack_size()?.min(99))
+    }
+    fn may_pickup<H: AnvilMenuHost<Binding = K>>(&self, index: usize, host: &H) -> Result<bool> {
+        if index == RESULT_SLOT {
+            Ok(self.state.preview().level_cost > 0 && {
+                let player = host.player()?;
+                player.instabuild || player.experience_level >= self.state.preview().level_cost
+            })
+        } else {
+            Ok(true)
+        }
+    }
+    fn mutate_raw<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        item: ItemStack,
+        host: &mut H,
+    ) -> Result<()> {
+        match index {
+            0 | 1 => self.state.mutate_input_in_place(index, item),
+            RESULT_SLOT => self.state.mutate_result_in_place(item),
+            _ => {
+                host.inventory_mut().set_slot_authoritative(index + 6, item);
+                Ok(())
+            }
+        }
+    }
+    fn changed<H: AnvilMenuHost<Binding = K>>(&mut self, index: usize, host: &mut H) -> Result<()> {
+        if index < INPUT_SLOTS {
+            host.input_container_set_changed(&self.phase())?;
+            self.broadcast_inner(host)?; // superclass slotsChanged precedes createResult
+            self.recompute(host)
+        } else if index == RESULT_SLOT {
+            Ok(())
+        } else {
+            host.player_inventory_set_changed(&self.phase())
+        }
+    }
+    fn set_container_input<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        item: ItemStack,
+        host: &mut H,
+    ) -> Result<()> {
+        let item = counted(&item, item.count.min(Self::limit(index, &item)?));
+        self.mutate_raw(index, item, host)?;
+        self.changed(index, host)
+    }
+    fn set_slot<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        item: ItemStack,
+        host: &mut H,
+    ) -> Result<()> {
+        if index < INPUT_SLOTS {
+            self.set_container_input(index, item, host)?;
+        } else {
+            self.mutate_raw(index, item, host)?;
+        }
+        self.changed(index, host)
+    }
+    fn on_take<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        _: &ItemStack,
+        host: &mut H,
+    ) -> Result<()> {
+        if index != RESULT_SLOT {
+            return self.changed(index, host);
+        }
+        let player = host.player()?;
+        if !player.instabuild {
+            host.give_experience_levels(-self.state.preview().level_cost, &self.phase())?;
+        }
+        self.set_container_input(0, ItemStack::empty(), host)?;
+        let material = self.state.preview().repair_material_count;
+        let addition = self.state.inputs()[1].clone();
+        let remainder = if material > 0 && !addition.is_empty() && addition.count > material {
+            counted(&addition, addition.count - material)
+        } else {
+            ItemStack::empty()
+        };
+        self.set_container_input(1, remainder, host)?;
+        self.state.reset_cost_after_take();
+        host.observe_menu_phase(&self.phase())?;
+        finish_anvil_take(host.player()?.instabuild, host)
+    }
+    fn try_remove<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        amount: i32,
+        maximum: i32,
+        host: &mut H,
+    ) -> Result<ItemStack> {
+        if !self.may_pickup(index, host)? {
+            return Ok(ItemStack::empty());
+        }
+        let source = self.slot(index, host);
+        if index == RESULT_SLOT && maximum < source.count {
+            return Ok(ItemStack::empty());
+        }
+        // ResultContainer.removeItem ignores the requested amount, returning
+        // its entire derived stack. Ordinary input/player slots split normally.
+        let taken = if index == RESULT_SLOT {
+            source.clone()
+        } else {
+            counted(&source, amount.min(maximum).min(source.count))
+        };
+        if taken.is_empty() {
+            return Ok(taken);
+        }
+        self.mutate_raw(index, counted(&source, source.count - taken.count), host)?;
+        if index < INPUT_SLOTS {
+            self.changed(index, host)?;
+        }
+        if self.slot(index, host).is_empty() {
+            self.set_slot(index, ItemStack::empty(), host)?;
+        }
+        Ok(taken)
+    }
+    fn safe_take<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        amount: i32,
+        maximum: i32,
+        host: &mut H,
+    ) -> Result<ItemStack> {
+        let taken = self.try_remove(index, amount, maximum, host)?;
+        if !taken.is_empty() {
+            self.on_take(index, &taken, host)?;
+        }
+        Ok(taken)
+    }
+    fn drop<H: AnvilMenuHost<Binding = K>>(&self, stack: ItemStack, host: &mut H) -> Result<()> {
+        if !stack.is_empty() {
+            host.stage_drop(
+                DroppedStack {
+                    stack,
+                    around: false,
+                    trace_item: true,
+                },
+                &self.phase(),
+            )?;
+        }
+        Ok(())
+    }
+    fn do_click<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        click: &ContainerClick,
+        host: &mut H,
+    ) -> Result<()> {
+        let slot = click.slot as i32;
+        let button = click.button as i32;
+        let creative = host.player()?.instabuild;
+        if click.kind == ClickType::QuickCraft {
+            return self.quickcraft(slot, button, creative, host);
+        }
+        if self.drag_status != 0 {
+            self.reset_drag();
+            return Ok(());
+        }
+        match click.kind {
+            ClickType::Pickup | ClickType::QuickMove if button == 0 || button == 1 => {
+                if slot == -999 {
+                    let source = self.carried().clone();
+                    let n = if button == 0 {
+                        source.count
+                    } else {
+                        1.min(source.count)
+                    };
+                    if button == 1 {
+                        // Source carried.split(1) precedes the right-drop call.
+                        self.sync.set_carried(counted(&source, source.count - n));
+                        self.drop(counted(&source, n), host)?;
+                    } else {
+                        self.drop(counted(&source, n), host)?;
+                        self.sync.set_carried(ItemStack::empty());
+                    }
+                } else if slot >= 0 {
+                    if click.kind == ClickType::QuickMove {
+                        loop {
+                            let before = self.slot(slot as usize, host);
+                            if !self.quick_move(slot as usize, host)?
+                                || self.slot(slot as usize, host).item_id != before.item_id
+                            {
+                                break;
+                            }
+                        }
+                    } else {
+                        self.pickup(slot as usize, button, host)?;
+                    }
+                }
+            }
+            ClickType::Swap if ((0..9).contains(&button) || button == 40) && slot >= 0 => {
+                self.swap(slot as usize, button, host)?
+            }
+            ClickType::Clone if creative && slot >= 0 && self.carried().is_empty() => {
+                let item = self.slot(slot as usize, host);
+                self.sync
+                    .set_carried(counted(&item, item.max_stack_size()?));
+            }
+            ClickType::Throw if slot >= 0 && self.carried().is_empty() => {
+                let n = if button == 0 {
+                    1
+                } else {
+                    self.slot(slot as usize, host).count
+                };
+                let taken = self.safe_take(slot as usize, n, i32::MAX, host)?;
+                self.drop(taken, host)?;
+            }
+            ClickType::PickupAll if slot >= 0 => self.pickup_all(slot as usize, button, host)?,
+            _ => {}
+        }
+        Ok(())
+    }
+    fn pickup<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        button: i32,
+        host: &mut H,
+    ) -> Result<()> {
+        let source = self.slot(index, host);
+        let cursor = self.carried().clone();
+        if !source.is_empty() && !self.may_pickup(index, host)? {
+            return Ok(());
+        }
+        ensure!(
+            inventory::item_name(source.item_id) != Some("bundle")
+                && inventory::item_name(cursor.item_id) != Some("bundle"),
+            "bundle click overrides require actual bundle owner"
+        );
+        if source.is_empty() {
+            if !cursor.is_empty() && Self::may_place(index, &cursor) {
+                let n =
+                    (if button == 0 { cursor.count } else { 1 }).min(Self::limit(index, &cursor)?);
+                self.sync.set_carried(counted(&cursor, cursor.count - n));
+                self.set_slot(index, counted(&cursor, n), host)?;
+            }
+        } else if cursor.is_empty() {
+            let amount = if button == 0 {
+                source.count
+            } else {
+                (source.count + 1) / 2
+            };
+            let taken = self.try_remove(index, amount, i32::MAX, host)?;
+            if !taken.is_empty() {
+                self.sync.set_carried(taken.clone());
+                self.on_take(index, &self.carried().clone(), host)?;
+            }
+        } else if Self::may_place(index, &cursor) {
+            if source.same_item_same_components(&cursor)? {
+                let n = (if button == 0 { cursor.count } else { 1 })
+                    .min(Self::limit(index, &cursor)? - source.count);
+                // Slot.safeInsert retains negative capacity for an admitted
+                // overfull stack: shrink(cursor,n) grows that cursor while
+                // grow(source,n) restores the slot to its limit. It also calls
+                // setByPlayer when a full slot accepts exactly zero items.
+                self.sync.set_carried(counted(&cursor, cursor.count - n));
+                self.set_slot(index, counted(&source, source.count + n), host)?;
+            } else if cursor.count <= Self::limit(index, &cursor)? {
+                self.sync.set_carried(source);
+                self.set_slot(index, cursor, host)?;
+            }
+        } else if source.same_item_same_components(&cursor)? {
+            let taken = self.try_remove(
+                index,
+                source.count,
+                cursor.max_stack_size()? - cursor.count,
+                host,
+            )?;
+            if !taken.is_empty() {
+                self.sync
+                    .set_carried(counted(&cursor, cursor.count + taken.count));
+                self.on_take(index, &taken, host)?;
+            }
+        }
+        self.changed(index, host) // unconditional Slot.setChanged after Pickup
+    }
+    fn move_to<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        source_index: usize,
+        stack: &mut ItemStack,
+        range: std::ops::Range<usize>,
+        reverse: bool,
+        host: &mut H,
+    ) -> Result<bool> {
+        let before = stack.count;
+        let order = if reverse {
+            range.rev().collect::<Vec<_>>()
+        } else {
+            range.collect()
+        };
+        if stack.is_stackable()? {
+            for &index in &order {
+                let old = self.slot(index, host);
+                if !old.is_empty() && old.same_item_same_components(stack)? {
+                    let n = stack
+                        .count
+                        .min((Self::limit(index, &old)? - old.count).max(0));
+                    if n > 0 {
+                        *stack = counted(stack, stack.count - n);
+                        self.mutate_raw(source_index, stack.clone(), host)?;
+                        self.mutate_raw(index, counted(&old, old.count + n), host)?;
+                        self.changed(index, host)?;
+                    }
+                }
+                if stack.is_empty() {
+                    break;
+                }
+            }
+        }
+        if !stack.is_empty() {
+            for index in order {
+                if self.slot(index, host).is_empty() && Self::may_place(index, stack) {
+                    let n = stack.count.min(Self::limit(index, stack)?);
+                    let moved = counted(stack, n);
+                    *stack = counted(stack, stack.count - n);
+                    self.mutate_raw(source_index, stack.clone(), host)?;
+                    self.set_slot(index, moved, host)?;
+                    self.changed(index, host)?;
+                    break;
+                }
+            }
+        }
+        Ok(before != stack.count)
+    }
+    fn quick_move<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        host: &mut H,
+    ) -> Result<bool> {
+        if !self.may_pickup(index, host)? {
+            return Ok(false);
+        }
+        let source = self.slot(index, host);
+        if source.is_empty() {
+            return Ok(false);
+        }
+        let mut left = source.clone();
+        let moved = if index == RESULT_SLOT {
+            self.move_to(index, &mut left, 3..MENU_SLOTS, true, host)?
+        } else if index < INPUT_SLOTS {
+            self.move_to(index, &mut left, 3..MENU_SLOTS, false, host)?
+        } else {
+            // Anvil inherits canMoveIntoInputSlots=true: any player item tries
+            // both ordinary inputs, with no synthetic recipe classification.
+            self.move_to(index, &mut left, 0..RESULT_SLOT, false, host)?
+        };
+        if !moved {
+            return Ok(false);
+        }
+        if left.is_empty() {
+            self.set_slot(index, ItemStack::empty(), host)?;
+        } else {
+            self.changed(index, host)?;
+        }
+        self.on_take(index, &left, host)?;
+        Ok(true)
+    }
+    fn swap<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        index: usize,
+        button: i32,
+        host: &mut H,
+    ) -> Result<()> {
+        let player_index = if button == 40 {
+            45
+        } else {
+            36 + button as usize
+        };
+        let held = host
+            .inventory()
+            .slot(player_index)
+            .expect("hotbar/offhand")
+            .clone();
+        let source = self.slot(index, host);
+        if !self.may_pickup(index, host)? {
+            return Ok(());
+        }
+        if held.is_empty() && source.is_empty() {
+            return Ok(());
+        }
+        if held.is_empty() {
+            host.inventory_mut()
+                .set_slot_authoritative(player_index, source.clone());
+            self.set_slot(index, ItemStack::empty(), host)?;
+            self.on_take(index, &source, host)?;
+        } else if Self::may_place(index, &held) {
+            let maximum = Self::limit(index, &held)?;
+            if source.is_empty() {
+                host.inventory_mut().set_slot_authoritative(
+                    player_index,
+                    counted(&held, held.count - maximum.min(held.count)),
+                );
+                self.set_slot(index, counted(&held, maximum.min(held.count)), host)?;
+            } else if held.count > maximum {
+                host.inventory_mut()
+                    .set_slot_authoritative(player_index, counted(&held, held.count - maximum));
+                self.set_slot(index, counted(&held, maximum), host)?;
+                self.on_take(index, &source, host)?;
+                let mut displaced = if index >= INPUT_SLOTS && index + 6 == player_index {
+                    // Java source/held locals alias the pre-split stack. After
+                    // split the displaced local references only its remainder.
+                    counted(&source, source.count - maximum)
+                } else {
+                    source
+                };
+                if !host.add_to_player_inventory(&mut displaced, &self.phase())? {
+                    self.drop(displaced, host)?;
+                }
+            } else {
+                host.inventory_mut()
+                    .set_slot_authoritative(player_index, source.clone());
+                self.set_slot(index, held, host)?;
+                self.on_take(index, &source, host)?;
+            }
+        }
+        Ok(())
+    }
+    fn pickup_all<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        clicked: usize,
+        button: i32,
+        host: &mut H,
+    ) -> Result<()> {
+        if self.carried().is_empty()
+            || (!self.slot(clicked, host).is_empty() && self.may_pickup(clicked, host)?)
+        {
+            return Ok(());
+        }
+        let order = if button == 0 {
+            (0..MENU_SLOTS).collect::<Vec<_>>()
+        } else {
+            (0..MENU_SLOTS).rev().collect()
+        };
+        for pass in 0..2 {
+            for &index in &order {
+                let source = self.slot(index, host);
+                let cursor = self.carried().clone();
+                if cursor.count >= cursor.max_stack_size()? {
+                    break;
+                }
+                if source.is_empty()
+                    || !source.same_item_same_components(&cursor)?
+                    || source.count > cursor.max_stack_size()?
+                    || !self.may_pickup(index, host)?
+                    || pass == 0 && source.count == source.max_stack_size()?
+                {
+                    continue;
+                }
+                let taken = self.safe_take(
+                    index,
+                    source.count,
+                    cursor.max_stack_size()? - cursor.count,
+                    host,
+                )?;
+                self.sync
+                    .set_carried(counted(&cursor, cursor.count + taken.count));
+            }
+        }
+        Ok(())
+    }
+    fn quickcraft<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        slot: i32,
+        button: i32,
+        creative: bool,
+        host: &mut H,
+    ) -> Result<()> {
+        let previous = self.drag_status;
+        self.drag_status = (button & 3) as u8;
+        if !(previous == 1 && self.drag_status == 2) && previous != self.drag_status {
+            self.reset_drag();
+            return Ok(());
+        }
+        if self.carried().is_empty() {
+            self.reset_drag();
+            return Ok(());
+        }
+        match self.drag_status {
+            0 => {
+                self.drag_type = ((button >> 2) & 3) as u8;
+                if self.drag_type < 2 || self.drag_type == 2 && creative {
+                    self.drag_status = 1;
+                    self.drag_slots.clear();
+                } else {
+                    self.reset_drag();
+                }
+            }
+            1 => {
+                if slot >= 0 {
+                    let index = slot as usize;
+                    let old = self.slot(index, host);
+                    let cursor = self.carried();
+                    if (old.is_empty()
+                        || old.same_item_same_components(cursor)?
+                            && old.count <= cursor.max_stack_size()?)
+                        && Self::may_place(index, cursor)
+                        && (self.drag_type == 2 || cursor.count > self.drag_slots.len() as i32)
+                    {
+                        self.drag_slots.insert(index);
+                    }
+                }
+            }
+            2 => {
+                if self.drag_slots.is_empty() {
+                    self.reset_drag();
+                    return Ok(());
+                }
+                if self.drag_slots.len() == 1 {
+                    let index = *self.drag_slots.first().unwrap();
+                    let kind = self.drag_type as i32;
+                    self.reset_drag();
+                    // Source recursively dispatches PICKUP with this button;
+                    // only 0/1 pass that dispatcher's guard. Creative type2
+                    // with one selected slot consequently does nothing.
+                    return if kind <= 1 {
+                        self.pickup(index, kind, host)
+                    } else {
+                        Ok(())
+                    };
+                }
+                let cursor = self.carried().clone();
+                let mut remaining = cursor.count;
+                let selected = self.drag_slots.iter().copied().collect::<Vec<_>>();
+                let order = host.quickcraft_iteration_order(&selected)?;
+                ensure!(
+                    order.len() == selected.len()
+                        && order.iter().copied().collect::<BTreeSet<_>>() == self.drag_slots,
+                    "invalid actual quickcraft encounter order"
+                );
+                let each = match self.drag_type {
+                    0 => cursor.count / self.drag_slots.len().max(1) as i32,
+                    1 => 1,
+                    2 => cursor.max_stack_size()?,
+                    _ => 0,
+                };
+                for index in order {
+                    let old = self.slot(index, host);
+                    if (!old.is_empty()
+                        && (!old.same_item_same_components(&cursor)?
+                            || old.count > cursor.max_stack_size()?))
+                        || !Self::may_place(index, &cursor)
+                        || self.drag_type != 2 && cursor.count < self.drag_slots.len() as i32
+                    {
+                        continue;
+                    }
+                    let count = (each + old.count).min(Self::limit(index, &cursor)?);
+                    remaining -= count - old.count;
+                    self.set_slot(index, counted(&cursor, count), host)?;
+                }
+                self.sync.set_carried(counted(&cursor, remaining));
+                self.reset_drag();
+            }
+            _ => self.reset_drag(),
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        crafting::RecipeBook,
+        inventory::Component,
+        protocol::{Reader, Writer},
+    };
+    use std::collections::BTreeMap;
+    #[derive(Clone, Debug)]
+    struct Event {
+        name: &'static str,
+        phase: AnvilPhase,
+        inventory: PlayerInventory,
+    }
+    #[derive(Clone)]
+    struct Host {
+        inventory: PlayerInventory,
+        binding: u64,
+        player: AnvilPlayer,
+        valid: bool,
+        block: i32,
+        random: f32,
+        draws: usize,
+        events: Vec<Event>,
+        sync: Vec<SyncEvent>,
+        drops: Vec<DroppedStack>,
+        xp: Vec<i32>,
+        current: Option<AnvilPhase>,
+    }
+    impl Host {
+        fn new() -> Self {
+            Self {
+                inventory: PlayerInventory::default(),
+                binding: 42,
+                player: AnvilPlayer {
+                    instabuild: false,
+                    experience_level: 100,
+                },
+                valid: true,
+                block: 0,
+                random: 0.5,
+                draws: 0,
+                events: vec![],
+                sync: vec![],
+                drops: vec![],
+                xp: vec![],
+                current: None,
+            }
+        }
+        fn record(&mut self, name: &'static str, phase: &AnvilPhase) {
+            self.events.push(Event {
+                name,
+                phase: phase.clone(),
+                inventory: self.inventory.clone(),
+            });
+        }
+        fn world_event(&mut self, name: &'static str) {
+            self.record(
+                name,
+                &self.current.clone().expect("actual staged menu phase"),
+            );
+        }
+    }
+    impl AnvilContext for Host {
+        fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
+            self.world_event("repair-rule");
+            Ok(
+                base.item_id == RecipeBook::vanilla().item_id("iron_sword").unwrap()
+                    && addition.item_id == RecipeBook::vanilla().item_id("iron_ingot").unwrap(),
+            )
+        }
+        fn hover_name(&mut self, _: &ItemStack) -> Result<JavaString> {
+            self.world_event("hover-name");
+            Ok("Original".into())
+        }
+    }
+    impl WorkstationAccess for Host {
+        fn block_matches(&self, kind: WorkstationKind) -> Result<bool> {
+            assert_eq!(kind, WorkstationKind::Anvil);
+            Ok(self.valid)
+        }
+        fn player_can_interact_with_block(&self, range: f64) -> Result<bool> {
+            assert_eq!(range, 4.0);
+            Ok(self.valid)
+        }
+    }
+    impl AnvilWorldAccess for Host {
+        type BlockState = i32;
+        fn block_state(&mut self) -> Result<i32> {
+            self.world_event("block");
+            Ok(self.block)
+        }
+        fn is_anvil(&self, state: &i32) -> Result<bool> {
+            Ok((0..=2).contains(state))
+        }
+        fn player_random_next_float(&mut self) -> Result<f32> {
+            self.world_event("player-random");
+            self.draws += 1;
+            Ok(self.random)
+        }
+        fn damaged_state(&self, state: &i32) -> Result<Option<i32>> {
+            Ok((*state < 2).then_some(*state + 1))
+        }
+        fn destroy_block_without_drop(&mut self) -> Result<()> {
+            self.world_event("destroy");
+            self.block = -1;
+            Ok(())
+        }
+        fn set_block(&mut self, state: i32, flags: i32) -> Result<()> {
+            assert_eq!(flags, 2);
+            self.world_event("set-block");
+            self.block = state;
+            Ok(())
+        }
+        fn level_event(&mut self, event: i32, data: i32) -> Result<()> {
+            assert_eq!(data, 0);
+            self.world_event(if event == 1029 {
+                "event1029"
+            } else {
+                assert_eq!(event, 1030);
+                "event1030"
+            });
+            Ok(())
+        }
+    }
+    impl AnvilMenuHost for Host {
+        type Binding = u64;
+        fn binding(&self) -> &u64 {
+            &self.binding
+        }
+        fn inventory(&self) -> &PlayerInventory {
+            &self.inventory
+        }
+        fn inventory_mut(&mut self) -> &mut PlayerInventory {
+            &mut self.inventory
+        }
+        fn player(&self) -> Result<AnvilPlayer> {
+            Ok(self.player)
+        }
+        fn preflight_menu_action(&mut self, _: AnvilMenuAction) -> Result<()> {
+            Ok(())
+        }
+        fn observe_menu_phase(&mut self, phase: &AnvilPhase) -> Result<()> {
+            self.current = Some(phase.clone());
+            Ok(())
+        }
+        fn stage_sync_events(&mut self, events: Vec<SyncEvent>, phase: &AnvilPhase) -> Result<()> {
+            self.record("sync", phase);
+            self.sync.extend(events);
+            Ok(())
+        }
+        fn input_container_set_changed(&mut self, phase: &AnvilPhase) -> Result<()> {
+            self.record("input-dirty", phase);
+            Ok(())
+        }
+        fn player_inventory_set_changed(&mut self, phase: &AnvilPhase) -> Result<()> {
+            self.record("inventory-dirty", phase);
+            Ok(())
+        }
+        fn give_experience_levels(&mut self, delta: i32, phase: &AnvilPhase) -> Result<()> {
+            self.record("xp", phase);
+            self.xp.push(delta);
+            self.player.experience_level += delta;
+            Ok(())
+        }
+        fn add_to_player_inventory(
+            &mut self,
+            stack: &mut ItemStack,
+            phase: &AnvilPhase,
+        ) -> Result<bool> {
+            self.record("add", phase);
+            for i in 9..45 {
+                if self.inventory.slot(i).unwrap().is_empty() {
+                    self.inventory
+                        .set_slot_authoritative(i, std::mem::take(stack));
+                    return Ok(true);
+                }
+            }
+            Ok(false)
+        }
+        fn stage_drop(&mut self, stack: DroppedStack, phase: &AnvilPhase) -> Result<()> {
+            self.record("drop", phase);
+            self.drops.push(stack);
+            Ok(())
+        }
+        fn quickcraft_iteration_order(&self, selected: &[usize]) -> Result<Vec<usize>> {
+            Ok(selected.to_vec())
+        }
+    }
+    fn item(name: &str, count: i32) -> ItemStack {
+        ItemStack::new(RecipeBook::vanilla().item_id(name).unwrap(), count).unwrap()
+    }
+    fn int_component(stack: &mut ItemStack, id: i32, value: i32) {
+        let mut w = Writer::new();
+        w.varint(value);
+        stack.components.retain(|c| c.type_id != id);
+        stack.components.push(Component {
+            type_id: id,
+            data: w.into_inner(),
+        });
+        stack.components.sort_by_key(|c| c.type_id);
+    }
+    fn click(
+        menu: &mut AnvilMenu<u64>,
+        host: &mut Host,
+        slot: i16,
+        button: i8,
+        kind: ClickType,
+    ) -> Result<()> {
+        // This test host demonstrates the mandatory whole-owner stage: errors
+        // publish neither native menu nor inventory/XP/RNG/block side effects.
+        let mut staged_menu = menu.staged_copy();
+        let mut staged_host = host.clone();
+        let packet = ContainerClick {
+            window_id: menu.window_id(),
+            state_id: menu.state_id(),
+            slot,
+            button,
+            kind,
+            changed_slots: BTreeMap::new(),
+            carried: ItemStack::empty(),
+        };
+        staged_menu.click(menu.token(), &packet, &mut staged_host)?;
+        *menu = staged_menu;
+        *host = staged_host;
+        Ok(())
+    }
+    fn rename(menu: &mut AnvilMenu<u64>, host: &mut Host, name: &str) -> Result<()> {
+        let mut staged_menu = menu.staged_copy();
+        let mut staged_host = host.clone();
+        assert!(staged_menu.set_item_name(menu.token(), &name.into(), &mut staged_host)?);
+        *menu = staged_menu;
+        *host = staged_host;
+        Ok(())
+    }
+    fn renamed_stack(count: i32) -> Result<(AnvilMenu<u64>, Host)> {
+        let mut host = Host::new();
+        host.inventory
+            .set_slot_authoritative(9, item("stone", count));
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        rename(&mut menu, &mut host, "Named")?;
+        assert_eq!(menu.state().preview().stack.count, count);
+        Ok((menu, host))
+    }
+    #[test]
+    fn repair_take_observes_previous_preview_cursor_xp_and_actual_player_rng_order() -> Result<()> {
+        let mut host = Host::new();
+        let mut sword = item("iron_sword", 1);
+        int_component(&mut sword, 3, 100);
+        host.inventory.set_slot_authoritative(9, sword);
+        host.inventory
+            .set_slot_authoritative(10, item("iron_ingot", 3));
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        host.events.clear();
+        click(&mut menu, &mut host, 4, 0, ClickType::QuickMove)?;
+        let first = host
+            .events
+            .iter()
+            .find(|e| e.name == "input-dirty")
+            .unwrap();
+        assert_eq!(first.phase.inputs[1].count, 3);
+        assert!(
+            first.inventory.slot(10).unwrap().is_empty(),
+            "source shared inventory shrinks before input listener callbacks"
+        );
+        assert!(first.phase.result_preview.is_empty());
+        assert_eq!(first.phase.level_cost, 0);
+        assert_eq!(menu.state().preview().level_cost, 2);
+        assert_eq!(menu.state().preview().repair_material_count, 2);
+        assert!(host
+            .events
+            .iter()
+            .filter(|e| e.name == "repair-rule")
+            .all(|e| e.phase.level_cost == 1));
+        host.events.clear();
+        host.random = 0.0;
+        host.block = 2;
+        click(&mut menu, &mut host, 2, 0, ClickType::Pickup)?;
+        assert_eq!(host.xp, [-2]);
+        assert_eq!(host.player.experience_level, 98);
+        assert_eq!(host.draws, 1);
+        assert_eq!(host.block, -1);
+        assert_eq!(menu.carried().damage_value()?, 0);
+        assert_eq!(menu.state().inputs()[1].count, 1);
+        let xp = host.events.iter().position(|e| e.name == "xp").unwrap();
+        assert!(!host.events[xp].phase.inputs[0].is_empty());
+        assert!(!host.events[xp].phase.carried.is_empty());
+        assert!(host.events[xp].phase.result_preview.is_empty());
+        assert_eq!(host.events[xp].phase.level_cost, 2);
+        let base = host
+            .events
+            .iter()
+            .position(|e| e.name == "input-dirty" && e.phase.inputs[0].is_empty())
+            .unwrap();
+        let addition = host
+            .events
+            .iter()
+            .position(|e| e.name == "input-dirty" && e.phase.inputs[1].count == 1)
+            .unwrap();
+        let block = host.events.iter().position(|e| e.name == "block").unwrap();
+        assert!(xp < base && base < addition && addition < block);
+        assert_eq!(host.events[base].phase.level_cost, 2);
+        assert_eq!(host.events[addition].phase.level_cost, 0);
+        assert_eq!(host.events[block].phase.level_cost, 0);
+        assert_eq!(
+            host.events
+                .iter()
+                .filter(|e| matches!(e.name, "block" | "player-random" | "destroy" | "event1029"))
+                .map(|e| e.name)
+                .collect::<Vec<_>>(),
+            ["block", "player-random", "destroy", "event1029"]
+        );
+        Ok(())
+    }
+    #[test]
+    fn whole_result_right_pickup_partial_shift_and_result_pickall_follow_source() -> Result<()> {
+        let (mut menu, mut host) = renamed_stack(64)?;
+        click(&mut menu, &mut host, 2, 1, ClickType::Pickup)?;
+        assert_eq!(menu.carried().count, 64);
+        assert_eq!(host.xp, [-1]);
+        assert!(menu.state().inputs()[0].is_empty());
+        let (mut menu, mut host) = renamed_stack(64)?;
+        for i in 9..45 {
+            host.inventory.set_slot_authoritative(i, item("dirt", 64));
+        }
+        host.inventory
+            .set_slot_authoritative(44, counted(&menu.state().preview().stack, 63));
+        click(&mut menu, &mut host, 2, 0, ClickType::QuickMove)?;
+        assert_eq!(host.inventory.slot(44).unwrap().count, 64);
+        assert_eq!(host.xp, [-1]);
+        assert!(menu.state().inputs()[0].is_empty());
+        assert!(menu.state().preview().stack.is_empty());
+        assert!(menu.carried().is_empty());
+        // Only the one free destination item was inserted; Java consumes the
+        // inputs and discards the remaining derived preview on this branch.
+        let (mut menu, mut host) = renamed_stack(1)?;
+        menu.sync.set_carried(menu.state().preview().stack.clone());
+        host.events.clear();
+        click(&mut menu, &mut host, 3, 0, ClickType::PickupAll)?;
+        assert_eq!(menu.carried().count, 2);
+        assert_eq!(host.xp, [-1]);
+        assert_eq!(
+            host.events
+                .iter()
+                .find(|e| e.name == "xp")
+                .unwrap()
+                .phase
+                .carried
+                .count,
+            1
+        );
+        Ok(())
+    }
+    #[test]
+    fn drag_swap_clone_throw_close_and_session_guards_keep_preview_unowned() -> Result<()> {
+        let mut host = Host::new();
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        let content = host
+            .sync
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .expect("initial anvil contents packet");
+        let mut reader = Reader::new(&content.payload);
+        assert_eq!(reader.u8()?, 7);
+        reader.varint()?;
+        assert_eq!(reader.varint()?, 39);
+        host.sync.clear();
+        assert!(menu.set_item_name(menu.token(), &"Early".into(), &mut host)?);
+        assert!(
+            host.sync.is_empty(),
+            "empty-base createResult returns before its tail broadcast"
+        );
+        menu.sync.set_carried(item("emerald", 4));
+        for (slot, button) in [(-999, 0), (0, 1), (1, 1), (-999, 2)] {
+            click(&mut menu, &mut host, slot, button, ClickType::QuickCraft)?;
+        }
+        assert_eq!(
+            menu.state()
+                .inputs()
+                .iter()
+                .map(|s| s.count)
+                .collect::<Vec<_>>(),
+            [2, 2]
+        );
+        assert!(menu.carried().is_empty());
+        host.inventory.set_slot_authoritative(45, item("coal", 3));
+        click(&mut menu, &mut host, 0, 40, ClickType::Swap)?;
+        assert_eq!(menu.state().inputs()[0], item("coal", 3));
+        assert_eq!(host.inventory.slot(45), Some(&item("emerald", 2)));
+        host.player.instabuild = true;
+        click(&mut menu, &mut host, 0, 0, ClickType::Clone)?;
+        assert_eq!(menu.carried().count, 64);
+        menu.sync.set_carried(ItemStack::empty());
+        click(&mut menu, &mut host, 0, 0, ClickType::Throw)?;
+        assert_eq!(host.drops.last().unwrap().stack, item("coal", 1));
+        assert_eq!(menu.state().inputs()[0], item("coal", 2));
+        let (mut menu, mut host) = renamed_stack(4)?;
+        menu.sync.set_carried(item("coal", 2));
+        host.events.clear();
+        let preview = menu.state().preview().stack.clone();
+        menu.close(
+            menu.token(),
+            MenuCloseContext::DeadOrDisconnected,
+            &mut host,
+        )?;
+        assert_eq!(
+            host.drops.iter().map(|d| d.stack.count).collect::<Vec<_>>(),
+            [2, 4]
+        );
+        let drops = host
+            .events
+            .iter()
+            .filter(|e| e.name == "drop")
+            .collect::<Vec<_>>();
+        assert_eq!(drops[0].phase.carried, item("coal", 2));
+        assert!(!drops[0].phase.inputs[0].is_empty());
+        assert!(drops[1].phase.carried.is_empty());
+        assert!(drops[1].phase.inputs[0].is_empty());
+        assert!(drops.iter().all(|e| e.phase.result_preview == preview));
+        assert!(menu.broadcast_changes(&mut host).is_err());
+        let (mut menu, mut host) = renamed_stack(4)?;
+        let preview = menu.state().preview().stack.clone();
+        for slot in 9..45 {
+            host.inventory
+                .set_slot_authoritative(slot, item("dirt", 64));
+        }
+        host.inventory.set_slot_authoritative(36, item("coal", 63));
+        host.inventory.set_slot_authoritative(10, item("stone", 63));
+        menu.sync.set_carried(item("coal", 2));
+        host.events.clear();
+        menu.close(menu.token(), MenuCloseContext::AliveConnected, &mut host)?;
+        assert_eq!(
+            host.drops.iter().map(|d| d.stack.count).collect::<Vec<_>>(),
+            [1, 3]
+        );
+        assert_eq!(
+            host.events.iter().map(|e| e.name).collect::<Vec<_>>(),
+            ["sync", "drop", "sync", "drop"]
+        );
+        assert_eq!(host.events[0].phase.carried, item("coal", 1));
+        assert_eq!(host.events[0].inventory.slot(36), Some(&item("coal", 64)));
+        assert_eq!(host.events[1].phase.carried, item("coal", 1));
+        assert!(host.events[2].phase.carried.is_empty());
+        assert_eq!(host.events[2].inventory.slot(10), Some(&item("stone", 64)));
+        assert!(host
+            .events
+            .iter()
+            .all(|e| e.phase.result_preview == preview));
+        let (mut menu, mut host) = renamed_stack(1)?;
+        host.binding += 1;
+        assert!(click(&mut menu, &mut host, 2, 0, ClickType::Pickup).is_err());
+        assert!(!menu.state().inputs()[0].is_empty());
+        host.binding -= 1;
+        host.valid = false;
+        assert!(rename(&mut menu, &mut host, "Other").is_err());
+        assert_eq!(menu.state().item_name(), Some(&"Named".into()));
+        Ok(())
+    }
+    #[test]
+    fn repair_material_counter_changes_before_actual_repair_and_hover_callbacks() -> Result<()> {
+        let mut host = Host::new();
+        let mut sword = item("iron_sword", 1);
+        int_component(&mut sword, 3, 100);
+        host.inventory.set_slot_authoritative(9, sword);
+        host.inventory
+            .set_slot_authoritative(10, item("iron_ingot", 3));
+        let mut menu = AnvilMenu::new(7, &host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        click(&mut menu, &mut host, 4, 0, ClickType::QuickMove)?;
+        assert_eq!(menu.state().preview().repair_material_count, 2);
+        rename(&mut menu, &mut host, "Named")?;
+        assert!(host
+            .events
+            .iter()
+            .any(|e| e.name == "hover-name" && e.phase.repair_material_count == 2));
+        host.events.clear();
+        // Removing half of three materials leaves one; recomputation starts
+        // from the previous two-material preview before reset0 and assignment1.
+        click(&mut menu, &mut host, 1, 1, ClickType::Pickup)?;
+        let repair = host
+            .events
+            .iter()
+            .filter(|e| e.name == "repair-rule")
+            .collect::<Vec<_>>();
+        let hover = host
+            .events
+            .iter()
+            .filter(|e| e.name == "hover-name")
+            .collect::<Vec<_>>();
+        assert!(!repair.is_empty() && !hover.is_empty());
+        assert!(repair
+            .iter()
+            .all(|e| e.phase.level_cost == 1 && e.phase.repair_material_count == 0));
+        assert!(hover
+            .iter()
+            .all(|e| e.phase.level_cost == 1 && e.phase.repair_material_count == 1));
+        assert_eq!(menu.state().preview().repair_material_count, 1);
+        Ok(())
+    }
+    #[test]
+    fn unresolved_food_predictions_actual_stacks_and_reused_ui_never_publish() -> Result<()> {
+        let explicit_food = |mut stack: ItemStack| {
+            let data = stack.effective_component_bytes(20).unwrap().to_vec();
+            stack.components.push(Component { type_id: 20, data });
+            stack
+        };
+        let food = explicit_food(item("mushroom_stew", 1));
+        let mut host = Host::new();
+        host.inventory.set_slot_authoritative(9, item("stone", 1));
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        host.events.clear();
+        host.sync.clear();
+        let token = menu.token();
+        let mut packet = ContainerClick {
+            window_id: menu.window_id(),
+            state_id: menu.state_id(),
+            slot: 3,
+            button: 0,
+            kind: ClickType::Pickup,
+            changed_slots: BTreeMap::new(),
+            carried: food.clone(),
+        };
+        assert!(menu.click(token, &packet, &mut host).is_err());
+        packet.carried = ItemStack::empty();
+        packet.changed_slots.insert(3, food.clone());
+        assert!(menu.click(token, &packet, &mut host).is_err());
+        assert_eq!(menu.token(), token);
+        assert!(menu.carried().is_empty());
+        assert_eq!(host.inventory.slot(9), Some(&item("stone", 1)));
+        assert!(host.events.is_empty() && host.sync.is_empty());
+        host.inventory.set_slot_authoritative(45, food);
+        assert!(menu.broadcast_changes(&mut host).is_err());
+        assert!(menu.set_item_name(token, &"X".into(), &mut host).is_err());
+        assert!(menu
+            .close(token, MenuCloseContext::AliveConnected, &mut host)
+            .is_err());
+        assert_eq!(menu.token(), token);
+        assert!(host.events.is_empty());
+        // Primitive-only prototype elision certified by the shared helper stays
+        // supported; equal wire bytes for nested ItemStacks do not grant that.
+        host.inventory
+            .set_slot_authoritative(45, explicit_food(item("bread", 1)));
+        menu.broadcast_changes(&mut host)?;
+        let now = menu.token();
+        assert_ne!(now, token);
+        packet.changed_slots.clear();
+        assert!(menu.click(token, &packet, &mut host).is_err());
+        assert!(menu.set_item_name(token, &"X".into(), &mut host).is_err());
+        assert!(menu
+            .close(token, MenuCloseContext::DeadOrDisconnected, &mut host)
+            .is_err());
+        let mut reopened = AnvilMenu::new(7, &host)?;
+        assert!(reopened.click(now, &packet, &mut host).is_err());
+        menu.close(now, MenuCloseContext::DeadOrDisconnected, &mut host)?;
+        assert!(menu.click(menu.token(), &packet, &mut host).is_err());
+        assert!(menu.initialize(&mut host).is_err());
+        Ok(())
+    }
+    #[test]
+    fn unsupported_enchantment_transfer_discards_entire_actual_host_stage() -> Result<()> {
+        let mut host = Host::new();
+        host.inventory
+            .set_slot_authoritative(9, item("iron_sword", 1));
+        let mut menu = AnvilMenu::new(7, &host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        let mut sacrifice = item("iron_sword", 1);
+        let mut w = Writer::new();
+        w.varint(1).varint(0).varint(1).bool(true);
+        sacrifice.components.push(Component {
+            type_id: 9,
+            data: w.into_inner(),
+        });
+        host.inventory.set_slot_authoritative(10, sacrifice.clone());
+        let before = host.events.len();
+        assert!(click(&mut menu, &mut host, 4, 0, ClickType::QuickMove).is_err());
+        assert_eq!(host.inventory.slot(10), Some(&sacrifice));
+        assert!(menu.state().inputs()[1].is_empty());
+        assert_eq!(host.events.len(), before);
+        assert!(host.xp.is_empty());
+        assert_eq!(host.draws, 0);
+        assert!(host.events.iter().all(|e| e.inventory.slots().len() == 46));
+        Ok(())
+    }
+}

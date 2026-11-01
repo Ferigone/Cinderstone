@@ -93,6 +93,31 @@ fn still_valid(world: &mut WorldBackend, player: &PlayerState, key: &ContainerKe
     Ok(true)
 }
 impl Server {
+    /// Genuine sendAllDataToRemote on the retained current block menu. This
+    /// refreshes remote predictions only; it does not run a click, reinitialize
+    /// local listeners or move this external menu's cursor into InventoryMenu.
+    pub(super) fn resync_native_container_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        _now: i64,
+        _border: CollisionBorder,
+    ) -> Result<()> {
+        let mut open = players.native_containers.menus.get(&id).cloned()
+            .context("resync requires the actual current native container")?;
+        let shared = players.containers.get(&id)
+            .context("native container resync inventory missing")?.clone();
+        let WorldBackend::Fixture(flat) = &*world else {
+            bail!("native container resync requires its actual block-entity owner")
+        };
+        let top = flat.native_block_entities().read_slots(&open.key)?;
+        let packet = shared.read(|menu| open.menu.full_sync(&top, &menu.inventory))??;
+        players.native_containers.menus.insert(id, open);
+        send_private(&self.entity_events, id, vec![packet]);
+        Ok(())
+    }
+
     pub(super) fn close_inventory_menu_locked(
         &self,
         world: &mut WorldBackend,

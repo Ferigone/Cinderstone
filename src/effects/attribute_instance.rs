@@ -1,11 +1,13 @@
-//! Stateful Java 1.21 `AttributeInstance` (`bus`, source lines 26–163).
+//! Stateful Java 1.21 `AttributeInstance` (`bus`, source lines 26–180).
 //!
 //! Owns the actual base value, modifier indexes and dirty value cache. It owns
 //! no actor, health, registry or equipment. Construction requires the immutable
 //! canonical attribute definition; sanitization is its actual virtual behavior.
 //! Mutations require the real dirty-listener owner synchronously, including
-//! reentrant mutations and its executed prefix on error. Persistence,
-//! `AttributeMap`, `replaceFrom`, and mutable Java map views are not implemented.
+//! reentrant mutations and its executed prefix on error. Source replaceFrom
+//! retains modifier identities and copies each operation map into a fresh
+//! default bucket through the source getModifiers(op).putAll shape. Persistence
+//! and mutable Java map views remain outside this instance module.
 //!
 //! `modifierById` and `permanentModifiers` are source-ordered array maps. The
 //! EnumMap operation buckets are fastutil 8.5.12 Object2ObjectOpenHashMaps, with
@@ -151,6 +153,23 @@ impl<K: ResourceLocationKey> OperationMap<K> {
             size: 0,
         }
     }
+    fn copy_from_map(source: &Self) -> Self {
+        // replaceFrom clears the EnumMap, then its lambda calls
+        // getModifiers(operation).putAll(source): default ctor (n/minN=32),
+        // followed by putAll's tryCapacity(current size + source size).
+        let mut copied = Self::new();
+        let capacity = (((source.size as f32 / 0.75_f32) as f64).ceil() as usize)
+            .next_power_of_two()
+            .max(2)
+            .min(1 << 30);
+        if capacity > copied.table.len() {
+            copied.rehash(capacity);
+        }
+        for entry in source.table.iter().rev().flatten() {
+            copied.put_entry(entry.key.clone(), Arc::clone(&entry.modifier));
+        }
+        copied
+    }
     fn mixed_hash(key: &K) -> usize {
         let hash = (key.java_hash_code() as u32).wrapping_mul(0x9e37_79b9);
         (hash ^ (hash >> 16)) as usize
@@ -170,15 +189,15 @@ impl<K: ResourceLocationKey> OperationMap<K> {
         }
     }
     fn put(&mut self, modifier: Arc<Modifier<K>>) {
-        match self.find(&modifier.id) {
+        self.put_entry(modifier.id.clone(), modifier);
+    }
+    fn put_entry(&mut self, key: K, modifier: Arc<Modifier<K>>) {
+        match self.find(&key) {
             Ok(index) => {
                 self.table[index].as_mut().unwrap().modifier = modifier;
             }
             Err(index) => {
-                self.table[index] = Some(Entry {
-                    key: modifier.id.clone(),
-                    modifier,
-                });
+                self.table[index] = Some(Entry { key, modifier });
                 let previous_size = self.size;
                 self.size += 1;
                 // Source insert tests size++ >= maxFill, then arraySize(size+1).
@@ -246,6 +265,16 @@ impl<K: ResourceLocationKey> OperationMap<K> {
             .rev()
             .filter_map(|entry| entry.as_ref().map(|entry| &entry.modifier))
     }
+}
+
+/// Callback-free replacement image. This is not an AttributeInstance clone:
+/// the target retains its own canonical definition, object and dirty listener.
+/// Modifier Arc values are the same immutable source objects.
+pub(crate) struct ReplacementData<K> {
+    base_value: f64,
+    by_id: ArrayMap<K>,
+    permanent: ArrayMap<K>,
+    by_operation: [Option<OperationMap<K>>; 3],
 }
 
 /// One actual AttributeInstance state owner. It must be retained by its real
@@ -413,6 +442,64 @@ impl<D: AttributeDefinition, K: ResourceLocationKey> AttributeInstance<D, K> {
         }
         Ok(())
     }
+    /// Original AttributeInstance.replaceFrom, source lines 167–180.
+    /// The target keeps its definition and object identity; one synchronous
+    /// dirty callback runs only after every replacement mutation has completed.
+    /// For Java's source==target case use replace_from_self explicitly.
+    pub fn replace_from<L: DirtyListener<D, K> + ?Sized>(
+        &mut self,
+        source: &Self,
+        listener: &mut L,
+    ) -> Result<(), L::Error> {
+        self.install_replacement(source.replacement_data());
+        listener.on_dirty(self)
+    }
+    /// Java permits replaceFrom(this). Each source map is cleared before its
+    /// own putAll/forEach reads it, so all modifier indexes become empty.
+    pub fn replace_from_self<L: DirtyListener<D, K> + ?Sized>(
+        &mut self,
+        listener: &mut L,
+    ) -> Result<(), L::Error> {
+        self.by_id.0.clear();
+        self.permanent.0.clear();
+        self.by_operation = [None, None, None];
+        self.set_dirty(listener)
+    }
+    pub(crate) fn replacement_data(&self) -> ReplacementData<K> {
+        let copy_array = |source: &ArrayMap<K>| {
+            ArrayMap(
+                source
+                    .0
+                    .iter()
+                    .map(|entry| Entry {
+                        key: entry.key.clone(),
+                        modifier: Arc::clone(&entry.modifier),
+                    })
+                    .collect(),
+            )
+        };
+        ReplacementData {
+            base_value: self.base_value,
+            by_id: copy_array(&self.by_id),
+            permanent: copy_array(&self.permanent),
+            by_operation: std::array::from_fn(|operation| {
+                self.by_operation[operation]
+                    .as_ref()
+                    .map(OperationMap::copy_from_map)
+            }),
+        }
+    }
+    /// The source fields plus setDirty's first assignment, before its listener.
+    /// AttributeMap's retained driver invokes its actual fixed listener after
+    /// releasing this instance borrow; no general listener is skipped here.
+    pub(crate) fn install_replacement(&mut self, replacement: ReplacementData<K>) {
+        self.base_value = replacement.base_value;
+        self.by_id = replacement.by_id;
+        self.permanent = replacement.permanent;
+        self.by_operation = replacement.by_operation;
+        self.dirty = true;
+    }
+
     pub fn value(&mut self) -> f64 {
         if self.dirty {
             self.cached_value = self.calculate_value();
@@ -519,6 +606,120 @@ mod tests {
     }
     fn operation_ids(instance: &Instance) -> Vec<String> {
         ids(instance.operation_modifiers(Operation::AddValue))
+    }
+
+    #[test]
+    fn original_replace_from_retains_identity_ghosts_cache_and_terminal_failure() {
+        // Corresponds to unchanged bus.replaceFrom in AttributeCopyProbe.
+        let mut source = instance(4.0);
+        let mut listener = Listener::default();
+        let a = modifier("a", 1e16, Operation::AddValue);
+        for value in [
+            Arc::clone(&a),
+            modifier("b", 1.0, Operation::AddValue),
+            modifier("c", -1e16, Operation::AddValue),
+        ] {
+            source.add_transient_modifier(value, &mut listener).unwrap();
+        }
+        let mut target = instance(91.0);
+        target.value();
+        let target_definition = Arc::clone(target.attribute());
+        listener.seen.clear();
+        target.replace_from(&source, &mut listener).unwrap();
+        assert_eq!(listener.seen.len(), 1);
+        assert!(target.is_dirty());
+        assert_eq!(target.cached_value, 91.0);
+        assert!(Arc::ptr_eq(target.attribute(), &target_definition));
+        assert!(Arc::ptr_eq(target.modifier(&Key("a".into())).unwrap(), &a));
+        assert_eq!(target.by_operation[0].as_ref().unwrap().table.len(), 32);
+        assert_eq!(operation_ids(&target), ["a", "c", "b"]);
+        assert_eq!(target.value().to_bits(), 0x4014_0000_0000_0000);
+
+        let ghost = modifier("ghost", 2.0, Operation::AddValue);
+        let ghost_new = modifier("ghost", 0.5, Operation::AddMultipliedBase);
+        let permanent = modifier("p", 3.0, Operation::AddMultipliedTotal);
+        source
+            .add_or_update_transient_modifier(Arc::clone(&ghost), &mut listener)
+            .unwrap();
+        source
+            .add_or_update_transient_modifier(Arc::clone(&ghost_new), &mut listener)
+            .unwrap();
+        source
+            .add_permanent_modifier(Arc::clone(&permanent), &mut listener)
+            .unwrap();
+        listener.fail = true;
+        assert_eq!(
+            target.replace_from(&source, &mut listener),
+            Err("listener failed")
+        );
+        assert!(target.is_dirty());
+        assert!(Arc::ptr_eq(
+            target.modifier(&Key("ghost".into())).unwrap(),
+            &ghost_new
+        ));
+        assert!(target
+            .operation_modifiers(Operation::AddValue)
+            .iter()
+            .any(|entry| Arc::ptr_eq(entry, &ghost)));
+        assert!(Arc::ptr_eq(&target.permanent_modifiers()[0], &permanent));
+        assert_eq!(target.value().to_bits(), 0x4045_0000_0000_0000);
+
+        listener.fail = false;
+        source.replace_from_self(&mut listener).unwrap();
+        assert!(source.modifiers().is_empty());
+        assert!(source.permanent_modifiers().is_empty());
+        assert!(source.by_operation.iter().all(Option::is_none));
+        assert_eq!(source.value(), 4.0);
+    }
+
+    #[test]
+    fn original_replace_from_uses_default_bucket_then_put_all_capacity_and_order() {
+        let mut source = instance(0.0);
+        let mut listener = Listener::default();
+        for index in 0..50 {
+            source
+                .add_transient_modifier(
+                    modifier(
+                        &format!("history{index}"),
+                        (index + 1) as f64,
+                        Operation::AddValue,
+                    ),
+                    &mut listener,
+                )
+                .unwrap();
+        }
+        for index in 0..25 {
+            source
+                .remove_modifier_by_id(&Key(format!("history{index}")), &mut listener)
+                .unwrap();
+        }
+        assert_eq!(source.by_operation[0].as_ref().unwrap().table.len(), 128);
+        let mut target = instance(0.0);
+        target.replace_from(&source, &mut listener).unwrap();
+        assert_eq!(target.by_operation[0].as_ref().unwrap().table.len(), 64);
+        let expected = [
+            39, 27, 34, 31, 30, 35, 44, 46, 48, 45, 47, 41, 40, 42, 43, 29, 49, 37, 33, 36, 32, 28,
+            26, 38, 25,
+        ];
+        assert_eq!(
+            operation_ids(&target),
+            expected.map(|index| format!("history{index}"))
+        );
+
+        let mut emptied = instance(0.0);
+        emptied
+            .add_transient_modifier(
+                modifier("emptied", 2.0, Operation::AddMultipliedBase),
+                &mut listener,
+            )
+            .unwrap();
+        emptied
+            .remove_modifier_by_id(&Key("emptied".into()), &mut listener)
+            .unwrap();
+        target.replace_from(&emptied, &mut listener).unwrap();
+        let bucket = target.by_operation[1].as_ref().unwrap();
+        assert_eq!(bucket.size, 0);
+        assert_eq!(bucket.table.len(), 32);
     }
 
     #[test]

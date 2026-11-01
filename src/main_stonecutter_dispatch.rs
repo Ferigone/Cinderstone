@@ -171,6 +171,9 @@ impl Server {
             &self.fixtures, &players.gameplay,
         )?;
         crate::main_stonecutter::require_stonecutter_actor(&players, id)?;
+        shared.read(|menu| {
+            crate::main_workstation_components::require_supported_inventory(&menu.inventory)
+        })??;
 
         if let Some(window) = players.stonecutters.window_id(id) {
             self.stonecutter_action_locked(
@@ -264,9 +267,24 @@ impl Server {
         if players.stonecutters.window_id(id) != Some(click.window_id) {
             return Ok(false);
         }
-        self.stonecutter_action_locked(
+        if let Err(error) = self.stonecutter_action_locked(
             &mut world, &mut players, id, StonecutterRequest::Click(click), now, border,
-        )?;
+        ) {
+            if error.downcast_ref::<UnsupportedMenuReach>().is_none() {
+                return Err(error);
+            }
+            let window = players.stonecutters.window_id(id)
+                .context("unsupported stonecutter click lost its actual menu")?;
+            ensure!(self.close_stonecutter_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                MenuCloseContext::AliveConnected,
+            )?, "unsupported stonecutter click changed its captured menu");
+            eprintln!("{}", json!({
+                "event":"native_menu_profile_retired", "menu":"stonecutter",
+                "entity_id":id, "native_limit":"unsupported_block_interaction_range",
+                "trigger":"container_click", "reason":error.to_string(),
+            }));
+        }
         Ok(true)
     }
 
@@ -286,9 +304,24 @@ impl Server {
         if !players.stonecutters.window_id(id).is_some_and(|current| i32::from(current) == window) {
             return Ok(false);
         }
-        self.stonecutter_action_locked(
+        if let Err(error) = self.stonecutter_action_locked(
             &mut world, &mut players, id, StonecutterRequest::Button(button), now, border,
-        )?;
+        ) {
+            if error.downcast_ref::<UnsupportedMenuReach>().is_none() {
+                return Err(error);
+            }
+            let window = players.stonecutters.window_id(id)
+                .context("unsupported stonecutter button lost its actual menu")?;
+            ensure!(self.close_stonecutter_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                MenuCloseContext::AliveConnected,
+            )?, "unsupported stonecutter button changed its captured menu");
+            eprintln!("{}", json!({
+                "event":"native_menu_profile_retired", "menu":"stonecutter",
+                "entity_id":id, "native_limit":"unsupported_block_interaction_range",
+                "trigger":"container_button", "reason":error.to_string(),
+            }));
+        }
         Ok(true)
     }
 }

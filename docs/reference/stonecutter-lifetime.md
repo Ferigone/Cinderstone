@@ -62,6 +62,15 @@ locks. The window argument must come from the current server menu; Main ignores
 an untrusted close packet's window ID when selecting that actual owner.
 A mismatched captured server window returns false without altering ownership.
 
+The PLAY close packet instead calls `Server::close_current_player_menu`. That
+operation takes chat_dispatch before clock/border -> world -> players, selects
+the actual current menu under those same locks and invokes its locked removal
+helper without another await or guard acquisition. Window0 uses the real
+InventoryMenu close owner. It rejects overlapping external owners rather than
+choosing one by priority. The incoming window ID is ignored; no earlier window
+lookup can race another menu replacement before removal. Existing unsupported
+inventory-drop resynchronization remains at the caller's packet boundary.
+
 `Server::close_stonecutter_with_context_locked(world, players, id, window,
 send_close, now, border, context)` composes with already locked operations.
 It delegates to `StonecutterRequest::Close`; it does not clear input/cursor

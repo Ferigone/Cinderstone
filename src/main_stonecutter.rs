@@ -45,6 +45,9 @@ pub(super) enum StonecutterRequest<'a> {
     Close { window: u8, send_close: bool, context: MenuCloseContext },
     /// ServerPlayer.tick broadcasts before its subsequent validity/close gate.
     Broadcast,
+    /// Repair rejected client prediction through this retained menu's real
+    /// full-state synchronization path, without executing another click.
+    Resync,
 }
 
 /// Reuse the existing admitted native body contract for mutable workstation
@@ -176,6 +179,32 @@ impl PreparedStonecutterCommit<'_> {
 }
 
 impl Server {
+    pub(super) fn resync_native_stonecutter_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        now: i64,
+        border: CollisionBorder,
+    ) -> Result<()> {
+        match self.stonecutter_action_locked(world, players, id, StonecutterRequest::Resync, now, border) {
+            Err(error) if error.downcast_ref::<main_stonecutter_dispatch::UnsupportedMenuReach>().is_some() => {
+                let window = players.stonecutters.window_id(id)
+                    .context("unsupported stonecutter resync profile lost its actual menu")?;
+                ensure!(self.close_stonecutter_with_context_locked(
+                    world, players, id, window, true, now, border, MenuCloseContext::AliveConnected,
+                )?, "unsupported stonecutter resync profile changed its captured menu");
+                eprintln!("{}", json!({
+                    "event":"native_menu_profile_retired", "menu":"stonecutter",
+                    "entity_id":id, "native_limit":"unsupported_block_interaction_range",
+                    "trigger":"component_refusal_resync", "reason":error.to_string(),
+                }));
+                Ok(())
+            }
+            result => result,
+        }
+    }
+
     pub(super) fn stonecutter_action_locked(
         &self,
         world: &mut WorldBackend,
@@ -238,12 +267,14 @@ impl Server {
         let book = recipe_books.get_mut(&player.profile.uuid).context("stonecutter actual recipe book missing")?;
         shared.transact_with_menu_commit(move |menu| {
             let mut next_open = open;
+            let full_state = matches!(&request, StonecutterRequest::Resync)
+                || spectator && matches!(&request, StonecutterRequest::Click(_));
             let mut publication = match request {
                 StonecutterRequest::Broadcast => StonecutterPublication {
                     events: next_open.menu.broadcast_changes(&menu.inventory)?,
                     outcome: ClickOutcome::default(),
                 },
-                StonecutterRequest::Click(_) if spectator => {
+                _ if full_state => {
                     let phase = StonecutterPhase {
                         input: next_open.menu.state().input().clone(),
                         result_preview: next_open.menu.state().result_preview().clone(),
@@ -262,7 +293,7 @@ impl Server {
                         StonecutterRequest::Click(click) => next_open.menu.prepare_click(click, &menu.inventory, &recipes, now, player.gamemode == 1)?,
                         StonecutterRequest::Button(button) => next_open.menu.prepare_button(button, &menu.inventory, &recipes)?,
                         StonecutterRequest::Close { context, .. } => next_open.menu.prepare_close(&menu.inventory, context)?,
-                        StonecutterRequest::Broadcast => unreachable!(),
+                        StonecutterRequest::Broadcast | StonecutterRequest::Resync => unreachable!(),
                     };
                     let current = stonecutters.menus.get(&id).context("stonecutter menu disappeared")?;
                     plan.validate(&current.menu, &menu.inventory)?;

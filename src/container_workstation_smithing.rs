@@ -296,6 +296,28 @@ impl SmithingMenu {
         *self = next;
         Ok(events)
     }
+    /// Resynchronize this retained menu, preserving its inputs, derived result,
+    /// cursor and drag state. No result recomputation or dirty callback occurs.
+    pub fn broadcast_full_state(
+        &mut self,
+        inventory: &PlayerInventory,
+    ) -> Result<Vec<SmithingMenuEvent>> {
+        let mut next = self.clone();
+        let events = next
+            .sync
+            .broadcast_full_state(&next.top(), inventory, &[])?;
+        let phase = next.phase(inventory);
+        let events = events
+            .into_iter()
+            .map(|event| SmithingMenuEvent::Sync {
+                event,
+                phase: phase.clone(),
+            })
+            .collect();
+        next.advance_revision()?;
+        *self = next;
+        Ok(events)
+    }
     pub fn still_valid(&self, access: &impl WorkstationAccess) -> Result<bool> {
         self.sync.still_valid(access)
     }
@@ -1895,6 +1917,75 @@ mod tests {
         }
         assert!(menu.sync().carried().is_empty());
         assert_eq!(single.drops[0].stack.count + all.drops[0].stack.count, 4);
+        Ok(())
+    }
+
+    #[test]
+    fn full_state_resync_preserves_retained_owners_and_invalidates_old_plan() -> Result<()> {
+        let ids = vec!["minecraft:netherite_sword_smithing".to_owned()];
+        let mut menu = SmithingMenu::new(7, SmithingRecipeOrder::new(ids.clone(), ids)?)?;
+        menu.station
+            .set_input(0, item("netherite_upgrade_smithing_template", 2))?;
+        menu.station.set_input(1, item("diamond_sword", 1))?;
+        menu.station.set_input(2, item("netherite_ingot", 3))?;
+        let mut inv = PlayerInventory::default();
+        inv.set_slot_authoritative(9, item("stone", 4));
+        menu.initialize(&inv)?;
+        click(&mut menu, &mut inv, 4, ClickType::Pickup)?;
+        custom_click(&mut menu, &mut inv, -999, 0, ClickType::QuickCraft, false)?;
+        custom_click(&mut menu, &mut inv, 5, 1, ClickType::QuickCraft, false)?;
+        let pending = menu.prepare_close(&inv, MenuCloseContext::AliveConnected)?;
+        let retained = menu.clone();
+        let inventory = inv.clone();
+        let events: Vec<SmithingMenuEvent> = menu.broadcast_full_state(&inv)?;
+        assert_eq!(menu.instance, retained.instance);
+        assert_eq!(menu.station, retained.station);
+        assert_eq!(menu.sync.carried(), &item("stone", 4));
+        assert_eq!(menu.sync.carried(), retained.sync.carried());
+        assert_eq!(menu.quickcraft_status, retained.quickcraft_status);
+        assert_eq!(menu.quickcraft_type, retained.quickcraft_type);
+        assert_eq!(menu.quickcraft_slots, retained.quickcraft_slots);
+        assert_eq!(menu.revision, retained.revision + 1);
+        assert_eq!(menu.sync.state_id(), (retained.sync.state_id() + 1) & 32767);
+        let mut content = None;
+        for event in &events {
+            let SmithingMenuEvent::Sync { event, phase } = event else {
+                panic!("full resync emitted an authoritative callback");
+            };
+            assert_eq!(phase.inputs, *retained.station.inputs());
+            assert_eq!(phase.result_preview, *retained.station.result());
+            assert_eq!(&phase.carried, retained.sync.carried());
+            assert!(same_inventory(&phase.player_inventory, &inventory));
+            if let SyncEvent::Packet(packet) = event {
+                if packet.id == 0x13 {
+                    content = Some(packet);
+                }
+            }
+        }
+        let packet = content.expect("retained smithing content packet");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, 7);
+        assert_eq!(reader.varint()?, menu.sync.state_id());
+        assert_eq!(reader.varint()?, 40);
+        let top = retained.top();
+        for slot in 0..40 {
+            let (stack, used) = ItemStack::decode(reader.remaining())?;
+            reader.bytes(used)?;
+            let expected = if slot < 4 {
+                &top[slot]
+            } else {
+                inventory.slot(slot + 5).unwrap()
+            };
+            assert_eq!(&stack, expected);
+        }
+        assert_eq!(
+            ItemStack::decode_exact(reader.remaining())?,
+            item("stone", 4)
+        );
+        assert!(pending.commit(&mut menu, &mut inv).is_err());
+        assert!(same_inventory(&inv, &inventory));
+        assert_eq!(menu.station, retained.station);
+        assert!(menu.broadcast_changes(&inv)?.is_empty());
         Ok(())
     }
 }

@@ -115,6 +115,8 @@ mod main_stonecutter_recipes;
 mod main_stonecutter_dispatch;
 mod main_stonecutter_lifecycle;
 mod main_stonecutter_pickup;
+mod main_workstation_components;
+mod main_menu_resync;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -1122,6 +1124,51 @@ impl Server {
         }
         Ok(())
     }
+    /// handleContainerClose targets the actual current server menu. Select and
+    /// remove that owner in one operation, never across separate async guards
+    /// after remembering an earlier window ID.
+    async fn close_current_player_menu(&self, id: i32) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
+        let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
+        let border = self.native_container_border()?;
+        let mut world = self.world.write().await;
+        let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
+        enum CurrentMenu {
+            Furnace(u8),
+            Stonecutter(u8),
+            CraftingTable(u8),
+            NativeContainer(u8),
+        }
+        let mut current = [
+            players.furnaces.window_id(id).map(CurrentMenu::Furnace),
+            players.stonecutters.window_id(id).map(CurrentMenu::Stonecutter),
+            players.crafting_tables.window_id(id).map(CurrentMenu::CraftingTable),
+            players.native_containers.window_id(id).map(CurrentMenu::NativeContainer),
+        ].into_iter().flatten();
+        let selected = current.next();
+        ensure!(current.next().is_none(), "multiple current player menus during close");
+        let closed = match selected {
+            Some(CurrentMenu::Furnace(window)) => self.furnace_menu_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            Some(CurrentMenu::Stonecutter(window)) => self.close_stonecutter_with_context_locked(
+                &mut world, &mut players, id, window, false, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?,
+            Some(CurrentMenu::CraftingTable(window)) => self.crafting_table_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            Some(CurrentMenu::NativeContainer(window)) => self.native_menu_action_locked(
+                &mut world, &mut players, id, None, Some(window), false, now, border,
+            )?,
+            None => return self.close_inventory_menu_locked(
+                &mut world, &mut players, id, now, border,
+            ),
+        };
+        ensure!(closed, "actual current player menu changed during close");
+        Ok(())
+    }
+
     async fn execute_menu_action(
         &self,
         id: i32,
@@ -2460,6 +2507,12 @@ async fn main() -> Result<()> {
         let item_count = checkpoint.item_count();
         match checkpoint.restore(&world) {
             Ok(restored) => {
+                // Include hidden items before adopting either restored time
+                // or the live runtime. Failure cannot enter legacy fallback.
+                for state in restored.runtime.item_states() {
+                    main_workstation_components::require_supported_stack(&state.stack)
+                        .with_context(|| format!("refusing unsupported native checkpoint item {}", state.entity_id))?;
+                }
                 ensure!(!restored.source.requires_fire_checkpoint() || had_fire_checkpoint,
                     "native source history requires its saved fire queue, including stale scheduled ticks");
                 ensure!(!restored.source.requires_block_checkpoint() || had_block_checkpoint,
@@ -3232,6 +3285,12 @@ async fn play(
                 if path.try_exists()? { saved=Some(mc121_rust::player_nbt::import_player_file(&path,uuid,Some(&stats))?); }
             }
         }
+        if let Some(data) = saved.as_ref() {
+            // One admission boundary for pending, native and imported saves,
+            // before apply/refresh can canonicalize an unsupported component.
+            main_workstation_components::require_supported_inventory(&data.inventory)
+                .context("refusing unsupported saved/pending/imported player inventory before admission")?;
+        }
         let math=players.math_random.as_ref().context("actual global Math.random owner missing")?;
         let constructor_math=[math.next_f64()?,math.next_f64()?,math.next_f64()?];
         let mut player = PlayerState::new(entity_id, profile, position)?;
@@ -3702,6 +3761,13 @@ async fn play(
                     },
                     0x0e => {
                         let click=ContainerClick::decode(&packet.payload)?;
+                        if let Err(error) = main_workstation_components::require_supported_prediction(&click) {
+                            // Refuse before adopting predictions or mutating
+                            // actual stacks, then sync the retained current owner.
+                            eprintln!("{}", json!({"event":"native_component_admission_refused","entity_id":entity_id,"packet_id":packet.id,"reason":format!("{error:#}")}));
+                            server.resync_current_player_menu(entity_id).await?;
+                            continue;
+                        }
                         if server.click_native_stonecutter(entity_id,&click).await? {continue;}
                         if server.click_native_furnace(entity_id,&click).await? {continue;}
                         if server.click_native_crafting_table(entity_id,&click).await? {continue;}
@@ -3711,29 +3777,22 @@ async fn play(
                     },
                     0x0f => {
                         let _requested_window=fields.u8()?; fields.finish()?;
-                        // handleContainerClose closes the current menu; its
-                        // packet ID never selects or revives an older owner.
-                        let window = {
-                            let players=server.players.read().map_err(|_|anyhow!("players poisoned"))?;
-                            players.furnaces.window_id(entity_id)
-                                .or_else(||players.stonecutters.window_id(entity_id))
-                                .or_else(||players.crafting_tables.window_id(entity_id))
-                                .or_else(||players.native_containers.window_id(entity_id))
-                                .unwrap_or(0)
-                        };
-                        if server.close_native_stonecutter(entity_id,window,false).await? {continue;}
-                        if server.close_native_furnace(entity_id,window,false).await? {continue;}
-                        if server.close_native_crafting_table(entity_id,window,false).await? {continue;}
-                        if server.close_native_container(entity_id,window,false).await? {continue;}
-                        if window==0 {
-                            let result=server.execute_menu_action(entity_id,&container,PlayerContainer::close,None).await;
-                            finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
-                        }
+                        // Selection and removal share one actual operation;
+                        // the client's window never chooses a retained owner.
+                        let result=server.close_current_player_menu(entity_id).await;
+                        finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                     },
                     0x2f => { let slot=fields.i16()?; fields.finish()?; container.transact(|menu| {menu.inventory.set_selected_hotbar(slot)?;Ok(((),vec![]))})?; },
                     0x32 => {
                         if gamemode != 1 { continue; }
                         let slot=fields.i16()?; let stack=ItemStack::decode_exact(fields.remaining())?;
+                        if let Err(error) = main_workstation_components::require_supported_stack(&stack) {
+                            // Preserve actual slot/cursor ownership and repair
+                            // through the real current menu's full-state path.
+                            eprintln!("{}", json!({"event":"native_component_admission_refused","entity_id":entity_id,"packet_id":packet.id,"reason":format!("{error:#}")}));
+                            server.resync_current_player_menu(entity_id).await?;
+                            continue;
+                        }
                         if slot<0 {
                             let result=server.execute_menu_action(entity_id,&container,|_|Ok(ClickOutcome::default()),Some((slot,stack))).await;
                             finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;

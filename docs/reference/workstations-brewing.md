@@ -108,9 +108,87 @@ remainder distinction, signed save values, stale plans and rejected world transa
 Their explicitly labeled fixture mix and recording host test the state engine;
 they establish neither a production potion recipe owner nor live world behavior.
 
-Main, native block-entity registration/ticking, menu clicks and synchronization,
-close/disconnect, real potion recipes, feature flags, actual remainder Items,
-advancements, comparator receivers and restart integration remain central-owner
-contracts. Brewing menu closure returns its cursor; its five persistent contents
-remain with the captured block entity. This bounded stage completes neither
-`inventory.4` nor `crafting.5`.
+## Persistent menu controller
+
+`container_workstation_brewing.rs` now implements the seven ordinary menu click
+modes, authoritative state IDs/client predictions and local synchronization
+observations over the **borrowed actual** `BrewingState`. It retains only UI,
+cursor, drag and synchronization state. Each action clones the complete actual
+state, including its transient ingredient and bottle-bit caches; it never
+reconstructs that state through `BrewingSaved`. Narrow raw slot/count operations
+support original in-place stack mutation without an extra clamp, dirty callback,
+tick, or cache reset. Normal base-container setters still clamp and dirty.
+
+The direct `cqa` inspection establishes two easy-to-miss quick-move behaviors.
+All five block slots transfer in reverse order into player menu slots `[5,41)`.
+Player transfers try fuel, ingredient, bottles, then main/hotbar movement. A
+**successful fuel transfer returns EMPTY immediately**, preserving its destination
+and raw source mutation while skipping source cleanup, source dirty/onTake and
+the outer repeat-shift loop (`cqa` offsets 76–133). In the common completed
+transfer path, bottle `onTake` receives the **original copied potion**, including
+after full movement; its criterion therefore does not lose the potion component
+when the remainder becomes empty. The criterion precedes base `Slot.onTake`.
+
+`cpu`/`crq`/`cmw` and the persistent `dqb` mutation methods were also inspected
+directly for callback phases. Empty-destination movement invokes `setByPlayer`
+and an additional `Slot.setChanged`; the persistent setter already has its own
+dirty callback. A fuel shift into an empty slot consequently has three block
+dirty calls and no player-counter callback. Player `Inventory.setChanged` calls
+are explicit obligations to the actual counter owner, with historical inventory,
+block-state and external-cursor observations. Self-hotbar swapping retains those
+callbacks; overfull self-aliases return only the source remainder, preserving
+items. `Slot.safeInsert` keeps signed room, including zero: an imported player
+stack of 99 stone plus a one-stone cursor becomes slot 64/cursor 36, with the
+original setter/dirty calls. Outside whole-cursor drop occurs before cursor
+clear; a right drop splits first.
+
+`cqa` invokes neither `startOpen` nor `stopOpen`, and it has no `removed`
+override. Close/disconnect therefore returns or drops **only the cursor**. The
+five persistent slots, brew/fuel counters and caches stay with the captured
+block entity. The controller delegates validity to that actual container and
+binds each prepared action to its block key, immutable potion/features-context
+key, full actual state/revision, player inventory/cursor and a checked,
+non-reused UI instance/revision. The actual owner must advance its revision for
+world ticks as well as slot edits. A matching newly placed block or reopened
+window cannot inherit an old action. The outer runtime must still bind the
+open session/player and enforce its real provider locks/access policy.
+
+`BrewingMenuOwner` requires the actual Level's `PotionBrewing` implementation,
+actual ServerPlayer role and actual validity. Its
+`commit_prepared_brewing_menu` must atomically consume the **entire ordered
+stream once**: dirty/comparator callbacks, actual player counters,
+`BREWED_POTION`, drops, synchronization listeners and packet outbox, then install
+the same staged state. Failure must change neither canonical owners nor outbox.
+Phase snapshots are read-only callback observations, not extra item stores.
+`BrewingCommitReceipt` contains inspection copies of already committed events
+and drops; a caller must not replay or dispatch them. Initial/broadcast sync APIs
+return events for the caller to publish in their corresponding actual phase.
+There is no production no-op host, advancement substitute or guessed recipe
+catalog. A host unable to stage a callback's real consequences must reject the
+action before committing.
+
+Multi-slot drag touching the block requires the actual callback receiver to
+certify order independence; there is no default true certificate. Java's
+identity-hashed Slot iteration must otherwise come from an actual order owner.
+Bundle item callbacks remain explicitly unsupported. Explicit custom
+FoodProperties component-20 overrides are also rejected across block slots,
+player main/hotbar/offhand and cursor before comparisons or mutation. Direct
+`cpr`/`cuq` inspection confirms that FoodProperties' optional nested ItemStack
+uses Java reference equality, which the shared semantic component decoder
+cannot certify. Default shared prototypes do not need a fabricated identity.
+
+The focused controller checks exercise persistent-cache preservation, the
+41-slot real packet layout, successful fuel's early return, original-stack
+potion criterion, cursor/pick-all/drag/swap/throw and uncommitted creative clone,
+signed insertion, self-alias conservation/counter callbacks, rejected atomic
+publication, actual ticker revision invalidation, persistent close and reopened
+UI rejection. A separate boundary check rejects custom food overrides in the
+actual block, player and cursor contexts. These use clearly labeled in-memory
+owners; they establish neither a production potion catalog nor Java gameplay
+execution. Comprehensive conformance remains deferred.
+
+Main, native block-entity registration/ticking, real potion recipes and feature
+flags, actual remainder Items, advancement/comparator/drop receivers, atomic
+runtime/outbox staging and restart integration remain central-owner contracts.
+This bounded controller and state engine complete neither `inventory.4` nor
+`crafting.5`.

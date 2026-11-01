@@ -223,6 +223,9 @@ impl<B: Clone + Eq + Debug, K: Clone + Eq + Debug> MerchantState<B, K> {
             future_xp: 0,
         }
     }
+    pub(crate) fn menu_binding(&self) -> B {
+        self.binding.clone()
+    }
     pub fn payments(&self) -> &[ItemStack; 2] {
         &self.payments
     }
@@ -330,6 +333,13 @@ impl<B: Clone + Eq + Debug, K: Clone + Eq + Debug> MerchantState<B, K> {
         &mut self,
         stage: &mut S,
     ) -> Result<()> {
+        self.update_sell_item_observed(stage, &mut |_, _| Ok(()))
+    }
+    fn update_sell_item_observed<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<()> {
         self.active_offer = None;
         let (first, second) = if self.payments[0].is_empty() {
             (&self.payments[1], &self.payments[0])
@@ -363,6 +373,7 @@ impl<B: Clone + Eq + Debug, K: Clone + Eq + Debug> MerchantState<B, K> {
         // Java leaves an old preview/futureXp when a nonempty payment's actual
         // offer list becomes empty, but clears activeOffer. Such a preview is
         // never promoted into an owned result by this API.
+        observe(self, stage)?;
         stage.notify_trade_updated(&self.preview)
     }
     pub fn prepare_take<S: MerchantStage<Binding = B, OfferKey = K>>(
@@ -405,10 +416,88 @@ impl<B: Clone + Eq + Debug, K: Clone + Eq + Debug> MerchantState<B, K> {
                 (counted(&original, transferred), remainder, 0)
             }
         };
-        stage.item_crafted_by(&on_take_stack, crafted_amount)?;
-        if let Some(key) = next.active_offer.clone() {
+        next.menu_finish_take(&on_take_stack, crafted_amount, stage, &mut |_, _| Ok(()))?;
+        Ok(self.plan(next, stage.stage_key(), vec![taken]))
+    }
+    /// Source primitives for the menu controller's PRIVATE complete action.
+    /// These never publish a MerchantStage or create a second live inventory.
+    /// The outer controller validates and publishes all owners once.
+    pub(crate) fn menu_set_raw(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        ensure!(slot < 3, "invalid merchant raw slot");
+        if slot == 2 {
+            self.preview = canonical(stack);
+        } else {
+            self.payments[slot] = canonical(stack);
+        }
+        Ok(())
+    }
+    pub(crate) fn menu_refresh<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<()> {
+        self.update_sell_item_observed(stage, observe)
+    }
+    pub(crate) fn menu_set_slot<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        slot: usize,
+        stack: ItemStack,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<()> {
+        self.menu_set_raw(slot, limited(stack)?)?;
+        if slot < 2 {
+            self.menu_refresh(stage, observe)?;
+        }
+        Ok(())
+    }
+    pub(crate) fn menu_remove<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        slot: usize,
+        amount: i32,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<ItemStack> {
+        ensure!(slot < 3 && amount > 0, "invalid merchant raw removal");
+        if slot == 2 {
+            return Ok(std::mem::take(&mut self.preview));
+        }
+        let taken = split(&mut self.payments[slot], amount);
+        if !taken.is_empty() {
+            self.menu_refresh(stage, observe)?;
+        }
+        Ok(taken)
+    }
+    pub(crate) fn menu_remove_no_update(&mut self, slot: usize) -> Result<ItemStack> {
+        ensure!(
+            slot < 2,
+            "only owned merchant payments can be removed on close"
+        );
+        Ok(std::mem::take(&mut self.payments[slot]))
+    }
+    pub(crate) fn menu_select<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        hint: i32,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<()> {
+        self.selection_hint = hint;
+        self.menu_refresh(stage, observe)
+    }
+    /// MerchantResultSlot.onTake after the controller has installed the actual
+    /// cursor/hotbar/destination and performed Slot.tryRemove/setChanged.
+    pub(crate) fn menu_finish_take<S: MerchantStage<Binding = B, OfferKey = K>>(
+        &mut self,
+        on_take_stack: &ItemStack,
+        crafted_amount: i32,
+        stage: &mut S,
+        observe: &mut impl FnMut(&Self, &mut S) -> Result<()>,
+    ) -> Result<()> {
+        observe(self, stage)?;
+        stage.item_crafted_by(on_take_stack, crafted_amount)?;
+        if let Some(key) = self.active_offer.clone() {
             let offer = stage.offer(&key)?;
-            let mut payments = next.payments.clone();
+            let mut payments = self.payments.clone();
             let [first, second] = &mut payments;
             let paid = offer.take(first, second)? || offer.take(second, first)?;
             if paid {
@@ -416,18 +505,21 @@ impl<B: Clone + Eq + Debug, K: Clone + Eq + Debug> MerchantState<B, K> {
                 // trade criteria. Subsequent updates read the actual changed offer.
                 // Both original payment ItemStacks were shrunk before
                 // notifyTrade or either setItem in the original container.
-                next.payments = payments;
+                self.payments = payments;
+                observe(self, stage)?;
                 stage.notify_trade(&key)?;
+                observe(self, stage)?;
                 stage.award_traded_stat()?;
                 // Each setItem then recomputes the result in source order.
-                next.update_sell_item(stage)?;
-                next.update_sell_item(stage)?;
+                self.update_sell_item_observed(stage, observe)?;
+                self.update_sell_item_observed(stage, observe)?;
             }
             // The source overrideXp is outside the successful-take condition.
             let xp = stage.villager_xp()?.wrapping_add(offer.xp);
+            observe(self, stage)?;
             stage.override_xp(xp)?;
         }
-        Ok(self.plan(next, stage.stage_key(), vec![taken]))
+        Ok(())
     }
     /// Server select-trade packet order: setSelectionHint, then tryMoveItems.
     /// Old payments return to borrowed inventory in reverse menu-slot order;

@@ -209,3 +209,23 @@ These phases and mandatory operations are integration contracts. Main remains
 unintegrated, and real player counter/stat/advancement and world/drop callbacks
 still require their actual runtime owners. Focused native checks establish the
 recorded transaction behavior, not complete vanilla compatibility.
+
+## Retained full-state resynchronization
+
+The central issue-3 integration request adds exactly
+`SmithingMenu::broadcast_full_state(&mut self, inventory: &PlayerInventory)
+-> Result<Vec<SmithingMenuEvent>>`. It clones the retained menu, calls shared
+`MenuSync.broadcast_full_state` with the actual retained four top slots,
+borrowed player inventory and empty DataSlots, wraps each synchronization event
+with its actual `SmithingPhase`, advances the checked UI revision and installs
+the clone only after success. It does not initialize the menu, recreate the
+derived result, mutate inputs/cursor, reset drag state or generate a dirty,
+crafted, recipe or world callback. The ordinary full-content packet advances
+the protocol state ID and updates the synchronization baselines.
+
+A focused native regression retains a complete smithing recipe/result, an
+actual picked-up cursor and an active drag selection across resynchronization.
+It checks the forty-slot full-content packet and every phase observation,
+rejects a close plan prepared before resync, and confirms the following
+unchanged incremental broadcast is empty. This validates the additive API;
+spectator dispatch and actual publication remain central Main responsibilities.

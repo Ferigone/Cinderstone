@@ -10,6 +10,9 @@ check and executable build passed. Actual offline loopback protocol execution
 completed at `2026-11-01T21:13:56.558189+00:00` on binary SHA-256
 `09f662444521fb4df9535fd05cf9947c2f0ed820c693c3d38502ec0778907cf9`.
 This records the bounded observations below, not all Stonecutter behavior.
+The composed publication candidate was also rechecked at
+`57e90e63e9dcd4c103761a909854886334a702c7`; its separate witnesses are recorded
+below without replacing the earlier source/binary attributions.
 
 ## Actual Main call paths
 
@@ -201,6 +204,27 @@ This is a safe explicit native-profile retirement, not full custom attribute
 compatibility. The valid CreativeSlot activation path was exercised; activating
 a preloaded modifier through a later selected-hotbar packet was not separately
 exercised. No broad source-suite, graphical or public-network result is claimed.
+
+### Composed publication candidate
+
+Both bounded flows passed again on publication candidate
+`57e90e63e9dcd4c103761a909854886334a702c7` atop refreshed master. Its full Main
+build and actual execution used binary SHA-256
+`a0169096d316d28ab7f5568cb6fe665b70947c2333d6b46c4374f2d17266072b`.
+
+- The [composed positive flow](../validation/stonecutter-composed-flow.json)
+  completed at `2026-11-01T21:36:48.365201+00:00`. It retained the original
+  block/menu/callback, removal, restart and QuickMove expectations, including
+  primary conservation of 8 stone as 5 stone plus 6 slabs.
+- The [composed reach regression](../validation/stonecutter-reach-composed-flow.json)
+  completed at `2026-11-01T21:36:08.076414+00:00`. The valid equipped modifier
+  again retired only the unsupported Stonecutter menu, conserved input/cursor
+  and retained the actual PLAY session and world process.
+
+Each recheck used a fresh private runtime and the same unchanged corresponding
+harness hash recorded above. All isolated processes completed graceful SIGINT
+shutdown with exit0. The earlier `5c496b2` positive and `e18ad37` reach witnesses
+remain separate. These composition checks do not extend their declared coverage.
 
 Source inspection is direct JDK21 `javap` and bounded original-class/registry
 evidence, not an REA MCP execution. The original server and official mappings
