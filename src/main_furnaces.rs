@@ -268,6 +268,7 @@ impl RecipeBookHost for NativeRecipeHost {
 }
 impl Server {
     pub(super) async fn use_native_furnace(&self, id: i32, hand: i32, target: P) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -326,6 +327,18 @@ impl Server {
             }
             flat.native_block_entities().furnace_title(target)?
         };
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.furnaces.window_id(id) {
             self.furnace_menu_action_locked(
                 &mut world,

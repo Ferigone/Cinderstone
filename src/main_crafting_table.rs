@@ -62,6 +62,7 @@ impl Server {
         hand: i32,
         target: (i32, i32, i32),
     ) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -104,6 +105,18 @@ impl Server {
             players.world_context.rules.boolean("doLimitedCrafting") == Some(false),
             "limited crafting requires actual known-recipe unlock owner"
         );
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(
                 &mut world,

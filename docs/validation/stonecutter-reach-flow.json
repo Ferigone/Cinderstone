@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "e18ad3781c2a94884925996e011466acc3dac5cf",
+  "binary_sha256": "515a8a33b9b8ac3d77a8e0e0f67315a17a9e02c4c70daa182fb1d0f6d46c4b93",
+  "harness_sha256": "f72303996d6462af09524800c9b0a14ae01a66b3927ba5d92d978a45d7986ae2",
+  "started_at": "2026-11-01T21:23:25.026687+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "Actual valid CreativeSlot block-range modifier activates while Stonecutter owns input/cursor; retire the unsupported menu while conserving inventory and retaining the world/PLAY session. This is a native unsupported-profile boundary, not custom attribute compatibility.",
+  "full_custom_attribute_support": false,
+  "checks": {
+    "valid_equipped_reach_modifier_retires_only_current_stonecutter": {
+      "ok": true,
+      "closed_window": 1,
+      "current_window": 0,
+      "actual_component_echo": true,
+      "inventory": {
+        "stone": 7,
+        "stone_slab": 2,
+        "reach_item": 1
+      },
+      "cursor_empty": true
+    },
+    "world_process_and_actual_play_session_continue": {
+      "ok": true,
+      "actual_list_reply": "commands.list.players",
+      "status_online": 1,
+      "post_retirement_delay_seconds": 1.1
+    },
+    "real_menu_owner_retirement_and_graceful_shutdown_preserve_inventory": {
+      "ok": true,
+      "native_limit": "unsupported_block_interaction_range",
+      "player": {
+        "stone": 7,
+        "stone_slab": 2,
+        "reach_item": 1
+      },
+      "world_items": {
+        "stone": 0,
+        "stone_slab": 0,
+        "reach_item": 0
+      },
+      "server_exit": 0
+    }
+  },
+  "valid_modifier": {
+    "component_id": 12,
+    "attribute_id": 6,
+    "name": "cinderstone:reach_probe",
+    "amount": 1.0,
+    "operation": "add",
+    "slot_group": "main_hand",
+    "item_id": 848
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e"
+  },
+  "before_modifier": {
+    "window": 1,
+    "input_before": 8,
+    "input_after": 7,
+    "owned_cursor_result": 2,
+    "nonowned_remaining_preview": 2
+  },
+  "creative_slot_payload_hex": "002401d00601000c01061763696e64657273746f6e653a72656163685f70726f62653ff0000000000000000101",
+  "completed_at": "2026-11-01T21:23:52.732915+00:00",
+  "full_vanilla_parity": false,
+  "not_exercised": [
+    "Full custom interaction-range attribute implementation",
+    "Selected-hotbar packet activation path",
+    "Public or graphical clients"
+  ]
+}

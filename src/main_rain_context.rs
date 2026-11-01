@@ -33,6 +33,7 @@ impl LivePlayers {
     ) -> Result<()> {
         self.simulate_item_world_with_player_menus(world, game_time, border, events, |players, _, id| {
             ensure!(!players.furnaces.has_open(id), "active furnace requires its actual level-player menu owner");
+            ensure!(!players.stonecutters.has_open(id), "active stonecutter requires its actual level-player menu owner");
             Ok(())
         })
     }
@@ -147,7 +148,8 @@ impl LivePlayers {
                         events,
                     )?;
                 } else {
-                    let external_menu = kind == EntityKind::Player && self.furnaces.has_open(handle.id);
+                    let external_menu = kind == EntityKind::Player
+                        && (self.furnaces.has_open(handle.id) || self.stonecutters.has_open(handle.id));
                     if kind == EntityKind::Player {
                         // ServerPlayer.tick broadcasts the current menu and
                         // then validates it at this entry's actual position in

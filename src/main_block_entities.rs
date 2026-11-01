@@ -123,7 +123,8 @@ impl Server {
             close_context == mc121_rust::container::MenuCloseContext::DeadOrDisconnected
                 || (!players.native_containers.has_open(id)
                     && !players.crafting_tables.has_open(id)
-                    && !players.furnaces.has_open(id)),
+                    && !players.furnaces.has_open(id)
+                    && !players.stonecutters.has_open(id)),
             "close actual native menu before InventoryMenu cleanup"
         );
         // Player.remove cleans the retained InventoryMenu before the actual
@@ -231,6 +232,7 @@ impl Server {
         hand: i32,
         target: (i32, i32, i32),
     ) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -292,6 +294,18 @@ impl Server {
         );
         let title = flat.native_block_entities().title(&key)?;
         let top = flat.native_block_entities().read_slots(&key)?;
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(
                 &mut world,
