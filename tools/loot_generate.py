@@ -180,6 +180,10 @@ def block_cases():
                 cases.append({"t": bare, "s": seed_for(bare, n), "k": tools[-1], "b": states[0], "x": radius})
         n += 1
         cases.append({"t": bare, "s": seed_for(bare, n), "k": 5, "b": states[-1]})
+        if mentions(table, "copy_components") or mentions(table, "copy_state"):
+            for be in ({"custom_name": "Named"}, {"lock": "secret"}, {"custom_name": "N", "lock": "k"}):
+                n += 1
+                cases.append({"t": bare, "s": seed_for(bare, n), "k": 1, "b": states[0], "be": be})
     return cases
 
 
@@ -282,22 +286,226 @@ def other_cases():
     return cases
 
 
+
+CUSTOM_TABLES = []
+
+
+def custom(table):
+    CUSTOM_TABLES.append(table)
+    return len(CUSTOM_TABLES) - 1
+
+
+def item(name, **extra):
+    return {"type": "minecraft:item", "name": "minecraft:" + name, **extra}
+
+
+def const_count(n, **extra):
+    return {"function": "minecraft:set_count", "count": n, **extra}
+
+
+def synthetic_cases():
+    """Hand-written tables for behaviour the shipped data pack never exercises."""
+    cases = []
+    zombie = entity(type="minecraft:zombie")
+    burning = entity(type="minecraft:zombie", on_fire=True)
+    sword = entity(type="minecraft:zombie", mainhand=stack("diamond_sword", enchantments={"looting": 2}))
+    player_hit = damage_source("player_attack")
+
+    def add(table, n=8, **fields):
+        index = custom(table)
+        for seed in range(1, n + 1):
+            cases.append({"ct": index, "s": seed_for(f"custom{index}", seed), **fields})
+
+    # pool structure: rolls, bonus rolls with luck, pool and table functions
+    add({"type": "minecraft:chest", "pools": [
+        {"rolls": {"type": "minecraft:uniform", "min": 1, "max": 4}, "bonus_rolls": 1.5,
+         "entries": [item("apple", weight=3), item("bread", weight=2, quality=2), item("stick", quality=-1)],
+         "functions": [const_count({"type": "minecraft:uniform", "min": 1, "max": 6})]}],
+         "functions": [{"function": "minecraft:limit_count", "limit": {"min": 2, "max": 4}}]}, 24, l=0.0)
+    add({"type": "minecraft:chest", "pools": [
+        {"rolls": 3, "bonus_rolls": 2.0,
+         "entries": [item("apple", weight=3), item("bread", weight=2, quality=2), item("stick", quality=-1)]}]}, 24, l=2.5)
+    add({"type": "minecraft:chest", "pools": [
+        {"rolls": {"type": "minecraft:binomial", "n": 6, "p": 0.4},
+         "entries": [item("gold_ingot"), item("iron_ingot"), item("diamond")]}]}, 12)
+    add({"type": "minecraft:chest", "pools": [
+        {"rolls": 2, "conditions": [{"condition": "minecraft:random_chance", "chance": 0.5}],
+         "entries": [item("gold_ingot")]},
+        {"rolls": 1, "entries": [item("coal", weight=0), item("stone", weight=0)]}]}, 12)
+
+    # entry containers
+    add({"type": "minecraft:chest", "pools": [{"rolls": 2, "entries": [
+        {"type": "minecraft:alternatives", "children": [
+            item("diamond", conditions=[{"condition": "minecraft:random_chance", "chance": 0.3}]),
+            item("emerald", conditions=[{"condition": "minecraft:random_chance", "chance": 0.5}]),
+            item("coal")]},
+        {"type": "minecraft:group", "children": [item("stick"), item("string", weight=5)]},
+        {"type": "minecraft:sequence", "children": [
+            item("bone", conditions=[{"condition": "minecraft:random_chance", "chance": 0.6}]),
+            item("flint")]},
+        {"type": "minecraft:empty", "weight": 4}]}]}, 24)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
+        {"type": "minecraft:tag", "name": "minecraft:flowers", "expand": True,
+         "functions": [const_count(7)]},
+        {"type": "minecraft:tag", "name": "minecraft:logs", "expand": False, "weight": 6,
+         "functions": [const_count(2)]}]}]}, 12)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        {"type": "minecraft:loot_table", "weight": 2, "value": {"type": "minecraft:chest", "pools": [
+            {"rolls": 2, "entries": [item("arrow"), item("feather")]}],
+            "functions": [const_count(3)]},
+         "functions": [{"function": "minecraft:limit_count", "limit": 4}]},
+        {"type": "minecraft:loot_table", "value": "minecraft:chests/simple_dungeon"},
+        {"type": "minecraft:loot_table", "value": "minecraft:chests/missing_table"},
+        {"type": "minecraft:dynamic", "name": "minecraft:contents"}]}]}, 16)
+
+    # conditions on the chest context
+    add({"type": "minecraft:chest", "pools": [{"rolls": 4, "entries": [
+        {"type": "minecraft:item", "name": "minecraft:apple", "conditions": [
+            {"condition": "minecraft:inverted", "term": {"condition": "minecraft:random_chance", "chance": {"type": "minecraft:uniform", "min": 0.2, "max": 0.7}}}]},
+        {"type": "minecraft:item", "name": "minecraft:bread", "conditions": [
+            [{"condition": "minecraft:random_chance", "chance": 0.5}, {"condition": "minecraft:random_chance", "chance": 0.5}]]},
+        {"type": "minecraft:item", "name": "minecraft:cake", "conditions": [
+            {"condition": "minecraft:any_of", "terms": [{"condition": "minecraft:random_chance", "chance": 0.1}, {"condition": "minecraft:random_chance", "chance": 0.4}]}]},
+        {"type": "minecraft:item", "name": "minecraft:cookie", "conditions": [
+            {"condition": "minecraft:value_check", "value": {"type": "minecraft:uniform", "min": 0, "max": 10}, "range": {"min": 3, "max": {"type": "minecraft:uniform", "min": 4, "max": 9}}}]}]}]}, 16)
+    for day_time, raining, thundering in ((0, False, False), (6000, True, False), (13000, True, True), (30000, False, True)):
+        add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+            item("clock", conditions=[{"condition": "minecraft:time_check", "value": {"min": 12000, "max": 24000}, "period": 24000}]),
+            item("water_bucket", conditions=[{"condition": "minecraft:weather_check", "raining": True}]),
+            item("lightning_rod", conditions=[{"condition": "minecraft:weather_check", "thundering": True, "raining": True}]),
+            item("sunflower", conditions=[{"condition": "minecraft:weather_check", "raining": False}])]}]}, 4,
+            lv=level(day_time=day_time, raining=raining, thundering=thundering))
+    for biome in ("minecraft:plains", "minecraft:desert", "minecraft:swamp"):
+        add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+            item("cactus", conditions=[{"condition": "minecraft:location_check", "predicate": {"biomes": ["minecraft:desert", "minecraft:badlands"]}}]),
+            item("lily_pad", conditions=[{"condition": "minecraft:location_check", "predicate": {"biomes": "#minecraft:is_overworld"}, "offsetY": 3}]),
+            item("grass_block", conditions=[{"condition": "minecraft:location_check", "predicate": {"position": {"y": {"min": 60, "max": 70}}}}]),
+            item("stone", conditions=[{"condition": "minecraft:location_check", "predicate": {"dimension": "minecraft:the_nether"}}])]}]}, 2,
+            lv=level(biome=biome))
+
+    # functions on items
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stick", functions=[
+            const_count({"type": "minecraft:binomial", "n": 10, "p": 0.3}),
+            const_count(2, add=True),
+            {"function": "minecraft:limit_count", "limit": {"max": 5}},
+            {"function": "minecraft:limit_count", "limit": {"min": 2}}])]}]}, 12)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("diamond_pickaxe", functions=[
+            {"function": "minecraft:set_damage", "damage": {"type": "minecraft:uniform", "min": 0.1, "max": 0.9}},
+            {"function": "minecraft:set_damage", "damage": 0.25, "add": True}])]}]}, 8)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stone", functions=[{"function": "minecraft:set_item", "item": "minecraft:diamond"}, const_count(3)]),
+        item("book", functions=[{"function": "minecraft:enchant_randomly"}]),
+        item("book", functions=[{"function": "minecraft:enchant_randomly", "only_compatible": False}]),
+        item("diamond_sword", functions=[{"function": "minecraft:enchant_randomly"}]),
+        item("bow", functions=[{"function": "minecraft:enchant_randomly", "options": ["minecraft:power", "minecraft:punch", "minecraft:unbreaking"]}]),
+        item("bow", functions=[{"function": "minecraft:enchant_randomly", "options": ["minecraft:sharpness"]}]),
+        item("book", functions=[{"function": "minecraft:enchant_with_levels", "levels": {"type": "minecraft:uniform", "min": 5, "max": 30}}]),
+        item("iron_chestplate", functions=[{"function": "minecraft:enchant_with_levels", "levels": 20, "options": "#minecraft:on_random_loot"}]),
+        item("fishing_rod", functions=[{"function": "minecraft:enchant_with_levels", "levels": 30}]),
+        item("stick", functions=[{"function": "minecraft:enchant_with_levels", "levels": 30}]),
+        item("book", functions=[{"function": "minecraft:set_enchantments", "enchantments": {"minecraft:sharpness": 3, "minecraft:efficiency": {"type": "minecraft:uniform", "min": 1, "max": 5}}}]),
+        item("diamond_sword", functions=[
+            {"function": "minecraft:set_enchantments", "enchantments": {"minecraft:sharpness": 2}},
+            {"function": "minecraft:set_enchantments", "enchantments": {"minecraft:sharpness": 2, "minecraft:unbreaking": 1}, "add": True}])]}]}, 40)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("potion", functions=[{"function": "minecraft:set_potion", "id": "minecraft:strong_healing"}]),
+        item("splash_potion", functions=[{"function": "minecraft:set_potion", "id": "minecraft:long_night_vision"}]),
+        item("suspicious_stew", functions=[{"function": "minecraft:set_stew_effect", "effects": [
+            {"type": "minecraft:night_vision", "duration": {"type": "minecraft:uniform", "min": 4, "max": 8}},
+            {"type": "minecraft:saturation", "duration": 7}]}, {"function": "minecraft:set_stew_effect", "effects": [{"type": "minecraft:poison", "duration": 5}]}]),
+        item("ominous_bottle", functions=[{"function": "minecraft:set_ominous_bottle_amplifier", "amplifier": {"type": "minecraft:uniform", "min": -2, "max": 9}}]),
+        item("goat_horn", functions=[{"function": "minecraft:set_instrument", "options": "#minecraft:screaming_goat_horns"}]),
+        item("stick", functions=[{"function": "minecraft:set_name", "name": {"translate": "item.test"}, "target": "item_name"}]),
+        item("beef", functions=[{"function": "minecraft:furnace_smelt"}, const_count(3)]),
+        item("potato", functions=[{"function": "minecraft:furnace_smelt"}]),
+        item("apple", functions=[{"function": "minecraft:furnace_smelt"}])]}]}, 24)
+    add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
+        item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
+
+    # entity conditions
+    for fire in (zombie, burning):
+        for attacker in (None, sword):
+            fields = {"te": fire, "ds": player_hit}
+            if attacker is not None:
+                fields["ae"] = attacker
+            add({"type": "minecraft:entity", "pools": [{"rolls": 2, "entries": [
+                item("blaze_rod", conditions=[{"condition": "minecraft:entity_properties", "entity": "this", "predicate": {"flags": {"is_on_fire": True}}}]),
+                item("diamond_sword", conditions=[{"condition": "minecraft:entity_properties", "entity": "attacker",
+                    "predicate": {"equipment": {"mainhand": {"items": "#minecraft:swords", "predicates": {"minecraft:enchantments": [{"enchantments": "minecraft:looting", "levels": {"min": 2}}]}}}}}]),
+                item("bone", conditions=[{"condition": "minecraft:random_chance_with_enchanted_bonus", "unenchanted_chance": 0.2,
+                    "enchanted_chance": {"type": "minecraft:linear", "base": 0.3, "per_level_above_first": 0.2}, "enchantment": "minecraft:looting"}]),
+                item("leather", conditions=[{"condition": "minecraft:entity_properties", "entity": "this", "predicate": {"type": ["minecraft:zombie", "minecraft:husk"]}}],
+                    functions=[{"function": "minecraft:enchanted_count_increase", "enchantment": "minecraft:looting", "count": {"type": "minecraft:uniform", "min": 0, "max": 1}, "limit": 3}]),
+                item("rotten_flesh", conditions=[{"condition": "minecraft:damage_source_properties", "predicate": {"is_direct": True}}]),
+                item("iron_nugget", conditions=[{"condition": "minecraft:damage_source_properties", "predicate": {"tags": [{"id": "minecraft:is_projectile", "expected": False}]}}]),
+                item("gold_nugget", conditions=[{"condition": "minecraft:killed_by_player"}])]}]}, 6, **fields)
+    # fill: the container path used by chests
+    return cases
+
+
+def fill_cases():
+    cases = []
+    for key, table in TABLES.items():
+        if table.get('type') != 'minecraft:chest':
+            continue
+        bare = key[len('minecraft:'):]
+        for n in range(1, 4):
+            cases.append({'t': bare, 's': seed_for(bare, 100 + n), 'f': 27})
+        cases.append({'t': bare, 's': seed_for(bare, 200), 'f': 27, 'fe': {'3': stack('stick', 5), '4': stack('cobblestone', 64), '26': stack('apple', 2)}})
+        cases.append({'t': bare, 's': seed_for(bare, 300), 'f': 9})
+    return cases
+
+
+def sequence_cases(cases):
+    """Re-roll a sample of the vanilla cases through named random sequences."""
+    out = []
+    picked = {}
+    for case in cases:
+        key = case.get("t")
+        if key is None or "f" in case or key in picked:
+            continue
+        if "random_sequence" not in TABLES["minecraft:" + key]:
+            continue
+        picked[key] = case
+    for index, (key, case) in enumerate(sorted(picked.items())):
+        if index % 7:
+            continue
+        for world_seed, defaults in ((0, None), (123456789, None), (-987654321987, (5, True, True)), (42, (3, False, True))):
+            sequence = {"world_seed": world_seed, "rolls": 3, "id": TABLES["minecraft:" + key]["random_sequence"]}
+            if defaults:
+                sequence.update(salt=defaults[0], include_world_seed=defaults[1], include_sequence_id=defaults[2])
+            out.append({**case, "s": 1, "sq": sequence})
+    return out
+
+
 def expand(case):
     scenario = {
-        "name": f'{case["t"]}#{case["s"]}',
-        "table": "minecraft:" + case["t"],
+        "name": f'{case.get("t", "custom" + str(case.get("ct")))}#{case["s"]}',
+        "table": "minecraft:" + case.get("t", "custom"),
         "seed": case["s"],
         "luck": case.get("l", 0.0),
         "level": LEVELS[case.get("lv", 0)],
-        "params": {} if case["t"] == "gameplay/piglin_bartering" else {"origin": [0.5, 64.5, 0.5]},
+        "params": {} if case.get("t") == "gameplay/piglin_bartering" else {"origin": [0.5, 64.5, 0.5]},
     }
     p = scenario["params"]
+    if "ct" in case:
+        scenario["table_json"] = CUSTOM_TABLES[case["ct"]]
+    if "f" in case:
+        scenario["fill"] = case["f"]
+    if "fe" in case:
+        scenario["fill_existing"] = case["fe"]
+    if "sq" in case:
+        scenario["sequence"] = case["sq"]
     if "k" in case:
         p["tool"] = TOOLS[case["k"]]
     if "b" in case:
         p["block_state"] = BLOCK_STATES[case["b"]]
     if "x" in case:
         p["explosion_radius"] = case["x"]
+    if "be" in case:
+        p["block_entity"] = case["be"]
     if "te" in case:
         p["this_entity"] = ENTITIES[case["te"]]
     if "ae" in case:
@@ -316,7 +524,8 @@ def main():
     parser.add_argument("--work", type=Path, default=Path("/tmp"))
     args = parser.parse_args()
 
-    cases = block_cases() + entity_cases() + other_cases()
+    cases = block_cases() + entity_cases() + other_cases() + synthetic_cases() + fill_cases()
+    cases += sequence_cases(cases)
     scenarios = [expand(case) for case in cases]
     work = args.work
     (work / "loot-scenarios.json").write_text(json.dumps(scenarios))
@@ -331,9 +540,13 @@ def main():
     kept, skipped = [], []
     for case, result in zip(cases, results):
         if "error" in result:
-            skipped.append((case["t"], result["error"]))
+            skipped.append((case.get("t", "custom" + str(case.get("ct"))), result["error"]))
             continue
         case["r"] = ",".join(result["stacks"]) + "|" + str(result["rng_next"])
+        if "f" in case:
+            case["r"] = ",".join(result["stacks"])
+        if "sq" in case:
+            case["r"] = ";".join(result["stacks"]) + "|" + str(result["rng_next"])
         kept.append(case)
     out = {
         "format": "cinderstone-loot-oracle-v1",
@@ -350,6 +563,7 @@ def main():
         "damage_sources": DAMAGE_SOURCES,
         "levels": LEVELS,
         "block_states": BLOCK_STATES,
+        "custom_tables": CUSTOM_TABLES,
         "cases": kept,
     }
     args.out.write_text(json.dumps(out, separators=(",", ":")))

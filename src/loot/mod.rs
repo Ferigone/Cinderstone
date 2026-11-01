@@ -30,6 +30,7 @@ pub mod host;
 pub mod number;
 pub mod parse;
 pub mod predicate;
+pub mod sequences;
 pub mod vanilla;
 
 use std::fmt;

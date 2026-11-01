@@ -78,6 +78,7 @@ public class loot_oracle {
     Field f = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
     f.setAccessible(true);
     unsafe = (sun.misc.Unsafe) f.get(null);
+    stubServer = makeServer();
     level = makeLevel();
   }
 
@@ -124,6 +125,33 @@ public class loot_oracle {
     mv.visitEnd();
   }
 
+  static Object stubServer;
+
+  static Object makeServer() throws Throwable {
+    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubServer", null, "net/minecraft/server/MinecraftServer", null);
+    hookMethod(cw, "reloadableRegistries", "()Lnet/minecraft/server/ReloadableServerRegistries$Holder;");
+    cw.visitEnd();
+    Class<?> c = new Loader(loot_oracle.class.getClassLoader()).define("oracle.StubServer", cw.toByteArray());
+    return unsafe.allocateInstance(c);
+  }
+
+  static JsonObject scenarioBlockEntity = null;
+
+  /** A BlockEntity whose implicit components come from the scenario. */
+  static Object makeBlockEntity() throws Throwable {
+    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubBlockEntity", null, "net/minecraft/world/level/block/entity/BlockEntity", null);
+    hookMethod(cw, "collectImplicitComponents", "(Lnet/minecraft/core/component/DataComponentMap$Builder;)V");
+    cw.visitEnd();
+    Class<?> c = new Loader(loot_oracle.class.getClassLoader()).define("oracle.StubBlockEntity", cw.toByteArray());
+    Object be = unsafe.allocateInstance(c);
+    Field f = net.minecraft.world.level.block.entity.BlockEntity.class.getDeclaredField("components");
+    f.setAccessible(true);
+    f.set(be, net.minecraft.core.component.DataComponentMap.EMPTY);
+    return be;
+  }
+
   static ServerLevel makeLevel() throws Throwable {
     ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
     cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubLevel", null, "net/minecraft/server/level/ServerLevel", null);
@@ -155,7 +183,14 @@ public class loot_oracle {
     switch (name) {
       case "enabledFeatures": return FeatureFlags.VANILLA_SET;
       case "getRecipeManager": return res.getRecipeManager();
-      case "getServer": return null;
+      case "collectImplicitComponents": {
+        net.minecraft.core.component.DataComponentMap.Builder b = (net.minecraft.core.component.DataComponentMap.Builder) a[0];
+        if (scenarioBlockEntity.has("custom_name")) b.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal(scenarioBlockEntity.get("custom_name").getAsString()));
+        if (scenarioBlockEntity.has("lock")) b.set(net.minecraft.core.component.DataComponents.LOCK, new net.minecraft.world.LockCode(scenarioBlockEntity.get("lock").getAsString()));
+        return null;
+      }
+      case "getServer": return stubServer;
+      case "reloadableRegistries": return res.fullRegistries();
       case "registryAccess": return access;
       case "isLoaded": return Boolean.TRUE;
       case "getGameTime": return scenarioLevel.has("game_time") ? scenarioLevel.get("game_time").getAsLong() : 0L;
@@ -250,11 +285,14 @@ public class loot_oracle {
     scenarioLevel = sc.has("level") ? sc.getAsJsonObject("level") : new JsonObject();
     JsonObject p = sc.getAsJsonObject("params");
     ResourceKey<LootTable> key = ResourceKey.create(Registries.LOOT_TABLE, rl(sc.get("table").getAsString()));
-    LootTable table = res.fullRegistries().getLootTable(key);
+    LootTable table = sc.has("table_json")
+      ? LootTable.DIRECT_CODEC.parse(jsonOps, sc.get("table_json")).getOrThrow(msg -> new IllegalArgumentException("table: " + msg))
+      : res.fullRegistries().getLootTable(key);
     LootParams.Builder b = new LootParams.Builder(level);
     if (p.has("origin")) { JsonArray o = p.getAsJsonArray("origin"); b.withParameter(LootContextParams.ORIGIN, new Vec3(o.get(0).getAsDouble(), o.get(1).getAsDouble(), o.get(2).getAsDouble())); }
     if (p.has("block_state")) b.withParameter(LootContextParams.BLOCK_STATE, blockState(p.getAsJsonObject("block_state")));
     if (p.has("tool")) b.withParameter(LootContextParams.TOOL, stack(p.getAsJsonObject("tool")));
+    if (p.has("block_entity")) { scenarioBlockEntity = p.getAsJsonObject("block_entity"); b.withParameter(LootContextParams.BLOCK_ENTITY, (net.minecraft.world.level.block.entity.BlockEntity) makeBlockEntity()); }
     if (p.has("explosion_radius")) b.withParameter(LootContextParams.EXPLOSION_RADIUS, p.get("explosion_radius").getAsFloat());
     if (p.has("this_entity")) b.withParameter(LootContextParams.THIS_ENTITY, entity(p.getAsJsonObject("this_entity")));
     if (p.has("attacking_entity")) b.withParameter(LootContextParams.ATTACKING_ENTITY, entity(p.getAsJsonObject("attacking_entity")));
@@ -272,6 +310,44 @@ public class loot_oracle {
     LootParams params = b.create(set);
 
     long seed = sc.get("seed").getAsLong();
+    if (sc.has("fill")) {
+      net.minecraft.world.SimpleContainer container = new net.minecraft.world.SimpleContainer(sc.get("fill").getAsInt());
+      if (sc.has("fill_existing")) {
+        for (Map.Entry<String, JsonElement> e : sc.getAsJsonObject("fill_existing").entrySet()) container.setItem(Integer.parseInt(e.getKey()), stack(e.getValue().getAsJsonObject()));
+      }
+      table.fill(container, params, seed);
+      JsonObject r = new JsonObject();
+      r.addProperty("name", sc.get("name").getAsString());
+      JsonArray slots = new JsonArray();
+      for (int i = 0; i < container.getContainerSize(); i++) slots.add(wire(container.getItem(i)));
+      r.add("stacks", slots);
+      r.addProperty("rng_next", 0);
+      return r;
+    }
+    if (sc.has("sequence")) {
+      JsonObject q = sc.getAsJsonObject("sequence");
+      net.minecraft.world.RandomSequences sequences = new net.minecraft.world.RandomSequences(q.get("world_seed").getAsLong());
+      if (q.has("salt")) sequences.setSeedDefaults(q.get("salt").getAsInt(), q.get("include_world_seed").getAsBoolean(), q.get("include_sequence_id").getAsBoolean());
+      ResourceLocation sequenceId = rl(q.get("id").getAsString());
+      Constructor<LootContext> sctor = LootContext.class.getDeclaredConstructor(LootParams.class, RandomSource.class, HolderGetter.Provider.class);
+      sctor.setAccessible(true);
+      JsonArray perRoll = new JsonArray();
+      for (int i = 0; i < q.get("rolls").getAsInt(); i++) {
+        LootContext sctx = sctor.newInstance(params, sequences.get(sequenceId), lookup);
+        List<ItemStack> produced = new ArrayList<>();
+        table.getRandomItems(sctx, produced::add);
+        StringBuilder sb = new StringBuilder();
+        for (ItemStack st : produced) { if (sb.length() > 0) sb.append(','); sb.append(wire(st)); }
+        perRoll.add(sb.toString());
+      }
+      net.minecraft.nbt.CompoundTag saved = sequences.save(new net.minecraft.nbt.CompoundTag(), access);
+      long[] state = saved.getCompound("sequences").getCompound(sequenceId.toString()).getLongArray("source");
+      JsonObject r = new JsonObject();
+      r.addProperty("name", sc.get("name").getAsString());
+      r.add("stacks", perRoll);
+      r.addProperty("rng_next", state[0] + "," + state[1]);
+      return r;
+    }
     RandomSource rnd = RandomSource.create(seed);
     Constructor<LootContext> ctor = LootContext.class.getDeclaredConstructor(LootParams.class, RandomSource.class, HolderGetter.Provider.class);
     ctor.setAccessible(true);
