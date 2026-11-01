@@ -28,6 +28,36 @@ pub struct NoiseChunk<'g> {
     phase: TraversalPhase,
 }
 
+/// Internal move-only state used while an Arc-bound prepared job holds the
+/// exact graph alive. Fields and restore operations are not public rebinding
+/// APIs. The identity is compared only; it is never dereferenced or persisted.
+pub(super) struct RetainedNoiseChunk {
+    graph_identity: usize,
+    density: ChunkDensity,
+    grid: NoiseGrid,
+    origin_x: i32,
+    origin_z: i32,
+    phase: TraversalPhase,
+}
+impl RetainedNoiseChunk {
+    fn require_graph(&self, graph: &DensityGraph) -> Result<()> {
+        ensure!(
+            self.graph_identity == graph as *const DensityGraph as usize,
+            "retained noise state belongs to a different density graph"
+        );
+        Ok(())
+    }
+    pub(super) fn density_mut_for(&mut self, graph: &DensityGraph) -> Result<&mut ChunkDensity> {
+        self.require_graph(graph)?;
+        Ok(&mut self.density)
+    }
+    #[cfg(test)]
+    pub(super) fn density_for(&self, graph: &DensityGraph) -> Result<&ChunkDensity> {
+        self.require_graph(graph)?;
+        Ok(&self.density)
+    }
+}
+
 impl std::fmt::Debug for NoiseChunk<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("NoiseChunk")
@@ -119,6 +149,29 @@ impl<'g> NoiseChunk<'g> {
 
     pub fn into_density(self) -> ChunkDensity {
         self.density
+    }
+
+    pub(super) fn into_retained(self) -> RetainedNoiseChunk {
+        RetainedNoiseChunk {
+            graph_identity: self.graph as *const DensityGraph as usize,
+            density: self.density,
+            grid: self.grid,
+            origin_x: self.origin_x,
+            origin_z: self.origin_z,
+            phase: self.phase,
+        }
+    }
+
+    pub(super) fn restore(graph: &'g DensityGraph, retained: RetainedNoiseChunk) -> Result<Self> {
+        retained.require_graph(graph)?;
+        Ok(Self {
+            graph,
+            density: retained.density,
+            grid: retained.grid,
+            origin_x: retained.origin_x,
+            origin_z: retained.origin_z,
+            phase: retained.phase,
+        })
     }
 
     /// Visit blocks in NoiseBasedChunkGenerator.doFill order, updating the
@@ -221,6 +274,43 @@ mod tests {
             })
             .is_err());
         assert!(!resumed);
+    }
+
+    #[test]
+    fn retained_state_rejects_equal_seed_different_graphs() {
+        let graph = DensityGraph::builtin(123456789, "nether").unwrap();
+        let other = DensityGraph::builtin(123456789, "nether").unwrap();
+        let chunk = NoiseChunk::new(&graph, 0, 0, 0, 8).unwrap();
+        let retained = chunk.into_retained();
+        assert!(NoiseChunk::restore(&other, retained).is_err());
+    }
+
+    #[test]
+    fn retained_restore_preserves_finished_and_failed_traversal_phases() {
+        let graph = DensityGraph::builtin(123456789, "nether").unwrap();
+        for fail in [false, true] {
+            let mut chunk = NoiseChunk::new(&graph, 0, 0, 0, 8).unwrap();
+            let result = chunk.visit_blocks(|_, _, _| {
+                if fail {
+                    bail!("controlled material failure");
+                }
+                Ok(())
+            });
+            assert_eq!(result.is_err(), fail);
+            let state = chunk.density().state();
+            let allocations = chunk.density().allocation_fingerprint();
+            let mut restored = NoiseChunk::restore(&graph, chunk.into_retained()).unwrap();
+            assert_eq!(restored.density().state(), state);
+            assert_eq!(restored.density().allocation_fingerprint(), allocations);
+            let mut visits = 0;
+            assert!(restored
+                .visit_blocks(|_, _, _| {
+                    visits += 1;
+                    Ok(())
+                })
+                .is_err());
+            assert_eq!(visits, 0);
+        }
     }
 
     #[test]
