@@ -52,8 +52,12 @@ captured default registry data; it does not create a live registry owner.
 2. Trigger recipe-crafted using the three actual pre-consumption inputs, award
    the non-special recipe, and clear `recipeUsed`.
 3. Shrink input 0, then 1, then 2 by one. Every nonempty input is installed with
-   `SimpleContainer.setItem`, synchronously invoking `createResult` before the
-   next decrement. Smithing does not use crafting recipe remainder items here.
+   `SimpleContainer.setItem`, synchronously invoking its `setChanged` callback.
+   `ItemCombinerMenu.slotsChanged` first calls superclass
+   `AbstractContainerMenu.slotsChanged`, which **broadcasts changes**, and only
+   then invokes `createResult` before the next decrement. The broadcast sees
+   already-decremented inputs and the **previous** derived result. Smithing
+   does not use crafting recipe remainder items here.
 4. Execute world level event 1044, data 0, at the captured block position.
 
 `ItemCombinerMenu.quickMoveStack` transfers result into player inventory in
@@ -63,6 +67,15 @@ no `ResultSlot` quick-craft counter. The native take plan records this explicitl
 normal pickup records the one-item output. Plans are one-shot and check their
 original state before replacing it, so a second stale plan cannot consume a
 newer input state. Callback arguments and the result preview are not owned drops.
+
+`SmithingEffect::BeforeCreateResult` records those exact input/previous-preview
+observations. The inventory adapter consumes them through shared `MenuSync`
+at their source positions rather than batching all input/result observations
+after consumption. For ordinary `Slot.set`, the container's setItem callback
+and the following `Slot.setChanged` both invoke this path. `moveItemStackTo`
+merges into an existing slot with just `Slot.setChanged`; insertion into an
+empty slot uses `Slot.set`. Input removal likewise preserves the remove callback,
+empty-slot installation, ordinary input onTake and final pickup slot callback.
 
 `findSlotToQuickMoveTo` visits captured recipes in order. Within each recipe it
 checks template before base before addition, then accepts only an **empty**
@@ -113,6 +126,14 @@ mode. PICKUP_ALL uses two passes, skips overstacked sources and excludes the
 derived result container. Bundle item-click overrides still require their real
 feature/component owner and fail before live mutation.
 
+Pickup installs/grows the actual menu cursor before result `onTake`; output
+hotbar/offhand swap installs its destination first. Input insertion and swaps
+also shrink/change their actual cursor or player source before the nested
+input callbacks. Intermediate local listeners therefore observe the source
+inventory at the correct phase, without treating a transfer proposal as a
+second owned stack. Remote packets remain suppressed during authoritative
+click execution; client predictions only update the remote baselines afterward.
+
 `prepare_close` stages the cursor first and owned input slots in order, using the
 actual alive/disconnected context supplied by Main. It excludes the preview.
 The host must publish a server-initiated close packet before those return/drop
@@ -128,7 +149,11 @@ disconnected cursor/input conservation, stale inventory rejection and stale-ID
 full-state synchronization. Later focused flows exercise drag/pick-all item
 conservation, offhand and result hotbar swap, creative clone gating, ordered
 result throw, repeated overstacked main/hotbar transfers, result exclusion from
-pick-all, and mixed alive raw insertions/overflow drops. This is an in-process native transaction check,
+pick-all, and mixed alive raw insertions/overflow drops. A focused ordering flow
+also observes the previous result as EMPTY, recreated output, then EMPTY across
+the three input decrements, between recipe awards and level event1044; it checks
+that an ingredient shift has already emptied its actual player source before
+the input/result listeners run. This is an in-process native transaction check,
 not a protocol socket/client or original-server gameplay observation. The
 central Main block-open, packet dispatch, callback owners and player-phase
 validity/close callsites remain pending the integration contract.
@@ -136,8 +161,11 @@ validity/close callsites remain pending the integration contract.
 The adapter's callback contract is bounded to actual owners whose recipe and
 item callbacks do not reenter and mutate this inventory/menu during an action.
 The host must reject unsupported advancement-reward/reentrant contexts before
-staging; it must not ignore their effects. `ItemCombinerMenu.createResult` does
-not broadcast, so the recorded smithing callback events precede the final menu
-sync events; there are no synthetic intermediate slot packets between input
-decrements. The ingredient quick-move transfer range is the selected starting
+staging; it must not ignore their effects. `ItemCombinerMenu.createResult` itself
+does not broadcast, but its preceding superclass slotsChanged **does**. Local
+slot/listener observations are retained at every source boundary, including
+between input decrements, while suppressed remote changes wait for final click
+synchronization. These observations support non-reentrant actual owners; they
+do not execute mutating advancement or custom listener code against a later
+final-state snapshot. The ingredient quick-move transfer range is the selected starting
 input through the exclusive result slot, exactly as in the source base menu.

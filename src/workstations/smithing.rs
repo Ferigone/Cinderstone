@@ -85,6 +85,13 @@ pub enum SmithingTakeKind {
 /// are callback arguments, not an additional inventory or owned items.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SmithingEffect {
+    /// ItemCombinerMenu.slotsChanged calls its superclass broadcast BEFORE
+    /// createResult. Inputs already changed, while this preview is still the
+    /// previous result. These are listener observations, never owned items.
+    BeforeCreateResult {
+        inputs: [ItemStack; 3],
+        previous_result: ItemStack,
+    },
     CraftedBy {
         stack: ItemStack,
         amount: i32,
@@ -163,9 +170,18 @@ impl SmithingState {
         Ok(false)
     }
 
-    /// A UI input replacement; the actual inventory/cursor transfer belongs
-    /// to the surrounding transaction. No player inventory is retained here.
+    /// Isolated recipe-state convenience setter. Production menu adapters must
+    /// use set_input_observed and replay its source broadcast boundary.
     pub fn set_input(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        self.set_input_observed(slot, stack).map(|_| ())
+    }
+    /// One actual input-container mutation/setChanged. Slot.set additionally
+    /// invokes Slot.setChanged; the adapter supplies that separate callback.
+    pub fn set_input_observed(
+        &mut self,
+        slot: usize,
+        stack: ItemStack,
+    ) -> Result<Vec<SmithingEffect>> {
         ensure!(slot < RESULT_SLOT, "invalid smithing input slot");
         ensure!(
             stack.is_empty() || self.may_place(slot, &stack)?,
@@ -180,10 +196,27 @@ impl SmithingState {
         }
         let mut next = self.clone();
         next.inputs[slot] = canonical_empty(stack);
+        let observation = next.before_create_result();
         next.create_result()?;
         next.revision = next.revision.wrapping_add(1);
         *self = next;
-        Ok(())
+        Ok(vec![observation])
+    }
+    /// SimpleContainer.setChanged without another input mutation, including
+    /// Slot.setChanged and ordinary input Slot.onTake callbacks.
+    pub fn input_changed_observed(&mut self) -> Result<Vec<SmithingEffect>> {
+        let mut next = self.clone();
+        let observation = next.before_create_result();
+        next.create_result()?;
+        next.revision = next.revision.wrapping_add(1);
+        *self = next;
+        Ok(vec![observation])
+    }
+    fn before_create_result(&self) -> SmithingEffect {
+        SmithingEffect::BeforeCreateResult {
+            inputs: self.inputs.clone(),
+            previous_result: self.result.clone(),
+        }
     }
 
     /// Source mayPickup ignores its hasItem argument and rechecks the selected
@@ -260,6 +293,7 @@ impl SmithingState {
             if !next.inputs[slot].is_empty() {
                 next.inputs[slot].count -= 1;
                 next.inputs[slot] = canonical_empty(std::mem::take(&mut next.inputs[slot]));
+                effects.push(next.before_create_result());
                 next.create_result()?;
             }
         }
