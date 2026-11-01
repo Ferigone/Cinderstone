@@ -86,8 +86,10 @@ instance.tick(actor_tick_count: i32, host: &mut impl EffectTickHost<K>)
 
 Additional constructors accept the source flags and hidden chain. Accessors,
 `copy_instance`, `copy_blend_state`, `skip_blending` and `blend_factor` expose
-the corresponding bounded instance operations. The integrator must add the
-namespace export; this stage does not edit `src/lib.rs` or a manifest.
+the corresponding bounded instance operations. A publication follow-up adds only
+`pub mod effects;` to `src/lib.rs` under the coordinator's narrow standing
+mechanical exception. It introduces no actor owner or Main callsite and changes
+no manifest. Actual actor integration remains with the coordinator.
 
 The caller must own the actual canonical holder-keyed collection and retain the
 same instance through synchronous map removal. A detached clone or buffered
