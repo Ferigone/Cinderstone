@@ -123,6 +123,13 @@ are retained, including double setByPlayer callbacks and a full matching slot
 accepting zero items. The actual Inventory.setChanged and Inventory.add owners
 remain mandatory host callbacks. Same-backing overfull SWAP preserves the
 post-split displaced remainder instead of duplicating the original full stack.
+`Slot.safeInsert` (`crq.b(ItemStack,int)`, bytecode offsets 22–43 and 73–85)
+also retains **negative** capacity for an admitted overfull matching stack.
+For a 99-item player slot with limit 64 and one matching cursor item, transfer
+amount -35 makes the slot 64 and cursor 36; clamping capacity to zero would
+change the source behavior. The setter and outer Pickup each invoke the actual
+Inventory.setChanged callback once. This does not replace inventory codec or
+context validation: the behavior applies when that real owner admits the stack.
 
 QuickCraft membership lives in the controller; its HashSet encounter order
 must come from the actual slot-identity owner, with no invented production
@@ -189,3 +196,9 @@ book dropped. Focused alias/drag checks cover overfull self-SWAP conservation,
 one-slot creative-drag no-op, zero-accept full-slot callbacks and owner-binding
 rejection. The recording insertion/order/factory hosts are test fixtures, not
 production substitutes for the actual owners.
+
+The overfull matching-Pickup regression starts with 99 emeralds in an admitted
+player slot and one on the cursor, observes the source 64/36 split, conserves
+the total 100 and records both actual dirty-callback boundaries. Its behavioral
+reference is the pinned Slot/Inventory/ItemStack bytecode; no additional live
+Java menu observation is claimed.

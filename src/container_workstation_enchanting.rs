@@ -559,9 +559,11 @@ impl<S: Clone + PartialEq + Debug, K: Clone + Eq + Debug> EnchantingMenu<S, K> {
         } else if Self::may_place(index, &cursor) {
             if source.same_item_same_components(&cursor)? {
                 let n = (if button == 0 { cursor.count } else { 1 })
-                    .min((Self::limit(index, &cursor)? - source.count).max(0));
-                // Slot.safeInsert calls setByPlayer for matching stacks
-                // even when the full slot accepts zero items.
+                    .min(Self::limit(index, &cursor)? - source.count);
+                // Slot.safeInsert retains negative capacity for an admitted
+                // overfull stack: shrink(cursor,n) grows that cursor while
+                // grow(source,n) restores the slot to its limit. It also calls
+                // setByPlayer when a full slot accepts exactly zero items.
                 self.sync.set_carried(counted(&cursor, cursor.count - n));
                 self.set_slot(index, counted(&source, source.count + n), host)?;
             } else if cursor.count <= Self::limit(index, &cursor)? {
@@ -1089,6 +1091,30 @@ mod tests {
         assert!(menu.broadcast_changes(&mut host).is_err());
         Ok(())
     }
+    #[test]
+    fn overfull_matching_pickup_preserves_negative_safe_insert_and_dirty_callbacks() -> Result<()> {
+        let mut host = Host::new(true);
+        host.inventory
+            .set_slot_authoritative(9, item("emerald", 99));
+        host.inventory
+            .set_slot_authoritative(10, item("emerald", 1));
+        let mut menu = EnchantingMenu::new(5, &mut host)?;
+        menu.click(&click(&menu, 3, 0, ClickType::Pickup), &mut host)?;
+        assert_eq!(menu.carried().count, 1);
+        host.inventory_changes = 0;
+        menu.click(&click(&menu, 2, 0, ClickType::Pickup), &mut host)?;
+        assert_eq!(host.inventory.slot(9).unwrap().count, 64);
+        assert_eq!(menu.carried().count, 36);
+        assert_eq!(
+            host.inventory.slot(9).unwrap().count + menu.carried().count,
+            100
+        );
+        // Inventory.setItem has no implicit dirty call. Slot.setByPlayer
+        // supplies one, then the outer Pickup supplies one more.
+        assert_eq!(host.inventory_changes, 2);
+        Ok(())
+    }
+
     #[test]
     fn overfull_self_swap_keeps_only_split_remainder_and_creative_single_drag_is_noop() -> Result<()>
     {
