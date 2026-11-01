@@ -293,6 +293,22 @@ impl BiomeTerrain {
         &self.terrain
     }
 
+    /// Consume completed SURFACE data for the actual AIR carver invocation.
+    /// Missing/failed owners consume the job instead of returning a retryable
+    /// image with partially changed masks, aquifer flags or provider history.
+    pub fn carve_air(
+        self,
+        context: super::carver::AirCarvingContext<'_>,
+    ) -> Result<super::carver::CarvedBiomeTerrain> {
+        let Self { terrain, biomes } = self;
+        let (terrain, mask, report) = terrain.apply_air_carvers(context)?;
+        Ok(super::carver::CarvedBiomeTerrain::new(
+            Self { terrain, biomes },
+            mask,
+            report,
+        ))
+    }
+
     /// Apply SURFACE with the real zoom seed, actual neighbor BIOMES provider
     /// and persistent worker-local thermal owner. Full BIOMES-radius-1 and
     /// STRUCTURE_STARTS-radius-8/status prerequisites remain the scheduler's
