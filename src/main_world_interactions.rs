@@ -248,9 +248,14 @@ impl LivePlayers {
                     InteractionEvent::DropResources { position, state } => bail!("actual loot context required for state {state} at {position:?}"),
                     InteractionEvent::CreateBlockEntity(entity) => {
                         let WorldBackend::Fixture(flat)=world else{bail!("imported BE lifecycle unavailable")};
-                        flat.native_block_entities().validate_at(entity.position,entity.state)?;
-                        let kind=mc121_rust::native_block_entities::container_kind(entity.state).context("unsupported BE owner")?;
-                        ensure!(entity.type_name==match kind{mc121_rust::native_block_entities::ContainerKind::Chest=>"minecraft:chest",mc121_rust::native_block_entities::ContainerKind::Barrel=>"minecraft:barrel"},"BE type differs from real owner");
+                        let expected_name = if let Some(kind) = mc121_rust::native_block_entities::furnace_kind(entity.state) {
+                            flat.native_block_entities().furnace_validate_at(entity.position,entity.state)?;
+                            mc121_rust::native_block_entities::furnace_name(kind)
+                        } else {
+                            flat.native_block_entities().validate_at(entity.position,entity.state)?;
+                            mc121_rust::native_block_entities::container_kind(entity.state).context("unsupported BE owner")?.name()
+                        };
+                        ensure!(entity.type_name == expected_name, "BE type differs from real owner");
                     },
                     InteractionEvent::RequiredHook{position,state,hook,declaring_class} if *hook=="setPlacedBy"&&declaring_class=="dia"&&mc121_rust::redstone::owns_placed_by(*state)?=>self.redstone_set_placed_by(world,*position,*state,now,border,events)?,
                     InteractionEvent::RequiredHook { hook, declaring_class, .. } => bail!("{declaring_class}.{hook} executor required"),

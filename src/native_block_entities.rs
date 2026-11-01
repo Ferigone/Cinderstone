@@ -97,6 +97,11 @@ pub struct SavedNativeBlockEntities {
     pub rechecks: Vec<(BlockPosition, i64)>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub furnaces: Vec<FurnaceImage>,
+    /// None identifies a legacy save that recorded furnace images but no
+    /// ticker order. Its record encounter order becomes the registration order
+    /// on restore; the unavailable original pre-save order is not reconstructed.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub furnace_tick_order: Option<Vec<BlockPosition>>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ContainerKey(pub Vec<BlockPosition>);
@@ -132,6 +137,9 @@ pub enum ContainerEffect {
 pub struct NativeBlockEntities {
     entries: BTreeMap<BlockPosition, NativeContainer>,
     furnaces: BTreeMap<BlockPosition, NativeFurnace>,
+    // Lookup order and ticking order have different owners. The map locates a
+    // block entity; this list retains actual fixture registration order.
+    furnace_tick_order: Vec<BlockPosition>,
 }
 impl NativeContainer {
     pub fn state(&self) -> u32 {
@@ -223,13 +231,58 @@ impl NativeContainer {
 }
 impl NativeBlockEntities {
     pub fn furnace_images(&self) -> Vec<FurnaceImage> {
-        self.furnaces.values().map(|e| e.image.clone()).collect()
+        self.furnace_records().map(|e| e.image.clone()).collect()
     }
     pub fn furnace_positions(&self) -> Vec<BlockPosition> {
-        self.furnaces.keys().copied().collect()
+        self.furnace_tick_order.clone()
     }
     pub fn furnace_records(&self) -> impl Iterator<Item = &NativeFurnace> {
-        self.furnaces.values()
+        self.furnace_tick_order.iter().map(|p| {
+            self.furnaces
+                .get(p)
+                .expect("registered furnace owner missing")
+        })
+    }
+    fn validate_furnace_tick_order(&self) -> Result<()> {
+        ensure!(
+            self.furnace_tick_order.len() == self.furnaces.len(),
+            "furnace ticker registration count differs"
+        );
+        let mut seen = BTreeSet::new();
+        for p in &self.furnace_tick_order {
+            ensure!(seen.insert(*p), "duplicate furnace ticker registration");
+            let e = self
+                .furnaces
+                .get(p)
+                .context("furnace ticker registration has no owner")?;
+            ensure!(
+                e.image.position == *p,
+                "furnace ticker position differs from owner"
+            );
+        }
+        Ok(())
+    }
+    fn install_furnace(&mut self, p: BlockPosition, entry: NativeFurnace) -> Result<()> {
+        ensure!(
+            entry.image.position == p,
+            "installed furnace position differs"
+        );
+        entry.validate()?;
+        let new_registration = self
+            .furnaces
+            .get(&p)
+            .is_none_or(|old| old.kind() != entry.kind());
+        if new_registration {
+            self.furnace_tick_order.retain(|old| *old != p);
+            self.furnace_tick_order.push(p);
+        }
+        self.furnaces.insert(p, entry);
+        Ok(())
+    }
+    fn remove_furnace(&mut self, p: BlockPosition) {
+        if self.furnaces.remove(&p).is_some() {
+            self.furnace_tick_order.retain(|old| *old != p);
+        }
     }
     pub fn furnace_entry(&self, p: BlockPosition) -> Result<&NativeFurnace> {
         self.furnaces
@@ -245,7 +298,7 @@ impl NativeBlockEntities {
         let kind = furnace_kind(state).context("unsupported native furnace state")?;
         let entry = self.furnace_entry(p)?;
         ensure!(
-            entry.image.state == state && entry.kind() == kind,
+            entry.image.position == p && entry.image.state == state && entry.kind() == kind,
             "native furnace world state differs"
         );
         entry.validate()
@@ -306,6 +359,10 @@ impl NativeBlockEntities {
         );
         Ok(())
     }
+    pub fn validate_owned_at(&self, p: BlockPosition, state: u32) -> Result<()> {
+        if furnace_kind(state).is_some() { self.furnace_validate_at(p, state) }
+        else { self.validate_at(p, state) }
+    }
     pub fn preflight_transition(&self, p: BlockPosition, old: u32, new: u32) -> Result<()> {
         if let Some(kind) = furnace_kind(old) {
             self.furnace_validate_at(p, old)?;
@@ -361,10 +418,10 @@ impl NativeBlockEntities {
                     return Ok(());
                 }
             }
-            self.furnaces.insert(p, NativeFurnace::new(p, new, kind));
+            self.install_furnace(p, NativeFurnace::new(p, new, kind))?;
             return Ok(());
         }
-        self.furnaces.remove(&p);
+        self.remove_furnace(p);
         match container_kind(new) {
             Some(kind) => {
                 if let Some(e) = self.entries.get_mut(&p) {
@@ -433,6 +490,10 @@ impl NativeBlockEntities {
                 },
             );
         }
+        // Legacy record order is an observed restore encounter order only;
+        // it cannot recover a ticker order never stored by that older build.
+        let legacy_furnace_order: Vec<_> =
+            saved.furnaces.iter().map(|image| image.position).collect();
         for image in saved.furnaces {
             let p = image.position;
             ensure!(
@@ -442,6 +503,8 @@ impl NativeBlockEntities {
             ensure!(block(p) == image.state, "saved furnace world state differs");
             next.furnaces.insert(p, NativeFurnace::from_image(image)?);
         }
+        next.furnace_tick_order = saved.furnace_tick_order.unwrap_or(legacy_furnace_order);
+        next.validate_furnace_tick_order()?;
         for (p, t) in saved.rechecks {
             next.entries
                 .get_mut(&p)
@@ -452,6 +515,7 @@ impl NativeBlockEntities {
         Ok(())
     }
     pub fn save(&self, _now: i64) -> Result<SavedNativeBlockEntities> {
+        self.validate_furnace_tick_order()?;
         for e in self.entries.values() {
             for s in &e.image.slots {
                 s.encode_canonical()?;
@@ -464,6 +528,7 @@ impl NativeBlockEntities {
             format: "mc121-native-containers-v1".into(),
             entries: self.images(),
             furnaces: self.furnace_images(),
+            furnace_tick_order: Some(self.furnace_tick_order.clone()),
             rechecks: self
                 .entries
                 .iter()
@@ -478,7 +543,7 @@ impl NativeBlockEntities {
                 !self.entries.contains_key(&p),
                 "furnace import overlaps another container owner"
             );
-            self.furnaces.insert(p, entry);
+            self.install_furnace(p, entry)?;
             return Ok(());
         }
         ensure!(
@@ -904,8 +969,7 @@ impl NativeBlockEntities {
         let entries = self.chunk_entities(cx, cz);
         let mut w = Writer::new();
         let furnaces: Vec<_> = self
-            .furnaces
-            .values()
+            .furnace_records()
             .filter(|e| {
                 e.image.position.0.div_euclid(16) == cx && e.image.position.2.div_euclid(16) == cz
             })

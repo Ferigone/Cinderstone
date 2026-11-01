@@ -147,7 +147,7 @@ impl RuntimeWorldSources {
             }
         }
         for change in world.changes().into_iter().filter(|c|(c.x.div_euclid(16),c.z.div_euclid(16))==chunk){
-            if facts.get(change.state as usize).copied()!=Some(-1){world.native_block_entities().validate_at((change.x,change.y,change.z),change.state).map_err(|e|format!("native block entity unavailable: {e:#}"))?;}
+            if facts.get(change.state as usize).copied()!=Some(-1){world.native_block_entities().validate_owned_at((change.x,change.y,change.z),change.state).map_err(|e|format!("native block entity unavailable: {e:#}"))?;}
         }
         Ok(())
     }

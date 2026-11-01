@@ -67,7 +67,8 @@ impl LivePlayers {
         let validation = self.prepare_required_native_source_edit(world, plan);
         match validation {
             Ok(token) => Ok(Some(token)),
-            Err(error) if self.item_runtime.item_count() != 0 => Err(error),
+            Err(error) if self.item_runtime.item_count() != 0
+                || (self.entity_source.is_some() && self.gameplay.require_supported_floor().is_ok()) => Err(error),
             Err(_) => Ok(None),
         }
     }
