@@ -168,6 +168,12 @@ impl Server {
             crate::main_workstation_components::require_supported_inventory(&menu.inventory)
         })??;
 
+        if let Some(window) = players.looms.window_id(id) {
+            self.close_loom_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.smithing_tables.window_id(id) {
             self.smithing_action_locked(
                 &mut world, &mut players, id,

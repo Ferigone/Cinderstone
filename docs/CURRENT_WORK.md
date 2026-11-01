@@ -5,7 +5,27 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Native Smithing — Main connected; local runtime passed
+## Native Loom — Main connected; local runtime passed
+
+A full Main build and actual offline protocol767 flow passed on source
+`17f1fa6f73c3fed1688d8403e03a0507f6bcb549`, tree
+`6e1931f9640fbba0946988846dccb22a199eeb11`, binary
+`8af216dc629a0b953fd087db3c2ed8074d7fa9f5ba1d9453aa1c32340adac115`.
+The [flow](validation/loom-flow.json) completed at
+`2026-11-01T22:27:32.519206+00:00`: actual type18/40slots, configured index0
+holder26/color14, one patterned component49 banner, source sound1429 and
+close/disconnect/native-restart conservation. Crafted/recipe/highlight/XP owners
+remained empty as this source path requires. The result preview never became a
+second owned item. All isolated processes exited normally.
+
+[Production source and limits](reference/loom-production.md) document real
+configured HolderSet/template binding, default-listener phases, actual counter,
+indexed drops and independent sound RNG. Templates, custom/reentrant contexts,
+multi-target Slot-identity drag and unexercised pickup/recovery/audience paths
+remain unsupported or unproven. Source publication/review/CI is in progress; no
+hosted Loom release is claimed yet. Fixed scope1 stays56code/51Main.
+
+## Native Smithing — merged and hosted
 
 The real Smithing Main path passed a full build and actual offline protocol767
 flow on source `a4d5b460de69c1380c12323fe5dbedd77581f0d0`, tree
@@ -22,8 +42,13 @@ actual counter/listener/book/stat/drop ownership, full-state recovery, integer
 block-event coordinates/audience and no sound RNG. The later current-master
 composition `3241766` also passed the complete Main build; its extra upstream
 changes are independently owned worldgen/entity source, with the observed Smith
-Main path retained. Publishing/review/CI is in progress; hosted Smithing is not
-yet claimed. Trim, custom/reentrant contexts and unexercised paths remain open.
+Main path retained. [PR78](https://github.com/Ferigone/Cinderstone/pull/78)
+merged as `005e7592cd13d3d8edfa9fe0f875404bfa038b91`. Railway release
+`138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS/native offline listening at
+`2026-11-01T22:24:46.700522705Z`, with one running/zero crashed replica, retained
+volume and no pending work. [Hosted observation](validation/railway-smithing.json)
+retains the external DNS limitation. Trim, custom/reentrant contexts and
+unexercised paths remain open.
 
 ## Native Stonecutter — merged and hosted
 
@@ -50,9 +75,10 @@ Grindstone's actual configured enchantment context, provider, mixed Item/XP
 preparation/publication and synchronous XP stage are under isolated composition.
 Focused library and existing-Main compiler checks passed for the mixed runtime
 and XP modules. The unexported Host still needs genuine retained-menu APIs and
-Main assembly; it is not working Grindstone gameplay. Loom's actual configured
-patterns, provider, callbacks/lifetime/pickup and primary transaction code are
-being assembled; no Loom runtime witness or Main claim exists yet. Team3 has a
+Main assembly; it is not working Grindstone gameplay. Enchanting provider,
+genuine server block-entity/name, configured enchantment and player seed/XP
+source owners are under implementation. Missing live owner registration is not
+replaced with a fabricated successful host. Team3 has a
 narrow explicit new MainAnvil namespace assignment in issue3; central shared
 seams remain reserved.
 

@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: implementing; Stonecutter hosted, Smithing source publication and next native menu stages
+State: implementing; Stonecutter/Smithing hosted, Loom source publication and next native owners
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -23,11 +23,16 @@ Railway `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS/native offline
 listen `2026-11-01T22:05:31.290410832Z`, one replica, volume, no pending work.
 Fresh public TCP status still fails DNS.
 
-Smithing Main source `a4d5b460`/tree `e12ecb91` and binary `d6e1df77` passed
-actual transform/event1044/crafted-stat/close/disconnect/native-restart flow at
-`2026-11-01T22:05:07.066206+00:00`. Current-master composition `3241766` then
-passed full Main build. Source publication/self-review/CI is the current step;
-no hosted Smithing claim yet. Fixed scope1 stays56/100 code and51/100 Main.
+Smithing Main PR78 merged as `005e759`, exact published tree `5840f6ec`.
+Build, actual transform/1044/close/disconnect/native-restart flow and both CI
+jobs passed. Railway `138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS/native
+offline listen `2026-11-01T22:24:46.700522705Z`, one replica, retained volume,
+no pending work. No graphical/public gameplay verification follows.
+
+Loom Main source `17f1fa6`, tree `6e1931f9`, binary `8af216dc` passed full Main
+build and actual component49/pattern/1429-sound/close/disconnect/native-restart
+flow at `2026-11-01T22:27:32.519206+00:00`. Source publication/CI/self-review is
+current; no hosted Loom claim. Scope1 stays56/100 code and51/100 Main.
 
 Root plus six actual subordinate slots handle disjoint active source tasks:
 isolated Grindstone mixed entity/XP/Host and compiler review; Loom configured
