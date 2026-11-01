@@ -123,8 +123,8 @@ external nonproduction composition `/tmp/ws-anvil-main-probe-20261101a`, based o
 `41cd850e6cae926b168be211f26b393f510f7513`:
 
 ```text
-CARGO_TARGET_DIR=/workspace/cinderstone-workstations-20261101a/target \
-  cargo test --locked --bin mc121-rust main_anvil_lifecycle::tests -- --nocapture
+CARGO_TARGET_DIR=/tmp/ws-anvil-main-probe-20261101a/target \
+  cargo test --locked --bin mc121-rust main_anvil
 ```
 
 That composition links these actual modules and supplies the proposed pure

@@ -11,7 +11,7 @@ deployment files are untouched. Actual production callsites remain central.
 `/tmp/ws-anvil-main-probe-20261101a` is a NEW temporary source composition,
 not an edited repository Main. Its library/current Main base is local
 `41cd850e6cae926b168be211f26b393f510f7513`, whose tree equals the actual PR76
-merge. It links the five owned new modules and adds only the agreed module
+merge. Initially it linked the five owned new modules and added the agreed module
 declarations/`players.anvils` field plus two requested pure gameplay methods to
 new temporary copies. Those methods reuse actual MainItemGameplay validation
 and prepare_menu_commit, dropping the prepared token without committing.
@@ -74,3 +74,33 @@ canonical gameplay/player-Level streams/items/IDs/outbox publication is staged.
 
 No whole Anvil, all-menu, fixed checklist or full Minecraft compatibility is
 claimed by this source milestone.
+
+## Focused localhost PLAY attempt and exact blocker
+
+Source `5b0d6f01ad9cdef2ee0c98cc977f8fc4801d02d9` passed both actual PR82 CI
+jobs in run41362735611. Those jobs still cannot prove invocation of unexported
+modules. The separate fully wired external proposal built with its isolated
+target, including the unchanged five source modules and only new temporary
+copies of Root's callsites. The stock `minecraft-protocol`1.68.0 client reached
+PLAY/protocol767 and the actual Smithing menu with authoritative input/cursor
+updates. This proves neither Anvil opening nor repair.
+
+The world setup then failed through genuine `Server::edit_world_block`.
+An explicitly enabled loopback-only control for the sole synthetic actor
+`WsAnvilProbe` requested a stable anvil at(10,64,8); it retained genuine reach,
+world, actor, source-edit and callback validation. The diagnostic binary SHA256
+`c75783e2edd2124d86149d7b9bb42e1d73e68e7aec314e65f80cb15663fa8a3c` observed
+`unported native onPlace/onRemove owner`, with validation not bypassed and no
+callback fabricated. The local diagnostic is
+`/tmp/ws-anvil-play-ngydce2w/first-server.log`; no checkpoint/log/private save
+is committed. The test stopped at that first confirmed refusal. There is no
+successful Anvil OpenScreen, repair, rename, pickup or restart socket proof.
+
+The source reason is actual inherited FallingBlock `onPlace=diu`, rejected by
+`callbacks_can_complete` through `redstone::owns_change_callbacks_after_fluid`.
+Ordinary placement also emits delay2, independently requiring the missing
+native block-tick callback/save owner. Direct edit is therefore not a working
+alternative fixture. Accepting a class or dropping a scheduled tick would not
+supply those actual callbacks. The block-side prerequisite is a separate owned
+stage; generic falling entity/world/scheduler/save integration remains with its
+real Team4/central owners.
