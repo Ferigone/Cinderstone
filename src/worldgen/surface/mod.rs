@@ -5,6 +5,7 @@ mod rules;
 
 use super::random_state::RandomStateRandoms;
 use crate::{
+    density::DensityPoint,
     noise::NormalNoise,
     random::{PositionalRandomFactory, RandomSource},
 };
@@ -32,7 +33,8 @@ pub trait SurfaceHost {
     fn is_named_block(&self, state: u32, name: &str) -> bool;
     /// Highest non-air block Y from the live WORLD_SURFACE_WG heightmap.
     fn world_surface_wg_height(&mut self, local_x: i32, local_z: i32) -> Result<i32>;
-    /// BiomeManager.getBiome at block coordinates (including its zoom seed).
+    /// The current call phase's supplied block-biome function. build_surface
+    /// uses BiomeManager.getBiome, including its actual source and zoom seed.
     fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String>;
     /// Biome.coldEnoughToSnow at this actual biome/position.
     fn cold_enough_to_snow(&mut self, biome: &str, x: i32, y: i32, z: i32) -> Result<bool>;
@@ -191,6 +193,33 @@ impl SurfaceSystem {
             .get(index as usize)
             .copied()
             .context("Java clay-band index outside array")
+    }
+
+    /// SurfaceSystem.topMaterial for this owner's compiled built-in rule.
+    ///
+    /// Supply the actual CarvingContext bounds, biome function, current chunk
+    /// heightmaps and retained NoiseChunk preliminary-surface owner through
+    /// `host`. `has_fluid` describes the caller's carved replacement above the
+    /// queried position. It is not inferred from the queried block's state.
+    ///
+    /// This evaluates one fresh rule context. It does not scan or write blocks,
+    /// run badlands/iceberg extensions, or advance a generation stage. `None`
+    /// is the source's empty Optional, leaving any replacement to the caller.
+    pub fn top_material(
+        &self,
+        host: &mut impl SurfaceHost,
+        point: DensityPoint,
+        has_fluid: bool,
+    ) -> Result<Option<u32>> {
+        let mut preliminary = PreliminarySurfaceCache::default();
+        let mut context = RuleContext::new(host, self, point.x, point.z, &mut preliminary);
+        let water_height = if has_fluid {
+            point.y.wrapping_add(1)
+        } else {
+            i32::MIN
+        };
+        context.update_y(point.y, water_height, 1, 1);
+        self.rule.apply(&mut context, self)
     }
 
     pub fn build_surface(
@@ -433,6 +462,166 @@ fn generate_bands(mut random: impl RandomSource, palette: &[u32]) -> Result<[u32
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[derive(serde::Deserialize)]
+    struct TopMaterialFixture {
+        cases: Vec<TopMaterialCase>,
+    }
+    #[derive(serde::Deserialize)]
+    struct TopMaterialCase {
+        settings: String,
+        seed: i64,
+        biome: String,
+        min_y: i32,
+        height: i32,
+        world_surface_wg: Vec<i32>,
+        queries: Vec<TopMaterialQuery>,
+        blocks_unchanged: bool,
+    }
+    #[derive(serde::Deserialize)]
+    struct TopMaterialQuery {
+        point: [i32; 3],
+        has_fluid: bool,
+        fail_biome: bool,
+        material: Option<u32>,
+        error: Option<String>,
+        biome_queries: Vec<[i32; 3]>,
+        cold_enough_to_snow: bool,
+        preliminary: std::collections::BTreeMap<String, i32>,
+    }
+    struct ObservedTopMaterialHost<'a> {
+        case: &'a TopMaterialCase,
+        query: &'a TopMaterialQuery,
+        biome_queries: Vec<[i32; 3]>,
+        block_accesses: usize,
+        writes: usize,
+    }
+    impl SurfaceHost for ObservedTopMaterialHost<'_> {
+        fn min_y(&self) -> i32 {
+            panic!("topMaterial must not start a chunk column scan")
+        }
+        fn max_y(&self) -> i32 {
+            panic!("topMaterial must not start a chunk column scan")
+        }
+        fn min_gen_y(&self) -> i32 {
+            self.case.min_y
+        }
+        fn gen_depth(&self) -> i32 {
+            self.case.height
+        }
+        fn block(&mut self, _: i32, _: i32, _: i32) -> Result<u32> {
+            self.block_accesses += 1;
+            bail!("topMaterial must not inspect block state")
+        }
+        fn set_block(&mut self, _: i32, _: i32, _: i32, _: u32) -> Result<()> {
+            self.writes += 1;
+            bail!("topMaterial must not write blocks")
+        }
+        fn is_air(&self, _: u32) -> bool {
+            panic!("unexpected block predicate")
+        }
+        fn has_fluid(&self, _: u32) -> bool {
+            panic!("has_fluid must come from the caller")
+        }
+        fn is_named_block(&self, _: u32, _: &str) -> bool {
+            panic!("unexpected block predicate")
+        }
+        fn world_surface_wg_height(&mut self, x: i32, z: i32) -> Result<i32> {
+            anyhow::ensure!(
+                (0..16).contains(&x) && (0..16).contains(&z),
+                "unobserved heightmap position"
+            );
+            self.case
+                .world_surface_wg
+                .get((z * 16 + x) as usize)
+                .copied()
+                .context("unobserved heightmap position")
+        }
+        fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+            self.biome_queries.push([x, y, z]);
+            if self.query.fail_biome {
+                bail!("unavailable actual biome owner");
+            }
+            Ok(self.case.biome.clone())
+        }
+        fn cold_enough_to_snow(&mut self, biome: &str, x: i32, y: i32, z: i32) -> Result<bool> {
+            anyhow::ensure!(
+                biome == self.case.biome && [x, y, z] == self.query.point,
+                "unobserved thermal position"
+            );
+            Ok(self.query.cold_enough_to_snow)
+        }
+        fn should_melt_frozen_ocean_iceberg_slightly(
+            &mut self,
+            _: &str,
+            _: i32,
+            _: i32,
+            _: i32,
+        ) -> Result<bool> {
+            bail!("topMaterial must not run the iceberg extension")
+        }
+        fn preliminary_surface_level(&mut self, x: i32, z: i32) -> Result<i32> {
+            self.query
+                .preliminary
+                .get(&format!("{x},{z}"))
+                .copied()
+                .context("unobserved preliminary surface owner")
+        }
+    }
+
+    #[test]
+    fn original_top_material_optional_water_laziness_and_error_boundaries() -> Result<()> {
+        let fixture: TopMaterialFixture = serde_json::from_str(include_str!(
+            "../../../fixtures/world-generation-top-material.json"
+        ))?;
+        for case in fixture.cases {
+            assert!(
+                case.blocks_unchanged,
+                "original topMaterial changed its ProtoChunk"
+            );
+            let graph = crate::density::DensityGraph::builtin(case.seed, &case.settings)?;
+            let mut randoms = RandomStateRandoms::from_graph(&graph);
+            let system = SurfaceSystem::from_settings(
+                &case.settings,
+                &mut randoms,
+                crate::worldgen::generator::resolve_block_state,
+            )?;
+            for query in &case.queries {
+                let mut host = ObservedTopMaterialHost {
+                    case: &case,
+                    query,
+                    biome_queries: Vec::new(),
+                    block_accesses: 0,
+                    writes: 0,
+                };
+                let [x, y, z] = query.point;
+                let result =
+                    system.top_material(&mut host, DensityPoint::new(x, y, z), query.has_fluid);
+                if let Some(error) = &query.error {
+                    assert_eq!(
+                        result.unwrap_err().to_string(),
+                        *error,
+                        "{} at {:?}",
+                        case.biome,
+                        query.point
+                    );
+                } else {
+                    assert_eq!(
+                        result?, query.material,
+                        "{} at {:?}, wet={}",
+                        case.biome, query.point, query.has_fluid
+                    );
+                }
+                assert_eq!(
+                    host.biome_queries, query.biome_queries,
+                    "original biome callback order/laziness"
+                );
+                assert_eq!(host.block_accesses, 0);
+                assert_eq!(host.writes, 0);
+            }
+        }
+        Ok(())
+    }
 
     #[test]
     fn original_default_namespace_settings_aliases_share_the_packaged_owner() -> Result<()> {
