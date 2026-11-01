@@ -29,7 +29,7 @@ was treated as expired. Issue posting/publication status must be rechecked after
 authentication changes.
 
 Owned implementation: new `src/workstations/{mod,menu,stonecutter,smithing,
-anvil,grindstone,loom,cartography,special_context}.rs`, new
+anvil,grindstone,loom,cartography,special_context,lectern,beacon,brewing}.rs`, new
 `src/container_workstation_stonecutter.rs` and
 `src/container_workstation_smithing.rs` for bounded inventory adapters; additive
 `RecipeBook` smithing ingredient predicates only in `src/crafting.rs`.
@@ -60,10 +60,15 @@ hotbar); offhand is not a visible workstation slot.
   during authoritative mutation, then calls `finish_click(click, old_state,
   top, inventory, data)`. Changed-slot/cursor predictions update only remote
   baselines. A stale click still executes and receives full state afterward.
-- `close_inputs(inputs, inventory, MenuCloseContext)` stages cursor first and
+- `close_inputs_ordered(inputs, inventory, MenuCloseContext)` stages cursor first and
   owned temporary inputs in source order. It calls the existing inventory-return
   API for an alive connected owner, or retains real Player.drop arguments for
-  disconnected/dead owners. **Never pass derived result previews as inputs.**
+  disconnected/dead owners. `MenuRemovalEvent` indexes insertion packets and
+  actual drop callbacks in their exact order, including mixed alive overflow.
+  The aggregate `close_inputs` compatibility method alone cannot express that
+  interleaving. **Never pass derived result previews as inputs.** Beacon payment
+  has its separate always-drop source rule; lectern books and brewing contents
+  remain with the actual world owner.
 - `transfer_inventory_state` preserves old listener/remote baselines only for
   the 36 actually shared inventory slots when returning to window0.
 
@@ -115,13 +120,16 @@ Shared facts were inspected in `AbstractContainerMenu` (`cpu`),
 MenuType registrations are anvil 8, grindstone 15, loom 18, smithing 21,
 cartography 23, stonecutter 24.
 
-The initial six groups do not cover every menu. Brewing, enchanting, beacon,
-lectern, crafter, hopper, dispenser/dropper, shulker-box, merchant and entity
-containers still require their own complete owner/callback/menu work or an
-explicit bounded continuation. Dynamic recipes/registries, enchantment combining,
-complete recipe-book placement, advancement rewards and all unsupported player
-profiles remain open. Main/world ownership assignment and GitHub write access
-are outstanding integration/publication blockers, not evidence of completion.
+The initial six groups do not cover every menu. The bounded continuations also
+port lectern book/page/pulse behavior through borrowed real owners, beacon
+payment and live-data rules, and brewing tick/fuel/mix/remainder/persistence
+rules. Their full menus and actual block/world processing remain pending.
+Enchanting, crafter, hopper, dispenser/dropper, shulker-box, merchant and entity
+containers still require their own complete owner/callback/menu work. Dynamic
+recipes/registries, enchantment combining, complete recipe-book placement,
+advancement rewards and all unsupported player profiles remain open. Main/world
+ownership assignment and GitHub write access are outstanding integration/
+publication blockers, not evidence of completion.
 
 ## Continuation claim
 
@@ -135,3 +143,25 @@ all menus. The same GitHub comment write blocker prevents posting this renewal;
 no reserved Main/block-entity files are included. Brewing world ticking, lectern
 book/page/redstone callbacks and beacon live effect/structure owners must remain
 explicit host contracts wherever their actual runtime is unavailable.
+
+## Handoff and verification
+
+Stonecutter and smithing adapters provide all seven ordinary native click modes
+and prepare/validate/commit transactions over the actual borrowed inventory.
+Their events retain callback, listener, indexed drop and packet order. Real
+production dispatch, owners and source phases are still pending; bundle/custom
+item overrides and mutating/reentrant listeners remain explicit boundaries.
+
+The final source review checked canonical ownership, stale/identity guards,
+overstack rules and exact cursor/result/drop/close ordering against the pinned
+bytecode. Brewing's post-consumption remainder quirk was separately verified
+by invoking unchanged Java ItemStack methods; the final engine queries the
+remainder after shrink, including AIR for an exhausted ingredient. This is
+method-level evidence, not a Java server gameplay observation.
+
+The per-instance [status record](../coordination/status/ws-20261101-7c2f.md)
+retains exact commits/files, focused compiler/native-flow results, remaining
+contracts and publication failure. It uses the explicit status-file fallback
+added on current master `46e5ca821b69a91e5555914dc82d03f57df6a507`; no master
+changes were merged. Both API writes and authenticated Git pushes fail in this
+session, so a local status commit is not a published branch or remote handoff.
