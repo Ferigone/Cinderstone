@@ -76,7 +76,13 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [ ] Remaining complex item components and context-dependent recipe processing.
 - [ ] Full loot, enchantment, durability and tool behavior.
 
-The new creative block-removal implementation requires every furnace menu viewer
+Active-viewer furnace removal is the current integration stage. It must retain
+the original removed container for its existing menus, close invalid menus in the
+actual later player phase, return cursor contents once and reject rebinding to a
+new furnace at the same position. This work is **IN PROGRESS**; its checklist
+entry remains open pending implementation and the recorded bounded flow.
+
+The earlier creative block-removal implementation requires every furnace menu viewer
 to close first. It stages actual container contents and stored recipe XP without
 awarding the furnace block's loot item in creative mode. Its
 [focused local flow](validation/furnace-removal-flow.json) passed for all three

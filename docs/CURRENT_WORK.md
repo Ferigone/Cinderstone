@@ -5,7 +5,21 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Furnace block removal — bounded runtime flow passed
+## Furnace menu lifetime after removal — integration in progress
+
+The current porting stage targets creative destruction while one or more players
+still have the furnace menu open. The removed block entity's actual container
+must remain owned by those existing menus until their later validity/close phase.
+Its dropped contents must not be available a second time, and a replacement
+furnace at the same position must not become the old menu's container. Cursor
+return, explicit close, disconnect and shutdown cleanup must release each menu
+owner exactly once.
+
+This stage is **IN PROGRESS**. There is no recorded compiler, runtime or hosted
+verification result for this new lifetime path yet. The closed-menu processing
+and removal results below remain evidence for their exact recorded versions.
+
+## Earlier closed-menu furnace block removal — bounded runtime flow passed
 
 The current implementation connects creative destruction of owned native
 furnaces, smokers and blast furnaces to their real inventory contents and stored
