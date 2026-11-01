@@ -42,6 +42,13 @@ pub struct FurnaceImage {
     pub lock: String,
     pub retained_nbt: Option<Vec<u8>>,
 }
+/// Identity of one live furnace object in this native block-entity store.
+/// This is not a position, block state or persistent identifier. Private world
+/// clones retain it; replacing the object allocates another key. Menus do not
+/// survive a server restart, so this identity is deliberately absent from NBT
+/// and from the saved/certified world image.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct FurnaceOwnerKey(pub(super) u64);
 /// Exact original owner captured before a different-block replacement.
 ///
 /// The fields are private to the block-entity owner so callers cannot invent a
@@ -53,10 +60,14 @@ pub struct FurnaceImage {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FurnaceRemovalSnapshot {
     pub(super) image: FurnaceImage,
+    pub(super) owner_key: FurnaceOwnerKey,
     pub(super) replacement_state: u32,
     pub(super) viewers: Vec<i32>,
 }
 impl FurnaceRemovalSnapshot {
+    pub fn owner_key(&self) -> FurnaceOwnerKey {
+        self.owner_key
+    }
     pub fn image(&self) -> &FurnaceImage {
         &self.image
     }
@@ -73,9 +84,29 @@ impl FurnaceRemovalSnapshot {
         &self.viewers
     }
 }
+/// Exact removed container retained by its existing menus. Containers drops
+/// empty the slots on that same object, while timers and RecipesUsed remain.
+/// This receipt never represents a live block entity at the old position.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FurnaceViewerRetention {
+    pub(super) removal: FurnaceRemovalSnapshot,
+    pub(super) image: FurnaceImage,
+}
+impl FurnaceViewerRetention {
+    pub fn owner_key(&self) -> FurnaceOwnerKey {
+        self.removal.owner_key()
+    }
+    pub fn image(&self) -> &FurnaceImage {
+        &self.image
+    }
+    pub fn viewers(&self) -> &[i32] {
+        self.removal.viewers()
+    }
+}
 #[derive(Clone, Debug)]
 pub struct NativeFurnace {
     pub image: FurnaceImage,
+    pub(super) owner_key: FurnaceOwnerKey,
     pub(super) viewers: BTreeSet<i32>,
 }
 impl NativeFurnace {
@@ -89,11 +120,15 @@ impl NativeFurnace {
                 lock: String::new(),
                 retained_nbt: None,
             },
+            owner_key: FurnaceOwnerKey(0),
             viewers: BTreeSet::new(),
         }
     }
     pub fn state(&self) -> u32 {
         self.image.state
+    }
+    pub fn owner_key(&self) -> FurnaceOwnerKey {
+        self.owner_key
     }
     pub fn kind(&self) -> FurnaceKind {
         self.image.furnace_state.kind
@@ -126,6 +161,7 @@ impl NativeFurnace {
     pub fn from_image(image: FurnaceImage) -> Result<Self> {
         let out = Self {
             image,
+            owner_key: FurnaceOwnerKey(0),
             viewers: BTreeSet::new(),
         };
         out.validate()?;

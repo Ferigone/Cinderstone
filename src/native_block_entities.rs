@@ -13,8 +13,8 @@ pub type BlockPosition = (i32, i32, i32);
 #[path = "native_furnace_entities.rs"]
 mod furnace_entities;
 pub use furnace_entities::{
-    furnace_kind, furnace_name, furnace_type_id, FurnaceImage, FurnaceRemovalSnapshot,
-    NativeFurnace,
+    furnace_kind, furnace_name, furnace_type_id, FurnaceImage, FurnaceOwnerKey,
+    FurnaceRemovalSnapshot, FurnaceViewerRetention, NativeFurnace,
 };
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerKind {
@@ -141,6 +141,7 @@ pub struct NativeBlockEntities {
     // Lookup order and ticking order have different owners. The map locates a
     // block entity; this list retains actual fixture registration order.
     furnace_tick_order: Vec<BlockPosition>,
+    next_furnace_owner_key: u64,
 }
 impl NativeContainer {
     pub fn state(&self) -> u32 {
@@ -250,6 +251,7 @@ impl NativeBlockEntities {
             "furnace ticker registration count differs"
         );
         let mut seen = BTreeSet::new();
+        let mut owners = BTreeSet::new();
         for p in &self.furnace_tick_order {
             ensure!(seen.insert(*p), "duplicate furnace ticker registration");
             let e = self
@@ -260,15 +262,25 @@ impl NativeBlockEntities {
                 e.image.position == *p,
                 "furnace ticker position differs from owner"
             );
+            ensure!(
+                e.owner_key.0 != 0 && owners.insert(e.owner_key),
+                "furnace object identity is missing or duplicated"
+            );
         }
         Ok(())
     }
-    fn install_furnace(&mut self, p: BlockPosition, entry: NativeFurnace) -> Result<()> {
+    fn install_furnace(&mut self, p: BlockPosition, mut entry: NativeFurnace) -> Result<()> {
         ensure!(
             entry.image.position == p,
             "installed furnace position differs"
         );
         entry.validate()?;
+        let key = self
+            .next_furnace_owner_key
+            .checked_add(1)
+            .context("native furnace object identity exhausted")?;
+        entry.owner_key = FurnaceOwnerKey(key);
+        self.next_furnace_owner_key = key;
         let new_registration = self
             .furnaces
             .get(&p)
@@ -294,6 +306,11 @@ impl NativeBlockEntities {
         self.furnaces
             .get_mut(&p)
             .context("actual native furnace owner missing")
+    }
+    pub fn furnace_owner_key(&self, p: BlockPosition) -> Result<FurnaceOwnerKey> {
+        let key = self.furnace_entry(p)?.owner_key();
+        ensure!(key.0 != 0, "native furnace object identity missing");
+        Ok(key)
     }
     pub fn furnace_validate_at(&self, p: BlockPosition, state: u32) -> Result<()> {
         let kind = furnace_kind(state).context("unsupported native furnace state")?;
@@ -367,26 +384,93 @@ impl NativeBlockEntities {
         let entry = self.furnace_entry(p)?;
         Ok(Some(FurnaceRemovalSnapshot {
             image: entry.image.clone(),
+            owner_key: self.furnace_owner_key(p)?,
             replacement_state: new,
             viewers: entry.viewers.iter().copied().collect(),
         }))
     }
-    /// Check the complete owner baseline, not only item counts. The bounded
-    /// removal host must close actual menus (or reject active viewers) before
-    /// staging a removal; this method never drops viewer registrations.
-    pub fn validate_furnace_removal(&self, removal: &FurnaceRemovalSnapshot) -> Result<()> {
+    fn validate_furnace_removal_owner(&self, removal: &FurnaceRemovalSnapshot) -> Result<()> {
         let image = removal.image();
         self.furnace_validate_at(image.position, image.state)?;
         let entry = self.furnace_entry(image.position)?;
+        ensure!(
+            entry.owner_key() == removal.owner_key(),
+            "furnace removal object identity changed"
+        );
         ensure!(entry.image == *image, "furnace removal owner changed");
         ensure!(
-            entry.viewers.is_empty(),
-            "active furnace removal requires actual close owner"
+            entry
+                .viewers
+                .iter()
+                .copied()
+                .eq(removal.viewers().iter().copied()),
+            "furnace removal viewer ownership changed"
         );
         ensure!(
             furnace_kind(removal.replacement_state()) != Some(entry.kind()),
             "furnace removal receipt retains the same block identity"
         );
+        Ok(())
+    }
+    /// Closed-menu removal remains guarded for callers without a retained
+    /// container owner. This never discards viewer registrations.
+    pub fn validate_furnace_removal(&self, removal: &FurnaceRemovalSnapshot) -> Result<()> {
+        self.validate_furnace_removal_owner(removal)?;
+        ensure!(
+            removal.viewers().is_empty(),
+            "active furnace removal requires actual retained menu owner"
+        );
+        Ok(())
+    }
+    /// Capture the old object for every actual menu referring to it. A caller
+    /// cannot prove ownership by supplying only a subset or duplicate IDs.
+    /// Slots are empty after Containers drops; timers and RecipesUsed survive
+    /// until the last menu releases that removed container.
+    pub fn prepare_furnace_viewer_retention(
+        &self,
+        removal: &FurnaceRemovalSnapshot,
+        actual_viewers: &[i32],
+    ) -> Result<FurnaceViewerRetention> {
+        self.validate_furnace_removal_owner(removal)?;
+        let viewers = actual_viewers.iter().copied().collect::<BTreeSet<_>>();
+        ensure!(
+            viewers.len() == actual_viewers.len(),
+            "duplicate furnace menu owner"
+        );
+        ensure!(
+            viewers
+                .iter()
+                .copied()
+                .eq(removal.viewers().iter().copied()),
+            "actual menus do not own every captured furnace viewer"
+        );
+        let mut image = removal.image().clone();
+        image.furnace_state.slots = std::array::from_fn(|_| ItemStack::empty());
+        image.furnace_state.validate()?;
+        Ok(FurnaceViewerRetention {
+            removal: removal.clone(),
+            image,
+        })
+    }
+    /// Permit only a PRIVATE staging world's immediate block transition after
+    /// all viewers have an exact retained-container receipt. Generic transition
+    /// guards stay unchanged; no cleared live BE or closed menu is published.
+    pub fn drain_furnace_removal_retaining_viewers(
+        &mut self,
+        removal: &FurnaceRemovalSnapshot,
+        retention: &FurnaceViewerRetention,
+    ) -> Result<()> {
+        self.validate_furnace_removal_owner(removal)?;
+        ensure!(
+            retention.removal == *removal,
+            "retained furnace owner receipt differs"
+        );
+        let entry = self.furnace_entry_mut(removal.image().position)?;
+        let mut next = retention.image.furnace_state.clone();
+        next.commit_recipe_rewards()?;
+        next.validate()?;
+        entry.image.furnace_state = next;
+        entry.viewers.clear();
         Ok(())
     }
     /// Permit the ordinary transition guard on a PRIVATE staged world clone.
@@ -573,7 +657,7 @@ impl NativeBlockEntities {
                 "duplicate furnace/container position"
             );
             ensure!(block(p) == image.state, "saved furnace world state differs");
-            next.furnaces.insert(p, NativeFurnace::from_image(image)?);
+            next.install_furnace(p, NativeFurnace::from_image(image)?)?;
         }
         next.furnace_tick_order = saved.furnace_tick_order.unwrap_or(legacy_furnace_order);
         next.validate_furnace_tick_order()?;
