@@ -113,6 +113,7 @@ pub mod container_workstation_crafter;
 pub mod container_workstation_grindstone;
 pub mod container_workstation_loom;
 pub mod container_workstation_cartography;
+pub mod container_workstation_merchant;
 pub mod world;
 pub mod world_context;
 pub mod world_rules;
