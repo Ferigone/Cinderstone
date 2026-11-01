@@ -1,6 +1,6 @@
 # Cinderstone development workflow
 
-- Work on small, coherent porting and integration stages. The integration coordinator publishes completed stages to `master`. Independent teams use assigned feature branches and issue-linked pull requests; they do not merge `master` or deploy.
+- Work on small, coherent porting and integration stages. The integration coordinator publishes completed stages to `master`. Independent teams use assigned feature branches and issue-linked pull requests. The user authorizes each team to review and merge its own owned source PRs; only the integration coordinator changes central Main/status/checklist seams and deployment configuration.
 - Keep the README and roadmap in English. Describe implemented, partial and missing behavior honestly; never claim complete vanilla parity or a performance advantage without evidence.
 - The fixed100-item delivery checklist is a planning indicator, not behavioral compatibility, effort or remaining time. Preserve `scope_version` and its denominator; document any deliberate scope change.
 - Prioritize native implementation and integration. Use a focused compiler check and a small runtime check appropriate to the change. Defer comprehensive conformance suites until the porting stage calls for them.

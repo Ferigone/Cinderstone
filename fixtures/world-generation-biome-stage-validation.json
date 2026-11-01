@@ -1,0 +1,46 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_implementation_commit": "3ae8a09",
+  "reviewed_source_commit": "9176c145f3fa998375c8ae075757241d7750536c",
+  "base_master": "b5abf6220e5995f593c0a0324d6c74597ddb1e58",
+  "checked_at_utc": "2026-11-01T21:51:29.540408+00:00",
+  "passed": true,
+  "commands": [
+    "cargo build --locked --bin mc121-rust",
+    "cargo test --locked --lib worldgen::biomes::tests",
+    "python src/worldgen/validation/check_biome_stage.py --oracle-dir <verified-original>",
+    "python src/worldgen/validation/check_biome_surface.py --oracle-dir <verified-original>"
+  ],
+  "log_sha256": "82da9615b64420d2574c366f3b5fcde87964568c5da556a773b5b4f2495c5918",
+  "source_sha256": {
+    "src/worldgen/biomes.rs": "81d299cff98c13d58f7ab8cc8762d572994edd404c5c3ce5b02f6bc4d49a0216",
+    "src/worldgen/mod.rs": "88fefb6fe90e55d7ccc888a1d943ca180b61356a882177a2742e830e645066a7",
+    "src/worldgen/generator.rs": "52880271f8e53e7d08a65073ff3f864a696dde4bf5ae0565cf7316ff718f4f6f",
+    "src/worldgen/validation/WorldgenBiomeStageOracle.java": "a73658f21bdb40468a6f015122a71ea615d527f38c09c22812c3adf63873f179",
+    "src/worldgen/validation/biome_stage.rs": "270797870b96c35032183f3db5dd17fbfb74c1447d44d3bee798cc510474a76d",
+    "src/worldgen/validation/check_biome_stage.py": "c7f9323b0038b0d6fa22530583dc21f11405b600411a3fcae20315fefb90637c",
+    "src/worldgen/validation/WorldgenBiomeSurfaceOracle.java": "8bc9a3a5dead6a1e6728980a9b98d703f882ce5c04d02c67a1dd0114cbe5469b",
+    "src/worldgen/validation/biome_surface.rs": "0bf61683738ba1816d126b9fe754e2b19cec06f821bdc2896911820d1a8e8830",
+    "src/worldgen/validation/check_biome_surface.py": "5249b2e4816b098bd498742b488ff56e4bd60948883033da39314ad434dddd1c",
+    "fixtures/world-generation-biome-stage.json": "3e628809b3a6e9be465578e51baaf52afd876f918edd72d3172754718a158433",
+    "fixtures/world-generation-biome-surface.json": "6ef2cf46f4eeab1ba1a1c1ad1003af6a0161381176720e2781138ef4cdb3ce7b"
+  },
+  "review": [
+    "Independent source geometry/query-order/height-clamp/owner review found no concrete defect in the supported fresh stage.",
+    "Root reviewed private image/prepared pairing, failure semantics, actual-neighbor routing and source/status distinction."
+  ],
+  "observed": [
+    "Actual original per-section biome palettes and sectionY/X/Y/Z resolver calls equal native Y/Z/X storage and actual callback order.",
+    "Actual public source fillFromNoise returns the same ProtoChunk with same cached NoiseChunk/aquifer/cache owners; complete blocks/WG heightmaps agree.",
+    "Exact NOISE positions and per-section insertion order agree with nonempty originals1250/693/116.",
+    "Natural9-palette center SURFACE agrees on before/after blocks/WG heights, ordered foreign quart reads and complete section post lists.",
+    "Selected source Surface-only post additions are0; no nonempty-added-Surface-order proof is inferred.",
+    "Original persisted status remains EMPTY; controlled raw-palette provider is not a WorldGenRegion/ChunkStep completion proof."
+  ],
+  "not_verified": [
+    "Actual original status/dependency scheduler, structure starts/Blender/beardifier/retrogen owners",
+    "Datapack or same-key overridden registry contents",
+    "Carving/features/structures, lighting/persistence/FULL and production Main callsites"
+  ]
+}

@@ -28,6 +28,7 @@ pub enum WorkstationKind {
     Hopper,
     Dispenser,
     Shulker,
+    Brewing,
 }
 impl WorkstationKind {
     /// Original 1.21 MenuType registration IDs (protocol 767).
@@ -45,6 +46,7 @@ impl WorkstationKind {
             Self::Hopper => 16,
             Self::Dispenser => 6,
             Self::Shulker => 20,
+            Self::Brewing => 11,
         }
     }
     pub fn top_slots(self) -> usize {
@@ -54,7 +56,7 @@ impl WorkstationKind {
             // Nine actual inputs plus the noninteractive preview appended
             // AFTER the player inventory in CrafterMenu's slot list.
             Self::Crafter => 10,
-            Self::Hopper => 5,
+            Self::Hopper | Self::Brewing => 5,
             Self::Dispenser => 9,
             Self::Shulker => 27,
             _ => 3,
@@ -64,6 +66,7 @@ impl WorkstationKind {
         match self {
             Self::Anvil | Self::Loom | Self::Stonecutter => 1,
             Self::Enchanting | Self::Crafter => 10,
+            Self::Brewing => 2,
             _ => 0,
         }
     }
@@ -143,10 +146,36 @@ fn copy(stack: &ItemStack) -> ItemStack {
     }
 }
 fn matches(a: &ItemStack, b: &ItemStack) -> Result<bool> {
+    require_component_context(a)?;
+    require_component_context(b)?;
     Ok(
         (if a.is_empty() { 0 } else { a.count }) == (if b.is_empty() { 0 } else { b.count })
             && a.same_item_same_components(b)?,
     )
+}
+
+/// The current wire-value comparator has no actual reference owner for custom
+/// FoodProperties' nested ItemStack objects. Preserve the prototype elisions
+/// proved by the original stream codec, then reject unresolved overrides.
+/// This is an explicit supported-context boundary, not a substitute identity.
+pub fn require_component_context(stack: &ItemStack) -> Result<()> {
+    if stack.is_empty() || !stack.components.iter().any(|c| c.type_id == 20) {
+        return Ok(());
+    }
+    let mut normalized = stack.clone();
+    normalized.normalize_patch();
+    ensure!(
+        !normalized.components.iter().any(|c| c.type_id == 20),
+        "workstation custom food component requires its actual reference-identity owner"
+    );
+    Ok(())
+}
+
+fn require_inventory_context(inventory: &PlayerInventory) -> Result<()> {
+    for stack in inventory.slots() {
+        require_component_context(stack)?;
+    }
+    require_component_context(inventory.carried())
 }
 impl MenuSync {
     pub fn new(window_id: u8, kind: WorkstationKind) -> Result<Self> {
@@ -199,6 +228,11 @@ impl MenuSync {
             top.len() == self.kind.top_slots(),
             "workstation slot count changed"
         );
+        require_inventory_context(inventory)?;
+        require_component_context(&self.carried)?;
+        for stack in top {
+            require_component_context(stack)?;
+        }
         let input_count = if self.kind == WorkstationKind::Crafter {
             9
         } else {
@@ -387,6 +421,12 @@ impl MenuSync {
             click.window_id == self.window_id,
             "wrong workstation window"
         );
+        require_component_context(&click.carried)?;
+        for (&index, stack) in &click.changed_slots {
+            if index >= 0 && (index as usize) < self.remote.len() {
+                require_component_context(stack)?;
+            }
+        }
         let mut next = self.clone();
         for (&index, stack) in &click.changed_slots {
             if index >= 0 && (index as usize) < next.remote.len() {
@@ -425,6 +465,13 @@ impl MenuSync {
         inventory: &mut PlayerInventory,
         context: MenuCloseContext,
     ) -> Result<MenuRemoval> {
+        if matches!(context, MenuCloseContext::AliveConnected) {
+            require_inventory_context(inventory)?;
+            require_component_context(&self.carried)?;
+            for stack in inputs.iter() {
+                require_component_context(stack)?;
+            }
+        }
         let mut next_inventory = inventory.clone();
         let mut owned = std::iter::once(copy(&self.carried))
             .chain(inputs.iter().map(copy))
@@ -486,6 +533,75 @@ mod tests {
     use std::collections::BTreeMap;
     fn stone(n: i32) -> ItemStack {
         ItemStack::new(RecipeBook::vanilla().item_id("stone").unwrap(), n).unwrap()
+    }
+    #[test]
+    fn unresolved_food_identity_cannot_mutate_sync_prediction_or_close() -> Result<()> {
+        let item =
+            |name: &str| ItemStack::new(RecipeBook::vanilla().item_id(name).unwrap(), 1).unwrap();
+        let explicit_food = |mut stack: ItemStack| {
+            let data = stack.effective_component_bytes(20).unwrap().to_vec();
+            stack
+                .components
+                .push(crate::inventory::Component { type_id: 20, data });
+            stack
+        };
+        let unresolved = explicit_food(item("mushroom_stew"));
+        assert!(require_component_context(&unresolved).is_err());
+        // The original stream equality certificate permits this primitive-only
+        // prototype elision. Stable default food is not arbitrarily excluded.
+        let proved = explicit_food(item("bread"));
+        require_component_context(&proved)?;
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, proved);
+        let mut sync = MenuSync::new(9, WorkstationKind::Grindstone)?;
+        let top = [ItemStack::empty(), ItemStack::empty(), ItemStack::empty()];
+        sync.initialize(&top, &inventory, &[])?;
+        let before = sync.clone();
+        let click = ContainerClick {
+            window_id: 9,
+            state_id: sync.state_id(),
+            slot: -999,
+            button: 0,
+            kind: ClickType::Pickup,
+            changed_slots: BTreeMap::from([(0, unresolved.clone())]),
+            carried: ItemStack::empty(),
+        };
+        assert!(sync
+            .finish_click(&click, sync.state_id(), &top, &inventory, &[])
+            .is_err());
+        assert_eq!(sync, before);
+        sync.set_carried(unresolved);
+        let before = sync.clone();
+        let before_inventory = inventory.clone();
+        let mut inputs = [stone(3)];
+        assert!(sync
+            .close_inputs_ordered(
+                &mut inputs,
+                &mut inventory,
+                MenuCloseContext::AliveConnected
+            )
+            .is_err());
+        assert_eq!(sync, before);
+        assert_eq!(inventory.slots(), before_inventory.slots());
+        assert_eq!(inventory.carried(), before_inventory.carried());
+        assert_eq!(inventory.state_id(), before_inventory.state_id());
+        assert_eq!(
+            inventory.selected_hotbar(),
+            before_inventory.selected_hotbar()
+        );
+        assert_eq!(inputs, [stone(3)]);
+        // No equality is needed for dead/disconnected owned-stack transfers.
+        // Admission must not strand the cursor when this path only drops it.
+        let removed = sync.close_inputs_ordered(
+            &mut inputs,
+            &mut inventory,
+            MenuCloseContext::DeadOrDisconnected,
+        )?;
+        assert_eq!(removed.outcome.drops.len(), 2);
+        assert_eq!(removed.outcome.drops[0].stack, before.carried);
+        assert_eq!(removed.outcome.drops[1].stack, stone(3));
+        assert!(sync.carried().is_empty() && inputs[0].is_empty());
+        Ok(())
     }
     #[test]
     fn predictions_preserve_local_callbacks_and_stale_click_resends_data() -> Result<()> {

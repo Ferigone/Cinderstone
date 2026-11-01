@@ -223,8 +223,9 @@ current/previous game mode and sends abilities, assigns attribute **base values*
 and sets health to actual maximum. `alive=true` copies inventory, old health,
 the actual FoodData object, copy-constructed active effects, XP/score and portal
 process. For `alive=false`, keepInventory or the old spectator state controls
-inventory/XP/score retention; food, effects and health otherwise retain the new
-constructor state. It always carries enchantment seed, EnderChest owner, model
+inventory/XP/score retention; food and effects otherwise retain the new
+constructor state, while health already equals the current maximum from the
+unconditional attribute-base/health prefix. The dead branch omits old health. It always carries enchantment seed, EnderChest owner, model
 customization, recipe book, credits/nether/tracking state, shoulder compounds
 and last-death location. It resets last-sent XP, health and food caches to -1.
 Neither a wholesale old lifecycle clone nor a health-only reset models this.

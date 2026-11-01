@@ -27,7 +27,7 @@ pub trait LoomPatterns {
     fn selectable_patterns(&self, template: &ItemStack) -> Result<Vec<BannerPattern>>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LoomState {
     inputs: [ItemStack; 3],
     result: ItemStack,
@@ -35,6 +35,21 @@ pub struct LoomState {
     selected: i32,
     // Java's long field starts at zero, including the tick-zero sound guard.
     last_sound_time: i64,
+}
+
+/// Source callback boundaries. Snapshots are observations of this one owner,
+/// never another inventory or another claim on the derived result.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LoomSourceEvent {
+    InputContainerChanged,
+    OutputContainerChanged,
+    UpdateListener,
+    BroadcastChanges,
+}
+#[derive(Clone, Debug)]
+pub(crate) struct LoomObservation {
+    pub event: LoomSourceEvent,
+    pub state: LoomState,
 }
 
 #[derive(Debug)]
@@ -60,6 +75,83 @@ impl Default for LoomState {
 }
 
 impl LoomState {
+    /// Raw ItemStack mutation / removeItemNoUpdate. No container callback and
+    /// no preview recomputation occurs until the caller's source boundary.
+    pub(crate) fn replace_input_raw(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        ensure!(slot < 3, "invalid loom raw input");
+        require_proved_component_identity(&stack)?;
+        stack.encode_canonical()?;
+        self.inputs[slot] = stack;
+        Ok(())
+    }
+    pub(crate) fn replace_result_raw(&mut self, stack: ItemStack) -> Result<()> {
+        require_proved_component_identity(&stack)?;
+        stack.encode_canonical()?;
+        self.result = stack;
+        Ok(())
+    }
+    fn observe(&self, event: LoomSourceEvent, out: &mut Vec<LoomObservation>) {
+        out.push(LoomObservation {
+            event,
+            state: self.clone(),
+        });
+    }
+    pub(crate) fn output_changed_observed(&self) -> Vec<LoomObservation> {
+        let mut out = vec![];
+        self.observe(LoomSourceEvent::OutputContainerChanged, &mut out);
+        self.observe(LoomSourceEvent::UpdateListener, &mut out);
+        out
+    }
+    fn set_result_observed(&mut self, stack: ItemStack, out: &mut Vec<LoomObservation>) {
+        self.result = stack;
+        // Slot.set -> SimpleContainer.setItem/setChanged, then Slot.setChanged.
+        out.extend(self.output_changed_observed());
+        out.extend(self.output_changed_observed());
+    }
+    pub(crate) fn input_changed_observed(
+        &mut self,
+        registry: &impl LoomPatterns,
+    ) -> Result<Vec<LoomObservation>> {
+        let mut next = self.clone();
+        let mut out = vec![];
+        next.observe(LoomSourceEvent::InputContainerChanged, &mut out);
+        next.update_result_observed(registry, &mut out)?;
+        next.observe(LoomSourceEvent::UpdateListener, &mut out);
+        *self = next;
+        Ok(out)
+    }
+    pub(crate) fn select_pattern_observed(
+        &mut self,
+        index: i32,
+    ) -> Result<(bool, Vec<LoomObservation>)> {
+        if index < 0 || index as usize >= self.patterns.len() {
+            return Ok((false, vec![]));
+        }
+        let mut next = self.clone();
+        next.selected = index;
+        let old = next.result.clone();
+        next.setup_result(next.patterns[index as usize])?;
+        let result = next.result.clone();
+        next.result = old.clone();
+        let mut out = vec![];
+        if !stack_matches(&old, &result)? {
+            next.set_result_observed(result, &mut out);
+        }
+        *self = next;
+        Ok((true, out))
+    }
+    /// Source result-slot onTake removes its two inputs separately. The menu
+    /// adapter owns those removeItem callbacks and calls this only afterwards.
+    pub(crate) fn finish_take(&mut self, game_time: i64) -> bool {
+        if self.inputs[0].is_empty() || self.inputs[1].is_empty() {
+            self.selected = -1;
+        }
+        let sound = self.last_sound_time != game_time;
+        if sound {
+            self.last_sound_time = game_time;
+        }
+        sound
+    }
     pub fn inputs(&self) -> &[ItemStack; 3] {
         &self.inputs
     }
@@ -125,6 +217,7 @@ impl LoomState {
             Self::may_place(slot, &stack, registry),
             "invalid loom input slot/item"
         );
+        require_proved_component_identity(&stack)?;
         stack.encode_canonical()?;
         let mut next = self.clone();
         let previous = std::mem::replace(&mut next.inputs[slot], stack);
@@ -154,8 +247,17 @@ impl LoomState {
     }
 
     fn update_result(&mut self, registry: &impl LoomPatterns) -> Result<()> {
+        self.update_result_observed(registry, &mut vec![])
+    }
+
+    fn update_result_observed(
+        &mut self,
+        registry: &impl LoomPatterns,
+        out: &mut Vec<LoomObservation>,
+    ) -> Result<()> {
         if self.inputs[0].is_empty() || self.inputs[1].is_empty() {
-            self.result = ItemStack::empty();
+            // The output callbacks see the old list/selection in this branch.
+            self.set_result_observed(ItemStack::empty(), out);
             self.patterns.clear();
             self.selected = -1;
             return Ok(());
@@ -188,13 +290,20 @@ impl LoomState {
         if let Some(pattern) = chosen {
             if layer_count(&self.inputs[0])? >= 6 {
                 self.selected = -1;
-                self.result = ItemStack::empty();
+                self.set_result_observed(ItemStack::empty(), out);
             } else {
+                let old = self.result.clone();
                 self.setup_result(pattern)?;
+                let result = self.result.clone();
+                self.result = old.clone();
+                if !stack_matches(&old, &result)? {
+                    self.set_result_observed(result, out);
+                }
             }
         } else {
-            self.result = ItemStack::empty();
+            self.set_result_observed(ItemStack::empty(), out);
         }
+        self.observe(LoomSourceEvent::BroadcastChanges, out);
         Ok(())
     }
 
@@ -278,6 +387,27 @@ fn layer_count(stack: &ItemStack) -> Result<i32> {
         .and_then(serde_json::Value::as_array)
         .ok_or_else(|| anyhow::anyhow!("invalid banner-pattern layers"))?;
     Ok(layers.len() as i32)
+}
+
+fn stack_matches(a: &ItemStack, b: &ItemStack) -> Result<bool> {
+    require_proved_component_identity(a)?;
+    require_proved_component_identity(b)?;
+    Ok(a.is_empty() && b.is_empty() || a.count == b.count && a.same_item_same_components(b)?)
+}
+
+/// Explicit food patches may contain nested ItemStack reference identity that
+/// wire/value equality cannot prove. Implicit, stable item prototypes are
+/// supported; this bounded owner has no custom component-identity resolver.
+pub(crate) fn require_proved_component_identity(stack: &ItemStack) -> Result<()> {
+    ensure!(
+        stack.is_empty()
+            || !stack
+                .components
+                .iter()
+                .any(|component| component.type_id == 20),
+        "loom explicit food component requires its actual reference-identity owner"
+    );
+    Ok(())
 }
 
 fn dye_color(stack: &ItemStack) -> Option<i32> {

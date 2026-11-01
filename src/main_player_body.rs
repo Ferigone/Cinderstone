@@ -542,14 +542,22 @@ impl PlayerBodyHooks for BodyHooks<'_> {
                     match self.players.item_runtime.entity_kind(handle) {
                         Some(mc121_rust::runtime_entity_index::EntityKind::Item) => {
                             let active_furnace = self.players.furnaces.has_open(self.id);
+                            let active_stonecutter = self.players.stonecutters.has_open(self.id);
+                            ensure!(!(active_furnace && active_stonecutter), "multiple current player menus during pickup");
                             let actor_id = self.id;
-                            let LivePlayers { registry, gameplay, item_runtime, containers, chunk_runtime, furnaces, .. } = &mut *self.players;
+                            let LivePlayers { registry, gameplay, item_runtime, containers, chunk_runtime, furnaces, stonecutters, .. } = &mut *self.players;
                             let mut frame = gameplay.frame_current(registry, &chunk_runtime.manager, true,
                                 self.region.context("body pickup requires loaded region")?);
                             let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
-                            let mut menu_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
+                            let mut furnace_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
                                 furnaces.broadcast_for_inventory(&*w, actor_id, inventory);
-                            if active_furnace { host = host.with_external_menu_sync(actor_id, &mut menu_sync); }
+                            let mut stonecutter_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>, inventory: &mc121_rust::inventory::PlayerInventory|
+                                stonecutters.broadcast_for_inventory(actor_id, pickup, inventory, hooks);
+                            if active_stonecutter {
+                                host = host.with_external_menu_sync_and_hooks(pickup, &mut stonecutter_sync);
+                            } else if active_furnace {
+                                host = host.with_external_menu_sync(actor_id, &mut furnace_sync);
+                            }
                             item_runtime.player_touch_item(handle, pickup, &mut host)?;
                         }
                         Some(mc121_rust::runtime_entity_index::EntityKind::ExperienceOrb) => {

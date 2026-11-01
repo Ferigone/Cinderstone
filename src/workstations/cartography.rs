@@ -10,7 +10,7 @@ pub const MENU_TYPE: i32 = 23;
 pub const RESULT_SLOT: usize = 2;
 pub const PLAYER_SLOTS: std::ops::Range<usize> = 3..39;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CartographyMapData {
     pub scale: i8,
     pub locked: bool,
@@ -34,11 +34,17 @@ pub trait CartographyHost: CartographyMaps {
     ) -> Result<()>;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CartographyState {
     inputs: [ItemStack; 2],
     result: ItemStack,
     last_sound_time: i64,
+}
+/// Source broadcastChanges boundary; the result remains a derived preview.
+#[derive(Clone, Debug)]
+pub struct CartographyBroadcast {
+    pub inputs: [ItemStack; 2],
+    pub result: ItemStack,
 }
 #[derive(Debug)]
 pub struct CartographyTake {
@@ -103,29 +109,53 @@ impl CartographyState {
         stack: ItemStack,
         maps: &impl CartographyMaps,
     ) -> Result<ItemStack> {
-        ensure!(
-            Self::may_place(slot, &stack),
-            "invalid cartography input slot/item"
-        );
-        stack.encode_canonical()?;
         let mut next = self.clone();
-        let previous = std::mem::replace(&mut next.inputs[slot], stack);
+        let previous = next.set_input_raw(slot, stack)?;
         next.slots_changed(maps)?;
         *self = next;
         Ok(previous)
     }
+    /// Raw source ItemStack mutation; no container/Slot.setChanged callback.
+    /// The adapter must invoke slots_changed_observed at the source boundary.
+    pub fn set_input_raw(&mut self, slot: usize, stack: ItemStack) -> Result<ItemStack> {
+        ensure!(
+            slot < 2 && Self::may_place(slot, &stack),
+            "invalid cartography input slot/item"
+        );
+        stack.encode_canonical()?;
+        Ok(std::mem::replace(&mut self.inputs[slot], stack))
+    }
+    /// The actual ResultContainer.setItem/removeItem operation, not another
+    /// preview owner. removeItem ignores its requested amount in Java.
+    pub fn set_result_raw(&mut self, stack: ItemStack) -> Result<ItemStack> {
+        stack.encode_canonical()?;
+        Ok(std::mem::replace(&mut self.result, stack))
+    }
+    pub fn remove_result_raw(&mut self) -> ItemStack {
+        std::mem::take(&mut self.result)
+    }
     pub fn slots_changed(&mut self, maps: &impl CartographyMaps) -> Result<()> {
+        self.slots_changed_observed(maps).map(|_| ())
+    }
+    /// cqb.setupResultSlot broadcasts the OLD preview before comparing the
+    /// desired valid result, then broadcasts again only if it changes. Missing
+    /// saved data returns without either boundary; empty inputs remove the
+    /// preview without broadcasting. Input/result containers use this same hook.
+    pub fn slots_changed_observed(
+        &mut self,
+        maps: &impl CartographyMaps,
+    ) -> Result<Vec<CartographyBroadcast>> {
         if self.inputs.iter().any(ItemStack::is_empty) {
             self.result = ItemStack::empty();
-            return Ok(());
+            return Ok(Vec::new());
         }
         let Some(map_id) = map_id(&self.inputs[0])? else {
-            return Ok(());
+            return Ok(Vec::new());
         };
         // Source setupResultSlot returns immediately for a genuine missing map,
         // retaining the current result. Do not invent a map record here.
         let Some(data) = maps.map_data(map_id)? else {
-            return Ok(());
+            return Ok(Vec::new());
         };
         let mut output = self.inputs[0].clone();
         match inventory::item_name(self.inputs[1].item_id) {
@@ -140,8 +170,50 @@ impl CartographyState {
             Some("map") => output.count = 2,
             _ => output = ItemStack::empty(),
         }
-        self.result = output;
-        Ok(())
+        let mut broadcasts = Vec::new();
+        if !output.is_empty() {
+            broadcasts.push(self.broadcast_snapshot());
+            if self.result.count != output.count
+                || !self.result.same_item_same_components(&output)?
+            {
+                self.result = output;
+                broadcasts.push(self.broadcast_snapshot());
+            }
+        } else {
+            self.result = ItemStack::empty();
+            broadcasts.push(self.broadcast_snapshot());
+        }
+        Ok(broadcasts)
+    }
+    fn broadcast_snapshot(&self) -> CartographyBroadcast {
+        CartographyBroadcast {
+            inputs: self.inputs.clone(),
+            result: self.result.clone(),
+        }
+    }
+    /// Slot.onTake removes one map, then one addition, each with its own input
+    /// container callback. The caller owns the actual taken argument, which may
+    /// be EMPTY after full quick-move or a partial transfer remainder.
+    pub fn consume_take_inputs_observed(
+        &mut self,
+        maps: &impl CartographyMaps,
+    ) -> Result<Vec<CartographyBroadcast>> {
+        let mut broadcasts = Vec::new();
+        for slot in 0..2 {
+            if !self.inputs[slot].is_empty() {
+                shrink_one(&mut self.inputs[slot]);
+                broadcasts.extend(self.slots_changed_observed(maps)?);
+            }
+        }
+        Ok(broadcasts)
+    }
+    /// Call after actual Item.onCraftedBy and before base Slot.onTake.
+    pub fn take_sound(&mut self, game_time: i64) -> bool {
+        let play = self.last_sound_time != game_time;
+        if play {
+            self.last_sound_time = game_time;
+        }
+        play
     }
     /// The caller must reserve the complete result destination and use its
     /// outer world transaction. The callback receives the actual output after
@@ -156,15 +228,10 @@ impl CartographyState {
         }
         let mut next = self.clone();
         let mut stack = std::mem::take(&mut next.result);
-        shrink_one(&mut next.inputs[0]);
-        next.slots_changed(host)?;
-        shrink_one(&mut next.inputs[1]);
-        next.slots_changed(host)?;
+        next.consume_take_inputs_observed(host)?;
         host.on_crafted_by(&mut stack, &next.inputs)?;
-        let play_sound = next.last_sound_time != game_time;
-        if play_sound {
-            next.last_sound_time = game_time;
-        }
+        let play_sound = next.take_sound(game_time);
+        next.slots_changed(host)?;
         *self = next;
         Ok(Some(CartographyTake { stack, play_sound }))
     }

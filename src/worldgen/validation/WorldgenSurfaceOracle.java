@@ -40,7 +40,16 @@ public class WorldgenSurfaceOracle {
   Object noisedStatus=Class.forName("dvz").getField("g").get(null);PROTO.getMethod("a",Class.forName("dvz")).invoke(proto,noisedStatus);
   Object biomeHolder=getHolder(biomeKey,biomeName),fixed=Class.forName("deh").getConstructor(HOLDER).newInstance(biomeHolder);
   Class.forName("duy").getMethod("a",Class.forName("ddz"),Class.forName("def$f")).invoke(proto,fixed,S.getMethod("b").invoke(state));
-  Object biomeManager=Class.forName("ddy").getConstructor(Class.forName("ddy$a"),long.class).newInstance(fixed,Class.forName("ddy").getMethod("a",long.class).invoke(null,seed));
+  // Observe the actual original zoom provider call during SurfaceSystem.
+  // The fixed biome makes block images insensitive to Y, so the first selected
+  // quart is a separate witness of the caller's legacy-height flag.
+  List<List<Integer>> firstBiomeQuartQuery=new ArrayList<>();
+  Class<?> noiseBiomeSource=Class.forName("ddy$a");
+  Object observedSource=Proxy.newProxyInstance(noiseBiomeSource.getClassLoader(),new Class<?>[]{noiseBiomeSource},(proxy,method,args)->{
+   if(method.getName().equals("getNoiseBiome")&&firstBiomeQuartQuery.isEmpty())firstBiomeQuartQuery.add(List.of((int)args[0],(int)args[1],(int)args[2]));
+   return method.invoke(fixed,args);
+  });
+  Object biomeManager=Class.forName("ddy").getConstructor(noiseBiomeSource,long.class).newInstance(observedSource,Class.forName("ddy").getMethod("a",long.class).invoke(null,seed));
   Object generator=Class.forName("dzb").getConstructor(Class.forName("dea"),HOLDER).newInstance(fixed,settingsHolder);
   Object generationContext=Class.forName("dzv").getConstructor(Class.forName("duz"),ACCESS).newInstance(generator,accessor);
   String inputName=q.has("input")?q.get("input").getAsString():"java-"+name.replace(':','-')+"-"+seed+"-"+cx+"-"+cz+".bin";
@@ -55,12 +64,15 @@ public class WorldgenSurfaceOracle {
   Field bf=Class.forName("dys$b").getField("a");bf.setAccessible(true);Object beard=bf.get(null),blender=BLENDER.getMethod("a").invoke(null);
   Object chunk=CHUNK.getConstructor(int.class,S,int.class,int.class,NOISE,BEARD,SETTINGS,PICKER,BLENDER).newInstance(16/width,state,cx*16,cz*16,noise,beard,set,fp,blender);
   Object surface=S.getMethod("c").invoke(state),rule=SETTINGS.getMethod("j").invoke(set);
-  Class.forName("dzq").getMethod("a",S,Class.forName("ddy"),REGISTRY,boolean.class,Class.forName("dzv"),Class.forName("duy"),CHUNK,Class.forName("dzp$o")).invoke(surface,state,biomeManager,biomeRegistry,false,generationContext,proto,chunk,rule);
+  boolean useLegacyRandomSource=(boolean)SETTINGS.getMethod("n").invoke(set);
+  int firstSurfaceY=(int)Class.forName("duy").getMethod("a",Class.forName("dyy$a"),int.class,int.class).invoke(proto,Class.forName("dyy$a").getField("a").get(null),0,0)+1;
+  List<Integer> expectedFirstBiomeBlockQuery=List.of(cx*16,useLegacyRandomSource?0:firstSurfaceY,cz*16);
+  Class.forName("dzq").getMethod("a",S,Class.forName("ddy"),REGISTRY,boolean.class,Class.forName("dzv"),Class.forName("duy"),CHUNK,Class.forName("dzp$o")).invoke(surface,state,biomeManager,biomeRegistry,useLegacyRandomSource,generationContext,proto,chunk,rule);
   ByteBuffer result=ByteBuffer.allocate(total*256*4).order(ByteOrder.LITTLE_ENDIAN);Map<Integer,Integer> counts=new TreeMap<>();i=0;int changes=0;
   for(int y=min;y<min+total;y++)for(int x=0;x<16;x++)for(int z=0;z<16;z++){int id=(int)stateId.invoke(null,getBlock.invoke(proto,point.newInstance(cx*16+x,y,cz*16+z)));result.putInt(id);counts.merge(id,1,Integer::sum);if(id!=before[i++])changes++;}
   byte[] bytes=result.array();String out=outputDirectory.resolve("java-surface-"+name.replace(':','-')+"-"+seed+"-"+cx+"-"+cz+"-"+biomeName.replace(':','-')+".bin").toString();Files.write(Path.of(out),bytes);
   int postprocess=0;Object[] posts=(Object[])Class.forName("duy").getMethod("n").invoke(proto);for(Object list:posts)if(list!=null)postprocess+=(int)Class.forName("it.unimi.dsi.fastutil.shorts.ShortList").getMethod("size").invoke(list);
-  Map<String,Object> r=new LinkedHashMap<>();r.put("settings",name);r.put("seed",seed);r.put("x",cx);r.put("z",cz);r.put("biome",biomeName);r.put("min_y",min);r.put("height",total);r.put("input",input);r.put("output",out);r.put("sha256",HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));r.put("changes",changes);r.put("postprocess",postprocess);r.put("counts",counts);List<Integer> heights=new ArrayList<>();Object surfaceType=Class.forName("dyy$a").getField("a").get(null),floorType=Class.forName("dyy$a").getField("c").get(null);Method heightAt=Class.forName("duy").getMethod("a",Class.forName("dyy$a"),int.class,int.class);for(int x=0;x<16;x++)for(int z=0;z<16;z++){heights.add((int)heightAt.invoke(proto,surfaceType,x,z));heights.add((int)heightAt.invoke(proto,floorType,x,z));}r.put("heightmaps_world_surface_wg_ocean_floor_wg",heights);
+  Map<String,Object> r=new LinkedHashMap<>();r.put("settings",name);r.put("seed",seed);r.put("x",cx);r.put("z",cz);r.put("biome",biomeName);r.put("min_y",min);r.put("height",total);r.put("input",input);r.put("output",out);r.put("sha256",HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)));r.put("changes",changes);r.put("postprocess",postprocess);r.put("use_legacy_random_source",useLegacyRandomSource);r.put("expected_first_biome_block_query",expectedFirstBiomeBlockQuery);r.put("first_biome_quart_query",firstBiomeQuartQuery.get(0));r.put("counts",counts);List<Integer> heights=new ArrayList<>();Object surfaceType=Class.forName("dyy$a").getField("a").get(null),floorType=Class.forName("dyy$a").getField("c").get(null);Method heightAt=Class.forName("duy").getMethod("a",Class.forName("dyy$a"),int.class,int.class);for(int x=0;x<16;x++)for(int z=0;z<16;z++){heights.add((int)heightAt.invoke(proto,surfaceType,x,z));heights.add((int)heightAt.invoke(proto,floorType,x,z));}r.put("heightmaps_world_surface_wg_ocean_floor_wg",heights);
   // Exact controlled-fixture callbacks from the actual selected Biome owner.
   Object biome=value(biomeHolder);Method cold=Class.forName("ddw").getMethod("b",POSITION),melt=Class.forName("ddw").getMethod("d",POSITION);
   List<String> thermal=new ArrayList<>();List<Boolean> melt63=new ArrayList<>();

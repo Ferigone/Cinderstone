@@ -10,6 +10,19 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Stonecutter Main
+
+The native Stonecutter now uses the real shared player inventory, recipe book,
+statistics, ItemEntity/drop and per-player menu owners. Normal crafting,
+quick-move, current-menu close, menu replacement, disconnect and native cold
+restart passed a focused local protocol flow. The composed master candidate also
+passed the same flow and the equipped-range retirement regression.
+See [production scope and exact evidence](docs/reference/stonecutter-production.md).
+Custom component reference identity, custom interaction ranges and arbitrary
+reentrant callbacks remain unsupported; this is a bounded workstation delivery.
+Its Railway release is pending verification. Smithing Main is the next assembly
+stage. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
+
 ## Native connection transport
 
 Published source `87dda91` connects the configured packet-rate owner,
@@ -20,7 +33,7 @@ Actual rate refusal, compression enabled/disabled, keepalive refusal, signed
 long ping echo and incomplete-frame timeout refresh were observed.
 See [production contracts and limits](docs/reference/connection-production.md).
 
-Railway autodeployed master `1e72694` successfully and the native process began
+The earlier connection release autodeployed master `1e72694` successfully and the native process began
 listening in offline mode on 1 November 2026 at **21:19:15 Europe/Warsaw**.
 One replica and the existing `/data` volume are retained. Public gameplay remains
 unverified because this environment cannot resolve the external TCP hostname.

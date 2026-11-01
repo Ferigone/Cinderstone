@@ -6,6 +6,7 @@
 //! remain separate integration responsibilities.
 
 pub mod attribute_instance;
+pub mod attribute_map;
 mod instance;
 
 pub use instance::{EffectInstance, EffectTickHost};

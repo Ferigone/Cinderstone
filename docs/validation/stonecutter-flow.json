@@ -1,0 +1,144 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "5c496b2aba781944210bf518c5a3f447fe45baf6",
+  "binary_sha256": "09f662444521fb4df9535fd05cf9947c2f0ed820c693c3d38502ec0778907cf9",
+  "harness_sha256": "f9b5656cfef8907b9f054f0abe96d942b1711839363d44319155949e370e31d7",
+  "started_at": "2026-11-01T21:12:48.255334+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One actual native Main Stonecutter creative block/menu, shared inventory, derived preview, cross-menu removal, disconnect drops and native cold restart flow. No full workstation/gameplay, graphical or public-network claim.",
+  "checks": {
+    "actual_stonecutter_open_select_take_and_stale_wire_close": {
+      "ok": true,
+      "window": 1,
+      "input_before": 8,
+      "input_after": 7,
+      "owned_cursor_result": 2,
+      "nonowned_remaining_preview": 2,
+      "menu_type": 24,
+      "menu_slots": 38,
+      "after_close": {
+        "stone": 7,
+        "stone_slab": 2
+      },
+      "cursor_empty": true
+    },
+    "opening_real_crafting_table_removes_stonecutter_once": {
+      "ok": true,
+      "window": 2,
+      "input_before": 7,
+      "input_after": 6,
+      "owned_cursor_result": 2,
+      "nonowned_remaining_preview": 2,
+      "new_menu_type": 12,
+      "after_close": {
+        "stone": 6,
+        "stone_slab": 4
+      },
+      "cursor_empty": true
+    },
+    "closed_menu_native_save_conserves_inventory": {
+      "ok": true,
+      "player": {
+        "stone": 6,
+        "stone_slab": 4
+      },
+      "world_items": {
+        "stone": 0,
+        "stone_slab": 0
+      }
+    },
+    "cold_restart_restores_actual_player_inventory": {
+      "ok": true,
+      "player": {
+        "stone": 6,
+        "stone_slab": 4
+      }
+    },
+    "actual_normal_take_crafted_stat_counts_output_amount": {
+      "ok": true,
+      "crafted_stone_slabs": 6,
+      "normal_takes": 3,
+      "slabs_per_take": 2
+    },
+    "open_menu_disconnect_drops_only_owned_input_and_cursor": {
+      "ok": true,
+      "player": {
+        "stone": 0,
+        "stone_slab": 4
+      },
+      "world_items": {
+        "stone": 5,
+        "stone_slab": 2
+      },
+      "preview_owned": false
+    },
+    "cold_restart_accepts_nonempty_actual_item_checkpoint": {
+      "ok": true,
+      "player": {
+        "stone": 0,
+        "stone_slab": 4
+      },
+      "world_items": {
+        "stone": 5,
+        "stone_slab": 2
+      },
+      "play_actors_created": 0
+    },
+    "full_quick_move_preserves_source_zero_air_crafted_callback": {
+      "ok": true,
+      "window": 1,
+      "input_before": 1,
+      "input_after": 0,
+      "owned_inventory_result": 2,
+      "cursor_empty": true,
+      "derived_preview_empty": true,
+      "isolated_input_stone": 1,
+      "player": {
+        "stone": 0,
+        "stone_slab": 2
+      },
+      "air_crafted_stat_present": true,
+      "air_crafted_stat": 0,
+      "slab_crafted_stat": 0,
+      "normal_flow_inventory_untouched": true
+    }
+  },
+  "pinned_recipe": {
+    "id": "minecraft:stone_slab_from_stone_stonecutting",
+    "button_index": 5,
+    "input_item": 1,
+    "output_item": 264,
+    "output_count": 2
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e"
+  },
+  "disconnect_input": {
+    "window": 1,
+    "input_before": 6,
+    "input_after": 5,
+    "owned_cursor_result": 2,
+    "nonowned_remaining_preview": 2
+  },
+  "final_conservation": {
+    "initial_stone": 8,
+    "remaining_stone": 5,
+    "crafted_slabs": 6,
+    "stone_per_two_slabs": 1,
+    "stone_equivalent": 8
+  },
+  "completed_at": "2026-11-01T21:13:56.558189+00:00",
+  "login_mode": "offline-loopback",
+  "full_vanilla_parity": false,
+  "not_exercised": [
+    "Public or graphical clients",
+    "Java player.dat interoperability",
+    "Ordinary autosave timing",
+    "Same-game-time sound suppression",
+    "Immediate item pickup with an active Stonecutter menu",
+    "Item tracking/ticking after the final no-PLAY-actor cold restart"
+  ]
+}

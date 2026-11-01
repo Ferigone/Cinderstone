@@ -5,6 +5,28 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native Stonecutter — Main connected; publication review
+
+The Stonecutter controller is connected to actual block use, click/button/close,
+shared inventory, source-phased callbacks, player menu ticks, immediate item
+pickup, snapshots, disconnect and shutdown. The full Main build passed on
+composition `57e90e6` atop master `2ad92fd`; focused crafting/lifetime/restart and
+valid equipped-range retirement flows passed on binary
+`a0169096d316d28ab7f5568cb6fe665b70947c2333d6b46c4374f2d17266072b`.
+[Production evidence and limits](reference/stonecutter-production.md) distinguish
+original and composed witnesses. Review also identified queued-packet reach
+handling and current-menu close ordering; their narrow fixes are part of the
+publication review, with final runtime evidence recorded separately.
+
+Smithing Main adapters are being assembled on the integration branch. They do
+not yet have a production runtime witness. The genuine retained full-state
+controller API and custom component reference-context admission are explicit
+owner contracts, not initialize/reset substitutes. Other teams self-review and
+merge their owned source PRs; central Main, checklist and deployment ownership
+remains with the integration coordinator. Scope1 remains56/100 code and51/100
+Main; neither this substage nor independent kernels close an aggregate row.
+No Stonecutter hosted-release claim is made before observed Railway success.
+
 ## Native connection transport — published and hosted
 
 Native core `894a3cc` and Main `87dda91054478098ba86eebaaf32869fa176f307`

@@ -12,8 +12,21 @@ use crate::{
 };
 use anyhow::{bail, ensure, Result};
 
+/// Source menu-field mutations before actual item/text callbacks.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AnvilComputationChange {
+    CostInitialized,
+    RepairMaterialCount(i32),
+}
+
 /// Actual item and text owners consulted by `AnvilMenu.createResult`.
 pub trait AnvilContext {
+    /// Standalone computation has no menu observer. Production controllers
+    /// override this hook and forward every change to their actual phase owner.
+    fn observe_computation_change(&mut self, _: AnvilComputationChange) -> Result<()> {
+        Ok(())
+    }
+
     fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool>;
     fn hover_name(&mut self, item: &ItemStack) -> Result<JavaString>;
 }
@@ -119,12 +132,29 @@ pub fn increased_repair_cost(cost: i32) -> i32 {
 /// Existing enchantments on the base are preserved, including a rename or
 /// material repair of an enchanted item. An enchanted sacrifice requires the
 /// actual registry/holder-compatible merge owner and is rejected explicitly.
+struct AnvilComputation {
+    preview: AnvilPreview,
+    broadcast_after: bool,
+    retain_material_count: bool,
+}
+
+/// Existing standalone result computation. Menu controllers use the observed
+/// state hook below to preserve source notification and early-return phases.
 pub fn create_result(
     inputs: &[ItemStack; 2],
     item_name: Option<&JavaString>,
     player: AnvilPlayer,
     context: &mut impl AnvilContext,
 ) -> Result<AnvilPreview> {
+    Ok(compute_result(inputs, item_name, player, context)?.preview)
+}
+
+fn compute_result(
+    inputs: &[ItemStack; 2],
+    item_name: Option<&JavaString>,
+    player: AnvilPlayer,
+    context: &mut impl AnvilContext,
+) -> Result<AnvilComputation> {
     if let Some(name) = item_name {
         ensure!(
             validate_name(name).as_ref() == Some(name),
@@ -132,6 +162,8 @@ pub fn create_result(
         );
     }
     let [base, addition] = inputs;
+    // cpw.m sets its cost DataSlot before the first-input early return.
+    context.observe_computation_change(AnvilComputationChange::CostInitialized)?;
     let enchanted_book = crate::crafting::RecipeBook::vanilla()
         .item_id("enchanted_book")
         .expect("pinned enchanted book");
@@ -145,7 +177,11 @@ pub fn create_result(
             .effective_component_bytes(enchantment_component)
             .is_none()
     {
-        return Ok(AnvilPreview::empty());
+        return Ok(AnvilComputation {
+            preview: AnvilPreview::empty(),
+            broadcast_after: false,
+            retain_material_count: true,
+        });
     }
     let mut output = base.clone();
     let base_cost =
@@ -153,13 +189,20 @@ pub fn create_result(
     let mut operation_cost: i32 = 0;
     let mut rename_cost: i32 = 0;
     let mut repair_material_count = 0;
+    // The source resets this field only AFTER the first-input guard and before
+    // isValidRepairItem. A previous repair count must not reach that callback.
+    context.observe_computation_change(AnvilComputationChange::RepairMaterialCount(0))?;
     if !addition.is_empty() {
         if output.is_damageable()? && context.is_valid_repair_item(base, addition)? {
             let max_damage = int_component(&output, 2, 0)?;
             let mut damage = output.damage_value()?;
             let mut repaired = damage.min(max_damage / 4);
             if repaired <= 0 {
-                return Ok(AnvilPreview::empty());
+                return Ok(AnvilComputation {
+                    preview: AnvilPreview::empty(),
+                    broadcast_after: false,
+                    retain_material_count: false,
+                });
             }
             while repaired > 0 && repair_material_count < addition.count {
                 damage = damage.wrapping_sub(repaired);
@@ -168,12 +211,20 @@ pub fn create_result(
                 repair_material_count += 1;
                 repaired = output.damage_value()?.min(max_damage / 4);
             }
+            // Source stores the final count before later getHoverName calls.
+            context.observe_computation_change(AnvilComputationChange::RepairMaterialCount(
+                repair_material_count,
+            ))?;
         } else {
             // The source tests presence of STORED_ENCHANTMENTS, not nonempty
             // contents or the enchanted-book item ID, for its book branch.
             let stored = addition.effective_component_bytes(23).is_some();
             if !stored && (base.item_id != addition.item_id || !output.is_damageable()?) {
-                return Ok(AnvilPreview::empty());
+                return Ok(AnvilComputation {
+                    preview: AnvilPreview::empty(),
+                    broadcast_after: false,
+                    retain_material_count: false,
+                });
             }
             let addition_enchantments = if addition.item_id == enchanted_book {
                 23
@@ -233,10 +284,14 @@ pub fn create_result(
         }
         set_int_component(&mut output, 16, repair_cost);
     }
-    Ok(AnvilPreview {
-        stack: output,
-        level_cost,
-        repair_material_count,
+    Ok(AnvilComputation {
+        preview: AnvilPreview {
+            stack: output,
+            level_cost,
+            repair_material_count,
+        },
+        broadcast_after: true,
+        retain_material_count: false,
     })
 }
 
@@ -351,10 +406,89 @@ impl AnvilState {
         player: AnvilPlayer,
         context: &mut impl AnvilContext,
     ) -> Result<()> {
-        let preview = create_result(&self.inputs, self.item_name.as_ref(), player, context)?;
+        self.recompute_observed(player, context).map(|_| ())
+    }
+    /// Recompute once after the superclass has broadcast the old preview/cost.
+    /// True means createResult reached its source tail broadcast; early returns
+    /// intentionally do not broadcast again. No result logic is duplicated.
+    pub fn recompute_observed(
+        &mut self,
+        player: AnvilPlayer,
+        context: &mut impl AnvilContext,
+    ) -> Result<bool> {
+        let mut result = compute_result(&self.inputs, self.item_name.as_ref(), player, context)?;
+        if result.retain_material_count {
+            // Source returns before resetting repairItemCountCost when the
+            // first input is empty or lacks its enchantment component.
+            result.preview.repair_material_count = self.preview.repair_material_count;
+        }
         self.revision = self.revision.wrapping_add(1);
-        self.preview = preview;
+        self.preview = result.preview;
+        Ok(result.broadcast_after)
+    }
+    /// Mutate the actual temporary input object without notifying. This is for
+    /// source in-place shrink/grow/remove phases; the controller must immediately
+    /// deliver the matching container/Slot setChanged boundary. Whole enclosing
+    /// host/menu staging is required, including rollback on unsupported context.
+    pub fn mutate_input_in_place(&mut self, slot: usize, stack: ItemStack) -> Result<()> {
+        ensure!(slot < 2, "invalid anvil input slot");
+        if !stack.is_empty() {
+            stack.encode_canonical()?;
+        }
+        self.inputs[slot] = if stack.is_empty() {
+            ItemStack::empty()
+        } else {
+            stack
+        };
+        self.revision = self.revision.wrapping_add(1);
         Ok(())
+    }
+    /// ResultContainer permits count mutation/removal of its derived preview.
+    /// It never manufactures a result or an independently owned output. Only
+    /// the enclosing atomic transfer plus actual onTake consumes input owners.
+    pub fn mutate_result_in_place(&mut self, stack: ItemStack) -> Result<()> {
+        ensure!(
+            stack.is_empty()
+                || (stack.count <= self.preview.stack.count
+                    && stack.same_item_same_components(&self.preview.stack)?),
+            "anvil result is derived and cannot be replaced"
+        );
+        self.preview.stack = if stack.is_empty() {
+            ItemStack::empty()
+        } else {
+            stack
+        };
+        self.revision = self.revision.wrapping_add(1);
+        Ok(())
+    }
+    /// Validated source setItemName phase before createResult. The existing
+    /// derived result is renamed in place first; no owned item is introduced.
+    pub fn request_name_observed(&mut self, name: &JavaString) -> Result<bool> {
+        let Some(name) = validate_name(name) else {
+            return Ok(false);
+        };
+        if self.item_name.as_ref() == Some(&name) {
+            return Ok(false);
+        }
+        if !self.preview.stack.is_empty() {
+            if is_blank(&name) {
+                remove_component(&mut self.preview.stack, 5);
+            } else {
+                set_component(
+                    &mut self.preview.stack,
+                    5,
+                    Tag::String(name.clone()).encode_network_anonymous()?,
+                );
+            }
+        }
+        self.item_name = Some(name);
+        self.revision = self.revision.wrapping_add(1);
+        Ok(true)
+    }
+    /// Source DataSlot reset after both actual input-container mutations.
+    pub fn reset_cost_after_take(&mut self) {
+        self.preview.level_cost = 0;
+        self.revision = self.revision.wrapping_add(1);
     }
     /// Call after source Slot transfer/mayPickup checks, with actual current
     /// player abilities/levels. No cursor, XP, RNG, block or input is changed.

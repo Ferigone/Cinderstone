@@ -6,6 +6,7 @@
 pub mod aquifer;
 pub mod biome_context;
 pub mod biome_source;
+pub mod biomes;
 pub mod climate;
 pub mod biome_temperature;
 pub mod biome_zoom;
@@ -29,3 +30,8 @@ pub use biome_source::{
     MultiNoisePreset, MultiNoiseQuartProvider,
 };
 pub use climate::{ClimateParameter, ClimateParameterList, ClimateParameterPoint, ClimateSearch};
+
+pub use biomes::{
+    BiomeImage, BiomeNeighborhood, BiomeResolver, BiomeTerrain, BuiltinBiomeResolver, PreparedBiomes,
+    RetrogenContext,
+};
