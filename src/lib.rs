@@ -39,6 +39,7 @@ pub mod entity_ticking_range;
 pub mod entity_tracking;
 pub mod entity_tracking_order;
 pub mod equipment;
+pub mod effects;
 pub mod fluid_physics;
 pub mod furnace;
 pub mod game_event_context;
