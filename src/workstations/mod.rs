@@ -8,3 +8,4 @@ pub mod anvil;
 pub mod grindstone;
 pub mod loom;
 pub mod cartography;
+pub mod lectern;
