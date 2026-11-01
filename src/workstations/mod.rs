@@ -6,3 +6,5 @@ pub mod smithing;
 pub mod special_context;
 pub mod anvil;
 pub mod grindstone;
+pub mod loom;
+pub mod cartography;
