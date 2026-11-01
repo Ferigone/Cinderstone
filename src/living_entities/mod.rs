@@ -4,4 +4,6 @@
 //! persistence and same-connection respawn remain real-host responsibilities.
 
 pub mod death_tick;
+pub mod death_loot;
+pub mod removal;
 pub mod server_player_death;
