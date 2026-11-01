@@ -1,8 +1,8 @@
 {
-  "observed_at": "2026-11-01T14:27:45.709777+00:00",
-  "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
-  "native_integration_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
-  "deployment_id": "cb51f40a-c758-4734-8dc1-1826dc400328",
+  "observed_at": "2026-11-01T16:13:55.390913+00:00",
+  "source_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
+  "native_integration_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
+  "deployment_id": "cbb54cc1-ca8b-4674-b2ba-cf9f27f4ecf7",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
@@ -12,14 +12,17 @@
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T14:25:08.337854703Z"
+    "event_timestamp": "2026-11-01T16:12:58.911137306Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
   "autodeploy_branch": "master",
   "external_status_probe": {
+    "endpoint": "hopper.proxy.rlwy.net:24418",
+    "checked_at": "2026-11-01T16:13:16.162812+00:00",
     "ok": false,
-    "error": "getaddrinfo EAI_AGAIN hopper.proxy.rlwy.net"
+    "error": "[Errno -3] Temporary failure in name resolution",
+    "dns_resolved": false
   },
   "real_account_public_login_verified": false,
   "public_player_data_redeploy_verified": false,
@@ -31,7 +34,7 @@
     "timestamp": "2026-11-01T02:33:31.721552847Z",
     "mode": "offline"
   },
-  "verification_scope": "Successful optimized network.5 release and native offline startup, one running replica and retained persistent volume. Same-TCP readmission/resource-pack/cookie protocol flows were local; no current public gameplay was observed. External status probe still fails environment DNS.",
+  "verification_scope": "Optimized native admission/administration source release SUCCESS and offline listening, one running replica and retained /data volume. Admission/command flows are local protocol-client observations. Current public PLAY and graphical gameplay remain unverified; fresh DNS resolution failed.",
   "earlier_shared_menu_release": {
     "source_commit": "93438c6055ec755e85f528739a41073ef5563b5a",
     "deployment_id": "737cb031-94ce-45d0-9f15-cd3633b80b1a",
@@ -49,5 +52,28 @@
     "deployment_id": "f1d948cf-6d83-4022-a309-53faf0dfd0de",
     "status": "SUCCESS",
     "native_listening_at": "2026-11-01T13:31:18.582253298Z"
+  },
+  "earlier_configuration_release": {
+    "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+    "deployment_id": "cb51f40a-c758-4734-8dc1-1826dc400328",
+    "native_listening": {
+      "address": "0.0.0.0:25565",
+      "minecraft": "1.21",
+      "protocol": 767,
+      "mode": "offline",
+      "event_timestamp": "2026-11-01T16:12:58.911137306Z"
+    },
+    "verification_scope": "Successful optimized network.5 release and native offline startup, one running replica and retained persistent volume. Same-TCP readmission/resource-pack/cookie protocol flows were local; no current public gameplay was observed. External status probe still fails environment DNS."
+  },
+  "admission_scope": {
+    "local_report": "docs/validation/admission-flow.json",
+    "source_commit": "6c5401882c2cf2d454968455fa98b1e91b653aa5",
+    "native_access_lists": true,
+    "initial_and_final_admission_gates": true,
+    "bounded_console_unsigned_commands": true,
+    "signed_command_execution": false,
+    "positive_rate_limit_transport_enforcement": false,
+    "administration_directory": "MC_SERVER_DIRECTORY or MC_DATA_DIR",
+    "existing_auth_mode_retained": true
   }
 }

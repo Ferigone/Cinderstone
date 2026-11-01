@@ -5,6 +5,46 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Dedicated admission and administration — bounded local flow passed
+
+Native access-list ownership and production admission checks are now connected.
+The source stage is `6c5401882c2cf2d454968455fa98b1e91b653aa5`, following core
+`76141a7` and initial Main integration `870349d`. The full Main build passed.
+The [focused local flow](validation/admission-flow.json) passed at
+**17:10:14 Europe/Warsaw on 1 November 2026** (`2026-11-01T16:10:14.211Z`),
+on binary SHA-256 `f5e29a9ecb012d4685c9358612e453189c28475cd2d9fb50624e85c6a0a55411`.
+
+- Actual UUID/profile and accepted TCP peer feed player-ban, whitelist, IP-ban
+  and capacity checks before LOGIN success and again after CONFIGURATION.
+  The final gate runs before player/entity/RNG construction. Admission and
+  administration policy mutations share the same serialization owner.
+- `banned-players.json`, `banned-ips.json`, `ops.json` and `whitelist.json` have
+  native owners. Whitelist enable changes persist in `server.properties`.
+- Console and bounded unsigned player commands drive real bans/pardons,
+  whitelist changes, op/deop, kick, list and banlist. Actual operator changes
+  publish permission events and a refreshed permission-filtered command tree.
+- The local flow observed persisted live bans, actual disconnect/reconnect
+  rejection, whitelist ordering, denied nonoperator mutation, current-list
+  suggestions, and operator capacity bypass only from a true stored flag.
+  A real pending resource-pack task held CONFIGURATION while its profile was
+  banned; finishing then rejected it without creating a PLAY actor.
+- The LOGIN timer now consumes cumulative actual connection ticks across packet
+  receipt and authentication, ending when Login Acknowledged replaces its owner.
+  Its timeout mechanism compiled; the recorded flow does not time out a client.
+
+The optimized code release reached **SUCCESS** and native offline listening at
+**17:12:58 Europe/Warsaw**, with one instance and the existing `/data` volume.
+The fresh external status probe still failed DNS; public gameplay is unverified.
+
+See [production owners and configuration](reference/admission-production.md).
+Signed-command verification/execution, full Brigadier/selectors and remote
+profile-cache lookup, all Gson/date/locale compatibility, exact asynchronous
+LOGIN scheduling and packet-rate transport enforcement remain unfinished.
+A separate native 64-connection bound is explicit; it is not vanilla capacity.
+This is bounded implementation and integration, **not completion of
+`authentication.5`, `commands_data.1` or another aggregate checklist delivery**.
+The indicators remain **56/100 code**, **51/100 Main**, `scope_version: 1`.
+
 ## Configuration lifecycle — published and bounded local flow passed
 
 The existing `network.5` delivery, **reconfiguration, cookies and resource packs**,

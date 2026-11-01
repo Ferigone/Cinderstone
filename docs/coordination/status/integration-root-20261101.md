@@ -8,23 +8,32 @@ Team assignments: world-generation #2; workstations #3; entities-survival #4.
 ## Ownership
 
 The current coordinator owns master, central Main adapters, connection/session
-protocol modules, narrow Main motion/healing fixes, shared exports, checklist
+protocol and admission/administration modules, shared exports, checklist
 accounting, persistent journal and Railway. External teams own unused default
 areas in the coordination guide. No separate external instance is assumed active
 without an actual issue or Git branch/status check-in.
 
 ## Current delivery
 
-network.5: real configuration task negotiation, resource packs, cookies and
-same-transport PLAY-to-CONFIGURATION-to-PLAY admission. Published source: `643106e8eb60d970a8df67eb9acf0ab5f107c788`.
-The final Main build and local flow passed at2026-11-01T14:18:52.638Z on debug
-binary `d68f5c8de6c95cec4df4d28777c3e35f045890ac9a725181a29b38d0eb3690dd`.
-The source-review corrections for required-without-offer, malformed prompt
-syntax and initial branding were included. `network.5` is code/Main complete: the
-unchanged scope1 checklist now records56/100 code and51/100 Main. The optimized
-release reachedSUCCESS/offline listening at2026-11-01T14:25:08.337854703Z, one
-replica and retained volume. Public gameplay is unverified because of DNS. Motion water statistics and
-existing healing reuse are bounded improvements, not completion of their rows.
+Bounded native dedicated admission/administration is implemented in source
+`6c5401882c2cf2d454968455fa98b1e91b653aa5`, after core `76141a7` and Main
+integration `870349d`. The final Main build and
+[local admission flow](../../validation/admission-flow.json) passed at
+`2026-11-01T16:10:14.211Z` on binary
+`f5e29a9ecb012d4685c9358612e453189c28475cd2d9fb50624e85c6a0a55411`.
+Actual list/peer/profile owners feed ordered pre-success and final admission;
+commands mutate persistent access lists, update permissions/tree and disconnect
+actual connections. Policy changes serialize with admission. The source-review
+correction preserves compression-before-duplicate-eviction ordering. Scope and
+remaining native boundaries are in [admission-production.md](../../reference/admission-production.md).
+
+This bounded stage does not complete authentication.5 or commands_data.1; the
+unchanged scope1 checklist remains56/100 code and51/100 Main. Earlier network.5
+remains complete with its own source and runtime evidence. The optimized code release reachedSUCCESS/offline listening at
+2026-11-01T16:12:58.911137306Z, with one replica and the retained volume. Public
+gameplay is unverified because the fresh external DNS probe failed. Hosted
+verification is recorded in docs/validation/railway-preview.json and the progress
+journal; a source push or build-in-progress is not itself deployment success.
 
 ## Communication
 
@@ -56,5 +65,5 @@ owners and actual blockers for the entities/survival team.
 
 Publish team feature branches and per-instance status files or writable PRs.
 No external team check-in was observed in issues2–4 or teams/* branches during
-this stage. The coordinator reads those records while its session is active;
+this stage; an external effects worker was reported by the user. The coordinator reads those records while its session is active;
 no automatic wakeup, polling or continuing background coding is claimed.

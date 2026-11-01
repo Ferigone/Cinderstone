@@ -26,7 +26,12 @@ detailed roadmap does not add points to, rename or replace that checklist.
       delivery with native Main calls and the recorded local configuration flow.
 - [ ] Complete dynamic registry/datapack reload, general component handling,
       remaining custom payloads and malformed late-PLAY decoder equivalence.
-- [ ] Complete admission limits, bans and administration.
+- [x] Bounded native access lists, ordered LOGIN/configuration admission gates,
+      real console/unsigned administration, operator permission/tree refresh and
+      configured capacity with explicit stored bypass. The local
+      [admission flow](validation/admission-flow.json) passed for source `6c54018`.
+- [ ] Complete admission limits, bans and administration, including remaining
+      parser/profile/date contexts and transport-owned packet-rate enforcement.
 
 The [configuration flow](validation/configuration-flow.json) passed on 1 November
 2026 at 15:18:52 Europe/Warsaw for source

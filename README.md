@@ -10,6 +10,18 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native administration preview
+
+The server now connects native access lists, ordered login/configuration
+admission, console and bounded unsigned player administration, operator command
+trees and configured player capacity to actual live owners. The
+[local admission flow](docs/validation/admission-flow.json) passed for source
+`6c54018`; [configuration and limits](docs/reference/admission-production.md)
+state the exact scope. Signed commands, full profile/selector/parser compatibility
+and remaining login transport behavior are still incomplete. This bounded stage
+does not add a fixed-checklist point; indicators remain **56/100 code** and
+**51/100 Main** at `scope_version: 1`.
+
 ## Compatibility
 
 | Target | Version |
