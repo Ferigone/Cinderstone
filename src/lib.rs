@@ -96,3 +96,4 @@ pub mod workstations;
 pub mod container_workstation_stonecutter;
 pub mod container_workstation_smithing;
 pub mod container_workstation_storage;
+pub mod container_workstation_enchanting;

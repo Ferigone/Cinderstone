@@ -329,6 +329,9 @@ impl<S: Clone + PartialEq + Debug> EnchantingState<S> {
             random: LegacyRandomSource::new(i64::from(seed)),
         }
     }
+    pub(crate) fn install_created_menu_random(&mut self, random: LegacyRandomSource) {
+        self.random = random;
+    }
     pub fn inputs(&self) -> &[ItemStack; INPUT_SLOTS] {
         &self.inputs
     }
@@ -522,6 +525,27 @@ impl<S: Clone + PartialEq + Debug> EnchantingState<S> {
         *self = next;
         Ok(())
     }
+    /// In-place stack mutation for the native Slot adapter. No container dirty
+    /// callback occurs until that adapter reaches the actual source boundary.
+    pub(crate) fn mutate_input_in_place(&mut self, slot: usize, item: ItemStack) -> Result<()> {
+        ensure!(slot < INPUT_SLOTS, "invalid enchanting input slot");
+        self.inputs[slot] = if item.is_empty() {
+            ItemStack::empty()
+        } else {
+            item
+        };
+        Ok(())
+    }
+    pub(crate) fn notify_input_changed<H: EnchantingHost<Snapshot = S>>(
+        &mut self,
+        host: &mut H,
+    ) -> Result<()> {
+        let mut next = self.clone();
+        next.changed(host)?;
+        *self = next;
+        Ok(())
+    }
+
     /// Native source action on a host-staged real-player/world transaction.
     /// An accepted option with an empty actual enchantment list returns true
     /// without charging levels/lapis, awarding stats or playing a sound.
@@ -608,7 +632,7 @@ impl<S: Clone + PartialEq + Debug> EnchantingState<S> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::{inventory::Component, protocol::Writer};
     use std::cell::RefCell;
@@ -616,7 +640,7 @@ mod tests {
     /// Restricted recording fixture, not a vanilla registry implementation.
     /// Unbreaking fields below are from the pinned packaged enchantment JSON;
     /// this deliberately supplies just one actual data entry to the algorithm.
-    struct RecordingHost {
+    pub(crate) struct RecordingHost {
         snapshot: u64,
         missing_tag: bool,
         unsupported: bool,
@@ -624,10 +648,10 @@ mod tests {
         seed: i32,
         player_random: LegacyRandomSource,
         level_random: LegacyRandomSource,
-        calls: RefCell<Vec<&'static str>>,
+        pub(crate) calls: RefCell<Vec<&'static str>>,
     }
     impl RecordingHost {
-        fn new(instabuild: bool) -> Self {
+        pub(crate) fn new(instabuild: bool) -> Self {
             Self {
                 snapshot: 7,
                 missing_tag: false,
@@ -786,6 +810,32 @@ mod tests {
                 enchantment_cost(&mut random, 2, 15, 1)?,
             ];
             assert_eq!(actual, expected);
+            assert_eq!(random.next_i32(), next);
+        }
+        // The unchanged helper was also called with the actual bootstrap
+        // Unbreaking holder in a deliberately restricted single-holder Stream.
+        // This is not an observation of the complete vanilla table tag.
+        let registry = RecordingHost::new(false);
+        for (option, cost, level, next) in [
+            (0, 8, 1, -458096230),
+            (1, 11, 2, -1947763183),
+            (2, 30, 3, 1412103999),
+        ] {
+            let mut random = LegacyRandomSource::new(i64::from(123456789 + option));
+            let selected = select_enchantments(
+                &registry,
+                &mut random,
+                &item("book", 1),
+                cost,
+                &["minecraft:unbreaking"],
+            )?;
+            assert_eq!(
+                selected,
+                vec![EnchantmentInstance {
+                    holder: "minecraft:unbreaking",
+                    level
+                }]
+            );
             assert_eq!(random.next_i32(), next);
         }
         Ok(())

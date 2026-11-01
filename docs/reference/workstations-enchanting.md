@@ -107,11 +107,48 @@ callbacks receive each actual intermediate two-slot state and all ten data
 values; they must use the shared MenuSync and borrowed player inventory without
 publishing a separate input owner or appending an invented result slot.
 
-Main opening/button routing, an actual registry/component-holder owner, real
-player/advancement/world adapters, complete ordinary click/drag/transfer dispatch
-and production publication are **pending central integration**. This is a
-callable native core with explicit contracts, not a claim of complete enchanting
-runtime integration or completion of any aggregate checklist row.
+`src/container_workstation_enchanting.rs` adds `EnchantingMenu<S,K>` over the
+same core and shared `MenuSync`. `K` is an actual captured player, Level/position
+and menu-lifetime binding supplied by the host, checked on every action; equal
+contents or seeds do not identify another owner. Opening requires
+`create_menu_random_source()` from the actual `RandomSource.create` factory and
+seed-uniquifier owner, then reads the actual player seed. The pure kernel alone
+does not claim that constructor factory side effect.
+
+The controller implements Pickup, QuickMove, Swap, Clone, Throw, QuickCraft and
+PickupAll using the same canonical player inventory exposed to advancement
+rewards. Intermediate broadcasts read that owner, including the already-shrunk
+source during a shift transfer. All source Slot/SimpleContainer dirty boundaries
+are retained, including double setByPlayer callbacks and a full matching slot
+accepting zero items. The actual Inventory.setChanged and Inventory.add owners
+remain mandatory host callbacks. Same-backing overfull SWAP preserves the
+post-split displaced remainder instead of duplicating the original full stack.
+
+QuickCraft membership lives in the controller; its HashSet encounter order
+must come from the actual slot-identity owner, with no invented production
+sorting. A missing owner rejects that context. A one-slot creative drag resets
+then attempts PICKUP(button2), which is a no-op under the source dispatch guard.
+Bundle pickup overrides and reentrant listeners remain explicit unsupported
+contexts. Shared prediction reconciliation, state-ID increments and cursor sync
+run against the actual authoritative mutations.
+
+The host stages SyncEvents inline with player/world callbacks rather than
+collecting all packets after advancement and sound effects. On an accepted
+button the controller performs the packet handler's final broadcast **after**
+the sound; rejected buttons do not get that extra broadcast. Closing stages
+cursor then input0/input1 returns or real drops in the shared removal order,
+then deactivates this controller. The central server-initiated close packet
+must precede those effects; the caller transfers shared local/remote baselines
+back to window0 afterward.
+
+Main opening, actual registry/component-holder/player/advancement/world hosts,
+actual factory/slot-identity contexts, packet dispatch and publication are
+**pending central integration**. Production phases are block-use opening and
+initial listener-before-content synchronization; authoritative click/button
+packet handling; the real player menu broadcast/validity phase; and explicit
+close/disconnect cleanup. No Main file is changed here. These callable native
+modules do not establish complete enchanting gameplay or an aggregate checklist
+row.
 
 ## Focused verification
 
@@ -126,9 +163,29 @@ costs and the following unbounded draw were:
 | 123456789 | 8 / 11 / 30 | -458096230 |
 | -123456789 | 7 / 18 / 30 | -619273243 |
 
-The native focused check matches those values and draw order. Native contract
-flows additionally exercise a clearly restricted recording registry fixture
-containing the pinned Unbreaking definition (not a default vanilla registry),
+The native focused check matches those values and draw order. The unchanged
+`selectEnchantment` helper was also invoked with the actual bootstrap Unbreaking
+holder in a deliberately restricted single-holder Stream, an actual book,
+seeds `123456789+option` and costs 8/11/30. Native selection matches the observed
+levels and the following unbounded draw:
+
+| Option | Selected Unbreaking level | Following nextInt |
+| --- | ---: | ---: |
+| 0 | 1 | -458096230 |
+| 1 | 2 | -1947763183 |
+| 2 | 3 | 1412103999 |
+
+This is a restricted-stream helper observation, not a full-default-tag menu
+observation. Native contract flows additionally exercise a clearly restricted
+recording registry fixture containing the pinned Unbreaking definition (not a default vanilla registry),
 book conversion, lapis clearing, player callback/stat/criterion/seed/sound order,
 instabuild payment callback, absent tag behavior and rejected unsupported owners.
 These observations establish neither full Java menu gameplay nor Main callsites.
+
+The bounded controller flow initializes a 38-slot, ten-DataSlot menu, shifts the actual
+book/lapis sources before nested offers, selects an enchantment, observes the
+source sound-before-final-sync order, then disconnects with exactly one owned
+book dropped. Focused alias/drag checks cover overfull self-SWAP conservation,
+one-slot creative-drag no-op, zero-accept full-slot callbacks and owner-binding
+rejection. The recording insertion/order/factory hosts are test fixtures, not
+production substitutes for the actual owners.
