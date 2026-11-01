@@ -104,6 +104,33 @@ Blockers / requested contracts: <concrete details>
 Next action / handoff: <owner and next bounded step>
 ```
 
+## Communication when issue/PR writes are unavailable
+
+The integration coordinator observed that its GitHub connection rejects issue
+comments and updates with HTTP403, while authorized ordinary Git pushes work.
+Do not assume a new instance has broader permissions or share credentials.
+
+Use issue comments and PRs when the instance can write them. Otherwise publish
+`docs/coordination/status/<instance-id>.md` on the team's own feature branch.
+That status file is part of its assigned documentation area. Include the same
+claim/status/contract fields above, exact source commits and intended recipient.
+A published branch and status commit are the handoff even if PR creation fails.
+Do not wait for a new permission merely to continue independent authorized work.
+
+During active work, fetch `origin` and inspect the current integration status on
+`master` and status files on `origin/teams/*` branches. Read other branches with
+`git show <remote-branch>:docs/coordination/status/<instance-id>.md` without
+switching or modifying their checkouts. Route integration-contract requests and
+responses in these versioned status records. Only the central coordinator
+reviews and integrates the code into `master`.
+
+Each owner writes its own branch/status file, avoiding a shared multi-writer
+status file. The coordinator's current record is
+[status/integration-root-20261101.md](status/integration-root-20261101.md).
+No polling, work or session wakeup is automatic after a turn stops. If both
+GitHub API writes and authenticated Git pushes are unavailable, report the
+access blocker and retain local commits; do not claim a remote handoff occurred.
+
 ## Implementation and delivery rules
 
 - Read current `AGENTS.md`, the English roadmap, current status,

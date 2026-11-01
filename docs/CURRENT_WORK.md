@@ -5,7 +5,62 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Closed single-container removal — bounded local flow passed
+## Configuration lifecycle — published and bounded local flow passed
+
+The existing `network.5` delivery, **reconfiguration, cookies and resource packs**,
+now has native code and production Main callsites. This closes that named item
+under its unchanged definition. At `scope_version: 1`, with the same 100-item
+denominator, the planning-checklist indicators are **56/100 code deliveries**
+and **51/100 Main integrations**. These are not functional compatibility,
+engineering-effort or remaining-time percentages.
+
+The implementation was published in source commit
+`643106e8eb60d970a8df67eb9acf0ab5f107c788`. The full Main build passed, and the
+[focused local configuration flow](validation/configuration-flow.json) **passed**
+on 1 November 2026 at **15:18:52 Europe/Warsaw**
+(`2026-11-01T14:18:52.638Z`), using debug binary SHA-256
+`d68f5c8de6c95cec4df4d28777c3e35f045890ac9a725181a29b38d0eb3690dd`.
+The recorded flow establishes:
+
+- An actual admitted PLAY connection switching through CONFIGURATION on native
+  SIGHUP, then readmitting a new real player on the same TCP connection without
+  a second login/authentication handshake. Eleven emeralds and moved position
+  were retained, and a subsequent authoritative world interaction succeeded.
+- Initial known-pack query/acknowledgement and brand-before-feature-flags order.
+  `RETURN_TO_WORLD` did not repeat initial brand, registry or known-pack tasks.
+- Cookie responses in LOGIN, CONFIGURATION and PLAY producing the exact vanilla
+  `multiplayer.disconnect.unexpected_query_response` disconnect reason.
+- Optional resource-pack ACCEPTED and DOWNLOADED responses keeping the active
+  configuration task pending, with a terminal optional failure permitting PLAY
+  even when the response UUID was unknown. Required DECLINED disconnected before
+  PLAY with `multiplayer.requiredTexturePrompt.disconnect`.
+- A required flag without a configured URL producing no offer or effective
+  requirement, and an unsolicited PLAY decline with no pack being ignored.
+  Malformed prompt JSON syntax produced a warning and omitted the prompt while
+  allowing the implemented optional-pack flow to finish.
+
+CLI `--resource-pack-url`, `--resource-pack-sha1`, `--resource-pack-id`,
+`--resource-pack-prompt` and `--require-resource-pack` are connected to the native
+host. The container entrypoint maps the corresponding `MC_RESOURCE_PACK_*`
+variables. SIGHUP selects the native operator `RETURN_TO_WORLD` transition;
+it is not datapack or dynamic-registry reload. The
+[reconfiguration](reference/reconfiguration.md),
+[cookie](reference/connection-cookies.md) and
+[resource-pack](reference/resource-packs.md) ledgers keep source facts separate
+from the recorded native flow.
+
+The optimized hosted release reached **SUCCESS**, with one instance, the existing
+volume and native offline listening at **15:25:08 Europe/Warsaw** on 1 November
+2026. Public gameplay remains unverified because the external status probe fails
+DNS resolution. No
+resource-pack URL was fetched or applied in this flow. It does not establish a
+graphical-client session, public-network gameplay, arbitrary dynamic registries,
+the general component codec or every malformed late-PLAY decoder. Narrow native
+water-movement statistics and FoodData healing also reuse existing core logic;
+they do not close `player_motion.3` or `survival_combat.2`, whose remaining Main
+ownership and behavior must still be completed.
+
+## Earlier closed single-container removal — bounded local flow passed
 
 The newer bounded creative-removal stage is published for a
 closed **single dry chest** or closed barrel. `main_container_removal` connects
@@ -47,8 +102,8 @@ existing volume and native offline listening at **14:31:18 Europe/Warsaw**.
 The shared-menu flow also passed on this same debug binary at 14:31:27, after
 the new container-owner changes; its earlier source result remains recorded.
 Public gameplay remains unverified because the external status probe fails DNS.
-It does not complete a full fixed checklist row: the
-indicators remain 55/100 code and 50/100 Main integration at `scope_version: 1`.
+That bounded removal addition did not complete a full fixed checklist row.
+The current checklist indicators are recorded above and below.
 The earlier recorded results below retain their source versions and scopes.
 
 ## Earlier shared menu close lifecycle — bounded local flow passed
@@ -106,8 +161,8 @@ Full `PlayerList.remove` player-save/persistence ordering, every asynchronous
 disconnect race, integrated death/survival, mixed alive inventory-return and
 overflow-drop packet interleaving, other workstation families and complete
 player/server tick phases remain unfinished. This bounded menu stage does not
-complete a full inventory or simulation checklist row. The fixed indicators
-remain **55/100 code** and **50/100 Main integration**, `scope_version: 1`.
+complete a full inventory or simulation checklist row. Its historical validation
+does not change the current checklist indicators recorded above.
 
 ## Earlier disconnected furnace cursor — bounded local flow passed
 
@@ -134,8 +189,8 @@ release reached SUCCESS and native offline listening at 12:59:45 UTC, as recorde
 in the [deployment observation](validation/railway-preview.json). Public gameplay
 remains unverified. Full player-death handling, full-inventory overflow
 conformance and the complete Java `PlayerList.remove` persistence order remain
-incomplete. The fixed checklist indicators remain 55/100 code and 50/100 Main
-integration at `scope_version: 1`.
+incomplete. This bounded furnace addition did not close an aggregate checklist
+delivery; current indicators are recorded in the configuration section above.
 
 ## Furnace menu lifetime after removal — bounded local flow passed
 
@@ -328,17 +383,14 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The closed-container stage's optimized release reached successful automatic deployment
-`f1d948cf-6d83-4022-a309-53faf0dfd0de`, with
-one running replica and native offline listening on `0.0.0.0:25565` at
-14:31:18 Europe/Warsaw on 1 November 2026. The existing persistent volume is retained.
-The [deployment observation](validation/railway-preview.json) records hosted
-startup separately from local gameplay. Both menu and removal flows passed on
-the current local debug binary; their actual hosted gameplay was not observed.
-No public PLAY join is recorded for this release; the earlier join remains
-explicitly historical. A fresh external status/pong probe failed DNS resolution
-from the development environment. Local gameplay, hosted startup and public
-gameplay are separate evidence scopes.
+The configuration lifecycle release reached successful automatic deployment
+`cb51f40a-c758-4734-8dc1-1826dc400328`, with one running replica and native offline
+listening on `0.0.0.0:25565` at 15:25:08 Europe/Warsaw on 1 November 2026. The
+existing persistent volume is retained. The
+[deployment observation](validation/railway-preview.json) records hosted startup
+separately from local protocol-client behavior. No public PLAY join is recorded
+for this release; the earlier join remains explicitly historical. A fresh
+external status/pong probe failed DNS resolution from the development runtime.
 
 ## Remaining scope and checklist
 
@@ -348,8 +400,10 @@ block entities, complete redstone, TNT/explosions, commands/datapacks and full
 Java-world interoperability. Unsupported owners and callbacks remain explicit
 errors.
 
-The fixed 100-item planning checklist remains **55/100 code deliveries** and
-**50/100 main-server integrations** at `scope_version: 1`. These are checklist
+The fixed 100-item planning checklist records **56/100 code deliveries** and
+**51/100 main-server integrations** at `scope_version: 1`. The existing
+`network.5` delivery is now implemented and called by Main; the denominator and
+definitions are unchanged. These are checklist
 indicators, not measures of functional compatibility, engineering effort or
 remaining time. The broader inventory and simulation deliveries still require
 all remaining menus and complete block-entity ticking; these bounded furnace and
@@ -358,3 +412,17 @@ are unchanged.
 
 Porting and integration remain the priority. See the [README](../README.md) and
 [roadmap](ROADMAP.md) for the English project scope and remaining work.
+
+## Independent team coordination
+
+The [coordination guide](coordination/README.md) and three copyable prompts are
+available for independent sessions. Real GitHub assignments are the
+[integration queue #1](https://github.com/Ferigone/Cinderstone/issues/1),
+[world-generation team #2](https://github.com/Ferigone/Cinderstone/issues/2),
+[workstations team #3](https://github.com/Ferigone/Cinderstone/issues/3) and
+[entities/survival team #4](https://github.com/Ferigone/Cinderstone/issues/4).
+They use feature branches, explicit file ownership and integration contracts;
+the central coordinator retains Main, metrics, journal and deployment ownership.
+HTTP 403 on issue comments has a documented versioned branch-status fallback.
+These assignments and prompts are not evidence that another session or seven
+agents are running; active work must be reported from observed state.

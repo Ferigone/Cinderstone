@@ -69,4 +69,11 @@ handoff give exact commits, file ownership, integration state, validation and
 blockers. Only the central integrator changes the fixed 100-item checklist at
 scope_version: 1. If the turn ends or agents pause, say what stopped; do not claim
 ongoing background work or automatic communication with another Codex session.
+If issue-comment or PR creation returns403, use the guide's Git fallback:
+commit docs/coordination/status/<instance-id>.md on your assigned feature branch
+with exact file ownership, intended recipient, source commits, integration
+contracts and handoff. Fetch origin and read master/root and other team branch
+status files while active. Do not stop independent authorized implementation
+because comment writes are unavailable or share credentials.
+
 ```

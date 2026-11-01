@@ -62,4 +62,11 @@ At handoff report exact commits, owned files, callable APIs, Main integration
 proof or pending contracts, validation and remaining blockers. Only the central
 integrator changes the fixed 100-item checklist at scope_version: 1. If work stops,
 say so; do not claim coding continues after the turn or in another unseen chat.
+If issue-comment or PR creation returns403, use the documented Git fallback:
+commit docs/coordination/status/<instance-id>.md on your assigned feature branch
+with ownership, recipient, source commits, integration contracts and handoff.
+Fetch origin and read the root/master and other teams' branch status files while
+active. Do not block independent implementation on unavailable comment writes,
+share credentials or claim another chat wakes automatically.
+
 ```

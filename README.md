@@ -29,6 +29,8 @@ The compiled server connects these systems to its main runtime:
 
 - Handshake, status, ping, compression, configuration registries, PLAY,
   keepalive, player tracking and inventory synchronization.
+- Native PLAY-to-CONFIGURATION return and actual player readmission on the same
+  connection, cookie-response rules and configured resource-pack task handling.
 - Online-mode authentication with RSA, AES and the official session service.
   A real-account public-server login still needs end-to-end verification.
 - Native player movement/body ticks, collision and pose handling, creative
@@ -48,6 +50,23 @@ The compiled server connects these systems to its main runtime:
   Basic redstone includes levers, buttons, lamps, repeaters and torches.
 - Native player, statistics, recipe-book, world and dropped-item persistence;
   bounded Java `player.dat` import/export for DataVersion 3953.
+
+The [focused configuration flow](docs/validation/configuration-flow.json) passed
+for source `643106e8eb60d970a8df67eb9acf0ab5f107c788` after a full Main build.
+An actual native SIGHUP request returned an admitted PLAY connection through
+CONFIGURATION and readmitted a new player on the same TCP connection without
+reauthentication. Eleven emeralds, moved position and subsequent world
+interaction were retained. The flow also covered initial known-pack negotiation
+and brand order, cookie rejection in LOGIN/CONFIGURATION/PLAY, and optional and
+required resource-pack response rules. Resource URLs were not fetched; this is
+a local protocol-client result, not graphical-client or public gameplay proof.
+The optimized hosted release reached **SUCCESS**, with one instance, the existing
+volume and native offline listening at **15:25:08 Europe/Warsaw** on 1 November
+2026. Public gameplay remains unverified because the external status probe fails
+DNS resolution. Dynamic
+registry reload, the general component codec and every malformed late-PLAY
+decoder remain unfinished. See [current work](docs/CURRENT_WORK.md) for the exact
+binary, scope and remaining limits.
 
 The furnace Main integration passed a bounded local protocol-client flow covering
 all three cooking types, menu transfers, lit/light updates, real XP pickup and
@@ -100,8 +119,8 @@ persistent volume. Public gameplay remains unverified because the external
 status probe fails environment DNS resolution.
 See the [menu-close source ledger](docs/reference/menu-close-lifecycle.md).
 Full player-save ordering, death/survival and mixed alive-return/overflow-drop
-packet interleaving remain unfinished. The fixed checklist stays 55/100 code
-and 50/100 Main integration at `scope_version: 1`.
+packet interleaving remain unfinished. Current fixed-checklist indicators are
+56/100 code and 51/100 Main integration at `scope_version: 1`.
 
 The newer bounded stage implements creative removal
 of a **closed single dry chest or closed barrel**. It prepares all 27 owned
@@ -193,6 +212,24 @@ World changes, player data and native entity checkpoints must be kept together
 for restart. Keep the world path on persistent storage when running a container.
 `--online-mode` and `--allow-offline` are mutually exclusive.
 
+Resource-pack offers are configured at startup through these CLI options and
+container-entrypoint variables:
+
+| CLI option | Container variable |
+| --- | --- |
+| `--resource-pack-url` | `MC_RESOURCE_PACK_URL` |
+| `--resource-pack-sha1` | `MC_RESOURCE_PACK_SHA1` |
+| `--resource-pack-id` | `MC_RESOURCE_PACK_ID` |
+| `--resource-pack-prompt` | `MC_RESOURCE_PACK_PROMPT` |
+| `--require-resource-pack` | `MC_RESOURCE_PACK_REQUIRED=true` |
+
+The prompt is supplied as JSON within the implemented component profile.
+Malformed JSON syntax is warned about and omitted. Requiring a pack without a
+configured URL does not create an offer or an effective pack requirement. The
+server offers the URL; the local validation does not download or apply a pack.
+On Unix, SIGHUP requests the native operator `RETURN_TO_WORLD` transition for
+admitted connections. It does not implement datapack or dynamic-registry reload.
+
 Existing Java chunks can be opened with `--anvil-world /path/to/world`. This writes
 to that directory, so use a copy while evaluating the port. Imported chunks do not
 acquire missing runtime block/entity owners. Missing chunks return
@@ -205,20 +242,33 @@ The fixed planning checklist has **100 named, unweighted delivery items** at
 
 | Checklist indicator | Recorded implementation scope |
 | --- | ---: |
-| Native code deliveries | **55/100** |
-| Deliveries connected to the main server | **50/100** |
+| Native code deliveries | **56/100** |
+| Deliveries connected to the main server | **51/100** |
 
 These are **planning-checklist indicators**, not percentages of Minecraft's
 functional compatibility, engineering effort or remaining time. Partial features
 can be implemented without completing a broader checklist item. The machine
 readable source of truth is [`progress/checklist.json`](progress/checklist.json).
 The denominator and definition change only with an explicit scope-version change.
+The increment closes the existing `network.5` delivery; it does not redefine
+other rows or establish a percentage of full Minecraft compatibility.
 
 ## Development
 
 Porting and connecting real mechanics comes first. Focused compiler/runtime checks
 help catch integration failures; broad compatibility comparison remains a separate
 final stage. Test counts are not used to measure progress.
+
+Independent Codex sessions use the [coordination guide](docs/coordination/README.md)
+and its ready-to-copy team prompts. The real integration queue is
+[issue #1](https://github.com/Ferigone/Cinderstone/issues/1), with assigned teams
+for [world generation #2](https://github.com/Ferigone/Cinderstone/issues/2),
+[workstations #3](https://github.com/Ferigone/Cinderstone/issues/3) and
+[entities/survival #4](https://github.com/Ferigone/Cinderstone/issues/4).
+Where issue comments are rejected with HTTP 403, the guide defines versioned
+status files on each team's feature branch as the communication fallback.
+Prompts and assigned issues do not establish that an independent session is
+running; each session reports its observed agent capacity and actual work.
 
 The implementation is guided by the original shipped **1.21** server artifact,
 official mappings, packaged data and observed behavior. Artifact identities are

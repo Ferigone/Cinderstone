@@ -1,8 +1,8 @@
 {
-  "observed_at": "2026-11-01T13:32:18.006199+00:00",
-  "source_commit": "be2582a9ea032205c3885fd04e10ff1419d63fb9",
-  "native_integration_commit": "be2582a9ea032205c3885fd04e10ff1419d63fb9",
-  "deployment_id": "f1d948cf-6d83-4022-a309-53faf0dfd0de",
+  "observed_at": "2026-11-01T14:27:45.709777+00:00",
+  "source_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+  "native_integration_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
+  "deployment_id": "cb51f40a-c758-4734-8dc1-1826dc400328",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
@@ -12,7 +12,7 @@
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T13:31:18.582253298Z"
+    "event_timestamp": "2026-11-01T14:25:08.337854703Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
@@ -31,11 +31,23 @@
     "timestamp": "2026-11-01T02:33:31.721552847Z",
     "mode": "offline"
   },
-  "verification_scope": "Successful automatic deployment of shared menu lifecycles and closed single chest/barrel destruction, optimized release/native offline startup, one running replica and retained persistent volume. Both bounded local flows passed on the current debug binary. Current public gameplay remains unverified because the external status probe fails environment DNS.",
+  "verification_scope": "Successful optimized network.5 release and native offline startup, one running replica and retained persistent volume. Same-TCP readmission/resource-pack/cookie protocol flows were local; no current public gameplay was observed. External status probe still fails environment DNS.",
   "earlier_shared_menu_release": {
     "source_commit": "93438c6055ec755e85f528739a41073ef5563b5a",
     "deployment_id": "737cb031-94ce-45d0-9f15-cd3633b80b1a",
     "status": "SUCCESS",
     "native_listening_at": "2026-11-01T13:23:02.384209111Z"
+  },
+  "configuration_scope": {
+    "operator_reconfiguration": "SIGHUP returnToWorld on the same admitted transport; not datapack reload",
+    "resource_pack_configurable": true,
+    "default_resource_pack_offer": false,
+    "cookie_default": "vanilla unexpected-query response disconnect"
+  },
+  "earlier_closed_container_release": {
+    "source_commit": "be2582a9ea032205c3885fd04e10ff1419d63fb9",
+    "deployment_id": "f1d948cf-6d83-4022-a309-53faf0dfd0de",
+    "status": "SUCCESS",
+    "native_listening_at": "2026-11-01T13:31:18.582253298Z"
   }
 }
