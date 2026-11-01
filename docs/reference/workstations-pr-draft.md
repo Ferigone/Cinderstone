@@ -1,9 +1,10 @@
 # Add native workstation transactions and production owner contracts
 
-Proposed draft PR against `master` from
+[Draft PR #5](https://github.com/Ferigone/Cinderstone/pull/5) against `master` from
 `teams/workstations/ws-20261101-7c2f/menus`. Refs
 [issue #3](https://github.com/Ferigone/Cinderstone/issues/3).
-This is a prepared description, not an opened pull request.
+Created and read back after the feature branch was pushed normally.
+The production integration request is [posted on issue #1](https://github.com/Ferigone/Cinderstone/issues/1#issuecomment-6563262903).
 
 Adds callable Minecraft Java1.21/protocol767 workstation behavior and explicit
 actual-owner contracts. Stonecutter, smithing, hopper/dispenser/shulker storage,
@@ -23,7 +24,7 @@ state-owner binding/ticking/persistence and remaining contexts/families still
 need integration. `inventory.4`, `crafting.2` and `crafting.5` remain incomplete.
 The [integration ledger](workstations-integration.md) gives exact source phase
 contracts and [team status](../coordination/status/ws-20261101-7c2f.md) retains
-source commits, owned files and publication blockers.
+source commits, owned files and dated publication history.
 
 Only new workstation namespaces/adapters, additive RecipeBook smithing
 predicates and mechanical exports change shared source. The standing export
@@ -51,6 +52,6 @@ Validation at source `7147da02c737360682386df4d73792cb8b03ae00`:
 A later publication pass repeated both focused native flows and the full Main
 build against master `f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`, including its
 chat/session changes, in a separate source-overlay worktree. Both passed; no
-master merge or Main edit occurred. The source remains `7147da0`. The prepared
+master merge or Main edit occurred. The source remains `7147da0`. The posted
 [integration request](workstations-integration-request.md) aligns publication
 with that coordinator's ordered connection output and exact owner contracts.

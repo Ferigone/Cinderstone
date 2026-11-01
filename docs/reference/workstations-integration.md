@@ -23,10 +23,13 @@ metrics/checklists, deployment and licensing files were not changed.
 Six disjoint subordinate groups and the coordinator used the actual seven-slot
 maximum. They completed implementation and cross-review. The
 [per-instance status](../coordination/status/ws-20261101-7c2f.md) contains exact
-commits, file claims, validation and the session-specific publication blocker.
-API and authenticated Git writes still return403. A local commit/status file
-is not a published branch, PR or remote handoff; no shared credentials or
-automatic cross-chat communication are assumed.
+commits, file claims, validation and dated publication history. Ordinary Git
+push published the branch at `ab08813e34fa8ab458208b99a13c50dfdce769d5`;
+[draft PR #5](https://github.com/Ferigone/Cinderstone/pull/5) and the
+[integration queue request](https://github.com/Ferigone/Cinderstone/issues/1#issuecomment-6563262903)
+were created and read back. The earlier403 publication blocker is resolved.
+Actual Main/runtime owner integration remains pending; no shared credentials
+or automatic cross-chat communication are assumed.
 
 ## Native APIs and actual owners
 
@@ -167,6 +170,6 @@ is claimed. Comprehensive conformance remains deferred.
 A later publication pass repeated both focused native flows and the full Main
 build against master `f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`, including its
 chat/session changes, in a separate source-overlay worktree. Both passed; no
-master merge or Main edit occurred. The source remains `7147da0`. The prepared
+master merge or Main edit occurred. The source remains `7147da0`. The posted
 [integration request](workstations-integration-request.md) aligns publication
 with that coordinator's ordered connection output and exact owner contracts.

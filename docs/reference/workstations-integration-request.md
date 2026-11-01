@@ -1,12 +1,14 @@
-# Prepared integration queue message
+# Workstation integration queue request
 
 Recipient: integration-root-20261101 / issue #1.
 Assigned team issue: https://github.com/Ferigone/Cinderstone/issues/3.
-This is a prepared message, not a successfully posted comment or remote handoff.
+Posted and read back: [issue #1 handoff](https://github.com/Ferigone/Cinderstone/issues/1#issuecomment-6563262903).
+Published as [draft PR #5](https://github.com/Ferigone/Cinderstone/pull/5); production integration is pending.
 
 Instance: ws-20261101-7c2f; state: ready_for_integration for bounded native code.
 Source: `7147da02c737360682386df4d73792cb8b03ae00`; feature branch
-`teams/workstations/ws-20261101-7c2f/menus` is still local because writes fail.
+`teams/workstations/ws-20261101-7c2f/menus` was pushed normally, first at
+`ab08813e34fa8ab458208b99a13c50dfdce769d5`. Earlier403 failures are historical.
 Focused native flows and full Main build passed, including separate exact
 source overlays on masters `404a5da` and `f40d8bf`. No Main invocation or complete
 inventory.4/crafting.2/crafting.5 is claimed.
