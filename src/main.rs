@@ -66,7 +66,7 @@ use tokio::{
     fs,
     io::AsyncWriteExt,
     net::{
-        tcp::{OwnedReadHalf, OwnedWriteHalf},
+        tcp::OwnedWriteHalf,
         TcpListener, TcpStream,
     },
     sync::{broadcast, mpsc, watch, Mutex, RwLock, Semaphore},
@@ -107,6 +107,9 @@ mod main_admin_dispatch;
 mod main_chat;
 mod main_chat_dispatch;
 mod main_chat_keys;
+mod main_connection;
+mod main_connection_rate;
+mod main_connection_decode;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -115,7 +118,7 @@ use main_item_gameplay::{GameplaySourceScope, MainItemGameplay};
 const PROTOCOL: i32 = 767;
 const CONFIGURATION_DEADLINE: Duration = Duration::from_secs(15);
 const WRITE_DEADLINE: Duration = Duration::from_secs(15);
-type NetworkReader = CryptoRead<OwnedReadHalf>;
+type NetworkReader = CryptoRead<mc121_rust::connection_transport::RawReadStream>;
 type NetworkWriter = CryptoWrite<OwnedWriteHalf>;
 
 #[derive(Clone)]
@@ -138,6 +141,9 @@ struct Options {
     enforce_whitelist: bool,
     op_permission_level: i32,
     enforce_secure_profile: bool,
+    secure_profile_override: Option<bool>,
+    rate_limit: Option<i32>,
+    compression_threshold: Option<i32>,
 }
 
 impl Options {
@@ -161,6 +167,9 @@ impl Options {
             enforce_whitelist: false,
             op_permission_level: 4,
             enforce_secure_profile: true,
+            secure_profile_override: None,
+            rate_limit: None,
+            compression_threshold: None,
         };
         let mut pack_url = String::new();
         let mut pack_hash = String::new();
@@ -203,7 +212,9 @@ impl Options {
                 "--server-directory" => options.server_directory = Some(value.into()),
                 "--max-players" => options.max_players = value.parse().context("invalid maximum players")?,
                 "--op-permission-level" => options.op_permission_level = value.parse().context("invalid operator permission level")?,
-                "--enforce-secure-profile" => options.enforce_secure_profile = value.parse().context("enforce-secure-profile must be true or false")?,
+                "--enforce-secure-profile" => options.secure_profile_override = Some(value.parse().context("enforce-secure-profile must be true or false")?),
+                "--rate-limit" => options.rate_limit = Some(value.parse().context("invalid packet rate limit")?),
+                "--compression-threshold" => options.compression_threshold = Some(value.parse().context("invalid compression threshold")?),
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
                 "--resource-pack-url" => pack_url = value,
@@ -428,6 +439,8 @@ struct SavedWorld {
 }
 struct Server {
     options: Options,
+    connection_settings: mc121_rust::connection_settings::DedicatedConnectionSettings,
+    connection_rates: StdRwLock<BTreeMap<u64, main_connection_rate::ConnectionRate>>,
     fixtures: Fixtures,
     seed_hash: i64,
     world: RwLock<WorldBackend>,
@@ -2292,7 +2305,7 @@ async fn shutdown_signal() -> std::io::Result<()> {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let options = Options::parse()?;
+    let mut options = Options::parse()?;
     let fixtures = fixtures(&options.fixtures).await?;
     // Exact 1.21 minecraft-data defaults: air=0, stone=1, dirt=10,
     // grass_block=9 and minecraft:plains biome=39. This is a flat fixture.
@@ -2486,6 +2499,20 @@ async fn main() -> Result<()> {
         .unwrap_or(fixtures.seed_hash);
     let administration_directory = options.server_directory.clone()
         .unwrap_or_else(|| options.world.parent().unwrap_or_else(|| Path::new(".")).to_path_buf());
+    let property_bytes = match fs::read(administration_directory.join("server.properties")).await {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            eprintln!("{}",json!({"event":"connection_properties_load_failed","file":administration_directory.join("server.properties"),"reason":error.to_string(),"using_defaults":true}));
+            Vec::new()
+        }
+    };
+    let mut connection_settings = mc121_rust::connection_settings::DedicatedConnectionSettings::try_from_lookup(
+        |key| main_administration::property_value_from_bytes(&property_bytes, key),
+    )?;
+    if let Some(value) = options.rate_limit { connection_settings.rate_limit = value; }
+    if let Some(value) = options.compression_threshold { connection_settings.network_compression_threshold = value; }
+    if let Some(value) = options.secure_profile_override { connection_settings.enforce_secure_profile = value; }
+    options.enforce_secure_profile = connection_settings.enforce_secure_profile;
     let mut administration = main_administration::Administration::load(
         administration_directory,
         main_administration::AdminSettings {
@@ -2563,6 +2590,8 @@ async fn main() -> Result<()> {
         )?)?;
     let server = Arc::new(Server {
         options,
+        connection_settings,
+        connection_rates: StdRwLock::new(BTreeMap::new()),
         fixtures,
         seed_hash,
         world: RwLock::new(world),
@@ -2662,6 +2691,13 @@ async fn main() -> Result<()> {
                 // XP and Item bodies share the actual level tick order above.
                 server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
+                // Sample actual connection ticks without replaying coalesced
+                // watch updates into the wrong packet-count window.
+                for (connection, rate) in server.connection_rates.read().map_err(|_|anyhow!("connection registry poisoned"))?.iter() {
+                    if let Some(action) = rate.tick_connection()? {
+                        eprintln!("{}",json!({"event":"packet_rate_exceeded","connection":connection,"average_received_packets":action.average_received_packets,"configured_limit":action.configured_limit}));
+                    }
+                }
                 {
                     let _chat_sequence=server.chat_dispatch.lock().await;
                     server.players.write().map_err(|_|anyhow!("players poisoned"))?.chat.tick();
@@ -2707,6 +2743,12 @@ async fn send(
     id: i32,
     payload: impl AsRef<[u8]> + Send + Sync,
 ) -> Result<()> {
+    if main_connection::terminal().is_some() {
+        main_connection::disconnect_rate(codec, stream).await?;
+        bail!("{}", mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+    }
+    main_connection::rate().packet_send_dispatched()?;
+    let _write = main_connection::begin_write();
     time::timeout(WRITE_DEADLINE, async {
         codec.write(stream, id, payload.as_ref()).await?;
         stream.flush().await?;
@@ -2737,11 +2779,17 @@ async fn play_disconnect(
     send(codec, writer, 0x1d, reason).await
 }
 
-async fn receive(codec: &FrameCodec, stream: &mut NetworkReader) -> Result<Packet> {
-    time::timeout(CONFIGURATION_DEADLINE, codec.read(stream))
-        .await
-        .context("handshake/configuration deadline")??
-        .ok_or_else(|| anyhow!("connection closed during negotiation"))
+async fn receive_optional(codec: &FrameCodec, stream: &mut NetworkReader, writer: &mut NetworkWriter) -> Result<Option<Packet>> {
+    tokio::select! {
+        result = codec.read(stream) => result,
+        _ = main_connection::wait_terminal() => {
+            main_connection::disconnect_rate(codec,writer).await?;
+            bail!("{}",mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+        }
+    }
+}
+async fn receive(codec: &FrameCodec, stream: &mut NetworkReader, writer: &mut NetworkWriter) -> Result<Packet> {
+    receive_optional(codec,stream,writer).await?.context("connection closed during negotiation")
 }
 async fn receive_login(
     codec: &FrameCodec,
@@ -2749,8 +2797,15 @@ async fn receive_login(
     writer: &mut NetworkWriter,
     cookies: &mut CookieConnection,
 ) -> Result<Packet> {
-    let packet = codec.read(reader).await?.context("connection closed during login")?;
+    let packet = tokio::select! {
+        result = codec.read(reader) => result?.context("connection closed during login")?,
+        _ = main_connection::wait_terminal() => {
+            main_connection::disconnect_rate(codec, writer).await?;
+            bail!("{}",mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+        }
+    };
     if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
+        main_connection::accepted()?;
         let reason = json!({"translate":UNEXPECTED_COOKIE_RESPONSE_REASON}).to_string();
         send(codec, writer, 0x00, encoded(|w| { w.string(&reason); })).await?;
         bail!("{UNEXPECTED_COOKIE_RESPONSE_REASON}");
@@ -2761,11 +2816,10 @@ fn start_packet_reader(mut reader: NetworkReader, codec: FrameCodec) -> (ReaderG
     let (tx, rx) = mpsc::channel(32);
     let guard = ReaderGuard(tokio::spawn(async move {
         loop {
-            let packet = match time::timeout(Duration::from_secs(60), codec.read(&mut reader)).await {
-                Ok(Ok(Some(packet))) => Ok(packet),
-                Ok(Ok(None)) => break,
-                Ok(Err(error)) => Err(error),
-                Err(_) => Err(anyhow!("connection read deadline")),
+            let packet = match codec.read(&mut reader).await {
+                Ok(Some(packet)) => Ok(packet),
+                Ok(None) => break,
+                Err(error) => Err(error),
             };
             let failed = packet.is_err();
             if tx.send(packet).await.is_err() || failed { break; }
@@ -2793,11 +2847,12 @@ async fn negotiate_login(
     }
     let mut fields = Reader::new(&start.payload);
     let username = fields.string(16)?;
+    let _claimed_uuid = fields.uuid()?;
+    fields.finish()?;
+    main_connection::accepted()?;
     if !valid_login_name(&username) {
         bail!("invalid login username");
     }
-    let _claimed_uuid = fields.uuid()?;
-    fields.finish()?;
     let profile = if let Some(authenticator) = &server.authenticator {
         let challenge = authenticator.challenge();
         send(
@@ -2811,6 +2866,8 @@ async fn negotiate_login(
         if response.id != 1 {
             bail!("expected encrypted login response");
         }
+        main_connection_decode::validate_login_key(&response.payload)?;
+        main_connection::accepted()?;
         let secret = authenticator.accept_response(&challenge, &response.payload)?;
         let session_hash = authenticator.session_hash(&secret);
         reader.enable(&secret)?;
@@ -2857,16 +2914,11 @@ async fn negotiate_login(
     if !server.check_initial_admission(&profile, address, &codec, &mut writer, &admission_guard).await? {
         return Ok(None);
     }
-    send(
-        &codec,
-        &mut writer,
-        3,
-        encoded(|w| {
-            w.varint(256);
-        }),
-    )
-    .await?;
-    codec.compression = Some(256);
+    let threshold = server.connection_settings.network_compression_threshold;
+    if threshold >= 0 {
+        send(&codec, &mut writer, 3, encoded(|w| { w.varint(threshold); })).await?;
+        codec.compression = Some(threshold);
+    }
     server.evict_duplicate_for_login(&profile, &admission_guard).await?;
     send(
         &codec,
@@ -2893,6 +2945,7 @@ async fn negotiate_login(
     if acknowledged.id != 3 || !acknowledged.payload.is_empty() {
         bail!("expected Login Acknowledged");
     }
+    main_connection::accepted()?;
     Ok(Some(profile))
 }
 
@@ -2900,10 +2953,30 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     socket.set_nodelay(true)?;
     let address = socket.peer_addr()?;
     let (reader, writer) = socket.into_split();
-    let mut reader = CryptoRead::plain(reader);
-    let mut writer = CryptoWrite::plain(writer);
+    let (raw_pump, reader, mut idle) = mc121_rust::connection_transport::spawn_raw_read_transport(reader);
+    let rate = main_connection_rate::ConnectionRate::new(server.connection_settings.rate_limit);
+    server.connection_rates.write().map_err(|_|anyhow!("connection registry poisoned"))?.insert(admission, rate.clone());
+    let _registration = main_connection::ConnectionRegistration { server: Arc::clone(&server), admission };
+    let context = main_connection::ConnectionContext::new(rate, raw_pump.abort_handle());
+    let session = main_connection::CONNECTION.scope(context, connection_session(
+        CryptoRead::plain(reader), CryptoWrite::plain(writer), server, admission, address,
+    ));
+    tokio::pin!(session);
+    tokio::select! {
+        result = &mut session => result,
+        timeout = idle.wait() => Err(timeout.into()),
+    }
+}
+
+async fn connection_session(
+    mut reader: NetworkReader,
+    mut writer: NetworkWriter,
+    server: Arc<Server>,
+    admission: u64,
+    address: SocketAddr,
+) -> Result<()> {
     let mut codec = FrameCodec::default();
-    let hello = receive(&codec, &mut reader).await?;
+    let hello = receive(&codec, &mut reader, &mut writer).await?;
     if hello.id != 0 {
         bail!("expected handshake");
     }
@@ -2913,11 +2986,14 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     let _port = fields.u16()?;
     let intent = fields.varint()?;
     fields.finish()?;
+    main_connection::accepted()?;
     if intent == 1 {
-        let request = receive(&codec, &mut reader).await?;
+        main_connection::phase(main_connection::OutboundPhase::Status);
+        let request = receive(&codec, &mut reader, &mut writer).await?;
         if request.id != 0 || !request.payload.is_empty() {
             bail!("invalid status request");
         }
+        main_connection::accepted()?;
         server.wait_secure_chat_enforcement().await?;
         let response = json!({"version":{"name":"1.21","protocol":PROTOCOL},
             "players":{"max":server.maximum_players()?,"online":server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?.registry.len(),"sample":[]},
@@ -2932,10 +3008,11 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
             }),
         )
         .await?;
-        if let Some(ping) = time::timeout(Duration::from_secs(5), codec.read(&mut reader)).await?? {
+        if let Some(ping) = receive_optional(&codec, &mut reader, &mut writer).await? {
             if ping.id != 1 || ping.payload.len() != 8 {
                 bail!("invalid status ping");
             }
+            main_connection::accepted()?;
             send(&codec, &mut writer, 1, ping.payload).await?;
         }
         return Ok(());
@@ -2943,6 +3020,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     if intent != 2 {
         bail!("only status and login handshakes are implemented");
     }
+    main_connection::phase(main_connection::OutboundPhase::Login);
     if protocol != PROTOCOL {
         send(
             &codec,
@@ -2963,14 +3041,19 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
         let mut timeout = mc121_rust::login_limits::ObservedLoginTimeout::new(*ticks.borrow_and_update());
         let negotiation = negotiate_login(&mut reader, &mut writer, &mut codec, &server, address);
         tokio::pin!(negotiation);
+        let mut expired = false;
         loop {
             tokio::select! {
                 biased;
-                result = &mut negotiation => break Some(result),
+                result = &mut negotiation => break if expired { None } else { Some(result) },
                 changed = ticks.changed() => {
                     changed?;
                     let current=*ticks.borrow_and_update();
-                    if timeout.observe(current).is_some() { break None; }
+                    expired |= timeout.observe(current).is_some();
+                    // Keep the terminal action while an already-dispatched
+                    // packet finishes; cancel-then-append could corrupt a
+                    // partial frame and its advanced encryption stream.
+                    if expired && !main_connection::writing() { break None; }
                 }
             }
         }
@@ -2986,6 +3069,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     // One raw framing reader owns the encrypted stream through every listener
     // transition. Aborting/restarting a reader could discard a partial frame.
     let (_packet_reader, mut packets) = start_packet_reader(reader, codec.clone());
+    main_connection::phase(main_connection::OutboundPhase::Configuration);
     let mut protocol = Reconfiguration::initial_configuration(server.epoch.elapsed().as_millis() as i64, 0);
     let mut packs = ResourcePackSession::new(server.options.resource_pack_required);
     let mut client_information = main_configuration::configure(
@@ -2993,6 +3077,7 @@ async fn connection(socket: TcpStream, server: Arc<Server>, admission: u64) -> R
     ).await?;
     loop {
         server.wait_secure_chat_enforcement().await?;
+        main_connection::phase(main_connection::OutboundPhase::Play);
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
             client_information, admission, address, &mut protocol, &mut packs,
@@ -3404,6 +3489,10 @@ async fn play(
             return Ok(PlayExit::Disconnected);
         }
         tokio::select! {
+            _ = main_connection::wait_terminal() => {
+                main_connection::disconnect_rate(&codec, &mut writer).await?;
+                return Ok(PlayExit::Disconnected);
+            }
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
@@ -3442,6 +3531,8 @@ async fn play(
                 let Some(packet) = packet else { return Ok(PlayExit::Disconnected); };
                 let packet = packet?;
                 if server.shutting_down.load(Ordering::Acquire) { return Ok(PlayExit::Disconnected); }
+                main_connection_decode::validate_play(&packet)?;
+                main_connection::accepted()?;
                 if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {
                     play_disconnect(&codec, &mut writer, UNEXPECTED_COOKIE_RESPONSE_REASON).await?;
                     return Ok(PlayExit::Disconnected);
@@ -3457,6 +3548,12 @@ async fn play(
                         send(&codec, &mut writer, packet.id, packet.payload).await?;
                     },
                     0x0c => bail!("client acknowledged configuration, but none was requested"),
+                    0x12 => { let _ = mc121_rust::connection_payload::decode_custom_payload(&packet.payload)?; },
+                    0x27 => { let _ = mc121_rust::connection_payload::decode_pong(&packet.payload)?; },
+                    0x21 => {
+                        let time = fields.i64()?; fields.finish()?;
+                        send(&codec,&mut writer,0x36,encoded(|out| { out.i64(time); })).await?;
+                    },
                     0x2b => {
                         let outcome = packs.handle_response(ResourcePackPhase::Play, &packet.payload)?;
                         if let Some(reason) = outcome.disconnect_reason {

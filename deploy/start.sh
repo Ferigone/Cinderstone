@@ -11,12 +11,20 @@ set -eu
 : "${MC_MAX_PLAYERS:=20}"
 : "${MC_OP_PERMISSION_LEVEL:=4}"
 : "${MC_ENFORCE_WHITELIST:=false}"
-: "${MC_ENFORCE_SECURE_PROFILE:=true}"
 
-case "$MC_ENFORCE_SECURE_PROFILE" in
-    true|false) set -- --enforce-secure-profile "$MC_ENFORCE_SECURE_PROFILE" "$@" ;;
-    *) echo "MC_ENFORCE_SECURE_PROFILE must be true or false" >&2; exit 1 ;;
-esac
+if [ -n "${MC_RATE_LIMIT:-}" ]; then
+    set -- --rate-limit "$MC_RATE_LIMIT" "$@"
+fi
+if [ -n "${MC_NETWORK_COMPRESSION_THRESHOLD:-}" ]; then
+    set -- --compression-threshold "$MC_NETWORK_COMPRESSION_THRESHOLD" "$@"
+fi
+
+if [ "${MC_ENFORCE_SECURE_PROFILE+x}" = x ]; then
+    case "$MC_ENFORCE_SECURE_PROFILE" in
+        true|false) set -- --enforce-secure-profile "$MC_ENFORCE_SECURE_PROFILE" "$@" ;;
+        *) echo "MC_ENFORCE_SECURE_PROFILE must be true or false" >&2; exit 1 ;;
+    esac
+fi
 
 case "$MC_ENFORCE_WHITELIST" in
     true) set -- --enforce-whitelist "$@" ;;

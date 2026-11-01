@@ -739,13 +739,18 @@ fn append_property(path: &Path, key: &str, value: &str) -> Result<()> {
 /// Read the one property owned here. Settings.loadFromFile first tries strict
 /// UTF-8, then ISO-8859-1; Properties retains escapes, continued lines, separators
 /// and last-key-wins behavior. Other settings stay with Main.
-fn property_value(path: &Path, wanted: &str) -> Result<Option<String>> {
+pub(super) fn property_value(path: &Path, wanted: &str) -> Result<Option<String>> {
     let bytes = match fs::read(path) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error).context("read server.properties"),
     };
-    let text = match String::from_utf8(bytes) {
+    property_value_from_bytes(&bytes,wanted)
+}
+
+/// Reuse one startup snapshot for all typed connection-property lookups.
+pub(super) fn property_value_from_bytes(bytes: &[u8], wanted: &str) -> Result<Option<String>> {
+    let text = match String::from_utf8(bytes.to_vec()) {
         Ok(text) => text,
         Err(error) => error.into_bytes().into_iter().map(char::from).collect(),
     };
@@ -799,9 +804,6 @@ fn read_property_line(line: &str, wanted: &str, found: &mut Option<String>) -> R
         }
     }
     let key = unescape_property_units(&line[..separator])?;
-    if key != wanted.encode_utf16().collect::<Vec<_>>() {
-        return Ok(());
-    }
     let mut value = &line[separator..];
     if whitespace_separator {
         value = value.trim_start_matches([' ', '\t', '\u{c}']);
@@ -812,10 +814,13 @@ fn read_property_line(line: &str, wanted: &str, found: &mut Option<String>) -> R
         value = &value[1..];
     }
     value = value.trim_start_matches([' ', '\t', '\u{c}']);
-    // The only owned value is Boolean.parseBoolean: every non-true UTF-16
-    // value, including an isolated surrogate, is false. Lossy display therefore
-    // cannot change its truth value and does not affect preserved file bytes.
-    *found = Some(String::from_utf16_lossy(&unescape_property_units(value)?));
+    // Properties.load validates every entry, including values not requested by
+    // this caller. Native typed consumers accept decimal integers or ASCII
+    // booleans; an isolated surrogate is invalid in either representation.
+    let value = unescape_property_units(value)?;
+    if key == wanted.encode_utf16().collect::<Vec<_>>() {
+        *found = Some(String::from_utf16_lossy(&value));
+    }
     Ok(())
 }
 

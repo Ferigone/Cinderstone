@@ -2,7 +2,7 @@
 //! owned by the same outer connection pump throughout PLAY/configuration.
 use super::*;
 use mc121_rust::{
-    connection_cookies::{CookieKey, CookieResponse, UNEXPECTED_COOKIE_RESPONSE_REASON},
+    connection_cookies::{CookieResponse, UNEXPECTED_COOKIE_RESPONSE_REASON},
     reconfiguration::{
         ConfigurationInput, ConfigurationPlan, ConfigurationTask, ConnectionPhase, ConnectionTick,
         Reconfiguration, TaskStart, SERVERBOUND_PLAY_CONFIGURATION_ACKNOWLEDGED,
@@ -26,19 +26,7 @@ async fn disconnect(
 }
 
 fn validate_custom_payload(payload: &[u8]) -> Result<()> {
-    let mut fields = Reader::new(payload);
-    let channel = CookieKey::parse(&fields.string(32_767)?)?;
-    if channel.as_str() == "minecraft:brand" {
-        // BrandPayload is registered and uses its actual UTF codec. Unknown
-        // payloads instead use DiscardedPayload's 32,767-byte remaining body.
-        fields.string(32_767)?;
-        fields.finish()?;
-    } else {
-        ensure!(
-            fields.remaining().len() <= 32_767,
-            "custom payload exceeds Java body limit"
-        );
-    }
+    let _ = mc121_rust::connection_payload::decode_custom_payload(payload)?;
     Ok(())
 }
 
@@ -61,11 +49,7 @@ fn validate_ignored_play_common(packet: &Packet) -> Result<()> {
             fields.i64()?;
             fields.finish()?;
         }
-        0x27 => {
-            let mut fields = Reader::new(&packet.payload);
-            fields.i32()?;
-            fields.finish()?;
-        }
+        0x27 => { let _ = mc121_rust::connection_payload::decode_pong(&packet.payload)?; }
         0x2b => {
             let _ = ResourcePackResponse::decode(&packet.payload)?;
         }
@@ -108,6 +92,7 @@ pub(super) async fn configure(
     mut information: Option<ClientInformation>,
     initial: bool,
 ) -> Result<Option<ClientInformation>> {
+    main_connection::phase(main_connection::OutboundPhase::Configuration);
     let now = || server.epoch.elapsed().as_millis() as i64;
     let mut ticks = server.tick_events.subscribe();
     if initial {
@@ -147,6 +132,10 @@ pub(super) async fn configure(
             bail!("server stopped during configuration");
         }
         tokio::select! {
+            _ = main_connection::wait_terminal() => {
+                main_connection::disconnect_rate(codec, writer).await?;
+                bail!("{}",mc121_rust::login_limits::EXCEEDED_PACKET_RATE_REASON);
+            }
             tick = ticks.changed() => {
                 tick.context("server tick stream closed during configuration")?;
                 let time = *ticks.borrow_and_update();
@@ -163,8 +152,10 @@ pub(super) async fn configure(
             packet = rx.recv() => {
                 let packet = packet.context("connection closed during configuration")??;
                 if protocol.phase() == ConnectionPhase::WaitingForConfigurationAck {
+                    main_connection_decode::validate_play(&packet)?;
                     if packet.id == SERVERBOUND_PLAY_CONFIGURATION_ACKNOWLEDGED {
                         protocol.acknowledge_configuration(&packet,now())?;
+                        main_connection::accepted()?;
                         // returnToWorld is intentionally distinct from a fresh
                         // startConfiguration: no registry/world packet replay.
                         let task = protocol.begin_tasks(ConfigurationPlan::return_to_world(),now())?;
@@ -174,6 +165,17 @@ pub(super) async fn configure(
                         // acknowledgement while waiting. Other decoded PLAY
                         // packets, including common replies, are discarded.
                         validate_ignored_play_common(&packet)?;
+                    }
+                    continue;
+                }
+                main_connection_decode::validate_configuration(&packet)?;
+                main_connection::accepted()?;
+                // Keep decoder failure separate from the common listener's
+                // timeout for a well-formed unexpected keepalive response.
+                if packet.id == 0x04 && packet.payload.len() == 8 {
+                    if protocol.receive_configuration(&packet,now()).is_err() {
+                        disconnect(codec,writer,"disconnect.timeout").await?;
+                        bail!("configuration keepalive response was not pending");
                     }
                     continue;
                 }
@@ -219,7 +221,10 @@ pub(super) async fn configure(
                             start_task(task,codec,writer,server,packs).await?;
                         }
                     }
-                    ConfigurationInput::ReadyForPlayAdmission => return Ok(information),
+                    ConfigurationInput::ReadyForPlayAdmission => {
+                        main_connection::phase(main_connection::OutboundPhase::Play);
+                        return Ok(information);
+                    }
                 }
             }
         }

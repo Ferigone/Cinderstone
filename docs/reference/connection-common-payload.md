@@ -1,4 +1,4 @@
-# Common custom payload and pong decoding
+# Common payloads, pong replies and PLAY ping requests
 
 This stage shares the native CONFIGURATION/PLAY decoders for serverbound custom
 payloads and pong replies. It does not add plugin channels or retain arbitrary
@@ -24,11 +24,18 @@ repository.
 | `DiscardedPayload` fallback decoder | `aak.a(int, akr, vw)` | Bounds all remaining body bytes, skips them and constructs a payload holding only its identifier. |
 | `ServerboundPongPacket` buffer constructor | `aad(vw)` | Reads one signed fixed-width 32-bit integer. |
 | `ServerCommonPacketListenerImpl.handlePong` / `handleCustomPayload` | `arr.a(aad)` / `arr.a(aab)` | Both handlers immediately return. |
+| `ServerGamePacketListenerImpl.handlePingRequest` | `aru.a(ajm)`, mapped lines 1586–1587 | Sends `ClientboundPongResponsePacket` with the request's unchanged signed 64-bit time value. |
 | `PacketDecoder.decode` | `wd.decode` | Rejects unread trailing bytes after the registered packet codec returns. |
 
 The protocol registration order in `ConfigurationProtocols` (`abj`) and
 `GameProtocols` (`agh`) gives custom-payload IDs `0x02` / `0x12` and pong IDs
 `0x05` / `0x27`, respectively.
+
+The same actual PLAY registration order assigns `PingPacketTypes` (`ajk`)
+serverbound `PING_REQUEST` (`ajk.b`, `ajm`) to `0x21` and clientbound
+`PONG_RESPONSE` (`ajk.a`, `ajj`) to `0x36`. This long-valued echo is separate
+from the common integer-valued pong reply, and CONFIGURATION does not register
+a ping-request packet.
 
 ## Native contract
 
@@ -46,11 +53,17 @@ validated and discarded without allocating another body or installing a plugin
 handler. A decoded pong can be discarded: the original common listener does not
 match it to a request or update keepalive latency.
 
+The live PLAY adapter decodes `0x21` as one signed 64-bit value, rejects trailing
+bytes and sends `0x36` with that same value. The request does not sample the
+server clock or update keepalive state. While waiting for configuration
+acknowledgement, the old PLAY decoder still validates this body, but the source
+listener's dispatch gate ignores it and does not send a pong response.
+
 This stage uses the shared `Reader::string` codec. Its malformed UTF-8 behavior
 is the responsibility of that primitive; the original `Utf8String` (`wp`)
 delegates to Netty's UTF-8 `ByteBuf.toString` and applies Java `String.length`
-afterward. The previous strict Rust UTF-8 rejection is an identified shared
-codec gap, not a property of `BrandPayload`.
+afterward. The shared native primitive now implements Java replacement grouping;
+see [the UTF-8 source ledger](connection-utf8.md) for its bounded evidence.
 
 A bounded JDK 21 probe invoked the **unchanged original** `aab.a` and `aad.a`
 codecs with the original bundled Netty libraries. It observed a brand and a
@@ -74,11 +87,14 @@ keepalive owner.
 Fresh `arr.a(aac)` inspection confirms that a wrong or unsolicited well-formed
 keepalive response on a dedicated server invokes the timeout disconnect; the
 singleplayer-owner exception does not apply to this host. The existing PLAY
-adapter emits that reason. The CONFIGURATION adapter previously propagated the
-same native error without sending its CONFIGURATION disconnect packet. The
-integration coordinator owns that narrow production correction and the common
-decoder callsites. Malformed wire bodies remain decoder failures and must not
-be relabelled as valid-but-unexpected keepalive responses.
+adapter emits that reason. The CONFIGURATION adapter now sends the same reason
+in its actual CONFIGURATION disconnect packet for a well-formed unexpected
+reply. Malformed wire bodies remain decoder failures and must not be relabelled
+as valid-but-unexpected keepalive responses.
+
+Finish Configuration ACK switches the outbound owner to PLAY before admission
+or any awaited secure-chat-key work. This follows `ars`'s transition boundary
+and ensures a later rate disconnect uses the actual new outbound packet type.
 
 This source ledger does not by itself establish a successful native build,
 production callsite, runtime session or aggregate checklist completion. The
