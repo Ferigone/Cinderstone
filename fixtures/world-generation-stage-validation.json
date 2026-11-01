@@ -323,7 +323,7 @@
     "src/density/chunk.rs": "3f7ef226e0332d7167ded190362798e2b7f62d43bb1485e5c8cb5f07c9bfe0d7",
     "src/noise.rs": "151878d794840d269ca4dead58490e7fc79ee7bb43cc0e151a78fc3337896660",
     "src/random.rs": "417b2461a9f298c8ee17fb4932a22c3bbcdba0ddecdd130c30b3ce46fe21aa64",
-    "src/lib.rs": "b065eead5a9af1053098a27d1c7a699a2fdcc05a65ca186c2aaea94c31fdce66",
+    "src/lib.rs": "2868d78e9e357cf0d31b843f5ad7432f21f2681bdd3a0a79cc26b0216e951d0f",
     "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
     "fixtures/density_builtin-1.21.json": "4bf8649303f74a80c45e95009432bfa33c7eb2cb2f099139004aceb1720acc1d",
     "fixtures/noise_parameters-1.21.json": "e969eaedde0a43b2bca3b3b43fd98af08824e8472ca2181cc10b16d86b9add0a",

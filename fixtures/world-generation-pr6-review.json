@@ -1,7 +1,7 @@
 {
   "pr": 6,
-  "source_commit": "5598475e739c92677712a4fc95547f82c4b20667",
-  "master_reviewed": "e8e8bc92a242eef8d568675bf94b0b1aae3ae336",
+  "source_commit": "741da48efc13a28208a8ceb1809a29fd3f145e96",
+  "master_reviewed": "47182b236135a295ab17a2d64aaedd425f960869",
   "user_authorization": "User explicitly authorized self-review, merge and autonomous documented continuation; this supersedes the prior team no-merge handoff rule for this stage.",
   "review_scopes": [
     "RNG worker independently reviewed surface numeric/callback behavior",
@@ -44,8 +44,8 @@
       "exit_code": 0
     }
   ],
-  "compiler_log_sha256": "08968353c442ad54ca2ecf4cb489940dd5833512ffd80c433b768eadece095fc",
-  "stage_report_sha256": "630fcdfcdf5a305c4eeff90c2fc5822253c83002631f0841d2772f6a6ae869c7",
+  "compiler_log_sha256": "b46c86d43feb3bf395dc0ce07250f453480c5c85a910f040011767028d0aac7f",
+  "stage_report_sha256": "01f81d15222244beef5de34f5cc6a48211048d9b0594cbf2d1d3d9e4b6597940",
   "source_sha256": {
     "src/worldgen/aquifer.rs": "347ddc1fef2b5cd140a094f119ae668f375d9d569a1487ee91e1e0600e912b58",
     "src/worldgen/generator.rs": "40688b93b15d5b0c71e7f7e8673ae854815591fb163e11b50f2a9047bc870e7b",
@@ -61,7 +61,7 @@
     "src/density/chunk.rs": "3f7ef226e0332d7167ded190362798e2b7f62d43bb1485e5c8cb5f07c9bfe0d7",
     "src/noise.rs": "151878d794840d269ca4dead58490e7fc79ee7bb43cc0e151a78fc3337896660",
     "src/random.rs": "417b2461a9f298c8ee17fb4932a22c3bbcdba0ddecdd130c30b3ce46fe21aa64",
-    "src/lib.rs": "b065eead5a9af1053098a27d1c7a699a2fdcc05a65ca186c2aaea94c31fdce66",
+    "src/lib.rs": "2868d78e9e357cf0d31b843f5ad7432f21f2681bdd3a0a79cc26b0216e951d0f",
     "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
     "fixtures/density_builtin-1.21.json": "4bf8649303f74a80c45e95009432bfa33c7eb2cb2f099139004aceb1720acc1d",
     "fixtures/noise_parameters-1.21.json": "e969eaedde0a43b2bca3b3b43fd98af08824e8472ca2181cc10b16d86b9add0a",
@@ -88,5 +88,8 @@
     "Real zoomed-biome/thermal context in production",
     "Scheduler/storage/persistence/readiness and remaining generation stages"
   ],
-  "next_owned_stage": "Arc-owned terrain moves the exact existing density/cache/image into owned NOISE-to-SURFACE output; no self-reference/reseed/cache rebuild/FULL claim."
+  "next_owned_stage": "Arc-owned terrain moves the exact existing density/cache/image into owned NOISE-to-SURFACE output; no self-reference/reseed/cache rebuild/FULL claim.",
+  "prior_review_source": "5598475e739c92677712a4fc95547f82c4b20667",
+  "prior_master_reviewed": "e8e8bc92a242eef8d568675bf94b0b1aae3ae336",
+  "concurrent_source": "Effects/damage PR7/8 composed; all central and team exports retained; full Main/focused/original stage checks passed again."
 }
