@@ -1,5 +1,10 @@
 pub mod anvil;
 pub mod auth;
+pub mod chat_crypto;
+pub mod chat_ack;
+pub mod chat_chain;
+pub mod chat_wire;
+pub mod chat_listener;
 pub mod access_lists;
 pub mod admission_policy;
 pub mod admission_commands;
