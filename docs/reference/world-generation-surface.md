@@ -67,7 +67,9 @@ actual `RandomState`, `SurfaceSystem`, `ProtoChunk`, `WorldGenerationContext`,
 heightmaps, a registered original biome and a real `FixedBiomeSource`/
 `BiomeManager`. There was no Unsafe-allocated surface/chunk owner. These are
 controlled fixed-biome fixtures; they do not demonstrate native biome selection.
-The native comparison runs the seeded generator's NOISE stage followed by its
+The original SURFACE fixture imports original NOISE block arrays and constructs
+a fresh original NoiseChunk, so it does not verify original cross-stage cache
+continuity. The native comparison runs the seeded generator's NOISE stage followed by its
 SURFACE API. Temperature and iceberg callbacks read observations obtained from
 the actual original biome methods for the explicit fixture coordinates; a
 missing observation is an error.
@@ -75,8 +77,9 @@ missing observation is an error.
 For seed `123456789`, chunk `(0,0)`, the following full block-image digests were
 identical after original and native SURFACE execution. Both live generation
 heightmaps also matched, converting the native packed first-available values
-to the original `getHeight` convention. Surface-only fluid-postprocessing deltas
-matched separately from the earlier NOISE postprocessing records.
+to the original `getHeight` convention. Surface-only fluid-postprocessing count
+deltas matched separately from the earlier NOISE postprocessing records. Those
+selected surface counts are zero; positions and list order were not compared.
 
 | Noise settings | Actual fixed biome | SHA-256 of final canonical state image |
 | --- | --- | --- |
@@ -94,14 +97,16 @@ the highest occupied Y at local `(8,10)` increased from `62` to `80`. This
 executes pillar filling beyond the earlier case's water guard. The complete
 original and native images matched with SHA-256
 `80285dcd4c48a015d4988cf2feb045400aae80d4e602de839ee8242fa49368b0`,
-along with both WG heightmaps and the surface-only postprocessing delta. The
+along with both WG heightmaps and the surface-only postprocessing count delta. The
 original NOISE input also matched the native seeded NOISE output. The same
 unchanged Java classes and public native stage probes described above were
 used, with actual biome-temperature observations and no added terrain fallback.
 
 The native wrapper also rejected an unavailable biome context while preserving
-its NOISE image, heightmaps, postprocessing and stage, and rejected a duplicate
-SURFACE stage. A separate original/native numerical probe matched surface-depth
+its NOISE image, heightmaps, postprocessing and stage. Repeating SURFACE with the
+same available context returns the specific duplicate-stage error without
+context callbacks or changes to the completed terrain. A separate
+original/native numerical probe matched surface-depth
 integers, raw secondary-noise IEEE bits and clay-band canonical state IDs for
 modern and legacy settings at origin, negative, boundary and world-edge
 coordinates. These observations support the implemented stage and its failure

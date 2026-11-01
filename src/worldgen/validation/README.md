@@ -24,15 +24,22 @@ The harness invokes interpolation and block-state rules in the source `doFill`
 order. It does not invoke the original `doFill` method or a server scheduler.
 
 The SURFACE reference constructs a real original ProtoChunk, fixed-biome source,
-BiomeManager, heightmaps and WorldGenerationContext. It invokes the original
-SurfaceSystem with the original rule and biome objects. Native callbacks use
-recorded temperature predicates from those actual biome owners; absent positions
-fail. A fixed-biome fixture does not establish natural biome selection.
+BiomeManager, heightmaps and WorldGenerationContext. It imports original NOISE
+block arrays and creates a fresh original NoiseChunk before invoking the
+original SurfaceSystem with the original rule and biome objects. The native
+probe retains its prior NOISE owner; this comparison does not check original
+cross-stage NoiseChunk cache-owner continuity. Native callbacks use recorded
+temperature predicates from those actual biome owners; absent positions fail.
+A fixed-biome fixture does not establish natural biome selection.
 
 The report compares entire canonical block arrays, surface WG heightmaps and
-surface-only postprocessing deltas. It also exercises native rejection of
-unavailable surface context and a repeated SURFACE stage. These selected cases
-do not prove Main integration, FULL chunks, every branch or full vanilla parity.
+surface-only postprocessing-count deltas. The selected surface counts are zero;
+count equality does not verify postprocessing positions or list order. The
+native probe also rejects unavailable context and retries SURFACE with the same
+available context that just succeeded. It requires the duplicate-stage error,
+no biome/thermal callbacks and unchanged completed terrain, heights and
+postprocessing. These selected cases do not prove Main integration, FULL chunks,
+every branch or full vanilla parity.
 
 The selected cases also include the original default-namespace `:overworld`
 alias and seed `0` with a fixed eroded-badlands biome, where original pillar
