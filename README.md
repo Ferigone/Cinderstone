@@ -84,6 +84,42 @@ returns the cursor to inventory. Its optimized hosted release and native offline
 remains unverified. Player-death handling, full-inventory overflow conformance and the
 complete Java `PlayerList.remove` persistence order remain incomplete.
 
+The newer menu stage extends explicit close contexts to chest/barrel menus, the 3×3
+crafting table and window0. Disconnect cleanup drops their owned cursors and
+temporary crafting inputs, with window0 removal before the external menu.
+Opening a block menu from window0 now retains window0's own cursor and 2×2 grid.
+Alive returns use raw inventory insertion packets; external closes preserve
+shared-slot synchronization baselines and publish the close packet first.
+The full Main build and [focused local flow](docs/validation/disconnected-menus-flow.json)
+passed for source `93438c6055ec755e85f528739a41073ef5563b5a`: all four
+disconnect families, ordinary live chest return, retained window0 drop order and
+item conservation through cold restart, without duplicating recipe previews.
+Its optimized hosted release reached SUCCESS with native offline listening at
+14:23:02 Europe/Warsaw on 1 November 2026, one running instance and the existing
+persistent volume. Public gameplay remains unverified because the external
+status probe fails environment DNS resolution.
+See the [menu-close source ledger](docs/reference/menu-close-lifecycle.md).
+Full player-save ordering, death/survival and mixed alive-return/overflow-drop
+packet interleaving remain unfinished. The fixed checklist stays 55/100 code
+and 50/100 Main integration at `scope_version: 1`.
+
+The newer bounded stage implements creative removal
+of a **closed single dry chest or closed barrel**. It prepares all 27 owned
+slots, actual item entities, level RNG and shared entity IDs using an opaque
+container identity and a privately drained staging clone, with native source
+history linked to the final world transition. This path creates neither XP nor
+the container block's creative loot. Actual open menus, double/waterlogged
+chests, unresolved loot and comparator receivers remain rejected boundaries.
+The full Main build and [focused local removal flow](docs/validation/container-removal-flow.json)
+passed for source `be2582a9ea032205c3885fd04e10ff1419d63fb9`: the sword guard
+preserved contents, both closed block types produced real Items and became air,
+and 37 dirt, two coal, 33 quartz and seven emeralds survived cold restart exactly.
+The optimized hosted release reached SUCCESS and native offline startup on
+1 November at 14:31:18 Europe/Warsaw, with one instance and the existing volume.
+Public gameplay remains unverified because the external status probe fails DNS.
+See the [deployment observation](docs/validation/railway-preview.json) and the
+[container-removal source ledger](docs/reference/container-removal.md).
+
 Comparator receivers, Mending repairs, custom datapacks and survival furnace
 breaking remain unsupported. Menu actions combining output XP with item drops
 are still rejected before commit. The recipe catalog represents the captured

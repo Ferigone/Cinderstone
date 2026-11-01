@@ -70,6 +70,19 @@ status effects. Implemented numerical survival routines do not remove that limit
       and independent same-position replacement, with a local two-viewer flow.
 - [x] Bounded disconnected furnace-menu cursor drop through actual item ownership,
       with a local two-client observation and exact item conservation on restart.
+- [x] Bounded shared close contexts for window0, crafting-table and chest/barrel
+      cursors and temporary grids; full Main build and local conservation flow
+      passed for the recorded source and binary.
+- [x] Retention of the window0 cursor/grid across external menu
+      opening and window0-before-external removal during disconnect cleanup.
+- [x] Verify the shared menu-close stage's optimized hosted release and native
+      offline startup, with one instance and the existing persistent volume.
+- [x] Bounded creative removal of a closed single dry chest or
+      closed barrel, using actual 27-slot contents, Item/RNG/ID ownership and
+      native source-history transition; full Main build and local conservation
+      flow passed for the recorded source and binary.
+- [x] Verify hosted release and native offline startup of the bounded closed
+      single-container removal stage, preserving the existing volume.
 - [ ] Player-death cursor handling, full-inventory overflow conformance, complete
       `PlayerList.remove` persistence ordering, survival breaking and remaining
       world-removal contexts.
@@ -80,6 +93,51 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [ ] Full recipe-book placement, unlocks, advancement rewards and limited crafting.
 - [ ] Remaining complex item components and context-dependent recipe processing.
 - [ ] Full loot, enchantment, durability and tool behavior.
+
+The newer bounded removal stage is published for a closed
+single dry chest or closed barrel. Opaque container identity and its 27 actual
+slots are checked before a privately drained staging clone and native source
+history prepare the world transition. Actual contents use the existing native
+Item construction, level RNG and shared entity IDs; no XP or creative block-loot
+item is constructed. The source order is contents, comparator notification, then
+block-entity removal; only a certified empty comparator-receiver path is
+supported. Actual open menus, including spectator menus, double/waterlogged
+chests, unresolved loot and comparator receivers remain rejected boundaries.
+The full Main build and
+[focused local flow](validation/container-removal-flow.json) passed for source
+`be2582a9ea032205c3885fd04e10ff1419d63fb9` on 1 November 2026 at
+14:27:29 Europe/Warsaw. The sword guard preserved the chest and its contents;
+subsequent closed chest/barrel removal produced actual Items, left air and no
+native container block entities, and conserved exactly 37 dirt, two coal,
+33 quartz and seven emeralds after cold restart. Its optimized hosted release
+reached SUCCESS and native offline listening at 14:31:18 Europe/Warsaw, with one
+instance and the existing volume. Public gameplay remains unverified because
+the external status probe fails DNS. See the
+[container-removal source ledger](reference/container-removal.md). This bounded
+addition does not complete a full fixed checklist row or change the indicators.
+
+The earlier menu stage extends close/disconnect handling to chest/barrel,
+crafting-table and window0 ownership. Disconnected cursors and temporary 3×3/2×2
+inputs use real item drops; derived result previews are not returned as owned
+items. Opening a block menu from window0 retains the old inventory menu's cursor
+and grid. Disconnect removal handles window0 before the actual external menu.
+Alive insertion packets, old shared-slot local/remote baseline transfer and
+server close-before-return/drop publication follow the bounded
+[source ledger](reference/menu-close-lifecycle.md). The full Main build and
+[focused local flow](validation/disconnected-menus-flow.json) passed for source
+`93438c6055ec755e85f528739a41073ef5563b5a` on 1 November 2026 at
+14:20:00 Europe/Warsaw. The flow covered all four disconnect families, ordinary
+connected chest return, retained window0 cursor/grid ordering (Item IDs 3, 4,
+then 5), and conservation of all owned-item totals after cold restart without
+duplicating displayed hay-block or crafting-table recipe results. This is a
+local protocol-client result. Its optimized hosted deployment
+`737cb031-94ce-45d0-9f15-cd3633b80b1a` reached SUCCESS and native offline
+listening at 14:23:02 Europe/Warsaw, with one instance and the existing volume.
+Current public gameplay remains unverified because of environment DNS failure;
+these observations do not verify the later container-removal stage. Full Java player-save
+ordering, integrated death/survival, mixed alive-return/overflow-drop packet
+interleaving and complete tick phases remain open. No fixed 100-item checklist
+row is closed by these additions: 55/100 code, 50/100 Main, `scope_version: 1`.
 
 The [active-viewer flow](validation/open-furnace-menu-flow.json) passed for an
 ordinary furnace with two viewers and an independent breaker. The old container

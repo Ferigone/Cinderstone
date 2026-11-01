@@ -5,7 +5,111 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Disconnected furnace cursor — bounded local flow passed
+## Closed single-container removal — bounded local flow passed
+
+The newer bounded creative-removal stage is published for a
+closed **single dry chest** or closed barrel. `main_container_removal` connects
+an opaque native `ContainerOwnerKey`, the actual 27-slot snapshot and a privately
+drained staging clone to the owned native source-history/world transition.
+Container contents become real Item entities using the actual level RNG,
+independent entity RNG factories and shared entity IDs. An emptied staging image
+is not published as a live container.
+
+The path retains the source creative item guard, including rejected sword
+destruction, and stages contents before the comparator-notification boundary
+and block-entity removal. The supported comparator path certifies **no actual
+receiver**; connected comparators are not silently ignored. This callback creates
+neither recipe XP nor a loot item for the block in creative mode.
+
+The bounded scope rejects actual open menus, including spectator menus that may
+not appear in an opener counter, double or waterlogged chests, unresolved loot
+and comparator receivers. Other viewer lifetimes and survival block loot remain
+unfinished. The [container-removal source ledger](reference/container-removal.md)
+records the Java callback order and boundaries.
+
+The full Main build passed. The
+[focused local removal flow](validation/container-removal-flow.json) **passed**
+on 1 November 2026 at **14:27:29 Europe/Warsaw**
+(`2026-11-01T13:27:29.235Z`), for source commit
+`be2582a9ea032205c3885fd04e10ff1419d63fb9` and debug binary SHA-256
+`9d6eea10d5ac164d26017156ff6b59f76e379e518017681649a8c8937190b542`.
+Two protocol clients observed the creative sword guard preserving the chest
+and its contents, then successful removal of the closed chest and barrel with
+real item entities and air at their original block positions. Their native
+block-entity owners were absent from the checkpoint.
+
+The exact owned-item totals—37 dirt, two coal, 33 quartz and seven emeralds—were
+unchanged after cold restart, with the saved remaining Item identities retained.
+This is a local protocol-client result for the recorded closed-container scope,
+not an open-viewer, survival, graphical-client or public-network result.
+The optimized hosted release reached **SUCCESS**, with one instance, the
+existing volume and native offline listening at **14:31:18 Europe/Warsaw**.
+The shared-menu flow also passed on this same debug binary at 14:31:27, after
+the new container-owner changes; its earlier source result remains recorded.
+Public gameplay remains unverified because the external status probe fails DNS.
+It does not complete a full fixed checklist row: the
+indicators remain 55/100 code and 50/100 Main integration at `scope_version: 1`.
+The earlier recorded results below retain their source versions and scopes.
+
+## Earlier shared menu close lifecycle — bounded local flow passed
+
+The implementation connects a shared `MenuCloseContext` to window0, crafting-table
+and chest/barrel close paths, extending the earlier bounded furnace disconnect
+handling. Actual disconnect cleanup selects the disconnected context; normal
+live closes and live-player save cleanup retain the inventory-return context.
+The implementation includes:
+
+- Dropping each removed menu's owned cursor through the native Item/RNG
+  transaction on disconnect, without inserting it into the player's inventory.
+- Removing and dropping the nine temporary crafting-table inputs or four
+  window0 inputs in their original order, without treating the derived result
+  preview as another owned stack. Chest/barrel contents remain in their owner.
+- Running window0's removed callback before the current external menu during
+  disconnect cleanup, matching the bounded source callback order.
+- Retaining window0's own cursor and 2×2 grid when opening a block menu from
+  window0, instead of unconditionally closing the inventory menu first.
+- Explicit alive inventory returns with per-insertion raw `-2`, state-ID `0`
+  slot packets, followed by transfer of the old menu's shared local and remote
+  slot baselines when an external menu closes.
+- Publishing the server-initiated external close packet before its prepared
+  cursor/grid return or drop effects.
+
+The full Main build passed. The
+[focused local menu flow](validation/disconnected-menus-flow.json) **passed** on
+1 November 2026 at **14:20:00 Europe/Warsaw**
+(`2026-11-01T13:20:00.117Z`), for source commit
+`93438c6055ec755e85f528739a41073ef5563b5a` and debug binary SHA-256
+`b4e368a716239879e0e5ada20b5db258aa45ad93a76ed853bc6bf3e5cb2de8c3`.
+It exercised actual disconnects from chest, barrel, 3×3 crafting and window0.
+An ordinary connected chest close returned its cursor through a raw-slot packet.
+Opening the chest retained window0's cursor and grid; disconnect published the
+inventory cursor as Item ID 3, its grid input as ID 4, and the chest cursor as
+ID 5, establishing that recorded source order.
+
+The crafting flows dropped the owned inputs and cursor without creating the
+displayed hay-block or crafting-table recipe results. All recorded owned-item
+totals were unchanged after cold restart, including three emeralds and two coal
+retained in block containers, with empty saved player cursors and crafting grids.
+This is a local protocol-client result, not a graphical-client or public-network
+gameplay result. Its optimized hosted release reached **SUCCESS** in deployment
+`737cb031-94ce-45d0-9f15-cd3633b80b1a`, with native offline listening at
+`2026-11-01T13:23:02.384209111Z` (**14:23:02 Europe/Warsaw**), one running
+instance and the existing persistent volume. Current public gameplay remains
+unverified because the external status probe fails environment DNS resolution.
+These observations do not verify hosted execution of the later removal stage above.
+
+The [menu-close source ledger](reference/menu-close-lifecycle.md) records the
+pinned Java 1.21 methods, source condition, input ownership and opening/removal
+order separately from these bounded native observations.
+
+Full `PlayerList.remove` player-save/persistence ordering, every asynchronous
+disconnect race, integrated death/survival, mixed alive inventory-return and
+overflow-drop packet interleaving, other workstation families and complete
+player/server tick phases remain unfinished. This bounded menu stage does not
+complete a full inventory or simulation checklist row. The fixed indicators
+remain **55/100 code** and **50/100 Main integration**, `scope_version: 1`.
+
+## Earlier disconnected furnace cursor — bounded local flow passed
 
 Furnace menu closure now distinguishes an alive, connected owner from a dead or
 disconnected owner. Main's actual disconnect and duplicate-login cleanup select
@@ -67,7 +171,7 @@ result for the recorded path. The optimized hosted release and native offline
 startup are verified separately below. It does not establish graphical-client or public-network
 validation, full vanilla compatibility, or a performance advantage.
 
-That flow does not cover disconnected-player cursor drops; the newer bounded
+That flow does not cover disconnected-player cursor drops; the separately recorded
 result above records that path separately. Player-death handling and
 full-inventory overflow conformance remain incomplete. Survival breaking,
 comparator receivers, Mending repairs and other menu families remain incomplete.
@@ -224,10 +328,13 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) records the disconnected-
-furnace cursor batch: optimized release build, successful automatic deployment,
+The closed-container stage's optimized release reached successful automatic deployment
+`f1d948cf-6d83-4022-a309-53faf0dfd0de`, with
 one running replica and native offline listening on `0.0.0.0:25565` at
-12:59:45 UTC on 1 November 2026. The existing persistent volume is retained.
+14:31:18 Europe/Warsaw on 1 November 2026. The existing persistent volume is retained.
+The [deployment observation](validation/railway-preview.json) records hosted
+startup separately from local gameplay. Both menu and removal flows passed on
+the current local debug binary; their actual hosted gameplay was not observed.
 No public PLAY join is recorded for this release; the earlier join remains
 explicitly historical. A fresh external status/pong probe failed DNS resolution
 from the development environment. Local gameplay, hosted startup and public
@@ -245,8 +352,8 @@ The fixed 100-item planning checklist remains **55/100 code deliveries** and
 **50/100 main-server integrations** at `scope_version: 1`. These are checklist
 indicators, not measures of functional compatibility, engineering effort or
 remaining time. The broader inventory and simulation deliveries still require
-all remaining menus and complete block-entity ticking; this bounded furnace
-family does not complete those checklist items. The denominator and definitions
+all remaining menus and complete block-entity ticking; these bounded furnace and
+menu stages do not complete those checklist items. The denominator and definitions
 are unchanged.
 
 Porting and integration remain the priority. See the [README](../README.md) and

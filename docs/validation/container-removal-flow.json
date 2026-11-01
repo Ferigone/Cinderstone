@@ -1,0 +1,162 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "full_vanilla_parity": false,
+  "scope": "Bounded local protocol flow: creative destruction of closed single chest and barrel with actual contents, sword rejection, real Item publication, removed native block entities and exact owned-item conservation through cold restart. No open-viewer, double-chest, survival, graphical-client or public-network claim.",
+  "checks": {
+    "two_native_clients_joined": true,
+    "creative_sword_keeps_container_and_owned_contents": true,
+    "closed_single_chest_removes_with_actual_owned_item_drops": true,
+    "closed_barrel_removes_with_actual_owned_item_drops": true,
+    "removed_blocks_and_native_container_owners_absent_from_checkpoint": true,
+    "exact_owned_item_totals_conserved": true,
+    "cold_restart_preserves_contents_and_remaining_item_identities": true
+  },
+  "observed": {
+    "swordGuard": {
+      "actorResynchronizationObserved": true,
+      "contentsUnchanged": true
+    },
+    "chest": {
+      "block": "chest",
+      "removedAt": {
+        "x": 12,
+        "y": 64,
+        "z": 8
+      },
+      "contents": {
+        "dirt": 37,
+        "coal": 2
+      },
+      "observedItems": [
+        {
+          "id": 3,
+          "stack": {
+            "id": 28,
+            "count": 23
+          }
+        },
+        {
+          "id": 4,
+          "stack": {
+            "id": 28,
+            "count": 11
+          }
+        },
+        {
+          "id": 5,
+          "stack": {
+            "id": 28,
+            "count": 3
+          }
+        },
+        {
+          "id": 6,
+          "stack": {
+            "id": 803,
+            "count": 2
+          }
+        }
+      ]
+    },
+    "barrel": {
+      "block": "barrel",
+      "removedAt": {
+        "x": 8,
+        "y": 64,
+        "z": 12
+      },
+      "contents": {
+        "quartz": 33,
+        "emerald": 7
+      },
+      "observedItems": [
+        {
+          "id": 7,
+          "stack": {
+            "id": 808,
+            "count": 21
+          }
+        },
+        {
+          "id": 8,
+          "stack": {
+            "id": 808,
+            "count": 12
+          }
+        },
+        {
+          "id": 9,
+          "stack": {
+            "id": 806,
+            "count": 7
+          }
+        }
+      ]
+    },
+    "beforeRestart": {
+      "totals": {
+        "dirt": 37,
+        "coal": 2,
+        "quartz": 33,
+        "emerald": 7
+      },
+      "inventoryTotals": {},
+      "entityTotals": {
+        "dirt": 37,
+        "coal": 2,
+        "quartz": 33,
+        "emerald": 7
+      },
+      "savedPlayers": 2,
+      "savedContainerBlockEntities": 0,
+      "itemIds": [
+        3,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    },
+    "afterRestart": {
+      "totals": {
+        "dirt": 37,
+        "coal": 2,
+        "quartz": 33,
+        "emerald": 7
+      },
+      "inventoryTotals": {},
+      "entityTotals": {
+        "dirt": 37,
+        "coal": 2,
+        "quartz": 33,
+        "emerald": 7
+      },
+      "savedPlayers": 2,
+      "savedContainerBlockEntities": 0,
+      "itemIds": [
+        3,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    }
+  },
+  "binary_sha256": "9d6eea10d5ac164d26017156ff6b59f76e379e518017681649a8c8937190b542",
+  "completed_at": "2026-11-01T13:27:29.235Z",
+  "source_commit": "be2582a9ea032205c3885fd04e10ff1419d63fb9",
+  "build_profile": "debug",
+  "graphical_client": false,
+  "public_network": false,
+  "shutdown_signal": "SIGTERM",
+  "limitations": [
+    "Only closed single dry chests and closed barrels in the native creative-player profile are supported.",
+    "Active viewers including spectators, paired/waterlogged chests, unresolved loot and comparator receivers remain explicit boundaries.",
+    "Actual queued container rechecks are preserved; full server/phase/task-queue equivalence remains unfinished.",
+    "This bounded local protocol flow does not establish full vanilla parity or a performance advantage."
+  ]
+}

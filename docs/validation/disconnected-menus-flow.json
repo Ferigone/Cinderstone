@@ -1,0 +1,582 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "full_vanilla_parity": false,
+  "scope": "Bounded local protocol flow: actual disconnect from chest, barrel, 3x3 crafting and inventory2x2 with carried/grid items; retained block contents, discarded result previews, ordinary live close, real Item publication and conservation through cold restart. No graphical-client or public-network claim.",
+  "checks": {
+    "ordinary_connected_close_returns_inventory_with_raw_slot_packet": true,
+    "opening_external_menu_preserves_inventory_menu_cursor_and_grid": true,
+    "inventory_menu_cursor_and_grid_drop_before_external_cursor": true,
+    "chest_disconnected_cursor_published_real_item": true,
+    "barrel_disconnected_cursor_published_real_item": true,
+    "crafting3x3_actual_inputs_and_cursor_drop_without_result_duplication": true,
+    "inventory2x2_actual_inputs_and_cursor_drop_without_result_duplication": true,
+    "saved_cursors_grids_empty_block_contents_retained_and_totals_conserved": true,
+    "cold_restart_conserves_all_owned_items_without_preview_results": true
+  },
+  "observed": {
+    "chest": {
+      "expected": {
+        "redstone": 4,
+        "sand": 2,
+        "quartz": 5
+      },
+      "observedItems": [
+        {
+          "id": 3,
+          "stack": {
+            "id": 657,
+            "count": 4
+          }
+        },
+        {
+          "id": 4,
+          "stack": {
+            "id": 57,
+            "count": 2
+          }
+        },
+        {
+          "id": 5,
+          "stack": {
+            "id": 808,
+            "count": 5
+          }
+        }
+      ]
+    },
+    "retainedInventoryMenuDropOrder": {
+      "inventoryCursor": 3,
+      "inventoryGrid": 4,
+      "chestCursor": 5
+    },
+    "barrel": {
+      "expected": {
+        "amethyst_shard": 7
+      },
+      "observedItems": [
+        {
+          "id": 7,
+          "stack": {
+            "id": 809,
+            "count": 7
+          }
+        }
+      ]
+    },
+    "crafting3x3": {
+      "expected": {
+        "wheat": 9,
+        "diamond": 11
+      },
+      "observedItems": [
+        {
+          "id": 9,
+          "stack": {
+            "id": 805,
+            "count": 11
+          }
+        },
+        {
+          "id": 10,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 11,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 12,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 13,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 14,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 15,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 16,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 17,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        },
+        {
+          "id": 18,
+          "stack": {
+            "id": 854,
+            "count": 1
+          }
+        }
+      ]
+    },
+    "inventory2x2": {
+      "expected": {
+        "oak_planks": 4,
+        "iron_ingot": 3
+      },
+      "observedItems": [
+        {
+          "id": 20,
+          "stack": {
+            "id": 811,
+            "count": 3
+          }
+        },
+        {
+          "id": 21,
+          "stack": {
+            "id": 36,
+            "count": 1
+          }
+        },
+        {
+          "id": 22,
+          "stack": {
+            "id": 36,
+            "count": 1
+          }
+        },
+        {
+          "id": 23,
+          "stack": {
+            "id": 36,
+            "count": 1
+          }
+        },
+        {
+          "id": 24,
+          "stack": {
+            "id": 36,
+            "count": 1
+          }
+        }
+      ]
+    },
+    "beforeRestart": {
+      "totals": {
+        "gold_ingot": 2,
+        "redstone": 4,
+        "sand": 2,
+        "quartz": 5,
+        "amethyst_shard": 7,
+        "diamond": 11,
+        "wheat": 9,
+        "iron_ingot": 3,
+        "oak_planks": 4,
+        "emerald": 3,
+        "coal": 2
+      },
+      "inventoryTotals": {
+        "gold_ingot": 2
+      },
+      "entityTotals": {
+        "redstone": 4,
+        "sand": 2,
+        "quartz": 5,
+        "amethyst_shard": 7,
+        "diamond": 11,
+        "wheat": 9,
+        "iron_ingot": 3,
+        "oak_planks": 4
+      },
+      "containerTotals": {
+        "emerald": 3,
+        "coal": 2
+      },
+      "playerCarriedItems": 0,
+      "savedPlayers": 5,
+      "itemIds": [
+        3,
+        4,
+        5,
+        7,
+        9,
+        11,
+        20,
+        21,
+        22,
+        23,
+        24
+      ]
+    },
+    "afterRestart": {
+      "totals": {
+        "gold_ingot": 2,
+        "redstone": 4,
+        "sand": 2,
+        "quartz": 5,
+        "amethyst_shard": 7,
+        "diamond": 11,
+        "wheat": 9,
+        "iron_ingot": 3,
+        "oak_planks": 4,
+        "emerald": 3,
+        "coal": 2
+      },
+      "inventoryTotals": {
+        "gold_ingot": 2
+      },
+      "entityTotals": {
+        "redstone": 4,
+        "sand": 2,
+        "quartz": 5,
+        "amethyst_shard": 7,
+        "diamond": 11,
+        "wheat": 9,
+        "iron_ingot": 3,
+        "oak_planks": 4
+      },
+      "containerTotals": {
+        "emerald": 3,
+        "coal": 2
+      },
+      "playerCarriedItems": 0,
+      "savedPlayers": 5,
+      "itemIds": [
+        3,
+        4,
+        5,
+        7,
+        9,
+        11,
+        20,
+        21,
+        22,
+        23,
+        24
+      ]
+    }
+  },
+  "binary_sha256": "b4e368a716239879e0e5ada20b5db258aa45ad93a76ed853bc6bf3e5cb2de8c3",
+  "completed_at": "2026-11-01T13:20:00.117Z",
+  "source_commit": "93438c6055ec755e85f528739a41073ef5563b5a",
+  "build_profile": "debug",
+  "graphical_client": false,
+  "public_network": false,
+  "shutdown_signal": "SIGTERM",
+  "limitations": [
+    "Full PlayerList.remove player-save/callback ordering remains unfinished.",
+    "Player-death/survival and every asynchronous disconnect race remain unfinished.",
+    "Mixed live inventory insertion/overflow drop packet interleaving and full player/server phases remain unfinished.",
+    "This bounded local protocol flow does not establish full vanilla parity or a performance advantage."
+  ],
+  "later_source_verification": {
+    "ok": true,
+    "minecraft": "1.21",
+    "protocol": 767,
+    "full_vanilla_parity": false,
+    "scope": "Bounded local protocol flow: actual disconnect from chest, barrel, 3x3 crafting and inventory2x2 with carried/grid items; retained block contents, discarded result previews, ordinary live close, real Item publication and conservation through cold restart. No graphical-client or public-network claim.",
+    "checks": {
+      "ordinary_connected_close_returns_inventory_with_raw_slot_packet": true,
+      "opening_external_menu_preserves_inventory_menu_cursor_and_grid": true,
+      "inventory_menu_cursor_and_grid_drop_before_external_cursor": true,
+      "chest_disconnected_cursor_published_real_item": true,
+      "barrel_disconnected_cursor_published_real_item": true,
+      "crafting3x3_actual_inputs_and_cursor_drop_without_result_duplication": true,
+      "inventory2x2_actual_inputs_and_cursor_drop_without_result_duplication": true,
+      "saved_cursors_grids_empty_block_contents_retained_and_totals_conserved": true,
+      "cold_restart_conserves_all_owned_items_without_preview_results": true
+    },
+    "observed": {
+      "chest": {
+        "expected": {
+          "redstone": 4,
+          "sand": 2,
+          "quartz": 5
+        },
+        "observedItems": [
+          {
+            "id": 3,
+            "stack": {
+              "id": 657,
+              "count": 4
+            }
+          },
+          {
+            "id": 4,
+            "stack": {
+              "id": 57,
+              "count": 2
+            }
+          },
+          {
+            "id": 5,
+            "stack": {
+              "id": 808,
+              "count": 5
+            }
+          }
+        ]
+      },
+      "retainedInventoryMenuDropOrder": {
+        "inventoryCursor": 3,
+        "inventoryGrid": 4,
+        "chestCursor": 5
+      },
+      "barrel": {
+        "expected": {
+          "amethyst_shard": 7
+        },
+        "observedItems": [
+          {
+            "id": 7,
+            "stack": {
+              "id": 809,
+              "count": 7
+            }
+          }
+        ]
+      },
+      "crafting3x3": {
+        "expected": {
+          "wheat": 9,
+          "diamond": 11
+        },
+        "observedItems": [
+          {
+            "id": 9,
+            "stack": {
+              "id": 805,
+              "count": 11
+            }
+          },
+          {
+            "id": 10,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 11,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 12,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 13,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 14,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 15,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 16,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 17,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          },
+          {
+            "id": 18,
+            "stack": {
+              "id": 854,
+              "count": 1
+            }
+          }
+        ]
+      },
+      "inventory2x2": {
+        "expected": {
+          "oak_planks": 4,
+          "iron_ingot": 3
+        },
+        "observedItems": [
+          {
+            "id": 20,
+            "stack": {
+              "id": 811,
+              "count": 3
+            }
+          },
+          {
+            "id": 21,
+            "stack": {
+              "id": 36,
+              "count": 1
+            }
+          },
+          {
+            "id": 22,
+            "stack": {
+              "id": 36,
+              "count": 1
+            }
+          },
+          {
+            "id": 23,
+            "stack": {
+              "id": 36,
+              "count": 1
+            }
+          },
+          {
+            "id": 24,
+            "stack": {
+              "id": 36,
+              "count": 1
+            }
+          }
+        ]
+      },
+      "beforeRestart": {
+        "totals": {
+          "gold_ingot": 2,
+          "redstone": 4,
+          "sand": 2,
+          "quartz": 5,
+          "amethyst_shard": 7,
+          "diamond": 11,
+          "wheat": 9,
+          "iron_ingot": 3,
+          "oak_planks": 4,
+          "emerald": 3,
+          "coal": 2
+        },
+        "inventoryTotals": {
+          "gold_ingot": 2
+        },
+        "entityTotals": {
+          "redstone": 4,
+          "sand": 2,
+          "quartz": 5,
+          "amethyst_shard": 7,
+          "diamond": 11,
+          "wheat": 9,
+          "iron_ingot": 3,
+          "oak_planks": 4
+        },
+        "containerTotals": {
+          "emerald": 3,
+          "coal": 2
+        },
+        "playerCarriedItems": 0,
+        "savedPlayers": 5,
+        "itemIds": [
+          3,
+          4,
+          5,
+          7,
+          9,
+          11,
+          20,
+          22
+        ]
+      },
+      "afterRestart": {
+        "totals": {
+          "gold_ingot": 2,
+          "redstone": 4,
+          "sand": 2,
+          "quartz": 5,
+          "amethyst_shard": 7,
+          "diamond": 11,
+          "wheat": 9,
+          "iron_ingot": 3,
+          "oak_planks": 4,
+          "emerald": 3,
+          "coal": 2
+        },
+        "inventoryTotals": {
+          "gold_ingot": 2
+        },
+        "entityTotals": {
+          "redstone": 4,
+          "sand": 2,
+          "quartz": 5,
+          "amethyst_shard": 7,
+          "diamond": 11,
+          "wheat": 9,
+          "iron_ingot": 3,
+          "oak_planks": 4
+        },
+        "containerTotals": {
+          "emerald": 3,
+          "coal": 2
+        },
+        "playerCarriedItems": 0,
+        "savedPlayers": 5,
+        "itemIds": [
+          3,
+          4,
+          5,
+          7,
+          9,
+          11,
+          20,
+          22
+        ]
+      }
+    },
+    "binary_sha256": "9d6eea10d5ac164d26017156ff6b59f76e379e518017681649a8c8937190b542",
+    "completed_at": "2026-11-01T13:31:27.315Z",
+    "source_commit": "be2582a9ea032205c3885fd04e10ff1419d63fb9",
+    "build_profile": "debug",
+    "graphical_client": false,
+    "public_network": false,
+    "shutdown_signal": "SIGTERM"
+  }
+}
