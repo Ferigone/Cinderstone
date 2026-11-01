@@ -1,0 +1,25 @@
+{
+  "observed_at": "2026-11-01T02:19:40.178967+00:00",
+  "source_commit": "58aa72067856bad1debe65413e6af92b1c96b1f2",
+  "deployment_id": "14bb083e-9f4a-4c63-ae15-04d2a2d38ead",
+  "deployment_status": "SUCCESS",
+  "service_state": "online",
+  "running_replicas": 1,
+  "native_listening": {
+    "address": "0.0.0.0:25565",
+    "minecraft": "1.21",
+    "protocol": 767,
+    "mode": "online",
+    "event_timestamp": "2026-11-01T02:17:09.252613878Z"
+  },
+  "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
+  "persistent_volume_mount": "/data",
+  "autodeploy_branch": "master",
+  "external_status_probe": {
+    "ok": false,
+    "error": "getaddrinfo EAI_AGAIN hopper.proxy.rlwy.net"
+  },
+  "real_account_public_login_verified": false,
+  "public_player_data_redeploy_verified": false,
+  "full_vanilla_parity": false
+}

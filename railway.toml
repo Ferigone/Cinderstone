@@ -4,7 +4,6 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["Cargo.toml", "Cargo.lock", "src/**", "fixtures/**", "tools/*.json", "Dockerfile", ".dockerignore", "deploy/**", "railway.toml"]
 
 [deploy]
 numReplicas = 1

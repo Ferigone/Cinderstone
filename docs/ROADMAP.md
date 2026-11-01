@@ -117,9 +117,10 @@ exists. Missing chunks must not silently turn into flat terrain.
 
 - [x] Native server CLI with explicit online/offline modes.
 - [x] Persistent native checkpoint owners for the supported profile.
-- [ ] Publish the repository and establish reproducible CI builds.
-- [ ] Deploy the authenticated server with persistent storage and a public TCP endpoint.
-- [ ] Connect repository updates to automatic deployment.
+- [x] Publish normal source files in the public repository.
+- [ ] Establish reproducible CI builds.
+- [x] Deploy the online-mode server with persistent storage and a configured public TCP endpoint.
+- [x] Connect repository updates to automatic deployment.
 - [ ] Verify restart/redeploy behavior against persistent data.
 - [ ] Complete administration, graceful shutdown and observability.
 

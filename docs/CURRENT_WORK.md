@@ -13,19 +13,22 @@ BLOCK scheduler; and selected current-version Java `player.dat`/item NBT codecs.
 
 Normal source files are published in the public
 [Ferigone/Cinderstone repository](https://github.com/Ferigone/Cinderstone) on
-`master`. No source archive remains in the reachable Git history.
-Repository-scoped authentication for normal Git commits and pushes is configured.
+`master`, with an English README and roadmap. Source archives are not committed.
 
-Railway follows the unpinned `master` branch for automatic deployment. Dockerfile
-validation fixes are published. The confirmed rejection of the Docker `VOLUME`
-instruction was corrected by removing that instruction; the actual Railway volume
-mounted at `/data` remains configured. An earlier cache-format diagnosis was only
-a suspect and has not been established as the initial failure cause.
+Railway deploys the unpinned `master` branch automatically. The preview uses a
+persistent `/data` volume and one replica. The Trixie image supplies the OpenSSL
+version required for online authentication. The current server release reached
+Railway `SUCCESS` and `Online`; its native startup event confirms Minecraft 1.21,
+protocol 767, online mode and listening on `0.0.0.0:25565`.
 
-The latest automatically triggered Railway build was last observed `BUILDING`.
-A successful deployment, public Minecraft TCP response, real-account login and
-persistent redeploy behavior have not yet been verified. A configured TCP proxy
-alone does not establish a playable server.
+Preview address: **`hopper.proxy.rlwy.net:24418`**. Use a stock Minecraft Java
+**1.21** client with a valid Java account. The
+[deployment observation](validation/railway-preview.json) records the verified
+scope. An external status probe from the development environment could not
+resolve the proxy hostname (`EAI_AGAIN`), so a public status/pong response and a
+complete real-account login remain unverified. Hosting does not establish full
+vanilla gameplay compatibility. Player-data persistence across a public redeploy
+also remains to be verified with an actual online session.
 
 ## Current integration check
 

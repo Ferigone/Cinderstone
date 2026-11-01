@@ -89,9 +89,11 @@ For an authenticated server reachable over TCP:
   --world runtime/world.json
 ```
 
-Remote players need a valid Minecraft Java account and an unchanged **1.21**
-client. The public Railway endpoint is pending deployment; no live address is
-published here yet.
+Public preview: **`hopper.proxy.rlwy.net:24418`**. Connect with an unchanged
+Minecraft Java **1.21** client and a valid Java account. Railway runs the preview
+in online mode with persistent storage and deploys updates from `master`.
+The service has reached its native listening state. A complete real-account login
+still awaits verification; see [operational status](docs/CURRENT_WORK.md).
 
 World changes, player data and native entity checkpoints must be kept together
 for restart. Keep the world path on persistent storage when running a container.
