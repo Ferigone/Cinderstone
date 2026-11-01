@@ -75,16 +75,16 @@ There is no RNG draw in these stonecutter callbacks.
 `src/container_workstation_stonecutter.rs` adds a callable authoritative menu
 adapter over the shared `MenuSync` owner. It supports normal left/right pickup,
 input/main/hotbar transfers, repeated shift-result crafting, deliberate throws,
-creative clone, selection buttons, lifecycle removal and shared synchronization.
-It rejects swap, quick-craft and pick-all click modes explicitly. Bundle click
-overrides require their real owner. Its prepared action validates the captured
+creative clone, hotbar/offhand swap, quick-craft drag distribution, pick-all,
+selection buttons, lifecycle removal and shared synchronization. Pick-all and
+drag distribution exclude the derived result slot. Bundle click overrides
+require their real owner. Its prepared action validates the captured
 menu identity/revision and complete canonical inventory baseline before a single
 commit. Local synchronization callbacks occur at the source result-recompute
 boundary; predicted remote state cannot erase those local callbacks.
 
-Main opening/click/button dispatch, remaining click modes, captured validity/close
-publication and actual recipe/stat/advancement/sound callbacks remain with the
-integrator. The source contract is recorded above; no Main
+Main opening/click/button dispatch, captured validity/close publication and
+actual recipe/stat/advancement/sound callbacks remain with the integrator. The source contract is recorded above; no Main
 callsite is claimed by this stage. Replacing an input or preparing an output does
 not itself establish a complete production menu or a complete checklist row.
 
@@ -105,3 +105,32 @@ core ownership flow; `cargo test --lib container_workstation_` passed the
 stonecutter authoritative adapter flow along with the smithing adapter flows.
 These observations are native unit/transaction execution, not production Main
 callsite or Minecraft network-client evidence.
+
+## Remaining native click-mode stage
+
+The adapter additionally follows `AbstractContainerMenu` (`cpu.doClick`,
+`resetQuickCraft`, `canItemQuickReplace` and its two pickup lambdas), inspected
+with the same direct `javap -p -c` method. Ordinary result pickup installs or
+grows the cursor before result `onTake`. Swap into an empty hotbar/offhand
+installs the actual output there before `onTake`. Result swaps into occupied
+held slots are refused by `mayPlace`; they never exchange owned inputs for a
+preview. Oversized held-stack displacement uses the canonical inventory-add
+order and actual drop request, retaining the creative remainder branch.
+
+Quick-craft retains its mode when status/slot selection resets, supports ordinary
+split, right-drag single placement and creative fill, and cancels an active drag
+when a different click arrives. Single-slot drag follows the original pickup
+fallback. The menu uses slot-index order for an otherwise unobservable server
+input-container update batch; the default server update listener is a no-op.
+Reentrant custom listeners and custom item click overrides remain unsupported.
+Pick-all performs both source passes and excludes `ResultContainer`, even when
+the cursor item equals the displayed result. Actual offhand mutations use the
+canonical player's slot 45, not a synthetic menu slot.
+
+The focused native transaction flow for this stage passed with
+`cargo test --lib container_workstation_stonecutter`: it distributes eight real
+stone between the input and player inventory, swaps the two-slab result into
+the hotbar with its inventory listener before the sound boundary, proves
+pick-all leaves the same-item preview unowned, then moves the remaining real
+input into the actual offhand. The earlier ownership/shift/result-capacity flow
+also passed. This does not establish Main integration or a full checklist row.
