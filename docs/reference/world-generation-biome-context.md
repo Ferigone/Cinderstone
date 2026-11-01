@@ -52,3 +52,9 @@ Compiler and focused execution results belong in the coordinating PR after the
 new module export is added. These checks establish adapter ownership and call
 ordering only. They do not establish natural biome selection, a production
 quart-biome provider, Main integration, ChunkStatus scheduling or FULL terrain.
+
+The actual provider must certify the unmodified pinned built-in registry. Name
+membership validates supported keys only: a datapack climate override under an
+existing `minecraft:` key cannot be detected from the String result and would
+otherwise receive packaged climate values. Such a registry requires a different
+thermal implementation before production use.

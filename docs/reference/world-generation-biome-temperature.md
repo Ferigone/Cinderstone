@@ -12,7 +12,11 @@ per-member SHA-256 identities. Extraction verified precipitation, modifier and
 raw temperature/downfall float32 bits against the actual original built-in
 registry's `Biome.ClimateSettings` objects. The explicit `none` modifier is the
 original codec default when its JSON field is absent. Native temperature reads
-those verified bits; an unknown or custom biome name returns an error.
+those verified bits; unknown biome keys return an error. The caller must certify
+that its provider uses the pinned built-in registry contents. String keys do not
+detect datapack overrides under existing vanilla names; such an override passes
+the name lookup and would use the packaged climate, so it requires another
+thermal implementation.
 
 | Original owner/method | Observed behavior retained natively |
 | --- | --- |
@@ -30,11 +34,12 @@ use a distinct owner for each other worker or registry identity. It is neither
 worker. Shared immutable noises and climate definitions do not carry that
 prehistory. No world seed or gameplay RNG is accepted by this API.
 
-`canonical_biome` is a pure registry lookup for an actual biome provider result:
-it performs no thermal or noise sample and touches no temperature cache.
+`canonical_biome` is a pure name lookup in the pinned climate table, not an
+automated registry-identity or same-key override check. It performs no thermal
+or noise sample and touches no temperature cache.
 `temperature`, `cold_enough_to_snow` and
-`should_melt_frozen_ocean_iceberg_slightly` require an actual biome identity and
-block coordinates. A BiomeManager/zoom owner must supply that identity; raw
+`should_melt_frozen_ocean_iceberg_slightly` require the provider-selected biome
+key and block coordinates. A BiomeManager/zoom owner must supply that key; raw
 climate density samples are not used as a replacement biome. Resource locations
 with omitted or explicitly empty namespace use the original `minecraft` default.
 
@@ -65,5 +70,5 @@ its original result transcript SHA-256 was
 The original process exited successfully. Java artifacts and raw disassembly
 remain outside the repository. Native focused comparisons assert raw float32
 bits, both thermal predicates, packed-key prehistory, FIFO ownership and absence
-of cache effects during pure registry validation. These checks do not establish
+of cache effects during pure name validation. These checks do not establish
 natural biome selection, Main integration or complete dimension generation.

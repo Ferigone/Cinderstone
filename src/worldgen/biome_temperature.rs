@@ -130,7 +130,10 @@ impl TemperatureCache {
 /// workers or registry identities, as the original Biome has a ThreadLocal map.
 /// This owner is intentionally neither Send nor Sync; the immutable noises and
 /// climate definitions are shared, while mutable cache prehistory stays local.
-/// Dynamic/custom biome overrides require another implementation and are rejected.
+/// Unknown names are rejected. The caller must certify that its provider uses
+/// the pinned built-in registry values: a string key cannot detect a datapack
+/// override under an existing vanilla name. Other registry contents require
+/// another thermal implementation.
 pub struct BiomeTemperature {
     climates: &'static BTreeMap<String, BiomeClimate>,
     caches: HashMap<&'static str, TemperatureCache>,
@@ -147,7 +150,9 @@ impl BiomeTemperature {
         })
     }
 
-    /// Pure registry validation for BiomeManager's actual provider result.
+    /// Pure name lookup in the pinned climate table, not a registry-identity
+    /// check. The caller must certify the provider's pinned registry contents;
+    /// an override under the same key cannot be detected from its name.
     /// This performs no temperature/noise sample and does not touch a cache.
     pub fn canonical_biome(&self, name: &str) -> Result<&'static str> {
         let canonical = match name.split_once(':') {

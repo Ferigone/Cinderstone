@@ -17,7 +17,9 @@ use anyhow::Result;
 /// Supply the real dimension's zoom seed/provider and reuse its worker-local
 /// `BiomeTemperature` across chunk tasks. The mutable borrow preserves that
 /// owner's `!Send`/`!Sync` boundary; this context does not belong in the shared
-/// generator. Custom biome climates require a different thermal implementation.
+/// generator. The provider must certify the pinned built-in registry contents:
+/// names alone cannot detect a datapack override under an existing key. Custom
+/// biome climates require a different thermal implementation.
 pub struct BuiltinBiomeSurfaceContext<'a, P: QuartBiomeProvider<Biome = String> + ?Sized> {
     zoom: BiomeZoom,
     provider: &'a mut P,
