@@ -21,7 +21,10 @@ use anyhow::{ensure, Result};
 use std::{
     collections::BTreeSet,
     fmt::Debug,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 pub const INPUT_SLOTS: usize = 2;
 pub const RESULT_SLOT: usize = 2;
@@ -109,6 +112,112 @@ pub struct AnvilMenu<K> {
     drag_status: u8,
     drag_type: u8,
     drag_slots: BTreeSet<usize>,
+}
+
+/// One-shot synchronization preparation for the actual ServerPlayer.take
+/// boundary. This borrows the actual canonical inventory; it does not own a
+/// substitute player or invoke a full AnvilMenuHost/world transaction.
+pub struct AnvilInventorySyncPlan<'inventory, K> {
+    inventory: &'inventory PlayerInventory,
+    expected: AnvilMenu<K>,
+    next_sync: MenuSync,
+    next_token: AnvilMenuToken,
+    events: Vec<SyncEvent>,
+    phase: AnvilPhase,
+}
+
+/// Read-only source observations and already encoded packet events. The
+/// caller publishes packets once, in this event order, after adopting state.
+/// This is not another inventory, cursor, input or result owner.
+#[derive(Debug)]
+pub struct AnvilInventorySyncPublication {
+    pub events: Vec<SyncEvent>,
+    pub phase: AnvilPhase,
+}
+
+/// The canonical menu is exclusively held, and the actual inventory remains
+/// immutably borrowed, until commit or cancellation. All native comparison,
+/// encoding, stale-state checks and revision checks have already succeeded.
+/// Main must preflight ALL real readonly listener hooks before the first hook;
+/// after hooks begin, adoption here requires no remaining fallible work.
+pub struct ValidatedAnvilInventorySync<'menu, 'inventory, K> {
+    menu: &'menu mut AnvilMenu<K>,
+    plan: AnvilInventorySyncPlan<'inventory, K>,
+}
+
+impl<'inventory, K: Clone + Eq + Debug> AnvilInventorySyncPlan<'inventory, K> {
+    pub fn events(&self) -> &[SyncEvent] {
+        &self.events
+    }
+    pub fn phase(&self) -> &AnvilPhase {
+        &self.phase
+    }
+    pub fn inventory(&self) -> &'inventory PlayerInventory {
+        self.inventory
+    }
+    pub fn next_token(&self) -> AnvilMenuToken {
+        self.next_token
+    }
+
+    pub fn validate(&self, menu: &AnvilMenu<K>) -> Result<()> {
+        menu.validate_token(self.expected.token)?;
+        let same_enchantment_owner = match (&menu.enchantments, &self.expected.enchantments) {
+            (None, None) => true,
+            (Some(actual), Some(expected)) => Arc::ptr_eq(actual, expected),
+            _ => false,
+        };
+        ensure!(
+            menu.binding == self.expected.binding
+                && same_enchantment_owner
+                && menu.active == self.expected.active
+                && menu.sync == self.expected.sync
+                && menu.state.inputs() == self.expected.state.inputs()
+                && menu.state.preview() == self.expected.state.preview()
+                && menu.state.item_name() == self.expected.state.item_name()
+                && menu.drag_status == self.expected.drag_status
+                && menu.drag_type == self.expected.drag_type
+                && menu.drag_slots == self.expected.drag_slots,
+            "retained anvil state changed during inventory sync preparation"
+        );
+        // inventory is the same immutable borrow captured before preparation;
+        // no caller can replace/mutate that canonical owner while it is held.
+        Ok(())
+    }
+
+    pub fn into_validated<'menu>(
+        self,
+        menu: &'menu mut AnvilMenu<K>,
+    ) -> Result<ValidatedAnvilInventorySync<'menu, 'inventory, K>> {
+        self.validate(menu)?;
+        Ok(ValidatedAnvilInventorySync { menu, plan: self })
+    }
+}
+
+impl<'menu, 'inventory, K> ValidatedAnvilInventorySync<'menu, 'inventory, K> {
+    pub fn events(&self) -> &[SyncEvent] {
+        &self.plan.events
+    }
+    pub fn phase(&self) -> &AnvilPhase {
+        &self.plan.phase
+    }
+    pub fn inventory(&self) -> &'inventory PlayerInventory {
+        self.plan.inventory
+    }
+    pub fn next_token(&self) -> AnvilMenuToken {
+        self.plan.next_token
+    }
+
+    /// Adopt only prepared sync baselines/state ID and checked dispatch token.
+    /// No owner callback, validation, encoding, allocation or Result remains.
+    pub fn commit(self) -> AnvilInventorySyncPublication {
+        let Self { menu, plan } = self;
+        menu.sync = plan.next_sync;
+        menu.token = plan.next_token;
+        AnvilInventorySyncPublication {
+            events: plan.events,
+            phase: plan.phase,
+        }
+    }
 }
 struct ObservedContext<'a, H> {
     actual: &'a mut H,
@@ -223,20 +332,24 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         host: &H,
         click: Option<&ContainerClick>,
     ) -> Result<()> {
-        let top = self.top();
-        for item in top
-            .iter()
-            .chain(std::iter::once(self.carried()))
-            .chain(host.inventory().slots().iter())
-            .chain(std::iter::once(host.inventory().carried()))
-        {
-            require_component_context(item)?;
-        }
+        self.require_inventory_sync_components(host.inventory())?;
         if let Some(click) = click {
             require_component_context(&click.carried)?;
             for item in click.changed_slots.values() {
                 require_component_context(item)?;
             }
+        }
+        Ok(())
+    }
+    fn require_inventory_sync_components(&self, inventory: &PlayerInventory) -> Result<()> {
+        let top = self.top();
+        for item in top
+            .iter()
+            .chain(std::iter::once(self.carried()))
+            .chain(inventory.slots().iter())
+            .chain(std::iter::once(inventory.carried()))
+        {
+            require_component_context(item)?;
         }
         Ok(())
     }
@@ -293,6 +406,50 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
     }
     pub fn transfer_inventory_state(&self, window0: &mut PlayerContainer) -> Result<()> {
         self.sync.transfer_inventory_state(window0)
+    }
+    /// Literal current-menu broadcastChanges for ServerPlayer.take. This does
+    /// not initialize a new menu or consult XP, registry, repair or world owners.
+    /// The caller supplies the actual pickup's canonical inventory borrow.
+    pub fn prepare_inventory_broadcast<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.prepare_inventory_sync(inventory, false)
+    }
+    /// Retained full-state counterpart for an actual source resend owner.
+    /// It preserves the same inputs/result/name/cursor/cost/drag/lifetime.
+    pub fn prepare_inventory_full_state<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.prepare_inventory_sync(inventory, true)
+    }
+    fn prepare_inventory_sync<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+        full_state: bool,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.validate_token(self.token)?;
+        self.require_inventory_sync_components(inventory)?;
+        let mut next_token = self.token;
+        next_token.revision = next_token
+            .revision
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("anvil inventory sync revision exhausted"))?;
+        let mut next_sync = self.sync.clone();
+        let events = if full_state {
+            next_sync.broadcast_full_state(&self.top(), inventory, &self.data())?
+        } else {
+            next_sync.broadcast_changes(&self.top(), inventory, &self.data())?
+        };
+        Ok(AnvilInventorySyncPlan {
+            inventory,
+            expected: self.staged_copy(),
+            next_sync,
+            next_token,
+            events,
+            phase: self.phase(),
+        })
     }
     fn reset_drag(&mut self) {
         self.drag_status = 0;
@@ -1917,6 +2074,169 @@ mod tests {
         assert!(host.xp.is_empty());
         assert_eq!(host.draws, 0);
         assert!(host.events.iter().all(|e| e.inventory.slots().len() == 46));
+        Ok(())
+    }
+
+    #[test]
+    fn pickup_inventory_sync_prepares_packets_then_adopts_only_retained_baselines() -> Result<()> {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        // This retained cursor/drag may already exist when an ItemEntity calls
+        // ServerPlayer.take. A broadcast must not construct/reset the menu.
+        menu.sync.set_carried(item("diamond", 2));
+        menu.drag_status = 1;
+        menu.drag_type = 1;
+        menu.drag_slots.insert(3);
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        host.inventory.set_carried_authoritative(item("emerald", 1));
+        let actual_host = format!("{host:?}");
+        let state = format!("{:?}", menu.state);
+        let before_menu = format!("{menu:?}");
+        let before_token = menu.token();
+        let before_state_id = menu.state_id();
+        let plan = menu.prepare_inventory_broadcast(&host.inventory)?;
+        assert_eq!(format!("{menu:?}"), before_menu);
+        assert!(std::ptr::eq(plan.inventory(), &host.inventory));
+        assert_eq!(plan.phase().result_preview.count, 4);
+        assert_eq!(plan.phase().carried, item("diamond", 2));
+        assert!(plan.events().iter().any(|event| matches!(event,
+            SyncEvent::SlotListener { menu_slot: 3, player_slot: Some(9), stack }
+                if stack == &item("apple", 3))));
+        let packet = plan
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet)
+                    if packet.id == 0x15 && packet.payload.first() == Some(&menu.window_id()) =>
+                {
+                    Some(packet.clone())
+                }
+                _ => None,
+            })
+            .expect("actual retained inventory slot packet");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, menu.window_id());
+        assert_eq!(reader.varint()?, (before_state_id + 1) & 32767);
+        assert_eq!(reader.i16()?, 3);
+        assert_eq!(
+            ItemStack::decode_exact(reader.remaining())?,
+            item("apple", 3)
+        );
+        let capability = plan.into_validated(&mut menu)?;
+        assert_eq!(capability.menu.token(), before_token); // not adopted yet
+        let mut observed = Vec::new();
+        // Actual Main must preflight its concrete listeners first. These
+        // native readonly observations exercise the no-Host capability path.
+        for event in capability.events() {
+            if let SyncEvent::SlotListener {
+                player_slot: Some(slot),
+                ..
+            } = event
+            {
+                observed.push((*slot, capability.inventory().slot(*slot).unwrap().clone()));
+            }
+        }
+        assert!(observed.contains(&(9, item("apple", 3))));
+        let next_token = capability.next_token();
+        let publication = capability.commit(); // deliberately no Result/hook
+        assert_eq!(menu.token(), next_token);
+        assert_ne!(menu.token(), before_token);
+        assert_eq!(format!("{:?}", menu.state), state);
+        assert_eq!((menu.drag_status, menu.drag_type), (1, 1));
+        assert_eq!(menu.drag_slots, BTreeSet::from([3]));
+        assert_eq!(menu.carried(), &item("diamond", 2));
+        assert_eq!(
+            publication.phase.level_cost,
+            menu.state.preview().level_cost
+        );
+        assert_eq!(format!("{host:?}"), actual_host); // no XP/RNG/world/host call
+        assert!(menu
+            .prepare_inventory_broadcast(&host.inventory)?
+            .events()
+            .is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_sync_cancellation_staleness_and_preparation_failure_publish_nothing() -> Result<()>
+    {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        let before = format!("{menu:?}");
+        let plan = menu.prepare_inventory_broadcast(&host.inventory)?;
+        assert!(!plan.events().is_empty());
+        drop(plan);
+        assert_eq!(format!("{menu:?}"), before);
+        {
+            let capability = menu
+                .prepare_inventory_broadcast(&host.inventory)?
+                .into_validated(&mut menu)?;
+            drop(capability); // Main listener preflight refused before any hook
+        }
+        assert_eq!(format!("{menu:?}"), before);
+
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        menu.prepare_inventory_full_state(&host.inventory)?
+            .into_validated(&mut menu)?
+            .commit();
+        let committed = format!("{menu:?}");
+        assert!(stale.into_validated(&mut menu).is_err());
+        assert_eq!(format!("{menu:?}"), committed);
+
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        let mut reopened = AnvilMenu::new(menu.window_id(), &host)?;
+        assert!(stale.into_validated(&mut reopened).is_err());
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        menu.sync.suppress_remote_updates(true); // unexpected retained-sync drift
+        assert!(stale.into_validated(&mut menu).is_err());
+        menu.sync.suppress_remote_updates(false);
+
+        let mut food = item("mushroom_stew", 1);
+        let wire = food.effective_component_bytes(20).unwrap().to_vec();
+        food.components.push(Component {
+            type_id: 20,
+            data: wire,
+        });
+        host.inventory.set_slot_authoritative(9, food);
+        let before = format!("{menu:?}");
+        assert!(menu.prepare_inventory_broadcast(&host.inventory).is_err());
+        assert_eq!(format!("{menu:?}"), before);
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        menu.token.revision = u64::MAX;
+        let before = format!("{menu:?}");
+        assert!(menu.prepare_inventory_broadcast(&host.inventory).is_err());
+        assert_eq!(format!("{menu:?}"), before);
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_full_state_sync_retains_name_cost_cursor_and_incremental_baseline() -> Result<()> {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        menu.sync.set_carried(item("diamond", 2));
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        let state = format!("{:?}", menu.state);
+        let plan = menu.prepare_inventory_full_state(&host.inventory)?;
+        let content = plan
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .expect("retained full content packet");
+        let mut reader = crate::protocol::Reader::new(&content.payload);
+        assert_eq!(reader.u8()?, menu.window_id());
+        assert_eq!(reader.varint()?, (menu.state_id() + 1) & 32767);
+        assert_eq!(reader.varint()?, MENU_SLOTS as i32);
+        assert!(plan.events().iter().any(|event| matches!(event,
+            SyncEvent::Packet(packet) if packet.id == 0x14)));
+        plan.into_validated(&mut menu)?.commit();
+        assert_eq!(format!("{:?}", menu.state), state);
+        assert_eq!(menu.state.item_name(), Some(&JavaString::from("Named")));
+        assert_eq!(menu.carried(), &item("diamond", 2));
+        assert!(menu
+            .prepare_inventory_broadcast(&host.inventory)?
+            .events()
+            .is_empty());
         Ok(())
     }
 }

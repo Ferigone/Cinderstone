@@ -326,3 +326,76 @@ publishes once. A retained full-state flow checks content/data publication,
 local slot observation and no duplicate incremental resend afterward. These
 are native transaction fixtures, not original-Java gameplay, a real production
 world provider or Main integration evidence.
+
+## Retained inventory synchronization at ServerPlayer.take
+
+Original `ServerPlayer.take(Entity,int)` (`aqv`, mapped996–998) first delegates
+its real item-take/Collect behavior, then calls the **actual current menu's**
+broadcastChanges. It does not create a menu, recompute an anvil result, check a
+new XP/repair/world context or substitute the later tick-validity phase.
+
+The narrowly additive core bridge now exposes:
+
+```rust
+menu.prepare_inventory_broadcast(&actual_inventory)
+    -> Result<AnvilInventorySyncPlan<'inventory, K>>;
+menu.prepare_inventory_full_state(&actual_inventory)
+    -> Result<AnvilInventorySyncPlan<'inventory, K>>;
+plan.events() -> &[SyncEvent];
+plan.phase() -> &AnvilPhase;
+plan.inventory() -> &PlayerInventory;
+plan.next_token() -> AnvilMenuToken;
+plan.validate(&actual_menu) -> Result<()>;
+plan.into_validated(&mut actual_menu)
+    -> Result<ValidatedAnvilInventorySync<'menu, 'inventory, K>>;
+// The capability exposes the same events/phase/inventory/next_token getters.
+capability.commit() -> AnvilInventorySyncPublication; // infallible
+```
+
+Preparation borrows the caller's **actual canonical PlayerInventory** immutably,
+checks component support and next token revision, and computes ordered listener/
+packet events on a private copy of the retained MenuSync. It invokes no host,
+XP, registry, repair, text, world, RNG or crafting callback. Inputs, preview,
+name, cost, material count, cursor, drag, enchantment-owner identity and UI
+instance are retained. The full-state counterpart uses existing
+broadcast_full_state, preserving local and remote baselines rather than
+initializing/resetting a new menu.
+
+Before admitting publication, validation checks original binding/token/active
+state, retained sync, input/preview/name state, captured enchantment-owner
+reference identity and drag state. The inventory is the same held immutable
+borrow, so its slots, selected hotbar, retained window0 cursor and state ID cannot
+be changed during this preparation/capability scope. The dispatch token guards
+all supported mutation of the private kernel; adoption never overwrites its
+state or kernel revision. The validated capability exclusively borrows the
+canonical menu until commit/cancel. Cancellation or stale/preparation refusal
+adopts no native baseline or token. Successful commit moves only the already
+prepared sync and checked token, then returns the one ordered publication;
+it performs no fallible work or owner callback.
+
+This is not a substitute full AnvilMenuHost. Main's actual pickup owner must
+prove its retained active-menu/player/session binding and provide the genuine
+canonical inventory borrow after Collect at the literal source take boundary.
+It must pure-preflight **all** actual MainGameplayFrame listeners and their
+counts/component/source/registration conditions before the first real hook.
+The supported readonly empty-criteria hooks then run while the capability
+protects menu and inventory, followed by infallible adoption. There must be no
+remaining Result-producing validation/encoding/world/item work after that first
+hook, and no replay of already executed listeners. Unknown/effectful/reentrant
+listeners reject through the real Main owner, not an always-empty fake host.
+Packet publication remains with the actual ordered outbox after adoption and
+its enclosing source transaction; each packet is sent once. Core preparation
+alone neither executes that frame nor proves an existing Main callsite.
+
+Focused native bridge regressions verify an actual retained renamed result and
+independent cursor/drag, actual player-slot packet/backing index and state ID,
+readonly observation before deferred adoption, empty incremental resend after
+commit, cancellation, stale token/sync/reopen, component/revision-exhaustion
+refusal and retained full-state content/cost/name/cursor. They use the existing
+restricted fixture only to establish retained state; the bridge itself needs
+no fabricated full host and changes no fixture XP/RNG/world/callback owner.
+`cargo test --locked --lib container_workstation_anvil::tests -- --nocapture`
+with the shared target passed twelve native adapter flows on 1 November 2026,
+including the prior transaction/source flows. The owned Rust file passed
+rustfmt and the owned changes passed whitespace checks. This is not Main or
+original-Java gameplay verification and completes no aggregate checklist row.
