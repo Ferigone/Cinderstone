@@ -218,6 +218,20 @@ impl MenuSync {
         );
         Ok(())
     }
+    /// Read-only gate for a real local slot listener such as CrafterMenu's
+    /// recipe-cache listener. Remote predictions/resends are not its baseline.
+    pub fn has_local_slot_changes(
+        &self,
+        top: &[ItemStack],
+        inventory: &PlayerInventory,
+    ) -> Result<bool> {
+        for (slot, stack) in self.snapshot(top, inventory)?.iter().enumerate() {
+            if !matches(&self.last[slot], stack)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
     fn slot_packet(&mut self, slot: i16, stack: &ItemStack) -> Result<Packet> {
         let state = self.increment_state();
         let mut w = Writer::new();
@@ -572,6 +586,22 @@ mod tests {
         assert_eq!(inv.slot(10).unwrap().count, 64);
         assert!(sync.carried().is_empty());
         assert!(inputs[0].is_empty());
+        Ok(())
+    }
+    #[test]
+    fn crafter_cache_gate_observes_local_changes_after_remote_only_resend() -> Result<()> {
+        let inv = PlayerInventory::default();
+        let mut top = vec![ItemStack::empty(); 10];
+        let mut sync = MenuSync::new(3, WorkstationKind::Crafter)?;
+        sync.initialize(&top, &inv, &[0; 10])?;
+        assert!(!sync.has_local_slot_changes(&top, &inv)?);
+        top[0] = stone(1);
+        sync.send_all_data(&top, &inv, &[0; 10])?;
+        let before = sync.clone();
+        assert!(sync.has_local_slot_changes(&top, &inv)?);
+        assert_eq!(sync, before);
+        sync.broadcast_changes(&top, &inv, &[0; 10])?;
+        assert!(!sync.has_local_slot_changes(&top, &inv)?);
         Ok(())
     }
     #[test]
