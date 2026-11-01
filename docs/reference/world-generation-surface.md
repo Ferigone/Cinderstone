@@ -32,6 +32,17 @@ use `root.fromHashOf("minecraft:clay_bands")` directly; vertical gradients use
 RandomState's separately hashed/forked named positional factories. Neither path
 borrows the gameplay Level RNG.
 
+The source caller `NoiseBasedChunkGenerator.buildSurface` forwards the settings'
+`useLegacyRandomSource()` flag (`dzd.n`, mapped line 21; `dzb` caller bytecodes
+38–45) into `SurfaceSystem.buildSurface`. It controls the column's initial
+BiomeManager lookup: legacy settings use block Y `0`, while modern settings use
+the initial WORLD_SURFACE_WG height plus one. This is independent of later
+per-block rule-context biome lookups, which use their actual Y. The native
+generator forwards the same setting. The focused surface oracle now also uses
+the actual original setting and observes its first selected quart-biome query;
+the native probe compares that query and the initial block coordinate. Constant
+biome output images alone cannot verify this caller contract.
+
 `builtin_settings` follows the original `ResourceLocation.parse` /
 `bySeparator` (`akr.a`, mapped lines 56 and 77–89) default-namespace rule:
 `overworld`, `:overworld` and `minecraft:overworld` select the same packaged
