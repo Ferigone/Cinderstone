@@ -5,37 +5,45 @@ Proposed draft PR against `master` from
 [issue #3](https://github.com/Ferigone/Cinderstone/issues/3).
 This is a prepared description, not an opened pull request.
 
-Adds callable Minecraft Java 1.21/protocol 767 workstation behavior:
-stonecutter and smithing inventory adapters with all seven ordinary click
-modes, authoritative result ownership, state-ID/cursor synchronization,
-stale-action guards and ordered close/drop effects. Adds bounded anvil,
-grindstone, loom, cartography, lectern, beacon and brewing behavior, plus
-special-recipe context helpers.
+Adds callable Minecraft Java1.21/protocol767 workstation behavior and explicit
+actual-owner contracts. Stonecutter, smithing, hopper/dispenser/shulker storage,
+enchanting and crafter adapters have all seven ordinary native click paths,
+with documented context restrictions, authoritative ownership, state IDs,
+phased cursor/inventory callbacks, stale/replacement guards and ordered closes.
 
-Primary evidence is the pinned original server and official mappings,
-inspected directly with JDK 21 `javap`. Source facts and exact production
-contracts are in [the integration ledger](workstations-integration.md) and
-the per-family `workstations-*.md` ledgers.
+Native kernels cover merchant pricing/selection/trade stages, enchanting costs/
+seeded selection, crafter processing, hopper transfer/cooldown, shulker lifecycle,
+dispenser/dropper selection/behavior callbacks and personal ender storage, plus
+bounded anvil/grindstone/loom/cartography/beacon/brewing/lectern and special-map
+recipe contexts. Real registry, recipe, player/world/entity and advancement
+owners remain required; no fake production implementations are supplied.
 
-There are no new Main callsites. Production opening/dispatch, actual
-world/player/registry/map/advancement owners and remaining menu families are
-pending. Keep the PR draft: `inventory.4`, `crafting.2` and `crafting.5` remain
-incomplete. No Main/runtime/world/player/container/furnace core, manifest,
-checklist or deployment changes are included. The `src/lib.rs` changes are
-only the guide's standing mechanical export exception for `workstations`,
-`container_workstation_stonecutter` and `container_workstation_smithing`.
+There are no new Main callsites. Keep this PR draft: opening/dispatch, real
+state-owner binding/ticking/persistence and remaining contexts/families still
+need integration. `inventory.4`, `crafting.2` and `crafting.5` remain incomplete.
+The [integration ledger](workstations-integration.md) gives exact source phase
+contracts and [team status](../coordination/status/ws-20261101-7c2f.md) retains
+source commits, owned files and publication blockers.
 
-Validation at source commit
-`b770aa721ab56fc56f450622bc6706553ab062dd`:
+Only new workstation namespaces/adapters, additive RecipeBook smithing
+predicates and mechanical exports change shared source. The standing export
+exception adds `workstations` and
+`container_workstation_{stonecutter,smithing,storage,enchanting,crafter}` only.
+Main/runtime/world/player/container/furnace core, manifests, checklist metrics,
+licensing and deployment files are unchanged.
 
-- `cargo test --locked --lib workstation` passed focused native flows,
-  including inventory conservation, callback/drop ordering and mixed close
-  overflow.
+Primary evidence: pinned original server and official mappings, direct JDK21
+`javap`, and separately labeled restricted unchanged-Java helper observations.
+No proprietary artifacts/raw disassembly or gameplay claims are included.
+
+Validation at source `7147da02c737360682386df4d73792cb8b03ae00`:
+
+- `cargo test --locked --lib workstation` passed the focused native flows.
 - `cargo build --locked --bin mc121-rust` passed.
-- `cargo check --all-targets` found unchanged base
-  `tools/main_persistence_smoke.rs` initializers missing existing
-  Options/Server fields; that shared test was not changed by this team.
-- No new protocol-client or gameplay validation is claimed.
-
-Exact source commits, file claims and state-owner/phase requests are retained
-in the [team handoff](../coordination/status/ws-20261101-7c2f.md).
+- Both commands also passed against current master
+  `404a5dab9c1b161b3587aa24e11703458c5a8edd` in a separate worktree with the exact
+  source diff applied; no master merge or reserved Main edit.
+- The original-base all-target check found unchanged shared persistence-smoke
+  initializers missing existing Options/Server fields. That shared test was not
+  changed by this team.
+- No new protocol-client, live-menu or deployment validation is claimed.
