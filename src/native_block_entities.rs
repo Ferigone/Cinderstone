@@ -1,4 +1,4 @@
-//! Actual owned chest/barrel block entities. Palette reads alone never create
+//! Actual owned chest/barrel and furnace-family block entities. Palette reads alone never create
 //! inventories. Unsupported nonempty destruction and loot tables are errors.
 use crate::{
     geometry::Direction,
@@ -10,6 +10,11 @@ use anyhow::{bail, ensure, Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 pub type BlockPosition = (i32, i32, i32);
+#[path = "native_furnace_entities.rs"]
+mod furnace_entities;
+pub use furnace_entities::{
+    furnace_kind, furnace_name, furnace_type_id, FurnaceImage, NativeFurnace,
+};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ContainerKind {
     Chest,
@@ -90,6 +95,8 @@ pub struct SavedNativeBlockEntities {
     pub format: String,
     pub entries: Vec<ContainerImage>,
     pub rechecks: Vec<(BlockPosition, i64)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub furnaces: Vec<FurnaceImage>,
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ContainerKey(pub Vec<BlockPosition>);
@@ -124,6 +131,7 @@ pub enum ContainerEffect {
 #[derive(Clone, Debug, Default)]
 pub struct NativeBlockEntities {
     entries: BTreeMap<BlockPosition, NativeContainer>,
+    furnaces: BTreeMap<BlockPosition, NativeFurnace>,
 }
 impl NativeContainer {
     pub fn state(&self) -> u32 {
@@ -214,6 +222,70 @@ impl NativeContainer {
     }
 }
 impl NativeBlockEntities {
+    pub fn furnace_images(&self) -> Vec<FurnaceImage> {
+        self.furnaces.values().map(|e| e.image.clone()).collect()
+    }
+    pub fn furnace_positions(&self) -> Vec<BlockPosition> {
+        self.furnaces.keys().copied().collect()
+    }
+    pub fn furnace_records(&self) -> impl Iterator<Item = &NativeFurnace> {
+        self.furnaces.values()
+    }
+    pub fn furnace_entry(&self, p: BlockPosition) -> Result<&NativeFurnace> {
+        self.furnaces
+            .get(&p)
+            .context("actual native furnace owner missing")
+    }
+    pub fn furnace_entry_mut(&mut self, p: BlockPosition) -> Result<&mut NativeFurnace> {
+        self.furnaces
+            .get_mut(&p)
+            .context("actual native furnace owner missing")
+    }
+    pub fn furnace_validate_at(&self, p: BlockPosition, state: u32) -> Result<()> {
+        let kind = furnace_kind(state).context("unsupported native furnace state")?;
+        let entry = self.furnace_entry(p)?;
+        ensure!(
+            entry.image.state == state && entry.kind() == kind,
+            "native furnace world state differs"
+        );
+        entry.validate()
+    }
+    pub fn furnace_set_state(
+        &mut self,
+        p: BlockPosition,
+        state: crate::furnace::FurnaceState,
+    ) -> Result<()> {
+        state.validate()?;
+        let entry = self.furnace_entry_mut(p)?;
+        ensure!(
+            entry.kind() == state.kind,
+            "native furnace engine kind differs"
+        );
+        entry.image.furnace_state = state;
+        Ok(())
+    }
+    pub fn furnace_title(&self, p: BlockPosition) -> Result<Tag> {
+        self.furnace_entry(p)?.title()
+    }
+    pub fn furnace_can_unlock(
+        &self,
+        p: BlockPosition,
+        held: &ItemStack,
+        spectator: bool,
+    ) -> Result<bool> {
+        self.furnace_entry(p)?.can_unlock(held, spectator)
+    }
+    pub fn furnace_start_open(&mut self, p: BlockPosition, entity_id: i32) -> Result<()> {
+        self.furnace_entry_mut(p)?.viewers.insert(entity_id);
+        Ok(())
+    }
+    pub fn furnace_stop_open(&mut self, p: BlockPosition, entity_id: i32) -> Result<()> {
+        self.furnace_entry_mut(p)?.viewers.remove(&entity_id);
+        Ok(())
+    }
+    pub fn furnace_viewers(&self, p: BlockPosition) -> Result<Vec<i32>> {
+        Ok(self.furnace_entry(p)?.viewers.iter().copied().collect())
+    }
     pub fn images(&self) -> Vec<ContainerImage> {
         self.entries.values().map(|e| e.image.clone()).collect()
     }
@@ -235,6 +307,29 @@ impl NativeBlockEntities {
         Ok(())
     }
     pub fn preflight_transition(&self, p: BlockPosition, old: u32, new: u32) -> Result<()> {
+        if let Some(kind) = furnace_kind(old) {
+            self.furnace_validate_at(p, old)?;
+            if furnace_kind(new) != Some(kind) {
+                let e = self.furnace_entry(p)?;
+                ensure!(
+                    !e.has_items(),
+                    "nonempty furnace destruction requires actual drops owner"
+                );
+                ensure!(
+                    !e.has_pending_rewards(),
+                    "furnace destruction requires actual experience owner"
+                );
+                ensure!(
+                    e.viewers.is_empty(),
+                    "active furnace removal requires actual close owner"
+                );
+            }
+        } else {
+            ensure!(
+                !self.furnaces.contains_key(&p),
+                "orphan furnace at non-furnace state"
+            );
+        }
         if let Some(kind) = container_kind(old) {
             self.validate_at(p, old)?;
             if container_kind(new) != Some(kind) {
@@ -258,6 +353,18 @@ impl NativeBlockEntities {
     }
     pub fn transition(&mut self, p: BlockPosition, old: u32, new: u32) -> Result<()> {
         self.preflight_transition(p, old, new)?;
+        if let Some(kind) = furnace_kind(new) {
+            self.entries.remove(&p);
+            if let Some(e) = self.furnaces.get_mut(&p) {
+                if e.kind() == kind {
+                    e.image.state = new;
+                    return Ok(());
+                }
+            }
+            self.furnaces.insert(p, NativeFurnace::new(p, new, kind));
+            return Ok(());
+        }
+        self.furnaces.remove(&p);
         match container_kind(new) {
             Some(kind) => {
                 if let Some(e) = self.entries.get_mut(&p) {
@@ -326,6 +433,15 @@ impl NativeBlockEntities {
                 },
             );
         }
+        for image in saved.furnaces {
+            let p = image.position;
+            ensure!(
+                !next.entries.contains_key(&p) && !next.furnaces.contains_key(&p),
+                "duplicate furnace/container position"
+            );
+            ensure!(block(p) == image.state, "saved furnace world state differs");
+            next.furnaces.insert(p, NativeFurnace::from_image(image)?);
+        }
         for (p, t) in saved.rechecks {
             next.entries
                 .get_mut(&p)
@@ -341,9 +457,13 @@ impl NativeBlockEntities {
                 s.encode_canonical()?;
             }
         }
+        for e in self.furnaces.values() {
+            e.validate()?;
+        }
         Ok(SavedNativeBlockEntities {
             format: "mc121-native-containers-v1".into(),
             entries: self.images(),
+            furnaces: self.furnace_images(),
             rechecks: self
                 .entries
                 .iter()
@@ -352,6 +472,19 @@ impl NativeBlockEntities {
         })
     }
     pub fn load_nbt(&mut self, p: BlockPosition, state: u32, tag: Tag) -> Result<()> {
+        if furnace_kind(state).is_some() {
+            let entry = NativeFurnace::from_nbt(p, state, tag)?;
+            ensure!(
+                !self.entries.contains_key(&p),
+                "furnace import overlaps another container owner"
+            );
+            self.furnaces.insert(p, entry);
+            return Ok(());
+        }
+        ensure!(
+            !self.furnaces.contains_key(&p),
+            "container import overlaps a furnace owner"
+        );
         let kind = container_kind(state).context("unsupported imported container")?;
         let Tag::Compound(values) = &tag else {
             bail!("containerNBT must be compound")
@@ -766,16 +899,30 @@ impl NativeBlockEntities {
             })
             .collect()
     }
-    /// Original BlockEntity.getUpdateTag is an empty CompoundTag for chest/barrel.
+    /// Chest/barrel and furnace-family inherit the empty getUpdateTag.
     pub fn write_chunk_entities(&self, cx: i32, cz: i32, out: &mut Vec<u8>) {
         let entries = self.chunk_entities(cx, cz);
         let mut w = Writer::new();
-        w.varint(entries.len() as i32);
+        let furnaces: Vec<_> = self
+            .furnaces
+            .values()
+            .filter(|e| {
+                e.image.position.0.div_euclid(16) == cx && e.image.position.2.div_euclid(16) == cz
+            })
+            .collect();
+        w.varint((entries.len() + furnaces.len()) as i32);
         for e in entries {
             let (x, y, z) = e.image.position;
             w.u8(((x.rem_euclid(16) << 4) | z.rem_euclid(16)) as u8)
                 .i16(y as i16)
                 .varint(e.image.kind.type_id())
+                .raw(&[10, 0]);
+        }
+        for e in furnaces {
+            let (x, y, z) = e.image.position;
+            w.u8(((x.rem_euclid(16) << 4) | z.rem_euclid(16)) as u8)
+                .i16(y as i16)
+                .varint(furnace_type_id(e.kind()))
                 .raw(&[10, 0]);
         }
         out.extend_from_slice(&w.into_inner());

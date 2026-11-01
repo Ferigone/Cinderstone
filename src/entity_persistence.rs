@@ -51,6 +51,8 @@ struct WorldImage {
     changes: Vec<BlockChange>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     containers: Vec<crate::native_block_entities::ContainerImage>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    furnaces: Vec<crate::native_block_entities::FurnaceImage>,
 }
 impl WorldImage {
     fn capture(world: &RuntimeWorld) -> Result<Self> {
@@ -62,10 +64,11 @@ impl WorldImage {
             biome: flat.biome_id(),
             changes: flat.changes(),
             containers: flat.native_block_entities().images(),
+            furnaces: flat.native_block_entities().furnace_images(),
         })
     }
     fn is_canonical_unedited(&self) -> bool {
-        self.base_states == [0, 1, 10, 9] && self.biome == 39 && self.changes.is_empty() && self.containers.is_empty()
+        self.base_states == [0, 1, 10, 9] && self.biome == 39 && self.changes.is_empty() && self.containers.is_empty() && self.furnaces.is_empty()
     }
     fn validate_native_base(&self) -> Result<()> {
         ensure!(
@@ -213,6 +216,23 @@ impl NativeEntitySource {
         after.validate_item_runtime_scope()?;
         if self.pending_world.is_some() { self.pending_world=Some(after); }
         else { self.history.certified_world=Some(after); }
+        Ok(())
+    }
+    /// Observe only an owned furnace inventory/timer transaction. A matching
+    /// pre-mutation image is required even when no item entity currently exists.
+    pub fn observe_owned_furnace_change(&mut self, world: &RuntimeWorld,
+        before_images: &[crate::native_block_entities::FurnaceImage]) -> Result<()> {
+        ensure!(self.history.complete_native_items && self.history.invalidated.is_none(),
+            "furnace transaction has no valid native source owner");
+        let after = WorldImage::capture(world)?;
+        let mut before = after.clone();
+        before.furnaces = before_images.to_vec();
+        let expected = self.pending_world.as_ref().or(self.history.certified_world.as_ref());
+        ensure!(expected.is_some_and(|saved| saved == &before),
+            "furnace transaction starts from unobserved world data");
+        after.validate_item_runtime_scope()?;
+        if self.pending_world.is_some() { self.pending_world = Some(after); }
+        else { self.history.certified_world = Some(after); }
         Ok(())
     }
     pub fn requires_fluid_checkpoint(&self) -> bool {
@@ -373,12 +393,15 @@ impl NativeEntitySource {
         }
         for event in &plan.events {
             if let InteractionEvent::CreateBlockEntity(be) = event {
-                staged.native_block_entities().validate_at(be.position, be.state)?;
-                let kind=crate::native_block_entities::container_kind(be.state).context("unsupported block entity type")?;
-                ensure!(be.type_name == match kind {
-                    crate::native_block_entities::ContainerKind::Chest => "minecraft:chest",
-                    crate::native_block_entities::ContainerKind::Barrel => "minecraft:barrel",
-                }, "block entity owner identity mismatch");
+                let expected_name = if let Some(kind) = crate::native_block_entities::furnace_kind(be.state) {
+                    staged.native_block_entities().furnace_validate_at(be.position, be.state)?;
+                    crate::native_block_entities::furnace_name(kind)
+                } else {
+                    staged.native_block_entities().validate_at(be.position, be.state)?;
+                    crate::native_block_entities::container_kind(be.state)
+                        .context("unsupported block entity type")?.name()
+                };
+                ensure!(be.type_name == expected_name, "block entity owner identity mismatch");
             }
         }
         let after = WorldImage::capture(&RuntimeWorld::Fixture(staged))?;

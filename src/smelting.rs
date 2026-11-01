@@ -57,29 +57,53 @@ struct Catalog {
 impl Catalog {
     fn load() -> Result<Self> {
         let data: Data = serde_json::from_str(include_str!("../fixtures/smelting-1.21.json"))?;
-        ensure!(data.minecraft == "1.21" && data.protocol == 767, "cooking catalogue version mismatch");
+        ensure!(
+            data.minecraft == "1.21" && data.protocol == 767,
+            "cooking catalogue version mismatch"
+        );
         let mut by_input: [Vec<Option<usize>>; 3] = std::array::from_fn(|_| Vec::new());
         let mut by_id = BTreeMap::new();
         for (index, recipe) in data.recipes.iter().enumerate() {
-            ensure!(recipe.id.starts_with("minecraft:"), "unknown cooking recipe namespace");
-            ensure!(by_id.insert(recipe.id.clone(), index).is_none(), "duplicate cooking recipe ID");
+            ensure!(
+                recipe.id.starts_with("minecraft:"),
+                "unknown cooking recipe namespace"
+            );
+            ensure!(
+                by_id.insert(recipe.id.clone(), index).is_none(),
+                "duplicate cooking recipe ID"
+            );
             ensure!(recipe.cooking_time > 0, "invalid cooking duration");
-            ensure!(recipe.experience.is_finite() && recipe.experience >= 0.0, "invalid cooking experience");
+            ensure!(
+                recipe.experience.is_finite() && recipe.experience >= 0.0,
+                "invalid cooking experience"
+            );
             ensure!(!recipe.ingredient.is_empty(), "empty cooking ingredient");
-            ensure!(!recipe.result.is_empty() && inventory::item_name(recipe.result.item_id).is_some(), "invalid cooking result");
+            ensure!(
+                !recipe.result.is_empty() && inventory::item_name(recipe.result.item_id).is_some(),
+                "invalid cooking result"
+            );
             let items = &mut by_input[recipe.kind.index()];
             for item in &recipe.ingredient {
-                ensure!(*item > 0 && inventory::item_name(*item).is_some(), "unknown cooking ingredient item");
+                ensure!(
+                    *item > 0 && inventory::item_name(*item).is_some(),
+                    "unknown cooking ingredient item"
+                );
                 let item = *item as usize;
                 if items.len() <= item {
                     items.resize(item + 1, None);
                 }
-                ensure!(items[item].replace(index).is_none(), "ambiguous default cooking recipes");
+                ensure!(
+                    items[item].replace(index).is_none(),
+                    "ambiguous default cooking recipes"
+                );
             }
         }
         let mut fuel_times = Vec::new();
         for (item, duration) in data.fuels {
-            ensure!(item > 0 && inventory::item_name(item).is_some() && duration > 0, "invalid furnace fuel");
+            ensure!(
+                item > 0 && inventory::item_name(item).is_some() && duration > 0,
+                "invalid furnace fuel"
+            );
             let item = item as usize;
             if fuel_times.len() <= item {
                 fuel_times.resize(item + 1, 0);
@@ -87,15 +111,25 @@ impl Catalog {
             fuel_times[item] = duration;
         }
         for (item, remainder) in &data.remainders {
-            ensure!(inventory::item_name(*item).is_some() && inventory::item_name(*remainder).is_some(), "invalid cooking remainder");
+            ensure!(
+                inventory::item_name(*item).is_some() && inventory::item_name(*remainder).is_some(),
+                "invalid cooking remainder"
+            );
         }
-        Ok(Self { recipes: data.recipes, by_input, by_id, fuel_times, remainders: data.remainders })
+        Ok(Self {
+            recipes: data.recipes,
+            by_input,
+            by_id,
+            fuel_times,
+            remainders: data.remainders,
+        })
     }
 }
 
 fn catalog() -> Result<&'static Catalog> {
     static CATALOG: OnceLock<Result<Catalog, String>> = OnceLock::new();
-    CATALOG.get_or_init(|| Catalog::load().map_err(|error| format!("{error:#}")))
+    CATALOG
+        .get_or_init(|| Catalog::load().map_err(|error| format!("{error:#}")))
         .as_ref()
         .map_err(|error| anyhow!("invalid pinned cooking catalogue: {error}"))
 }
@@ -108,10 +142,15 @@ pub fn recipe_for(kind: CookingKind, input: &ItemStack) -> Result<Option<&'stati
     if input.is_empty() {
         return Ok(None);
     }
-    ensure!(inventory::item_name(input.item_id).is_some(), "unknown cooking input item");
+    ensure!(
+        inventory::item_name(input.item_id).is_some(),
+        "unknown cooking input item"
+    );
     let data = catalog()?;
-    Ok(data.by_input[kind.index()].get(input.item_id as usize)
-        .and_then(|index| *index).map(|index| &data.recipes[index]))
+    Ok(data.by_input[kind.index()]
+        .get(input.item_id as usize)
+        .and_then(|index| *index)
+        .map(|index| &data.recipes[index]))
 }
 
 pub fn recipe_by_id(id: &str) -> Result<Option<&'static CookingRecipe>> {
@@ -129,8 +168,15 @@ pub fn fuel_time(stack: &ItemStack) -> Result<i32> {
     if stack.is_empty() {
         return Ok(0);
     }
-    ensure!(inventory::item_name(stack.item_id).is_some(), "unknown furnace fuel item");
-    Ok(catalog()?.fuel_times.get(stack.item_id as usize).copied().unwrap_or(0))
+    ensure!(
+        inventory::item_name(stack.item_id).is_some(),
+        "unknown furnace fuel item"
+    );
+    Ok(catalog()?
+        .fuel_times
+        .get(stack.item_id as usize)
+        .copied()
+        .unwrap_or(0))
 }
 
 pub fn is_fuel(stack: &ItemStack) -> Result<bool> {
@@ -144,7 +190,12 @@ pub fn fuel_remainder(stack: &ItemStack) -> Result<ItemStack> {
     if stack.is_empty() {
         return Ok(ItemStack::empty());
     }
-    ensure!(inventory::item_name(stack.item_id).is_some(), "unknown furnace remainder item");
-    catalog()?.remainders.get(&stack.item_id)
+    ensure!(
+        inventory::item_name(stack.item_id).is_some(),
+        "unknown furnace remainder item"
+    );
+    catalog()?
+        .remainders
+        .get(&stack.item_id)
         .map_or_else(|| Ok(ItemStack::empty()), |item| ItemStack::new(*item, 1))
 }
