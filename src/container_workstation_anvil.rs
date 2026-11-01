@@ -1,6 +1,6 @@
 //! Bounded Java 1.21 AnvilMenu over its actual temporary inputs and borrowed
 //! canonical player inventory. Every host owner is staged together; on error
-//! discard that entire stage and this menu clone before publication. The result
+//! discard that entire detached stage and private menu copy before publication. The result
 //! is a derived preview, never a second output owner. See the source ledger.
 use crate::{
     container::{ClickType, ContainerClick, DroppedStack, MenuCloseContext, PlayerContainer},
@@ -8,8 +8,8 @@ use crate::{
     nbt::JavaString,
     workstations::{
         anvil::{
-            finish_anvil_take, AnvilComputationChange, AnvilContext, AnvilPlayer, AnvilState,
-            AnvilWorldAccess,
+            finish_anvil_take, AnvilComputationChange, AnvilContext, AnvilEnchantmentSession,
+            AnvilEnchantmentSnapshot, AnvilPlayer, AnvilState, AnvilWorldAccess,
         },
         menu::{
             require_component_context, MenuRemovalEvent, MenuSync, SyncEvent, WorkstationAccess,
@@ -21,7 +21,10 @@ use anyhow::{ensure, Result};
 use std::{
     collections::BTreeSet,
     fmt::Debug,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        Arc,
+    },
 };
 pub const INPUT_SLOTS: usize = 2;
 pub const RESULT_SLOT: usize = 2;
@@ -39,6 +42,7 @@ pub struct AnvilMenuToken {
 pub enum AnvilMenuAction {
     Initialize,
     Broadcast,
+    FullState,
     Rename,
     Click(ClickType),
     Close(MenuCloseContext),
@@ -58,9 +62,19 @@ pub struct AnvilPhase {
 /// binding identifies actual player + captured Level/position + menu lifetime;
 /// equal inventory contents do not establish identity. Unsupported/reentrant
 /// listeners must be rejected by preflight, not replayed against final state.
-pub trait AnvilMenuHost: AnvilContext + AnvilWorldAccess + WorkstationAccess {
+pub trait AnvilMenuHost: AnvilContext + AnvilWorldAccess + WorkstationAccess + Sized {
     type Binding: Clone + Eq + Debug;
     fn binding(&self) -> &Self::Binding;
+    /// Isolate EVERY mutable real owner: inventory, XP, player RNG, captured
+    /// world/block, drop/entity allocation, callbacks and ordered packet outbox.
+    /// A shallow Clone of live Arc/Mutex owners is not a detached transaction.
+    fn begin_stage(&self, token: AnvilMenuToken, action: AnvilMenuAction) -> Result<Self>;
+    /// Atomically validate the captured actual owner revision/token and publish
+    /// ALL staged owners. Err must publish nothing. Do not drain/send the outbox
+    /// here: dispatch it only after the outer lock/transaction and this action
+    /// have returned. The controller installs its private UI infallibly after
+    /// successful publication; no fallible work may follow that publication.
+    fn publish_stage(&mut self, staged: Self, token: AnvilMenuToken) -> Result<()>;
     fn inventory(&self) -> &PlayerInventory;
     fn inventory_mut(&mut self) -> &mut PlayerInventory;
     fn player(&self) -> Result<AnvilPlayer>;
@@ -90,6 +104,7 @@ pub trait AnvilMenuHost: AnvilContext + AnvilWorldAccess + WorkstationAccess {
 #[derive(Debug)]
 pub struct AnvilMenu<K> {
     binding: K,
+    enchantments: Option<AnvilEnchantmentSnapshot>,
     token: AnvilMenuToken,
     active: bool,
     state: AnvilState,
@@ -97,6 +112,112 @@ pub struct AnvilMenu<K> {
     drag_status: u8,
     drag_type: u8,
     drag_slots: BTreeSet<usize>,
+}
+
+/// One-shot synchronization preparation for the actual ServerPlayer.take
+/// boundary. This borrows the actual canonical inventory; it does not own a
+/// substitute player or invoke a full AnvilMenuHost/world transaction.
+pub struct AnvilInventorySyncPlan<'inventory, K> {
+    inventory: &'inventory PlayerInventory,
+    expected: AnvilMenu<K>,
+    next_sync: MenuSync,
+    next_token: AnvilMenuToken,
+    events: Vec<SyncEvent>,
+    phase: AnvilPhase,
+}
+
+/// Read-only source observations and already encoded packet events. The
+/// caller publishes packets once, in this event order, after adopting state.
+/// This is not another inventory, cursor, input or result owner.
+#[derive(Debug)]
+pub struct AnvilInventorySyncPublication {
+    pub events: Vec<SyncEvent>,
+    pub phase: AnvilPhase,
+}
+
+/// The canonical menu is exclusively held, and the actual inventory remains
+/// immutably borrowed, until commit or cancellation. All native comparison,
+/// encoding, stale-state checks and revision checks have already succeeded.
+/// Main must preflight ALL real readonly listener hooks before the first hook;
+/// after hooks begin, adoption here requires no remaining fallible work.
+pub struct ValidatedAnvilInventorySync<'menu, 'inventory, K> {
+    menu: &'menu mut AnvilMenu<K>,
+    plan: AnvilInventorySyncPlan<'inventory, K>,
+}
+
+impl<'inventory, K: Clone + Eq + Debug> AnvilInventorySyncPlan<'inventory, K> {
+    pub fn events(&self) -> &[SyncEvent] {
+        &self.events
+    }
+    pub fn phase(&self) -> &AnvilPhase {
+        &self.phase
+    }
+    pub fn inventory(&self) -> &'inventory PlayerInventory {
+        self.inventory
+    }
+    pub fn next_token(&self) -> AnvilMenuToken {
+        self.next_token
+    }
+
+    pub fn validate(&self, menu: &AnvilMenu<K>) -> Result<()> {
+        menu.validate_token(self.expected.token)?;
+        let same_enchantment_owner = match (&menu.enchantments, &self.expected.enchantments) {
+            (None, None) => true,
+            (Some(actual), Some(expected)) => Arc::ptr_eq(actual, expected),
+            _ => false,
+        };
+        ensure!(
+            menu.binding == self.expected.binding
+                && same_enchantment_owner
+                && menu.active == self.expected.active
+                && menu.sync == self.expected.sync
+                && menu.state.inputs() == self.expected.state.inputs()
+                && menu.state.preview() == self.expected.state.preview()
+                && menu.state.item_name() == self.expected.state.item_name()
+                && menu.drag_status == self.expected.drag_status
+                && menu.drag_type == self.expected.drag_type
+                && menu.drag_slots == self.expected.drag_slots,
+            "retained anvil state changed during inventory sync preparation"
+        );
+        // inventory is the same immutable borrow captured before preparation;
+        // no caller can replace/mutate that canonical owner while it is held.
+        Ok(())
+    }
+
+    pub fn into_validated<'menu>(
+        self,
+        menu: &'menu mut AnvilMenu<K>,
+    ) -> Result<ValidatedAnvilInventorySync<'menu, 'inventory, K>> {
+        self.validate(menu)?;
+        Ok(ValidatedAnvilInventorySync { menu, plan: self })
+    }
+}
+
+impl<'menu, 'inventory, K> ValidatedAnvilInventorySync<'menu, 'inventory, K> {
+    pub fn events(&self) -> &[SyncEvent] {
+        &self.plan.events
+    }
+    pub fn phase(&self) -> &AnvilPhase {
+        &self.plan.phase
+    }
+    pub fn inventory(&self) -> &'inventory PlayerInventory {
+        self.plan.inventory
+    }
+    pub fn next_token(&self) -> AnvilMenuToken {
+        self.plan.next_token
+    }
+
+    /// Adopt only prepared sync baselines/state ID and checked dispatch token.
+    /// No owner callback, validation, encoding, allocation or Result remains.
+    pub fn commit(self) -> AnvilInventorySyncPublication {
+        let Self { menu, plan } = self;
+        menu.sync = plan.next_sync;
+        menu.token = plan.next_token;
+        AnvilInventorySyncPublication {
+            events: plan.events,
+            phase: plan.phase,
+        }
+    }
 }
 struct ObservedContext<'a, H> {
     actual: &'a mut H,
@@ -111,6 +232,24 @@ impl<H: AnvilMenuHost> AnvilContext for ObservedContext<'_, H> {
             }
         }
         self.actual.observe_menu_phase(&self.phase)
+    }
+    fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+        self.actual.enchantment_snapshot()
+    }
+    fn validate_enchantment_snapshot(
+        &self,
+        snapshot: Option<&AnvilEnchantmentSnapshot>,
+    ) -> Result<()> {
+        self.actual.validate_enchantment_snapshot(snapshot)
+    }
+    fn begin_enchantment_merge(
+        &mut self,
+        base: &ItemStack,
+        addition: &ItemStack,
+        snapshot: &AnvilEnchantmentSnapshot,
+    ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+        self.actual
+            .begin_enchantment_merge(base, addition, snapshot)
     }
     fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
         self.actual.is_valid_repair_item(base, addition)
@@ -144,6 +283,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         };
         Ok(Self {
             binding: host.binding().clone(),
+            enchantments: host.enchantment_snapshot()?,
             token: AnvilMenuToken {
                 instance,
                 revision: 0,
@@ -159,6 +299,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
     fn staged_copy(&self) -> Self {
         Self {
             binding: self.binding.clone(),
+            enchantments: self.enchantments.clone(),
             token: self.token,
             active: self.active,
             state: self.state.clone(),
@@ -191,15 +332,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         host: &H,
         click: Option<&ContainerClick>,
     ) -> Result<()> {
-        let top = self.top();
-        for item in top
-            .iter()
-            .chain(std::iter::once(self.carried()))
-            .chain(host.inventory().slots().iter())
-            .chain(std::iter::once(host.inventory().carried()))
-        {
-            require_component_context(item)?;
-        }
+        self.require_inventory_sync_components(host.inventory())?;
         if let Some(click) = click {
             require_component_context(&click.carried)?;
             for item in click.changed_slots.values() {
@@ -208,7 +341,20 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         }
         Ok(())
     }
+    fn require_inventory_sync_components(&self, inventory: &PlayerInventory) -> Result<()> {
+        let top = self.top();
+        for item in top
+            .iter()
+            .chain(std::iter::once(self.carried()))
+            .chain(inventory.slots().iter())
+            .chain(std::iter::once(inventory.carried()))
+        {
+            require_component_context(item)?;
+        }
+        Ok(())
+    }
     fn validate_publish<H: AnvilMenuHost<Binding = K>>(&self, host: &H) -> Result<()> {
+        host.validate_enchantment_snapshot(self.enchantments.as_ref())?;
         ensure!(
             &self.binding == host.binding(),
             "anvil binding changed during callback"
@@ -247,6 +393,7 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         [self.state.preview().level_cost]
     }
     fn validate_host(&self, host: &impl AnvilMenuHost<Binding = K>) -> Result<()> {
+        host.validate_enchantment_snapshot(self.enchantments.as_ref())?;
         ensure!(
             self.active && &self.binding == host.binding(),
             "anvil player/table/menu binding changed"
@@ -259,6 +406,50 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
     }
     pub fn transfer_inventory_state(&self, window0: &mut PlayerContainer) -> Result<()> {
         self.sync.transfer_inventory_state(window0)
+    }
+    /// Literal current-menu broadcastChanges for ServerPlayer.take. This does
+    /// not initialize a new menu or consult XP, registry, repair or world owners.
+    /// The caller supplies the actual pickup's canonical inventory borrow.
+    pub fn prepare_inventory_broadcast<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.prepare_inventory_sync(inventory, false)
+    }
+    /// Retained full-state counterpart for an actual source resend owner.
+    /// It preserves the same inputs/result/name/cursor/cost/drag/lifetime.
+    pub fn prepare_inventory_full_state<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.prepare_inventory_sync(inventory, true)
+    }
+    fn prepare_inventory_sync<'inventory>(
+        &self,
+        inventory: &'inventory PlayerInventory,
+        full_state: bool,
+    ) -> Result<AnvilInventorySyncPlan<'inventory, K>> {
+        self.validate_token(self.token)?;
+        self.require_inventory_sync_components(inventory)?;
+        let mut next_token = self.token;
+        next_token.revision = next_token
+            .revision
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("anvil inventory sync revision exhausted"))?;
+        let mut next_sync = self.sync.clone();
+        let events = if full_state {
+            next_sync.broadcast_full_state(&self.top(), inventory, &self.data())?
+        } else {
+            next_sync.broadcast_changes(&self.top(), inventory, &self.data())?
+        };
+        Ok(AnvilInventorySyncPlan {
+            inventory,
+            expected: self.staged_copy(),
+            next_sync,
+            next_token,
+            events,
+            phase: self.phase(),
+        })
     }
     fn reset_drag(&mut self) {
         self.drag_status = 0;
@@ -277,30 +468,73 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
             .broadcast_changes(&self.top(), host.inventory(), &self.data())?;
         self.publish_sync(events, host)
     }
-    pub fn initialize<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+    fn transaction<H: AnvilMenuHost<Binding = K>, T>(
+        &mut self,
+        token: AnvilMenuToken,
+        action: AnvilMenuAction,
+        host: &mut H,
+        operation: impl FnOnce(&mut Self, &mut H) -> Result<T>,
+    ) -> Result<T> {
+        self.validate_token(token)?;
         self.validate_host(host)?;
         self.require_components(host, None)?;
-        host.preflight_menu_action(AnvilMenuAction::Initialize)?;
+        let mut staged = host.begin_stage(token, action)?;
+        self.validate_host(&staged)?;
+        self.require_components(&staged, None)?;
+        staged.preflight_menu_action(action)?;
+        self.validate_host(&staged)?;
         let mut next = self.staged_copy();
-        let events = next
-            .sync
-            .initialize(&next.top(), host.inventory(), &next.data())?;
-        next.publish_sync(events, host)?;
-        next.validate_publish(host)?;
+        let value = operation(&mut next, &mut staged)?;
+        next.require_components(&staged, None)?;
+        next.validate_publish(&staged)?;
+        self.validate_host(host)?;
         next.advance_revision()?;
+        // Every fallible action/callback/validation is finished. Actual owner
+        // publication is atomic; UI installation after it cannot fail.
+        host.publish_stage(staged, token)?;
         *self = next;
-        Ok(())
+        Ok(value)
+    }
+    pub fn initialize<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
+        self.transaction(
+            self.token,
+            AnvilMenuAction::Initialize,
+            host,
+            |next, staged| {
+                let events = next
+                    .sync
+                    .initialize(&next.top(), staged.inventory(), &next.data())?;
+                next.publish_sync(events, staged)
+            },
+        )
     }
     pub fn broadcast_changes<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
-        self.validate_host(host)?;
-        self.require_components(host, None)?;
-        host.preflight_menu_action(AnvilMenuAction::Broadcast)?;
-        let mut next = self.staged_copy();
-        next.broadcast_inner(host)?;
-        next.validate_publish(host)?;
-        next.advance_revision()?;
-        *self = next;
-        Ok(())
+        self.transaction(
+            self.token,
+            AnvilMenuAction::Broadcast,
+            host,
+            |next, staged| next.broadcast_inner(staged),
+        )
+    }
+    /// Source broadcastFullState retains listener/change baselines and sends
+    /// the current content/data, including the spectator packet-owner path.
+    pub fn broadcast_full_state<H: AnvilMenuHost<Binding = K>>(
+        &mut self,
+        host: &mut H,
+    ) -> Result<()> {
+        self.transaction(
+            self.token,
+            AnvilMenuAction::FullState,
+            host,
+            |next, staged| {
+                let events = next.sync.broadcast_full_state(
+                    &next.top(),
+                    staged.inventory(),
+                    &next.data(),
+                )?;
+                next.publish_sync(events, staged)
+            },
+        )
     }
     pub fn set_item_name<H: AnvilMenuHost<Binding = K>>(
         &mut self,
@@ -308,20 +542,14 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         name: &JavaString,
         host: &mut H,
     ) -> Result<bool> {
-        self.validate_token(token)?;
-        self.validate_host(host)?;
-        self.require_components(host, None)?;
-        host.preflight_menu_action(AnvilMenuAction::Rename)?;
-        ensure!(self.still_valid(host)?, "anvil is no longer valid");
-        let mut next = self.staged_copy();
-        if !next.state.request_name_observed(name)? {
-            return Ok(false);
-        }
-        next.recompute(host)?;
-        next.validate_publish(host)?;
-        next.advance_revision()?;
-        *self = next;
-        Ok(true)
+        self.transaction(token, AnvilMenuAction::Rename, host, |next, staged| {
+            ensure!(next.still_valid(staged)?, "anvil is no longer valid");
+            if !next.state.request_name_observed(name)? {
+                return Ok(false);
+            }
+            next.recompute(staged)?;
+            Ok(true)
+        })
     }
     fn recompute<H: AnvilMenuHost<Binding = K>>(&mut self, host: &mut H) -> Result<()> {
         let phase = self.phase();
@@ -346,22 +574,28 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         self.validate_token(token)?;
         ensure!(click.window_id == self.window_id(), "wrong anvil window");
         ensure!(click.slot < MENU_SLOTS as i16, "invalid anvil slot");
-        self.validate_host(host)?;
+        // Prediction identity must be checked before staged click mutations.
         self.require_components(host, Some(click))?;
-        host.preflight_menu_action(AnvilMenuAction::Click(click.kind))?;
-        ensure!(self.still_valid(host)?, "anvil is no longer valid");
-        let mut next = self.staged_copy();
-        let before = next.state_id();
-        next.sync.suppress_remote_updates(true);
-        next.do_click(click, host)?;
-        let events =
-            next.sync
-                .finish_click(click, before, &next.top(), host.inventory(), &next.data())?;
-        next.publish_sync(events, host)?;
-        next.validate_publish(host)?;
-        next.advance_revision()?;
-        *self = next;
-        Ok(())
+        self.transaction(
+            token,
+            AnvilMenuAction::Click(click.kind),
+            host,
+            |next, staged| {
+                next.require_components(staged, Some(click))?;
+                ensure!(next.still_valid(staged)?, "anvil is no longer valid");
+                let before = next.state_id();
+                next.sync.suppress_remote_updates(true);
+                next.do_click(click, staged)?;
+                let events = next.sync.finish_click(
+                    click,
+                    before,
+                    &next.top(),
+                    staged.inventory(),
+                    &next.data(),
+                )?;
+                next.publish_sync(events, staged)
+            },
+        )
     }
     pub fn close<H: AnvilMenuHost<Binding = K>>(
         &mut self,
@@ -369,27 +603,26 @@ impl<K: Clone + Eq + Debug> AnvilMenu<K> {
         context: MenuCloseContext,
         host: &mut H,
     ) -> Result<()> {
-        self.validate_token(token)?;
-        self.validate_host(host)?;
-        self.require_components(host, None)?;
-        host.preflight_menu_action(AnvilMenuAction::Close(context))?;
-        let mut next = self.staged_copy();
-        next.reset_drag();
-        // removed() returns cursor first. Input removeItemNoUpdate preserves
-        // old derived preview/cost at each subsequent return/drop callback.
-        next.close_return(&mut [], context, host)?;
-        for index in 0..INPUT_SLOTS {
-            let mut input = next.state.inputs()[index].clone();
-            next.state
-                .mutate_input_in_place(index, ItemStack::empty())?;
-            next.close_return(std::slice::from_mut(&mut input), context, host)?;
-        }
-        next.state.close_inputs();
-        next.active = false;
-        next.validate_publish(host)?;
-        next.advance_revision()?;
-        *self = next;
-        Ok(())
+        self.transaction(
+            token,
+            AnvilMenuAction::Close(context),
+            host,
+            |next, staged| {
+                next.reset_drag();
+                // removed returns cursor first, then each removeItemNoUpdate input.
+                // Old derived preview/cost survive at each source return callback.
+                next.close_return(&mut [], context, staged)?;
+                for index in 0..INPUT_SLOTS {
+                    let mut input = next.state.inputs()[index].clone();
+                    next.state
+                        .mutate_input_in_place(index, ItemStack::empty())?;
+                    next.close_return(std::slice::from_mut(&mut input), context, staged)?;
+                }
+                next.state.close_inputs();
+                next.active = false;
+                Ok(())
+            },
+        )
     }
     fn close_return<H: AnvilMenuHost<Binding = K>>(
         &mut self,
@@ -1073,7 +1306,7 @@ mod tests {
         phase: AnvilPhase,
         inventory: PlayerInventory,
     }
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     struct Host {
         inventory: PlayerInventory,
         binding: u64,
@@ -1087,6 +1320,14 @@ mod tests {
         drops: Vec<DroppedStack>,
         xp: Vec<i32>,
         current: Option<AnvilPhase>,
+        enchantment_owner: Option<crate::workstations::anvil::enchantment_fixture::Owner>,
+        generation: u64,
+        base_generation: u64,
+        staged_token: Option<AnvilMenuToken>,
+        last_action: Option<AnvilMenuAction>,
+        fail_world_event: bool,
+        fail_publish: bool,
+        fail_drop: bool,
     }
     impl Host {
         fn new() -> Self {
@@ -1106,6 +1347,14 @@ mod tests {
                 drops: vec![],
                 xp: vec![],
                 current: None,
+                enchantment_owner: None,
+                generation: 0,
+                base_generation: 0,
+                staged_token: None,
+                last_action: None,
+                fail_world_event: false,
+                fail_publish: false,
+                fail_drop: false,
             }
         }
         fn record(&mut self, name: &'static str, phase: &AnvilPhase) {
@@ -1123,6 +1372,35 @@ mod tests {
         }
     }
     impl AnvilContext for Host {
+        fn enchantment_snapshot(&self) -> Result<Option<AnvilEnchantmentSnapshot>> {
+            match &self.enchantment_owner {
+                Some(owner) => owner.enchantment_snapshot(),
+                None => Ok(None),
+            }
+        }
+        fn validate_enchantment_snapshot(
+            &self,
+            snapshot: Option<&AnvilEnchantmentSnapshot>,
+        ) -> Result<()> {
+            match &self.enchantment_owner {
+                Some(owner) => owner.validate_enchantment_snapshot(snapshot),
+                None => {
+                    ensure!(snapshot.is_none(), "fixture enchantment owner disappeared");
+                    Ok(())
+                }
+            }
+        }
+        fn begin_enchantment_merge(
+            &mut self,
+            base: &ItemStack,
+            addition: &ItemStack,
+            snapshot: &AnvilEnchantmentSnapshot,
+        ) -> Result<Box<dyn AnvilEnchantmentSession>> {
+            self.enchantment_owner
+                .as_mut()
+                .ok_or_else(|| anyhow::anyhow!("fixture owner unavailable"))?
+                .begin_enchantment_merge(base, addition, snapshot)
+        }
         fn is_valid_repair_item(&mut self, base: &ItemStack, addition: &ItemStack) -> Result<bool> {
             self.world_event("repair-rule");
             Ok(
@@ -1181,6 +1459,15 @@ mod tests {
                 assert_eq!(event, 1030);
                 "event1030"
             });
+            if self.fail_world_event {
+                // This candidate already changed inventory, charged XP, drew
+                // player RNG and destroyed the final anvil before the failure.
+                assert_eq!(self.inventory.slot(44).unwrap().count, 4);
+                assert_eq!(self.xp, [-1]);
+                assert_eq!(self.draws, 1);
+                assert_eq!(self.block, -1);
+                anyhow::bail!("fixture late world callback failure");
+            }
             Ok(())
         }
     }
@@ -1188,6 +1475,36 @@ mod tests {
         type Binding = u64;
         fn binding(&self) -> &u64 {
             &self.binding
+        }
+        fn begin_stage(&self, token: AnvilMenuToken, action: AnvilMenuAction) -> Result<Self> {
+            // All mutable fixture owners are owned values. The shared Arc
+            // holder references are immutable registry fixture data only.
+            let mut stage = self.clone();
+            stage.base_generation = self.generation;
+            stage.staged_token = Some(token);
+            stage.last_action = Some(action);
+            Ok(stage)
+        }
+        fn publish_stage(&mut self, mut staged: Self, token: AnvilMenuToken) -> Result<()> {
+            ensure!(
+                staged.staged_token == Some(token) && staged.base_generation == self.generation,
+                "stale fixture real-owner stage"
+            );
+            if self.fail_publish {
+                assert_eq!(staged.inventory.slot(44).unwrap().count, 4);
+                assert_eq!(staged.xp, [-1]);
+                assert_eq!(staged.draws, 1);
+                assert_eq!(staged.block, -1);
+                assert!(
+                    staged.sync.len() > self.sync.len(),
+                    "candidate packet outbox was staged"
+                );
+                anyhow::bail!("fixture late atomic publish failure");
+            }
+            staged.generation = self.generation.checked_add(1).unwrap();
+            staged.staged_token = None;
+            *self = staged;
+            Ok(())
         }
         fn inventory(&self) -> &PlayerInventory {
             &self.inventory
@@ -1242,6 +1559,12 @@ mod tests {
         fn stage_drop(&mut self, stack: DroppedStack, phase: &AnvilPhase) -> Result<()> {
             self.record("drop", phase);
             self.drops.push(stack);
+            if self.fail_drop {
+                assert_eq!(self.xp, [-1]);
+                assert_eq!(self.draws, 1);
+                assert_eq!(self.block, -1);
+                anyhow::bail!("fixture post-drop callback failure");
+            }
             Ok(())
         }
         fn quickcraft_iteration_order(&self, selected: &[usize]) -> Result<Vec<usize>> {
@@ -1268,10 +1591,6 @@ mod tests {
         button: i8,
         kind: ClickType,
     ) -> Result<()> {
-        // This test host demonstrates the mandatory whole-owner stage: errors
-        // publish neither native menu nor inventory/XP/RNG/block side effects.
-        let mut staged_menu = menu.staged_copy();
-        let mut staged_host = host.clone();
         let packet = ContainerClick {
             window_id: menu.window_id(),
             state_id: menu.state_id(),
@@ -1281,17 +1600,10 @@ mod tests {
             changed_slots: BTreeMap::new(),
             carried: ItemStack::empty(),
         };
-        staged_menu.click(menu.token(), &packet, &mut staged_host)?;
-        *menu = staged_menu;
-        *host = staged_host;
-        Ok(())
+        menu.click(menu.token(), &packet, host)
     }
     fn rename(menu: &mut AnvilMenu<u64>, host: &mut Host, name: &str) -> Result<()> {
-        let mut staged_menu = menu.staged_copy();
-        let mut staged_host = host.clone();
-        assert!(staged_menu.set_item_name(menu.token(), &name.into(), &mut staged_host)?);
-        *menu = staged_menu;
-        *host = staged_host;
+        assert!(menu.set_item_name(menu.token(), &name.into(), host)?);
         Ok(())
     }
     fn renamed_stack(count: i32) -> Result<(AnvilMenu<u64>, Host)> {
@@ -1627,6 +1939,119 @@ mod tests {
         Ok(())
     }
     #[test]
+    fn owned_book_combination_forwards_snapshot_and_commits_existing_cursor_xp_flow() -> Result<()>
+    {
+        use crate::workstations::anvil::enchantment_fixture::{enchanted, entries, id, Owner};
+        let mut host = Host::new();
+        host.enchantment_owner = Some(Owner::new());
+        host.inventory.set_slot_authoritative(
+            9,
+            enchanted(item("iron_sword", 1), &[("sharpness", 2)], false),
+        );
+        host.inventory.set_slot_authoritative(
+            10,
+            enchanted(item("enchanted_book", 1), &[("sharpness", 2)], true),
+        );
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        click(&mut menu, &mut host, 3, 0, ClickType::QuickMove)?;
+        click(&mut menu, &mut host, 4, 0, ClickType::QuickMove)?;
+        assert_eq!(menu.state().preview().level_cost, 3);
+        assert_eq!(
+            host.draws, 0,
+            "preview/enchantment merging consumes no player RNG"
+        );
+        assert_eq!(
+            entries(&menu.state().preview().stack)?,
+            (vec![(id("sharpness"), 3)], false)
+        );
+        let token = menu.token();
+        let events = host.events.len();
+        host.enchantment_owner.as_mut().unwrap().epoch += 1;
+        assert!(menu.broadcast_changes(&mut host).is_err());
+        assert_eq!(menu.token(), token);
+        assert_eq!(host.events.len(), events);
+        host.enchantment_owner.as_mut().unwrap().epoch -= 1;
+        click(&mut menu, &mut host, 2, 0, ClickType::Pickup)?;
+        assert_eq!(host.xp, [-3]);
+        assert_eq!(host.draws, 1);
+        assert_eq!(entries(menu.carried())?.0, vec![(id("sharpness"), 3)]);
+        assert!(menu.state().inputs().iter().all(ItemStack::is_empty));
+        // A previously absent capability cannot appear under an open basic UI.
+        let mut host = Host::new();
+        let mut basic = AnvilMenu::new(7, &host)?;
+        host.enchantment_owner = Some(Owner::new());
+        assert!(basic.initialize(&mut host).is_err());
+        Ok(())
+    }
+    #[test]
+    fn detached_transaction_rolls_back_late_world_publish_and_drop_failures() -> Result<()> {
+        // Direct PUBLIC actions: there is no outer cloned-menu rescue/reset.
+        // The restricted fixture deep-stages every mutable field, then injects
+        // failures after source XP/RNG/world/inventory/outbox effects occurred.
+        for fail_publish in [false, true] {
+            let (mut menu, mut host) = renamed_stack(4)?;
+            host.block = 2;
+            host.random = 0.0;
+            host.fail_world_event = !fail_publish;
+            host.fail_publish = fail_publish;
+            let before = (format!("{menu:?}"), format!("{host:?}"));
+            assert!(click(&mut menu, &mut host, 2, 0, ClickType::QuickMove).is_err());
+            assert_eq!((format!("{menu:?}"), format!("{host:?}")), before);
+            host.fail_world_event = false;
+            host.fail_publish = false;
+            click(&mut menu, &mut host, 2, 0, ClickType::QuickMove)?;
+            assert_eq!(host.inventory.slot(44).unwrap().count, 4);
+            assert_eq!(host.xp, [-1]);
+            assert_eq!(host.draws, 1);
+            assert_eq!(host.block, -1);
+            assert!(menu.state().inputs().iter().all(ItemStack::is_empty));
+        }
+        let (mut menu, mut host) = renamed_stack(4)?;
+        host.block = 2;
+        host.random = 0.0;
+        host.fail_drop = true;
+        let before = (format!("{menu:?}"), format!("{host:?}"));
+        assert!(click(&mut menu, &mut host, 2, 0, ClickType::Throw).is_err());
+        assert_eq!((format!("{menu:?}"), format!("{host:?}")), before);
+        Ok(())
+    }
+    #[test]
+    fn full_state_resend_uses_transaction_and_retains_listener_baselines() -> Result<()> {
+        let mut host = Host::new();
+        let mut menu = AnvilMenu::new(7, &host)?;
+        menu.initialize(&mut host)?;
+        host.sync.clear();
+        host.events.clear();
+        host.inventory.set_slot_authoritative(9, item("stone", 3));
+        let generation = host.generation;
+        let before = menu.token();
+        menu.broadcast_full_state(&mut host)?;
+        assert!(matches!(host.last_action, Some(AnvilMenuAction::FullState)));
+        assert_eq!(host.generation, generation + 1);
+        assert_ne!(menu.token(), before);
+        assert!(host
+            .sync
+            .iter()
+            .any(|event| matches!(event, SyncEvent::SlotListener { menu_slot: 3, .. })));
+        assert!(host
+            .sync
+            .iter()
+            .any(|event| matches!(event,SyncEvent::Packet(packet) if packet.id==0x13)));
+        assert!(host
+            .sync
+            .iter()
+            .any(|event| matches!(event,SyncEvent::Packet(packet) if packet.id==0x14)));
+        host.sync.clear();
+        menu.broadcast_changes(&mut host)?;
+        assert!(
+            host.sync.is_empty(),
+            "full state retained local and remote baselines"
+        );
+        assert!(host.xp.is_empty() && host.draws == 0 && host.drops.is_empty());
+        Ok(())
+    }
+    #[test]
     fn unsupported_enchantment_transfer_discards_entire_actual_host_stage() -> Result<()> {
         let mut host = Host::new();
         host.inventory
@@ -1649,6 +2074,169 @@ mod tests {
         assert!(host.xp.is_empty());
         assert_eq!(host.draws, 0);
         assert!(host.events.iter().all(|e| e.inventory.slots().len() == 46));
+        Ok(())
+    }
+
+    #[test]
+    fn pickup_inventory_sync_prepares_packets_then_adopts_only_retained_baselines() -> Result<()> {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        // This retained cursor/drag may already exist when an ItemEntity calls
+        // ServerPlayer.take. A broadcast must not construct/reset the menu.
+        menu.sync.set_carried(item("diamond", 2));
+        menu.drag_status = 1;
+        menu.drag_type = 1;
+        menu.drag_slots.insert(3);
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        host.inventory.set_carried_authoritative(item("emerald", 1));
+        let actual_host = format!("{host:?}");
+        let state = format!("{:?}", menu.state);
+        let before_menu = format!("{menu:?}");
+        let before_token = menu.token();
+        let before_state_id = menu.state_id();
+        let plan = menu.prepare_inventory_broadcast(&host.inventory)?;
+        assert_eq!(format!("{menu:?}"), before_menu);
+        assert!(std::ptr::eq(plan.inventory(), &host.inventory));
+        assert_eq!(plan.phase().result_preview.count, 4);
+        assert_eq!(plan.phase().carried, item("diamond", 2));
+        assert!(plan.events().iter().any(|event| matches!(event,
+            SyncEvent::SlotListener { menu_slot: 3, player_slot: Some(9), stack }
+                if stack == &item("apple", 3))));
+        let packet = plan
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet)
+                    if packet.id == 0x15 && packet.payload.first() == Some(&menu.window_id()) =>
+                {
+                    Some(packet.clone())
+                }
+                _ => None,
+            })
+            .expect("actual retained inventory slot packet");
+        let mut reader = crate::protocol::Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, menu.window_id());
+        assert_eq!(reader.varint()?, (before_state_id + 1) & 32767);
+        assert_eq!(reader.i16()?, 3);
+        assert_eq!(
+            ItemStack::decode_exact(reader.remaining())?,
+            item("apple", 3)
+        );
+        let capability = plan.into_validated(&mut menu)?;
+        assert_eq!(capability.menu.token(), before_token); // not adopted yet
+        let mut observed = Vec::new();
+        // Actual Main must preflight its concrete listeners first. These
+        // native readonly observations exercise the no-Host capability path.
+        for event in capability.events() {
+            if let SyncEvent::SlotListener {
+                player_slot: Some(slot),
+                ..
+            } = event
+            {
+                observed.push((*slot, capability.inventory().slot(*slot).unwrap().clone()));
+            }
+        }
+        assert!(observed.contains(&(9, item("apple", 3))));
+        let next_token = capability.next_token();
+        let publication = capability.commit(); // deliberately no Result/hook
+        assert_eq!(menu.token(), next_token);
+        assert_ne!(menu.token(), before_token);
+        assert_eq!(format!("{:?}", menu.state), state);
+        assert_eq!((menu.drag_status, menu.drag_type), (1, 1));
+        assert_eq!(menu.drag_slots, BTreeSet::from([3]));
+        assert_eq!(menu.carried(), &item("diamond", 2));
+        assert_eq!(
+            publication.phase.level_cost,
+            menu.state.preview().level_cost
+        );
+        assert_eq!(format!("{host:?}"), actual_host); // no XP/RNG/world/host call
+        assert!(menu
+            .prepare_inventory_broadcast(&host.inventory)?
+            .events()
+            .is_empty());
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_sync_cancellation_staleness_and_preparation_failure_publish_nothing() -> Result<()>
+    {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        let before = format!("{menu:?}");
+        let plan = menu.prepare_inventory_broadcast(&host.inventory)?;
+        assert!(!plan.events().is_empty());
+        drop(plan);
+        assert_eq!(format!("{menu:?}"), before);
+        {
+            let capability = menu
+                .prepare_inventory_broadcast(&host.inventory)?
+                .into_validated(&mut menu)?;
+            drop(capability); // Main listener preflight refused before any hook
+        }
+        assert_eq!(format!("{menu:?}"), before);
+
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        menu.prepare_inventory_full_state(&host.inventory)?
+            .into_validated(&mut menu)?
+            .commit();
+        let committed = format!("{menu:?}");
+        assert!(stale.into_validated(&mut menu).is_err());
+        assert_eq!(format!("{menu:?}"), committed);
+
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        let mut reopened = AnvilMenu::new(menu.window_id(), &host)?;
+        assert!(stale.into_validated(&mut reopened).is_err());
+        let stale = menu.prepare_inventory_broadcast(&host.inventory)?;
+        menu.sync.suppress_remote_updates(true); // unexpected retained-sync drift
+        assert!(stale.into_validated(&mut menu).is_err());
+        menu.sync.suppress_remote_updates(false);
+
+        let mut food = item("mushroom_stew", 1);
+        let wire = food.effective_component_bytes(20).unwrap().to_vec();
+        food.components.push(Component {
+            type_id: 20,
+            data: wire,
+        });
+        host.inventory.set_slot_authoritative(9, food);
+        let before = format!("{menu:?}");
+        assert!(menu.prepare_inventory_broadcast(&host.inventory).is_err());
+        assert_eq!(format!("{menu:?}"), before);
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        menu.token.revision = u64::MAX;
+        let before = format!("{menu:?}");
+        assert!(menu.prepare_inventory_broadcast(&host.inventory).is_err());
+        assert_eq!(format!("{menu:?}"), before);
+        Ok(())
+    }
+
+    #[test]
+    fn inventory_full_state_sync_retains_name_cost_cursor_and_incremental_baseline() -> Result<()> {
+        let (mut menu, mut host) = renamed_stack(4)?;
+        menu.sync.set_carried(item("diamond", 2));
+        host.inventory.set_slot_authoritative(9, item("apple", 3));
+        let state = format!("{:?}", menu.state);
+        let plan = menu.prepare_inventory_full_state(&host.inventory)?;
+        let content = plan
+            .events()
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .expect("retained full content packet");
+        let mut reader = crate::protocol::Reader::new(&content.payload);
+        assert_eq!(reader.u8()?, menu.window_id());
+        assert_eq!(reader.varint()?, (menu.state_id() + 1) & 32767);
+        assert_eq!(reader.varint()?, MENU_SLOTS as i32);
+        assert!(plan.events().iter().any(|event| matches!(event,
+            SyncEvent::Packet(packet) if packet.id == 0x14)));
+        plan.into_validated(&mut menu)?.commit();
+        assert_eq!(format!("{:?}", menu.state), state);
+        assert_eq!(menu.state.item_name(), Some(&JavaString::from("Named")));
+        assert_eq!(menu.carried(), &item("diamond", 2));
+        assert!(menu
+            .prepare_inventory_broadcast(&host.inventory)?
+            .events()
+            .is_empty());
         Ok(())
     }
 }

@@ -29,6 +29,8 @@ pub enum WorkstationKind {
     Dispenser,
     Shulker,
     Brewing,
+    Beacon,
+    Lectern,
 }
 impl WorkstationKind {
     /// Original 1.21 MenuType registration IDs (protocol 767).
@@ -47,12 +49,15 @@ impl WorkstationKind {
             Self::Dispenser => 6,
             Self::Shulker => 20,
             Self::Brewing => 11,
+            Self::Beacon => 9,
+            Self::Lectern => 17,
         }
     }
     pub fn top_slots(self) -> usize {
         match self {
             Self::Loom | Self::Smithing => 4,
             Self::Stonecutter | Self::Enchanting => 2,
+            Self::Beacon | Self::Lectern => 1,
             // Nine actual inputs plus the noninteractive preview appended
             // AFTER the player inventory in CrafterMenu's slot list.
             Self::Crafter => 10,
@@ -65,6 +70,8 @@ impl WorkstationKind {
     pub fn data_slots(self) -> usize {
         match self {
             Self::Anvil | Self::Loom | Self::Stonecutter => 1,
+            Self::Lectern => 1,
+            Self::Beacon => 3,
             Self::Enchanting | Self::Crafter => 10,
             Self::Brewing => 2,
             _ => 0,
@@ -73,6 +80,9 @@ impl WorkstationKind {
     /// Actual player slot positions in this menu, not a presumed contiguous
     /// top-container offset. CrafterMenu appends its preview at slot45.
     pub fn player_slots(self) -> std::ops::Range<usize> {
+        if self == Self::Lectern {
+            return 1..1;
+        }
         let start = if self == Self::Crafter {
             9
         } else {
@@ -127,7 +137,10 @@ pub trait WorkstationAccess {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MenuSync {
     window_id: u8,
-    kind: WorkstationKind,
+    kind: Option<WorkstationKind>,
+    top_slots: usize,
+    player_slots: std::ops::Range<usize>,
+    data_slots: usize,
     state_id: i32,
     carried: ItemStack,
     last: Vec<ItemStack>,
@@ -179,25 +192,67 @@ fn require_inventory_context(inventory: &PlayerInventory) -> Result<()> {
 }
 impl MenuSync {
     pub fn new(window_id: u8, kind: WorkstationKind) -> Result<Self> {
+        Self::new_layout(
+            window_id,
+            Some(kind),
+            kind.top_slots(),
+            kind.player_slots(),
+            kind.data_slots(),
+        )
+    }
+    /// HorseInventoryMenu is constructed with a null MenuType and opened by
+    /// its dedicated packet. These columns are captured from the actual mount;
+    /// this constructor creates only synchronization baselines, not an entity.
+    pub fn new_horse_inventory(window_id: u8, columns: u8) -> Result<Self> {
+        ensure!(columns <= 5, "unsupported horse inventory column count");
+        let top_slots = 2 + 3 * usize::from(columns);
+        Self::new_layout(window_id, None, top_slots, top_slots..top_slots + 36, 0)
+    }
+    fn new_layout(
+        window_id: u8,
+        kind: Option<WorkstationKind>,
+        top_slots: usize,
+        player_slots: std::ops::Range<usize>,
+        data_slots: usize,
+    ) -> Result<Self> {
         ensure!((1..=100).contains(&window_id), "invalid workstation window");
         Ok(Self {
             window_id,
             kind,
+            top_slots,
+            player_slots: player_slots.clone(),
+            data_slots,
             state_id: 0,
             carried: ItemStack::empty(),
-            last: vec![ItemStack::empty(); kind.top_slots() + 36],
-            remote: vec![ItemStack::empty(); kind.top_slots() + 36],
+            last: vec![ItemStack::empty(); top_slots + player_slots.len()],
+            remote: vec![ItemStack::empty(); top_slots + player_slots.len()],
             remote_carried: ItemStack::empty(),
-            last_data: vec![0; kind.data_slots()],
-            remote_data: vec![0; kind.data_slots()],
+            last_data: vec![0; data_slots],
+            remote_data: vec![0; data_slots],
             suppress_remote: false,
         })
     }
     pub fn window_id(&self) -> u8 {
         self.window_id
     }
-    pub fn kind(&self) -> WorkstationKind {
+    /// None is the source's unregistered HorseInventoryMenu, never an invented
+    /// MenuType ID. Existing station layouts retain their actual kind.
+    pub fn kind(&self) -> Option<WorkstationKind> {
         self.kind
+    }
+    pub fn top_slots(&self) -> usize {
+        self.top_slots
+    }
+    pub fn player_slots(&self) -> std::ops::Range<usize> {
+        self.player_slots.clone()
+    }
+    pub fn slot_count(&self) -> usize {
+        self.last.len()
+    }
+    pub fn player_inventory_slot(&self, menu_slot: usize) -> Option<usize> {
+        self.player_slots
+            .contains(&menu_slot)
+            .then(|| 9 + menu_slot - self.player_slots.start)
     }
     pub fn state_id(&self) -> i32 {
         self.state_id
@@ -213,7 +268,12 @@ impl MenuSync {
         self.suppress_remote = suppress;
     }
     pub fn still_valid(&self, access: &impl WorkstationAccess) -> Result<bool> {
-        Ok(access.block_matches(self.kind)? && access.player_can_interact_with_block(4.0)?)
+        let kind = self.kind.ok_or_else(|| {
+            anyhow::anyhow!(
+                "horse menu validity requires the actual captured entity/container owners"
+            )
+        })?;
+        Ok(access.block_matches(kind)? && access.player_can_interact_with_block(4.0)?)
     }
     fn increment_state(&mut self) -> i32 {
         self.state_id = (self.state_id + 1) & 32767;
@@ -225,29 +285,34 @@ impl MenuSync {
         inventory: &PlayerInventory,
     ) -> Result<Vec<ItemStack>> {
         ensure!(
-            top.len() == self.kind.top_slots(),
+            top.len() == self.top_slots,
             "workstation slot count changed"
         );
-        require_inventory_context(inventory)?;
+        if !self.player_slots.is_empty() {
+            require_inventory_context(inventory)?;
+        }
         require_component_context(&self.carried)?;
         for stack in top {
             require_component_context(stack)?;
         }
-        let input_count = if self.kind == WorkstationKind::Crafter {
+        let input_count = if self.kind == Some(WorkstationKind::Crafter) {
             9
         } else {
             top.len()
         };
         let mut slots = top[..input_count].iter().map(copy).collect::<Vec<_>>();
-        slots.extend((9..45).map(|i| copy(inventory.slot(i).expect("canonical player slot"))));
-        if self.kind == WorkstationKind::Crafter {
+        slots.extend(
+            (0..self.player_slots.len())
+                .map(|offset| copy(inventory.slot(9 + offset).expect("canonical player slot"))),
+        );
+        if self.kind == Some(WorkstationKind::Crafter) {
             slots.push(copy(&top[9]));
         }
         Ok(slots)
     }
     fn check_data(&self, data: &[i32]) -> Result<()> {
         ensure!(
-            data.len() == self.kind.data_slots(),
+            data.len() == self.data_slots,
             "workstation data count changed"
         );
         Ok(())
@@ -296,7 +361,7 @@ impl MenuSync {
             self.last[slot] = copy(stack);
             out.push(SyncEvent::SlotListener {
                 menu_slot: slot,
-                player_slot: self.kind.player_inventory_slot(slot),
+                player_slot: self.player_inventory_slot(slot),
                 stack: copy(stack),
             });
         }
@@ -514,8 +579,8 @@ impl MenuSync {
     /// Preserve old menu listener and remote baselines for the actual shared
     /// inventory slots. Top slots, preview, data and cursor are never transferred.
     pub fn transfer_inventory_state(&self, player: &mut PlayerContainer) -> Result<()> {
-        for offset in 0..36 {
-            let slot = self.kind.player_slots().start + offset;
+        for offset in 0..self.player_slots.len() {
+            let slot = self.player_slots.start + offset;
             player.transfer_external_slot_state(
                 9 + offset,
                 &self.last[slot],
@@ -533,6 +598,121 @@ mod tests {
     use std::collections::BTreeMap;
     fn stone(n: i32) -> ItemStack {
         ItemStack::new(RecipeBook::vanilla().item_id("stone").unwrap(), n).unwrap()
+    }
+    #[test]
+    fn horse_layout_retains_dynamic_slots_without_a_registered_menu_type() -> Result<()> {
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, stone(8));
+        inventory.set_slot_authoritative(44, stone(9));
+        for columns in 0..=5 {
+            let top_count = 2 + 3 * usize::from(columns);
+            let mut top = vec![ItemStack::empty(); top_count];
+            top[0] = stone(1);
+            let mut sync = MenuSync::new_horse_inventory(6, columns)?;
+            assert_eq!(sync.kind(), None);
+            assert_eq!(sync.top_slots(), top_count);
+            assert_eq!(sync.player_slots(), top_count..top_count + 36);
+            assert_eq!(sync.slot_count(), top_count + 36);
+            assert_eq!(sync.player_inventory_slot(1), None);
+            assert_eq!(sync.player_inventory_slot(top_count), Some(9));
+            assert_eq!(sync.player_inventory_slot(top_count + 35), Some(44));
+            let slots = sync.snapshot(&top, &inventory)?;
+            assert_eq!(slots[top_count], stone(8));
+            assert_eq!(slots[top_count + 35], stone(9));
+            let events = sync.initialize(&top, &inventory, &[])?;
+            assert!(events.iter().any(|event| matches!(event,
+                SyncEvent::SlotListener { menu_slot, player_slot: Some(9), .. }
+                if *menu_slot == top_count)));
+            assert!(events.iter().any(|event| matches!(
+                event,
+                SyncEvent::SlotListener {
+                    menu_slot: 0,
+                    player_slot: None,
+                    ..
+                }
+            )));
+            assert!(!events
+                .iter()
+                .any(|event| matches!(event, SyncEvent::DataListener { .. })));
+            let packet = events
+                .iter()
+                .find_map(|event| match event {
+                    SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                    _ => None,
+                })
+                .unwrap();
+            let mut reader = Reader::new(&packet.payload);
+            assert_eq!(reader.u8()?, 6);
+            assert_eq!(reader.varint()?, sync.state_id());
+            assert_eq!(reader.varint()? as usize, top_count + 36);
+            assert!(sync.broadcast_changes(&top, &inventory, &[])?.is_empty());
+        }
+        assert!(MenuSync::new_horse_inventory(6, 6).is_err());
+        assert_eq!(
+            MenuSync::new(6, WorkstationKind::Stonecutter)?.kind(),
+            Some(WorkstationKind::Stonecutter)
+        );
+        Ok(())
+    }
+    #[test]
+    fn lectern_sync_has_only_book_and_page_while_beacon_retains_player_slots() -> Result<()> {
+        let mut inventory = PlayerInventory::new();
+        inventory.set_slot_authoritative(9, stone(8));
+        let mut sync = MenuSync::new(6, WorkstationKind::Lectern)?;
+        assert_eq!(sync.snapshot(&[stone(1)], &inventory)?, vec![stone(1)]);
+        let events = sync.initialize(&[stone(1)], &inventory, &[4])?;
+        assert!(events.iter().any(|event| matches!(
+            event,
+            SyncEvent::SlotListener {
+                menu_slot: 0,
+                player_slot: None,
+                ..
+            }
+        )));
+        assert!(!events.iter().any(|event| matches!(
+            event,
+            SyncEvent::SlotListener {
+                player_slot: Some(_),
+                ..
+            }
+        )));
+        let packet = events
+            .iter()
+            .find_map(|event| match event {
+                SyncEvent::Packet(packet) if packet.id == 0x13 => Some(packet),
+                _ => None,
+            })
+            .unwrap();
+        let mut reader = Reader::new(&packet.payload);
+        assert_eq!(reader.u8()?, 6);
+        assert_eq!(reader.varint()?, sync.state_id());
+        assert_eq!(reader.varint()?, 1);
+        let (book, used) = ItemStack::decode(reader.remaining())?;
+        reader.bytes(used)?;
+        assert_eq!(book, stone(1));
+        assert!(ItemStack::decode_exact(reader.remaining())?.is_empty());
+        inventory.set_slot_authoritative(9, stone(9));
+        assert!(sync
+            .broadcast_changes(&[stone(1)], &inventory, &[4])?
+            .is_empty());
+        let mut player = PlayerContainer::from_inventory(inventory.clone());
+        sync.transfer_inventory_state(&mut player)?;
+        let mut beacon = MenuSync::new(7, WorkstationKind::Beacon)?;
+        assert_eq!(beacon.snapshot(&[stone(1)], &inventory)?.len(), 37);
+        assert_eq!(WorkstationKind::Beacon.player_inventory_slot(1), Some(9));
+        assert_eq!(WorkstationKind::Beacon.player_inventory_slot(36), Some(44));
+        assert_eq!(WorkstationKind::Lectern.player_inventory_slot(1), None);
+        assert_eq!(WorkstationKind::Beacon.protocol_id(), 9);
+        assert_eq!(WorkstationKind::Lectern.protocol_id(), 17);
+        assert_eq!(
+            beacon
+                .initialize(&[stone(1)], &inventory, &[1, 2, 3])?
+                .iter()
+                .filter(|event| matches!(event, SyncEvent::DataListener { .. }))
+                .count(),
+            3
+        );
+        Ok(())
     }
     #[test]
     fn unresolved_food_identity_cannot_mutate_sync_prediction_or_close() -> Result<()> {

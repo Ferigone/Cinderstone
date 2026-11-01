@@ -236,3 +236,27 @@ the reduced carried stack for right click. A focused regression verifies those
 snapshots, the exact owned drop, unchanged block inputs/derived preview and item
 conservation for both buttons. The actual Item/RNG/world drop owner still belongs
 to central integration.
+
+
+## Native imported disabled-slot removal capacity
+
+`Slot.tryRemove` (`crq.a(int,int,Player)`, offsets12–34) refuses removal when
+`allowModification` (`mayPickup && mayPlace(current)`) is false and the
+proposed destination maximum is smaller than the whole current stack. The
+noninteractive preview is already rejected by mayPickup. An occupied disabled
+input must also retain this capacity guard before any split/dirty callback.
+
+Normal vanilla NBT restore and the native `restore`/setter paths prevent an
+occupied disabled slot. The public native `CrafterState` Serde deserializer can
+nevertheless import that state, and the controller currently admits it. The
+focused regression explicitly uses that native import route with two dirt,
+max-stack-size99 and matching cursor98. PICKUP_ALL cannot take one into the
+remaining capacity; it emits no dirty/drop operation. Ordinary PICKUP still
+runs its final dirty/broadcast on the unchanged slot. With capacity for both
+items, ordinary PICKUP retains the inherited `!mayPlace && sameComponents`
+matching-removal branch (`cpu`, offsets1014–1062): remove first, grow cursor,
+onTake/dirty, then final dirty/broadcast. It permits the two-item removal and
+empty-slot auto-enable; refusing every disabled source would be incorrect.
+The regression checks cursor97 at removal and cursor99 at the final callbacks.
+This is a native API
+import-boundary check, not normal vanilla loading, gameplay or Main proof.
