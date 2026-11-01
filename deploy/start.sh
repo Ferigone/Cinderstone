@@ -30,10 +30,10 @@ mkdir -p -- "$MC_DATA_DIR"
 # exec leaves no shell between tini and the server's graceful signal handler.
 # Offline access requires the explicit MC_ONLINE_MODE=false setting.
 exec /app/mc121-rust \
-    "$@" \
     --bind "$MC_BIND" \
     --port "$MC_PORT" \
     --fixtures /app/fixtures/configuration.json \
     --world "$MC_DATA_DIR/world.json" \
     --view-distance "$MC_VIEW_DISTANCE" \
-    --difficulty "$MC_DIFFICULTY"
+    --difficulty "$MC_DIFFICULTY" \
+    "$@"

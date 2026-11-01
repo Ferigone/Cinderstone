@@ -16,24 +16,19 @@ Normal source files are published in the public
 `master`, with an English README and roadmap. Source archives are not committed.
 
 Railway deploys the unpinned `master` branch automatically. The preview uses a
-persistent `/data` volume and one replica. The Trixie image supplies the OpenSSL
-version required when online authentication is enabled. The last verified release
-reached Railway `SUCCESS` and `Online`; its native startup event confirmed
-Minecraft 1.21, protocol 767, online mode and listening on `0.0.0.0:25565`.
+persistent `/data` volume and one replica. The deployment with offline-account
+support reached `SUCCESS`; its native startup event confirms Minecraft 1.21,
+protocol 767, `mode=offline` and listening on `0.0.0.0:25565`. A subsequent live
+`play_join` event confirms a player reached the game in this mode.
 
-Preview address: **`hopper.proxy.rlwy.net:24418`**. Use a stock Minecraft Java
-**1.21** client. An update to accept offline accounts is being deployed with
-`MC_ONLINE_MODE=false`; its deployment and offline join still need verification.
-Once active, the preview will not require a Mojang session or a valid Java account.
-The image default remains `MC_ONLINE_MODE=true`. Offline mode does not authenticate
-nicknames, and its name-derived UUIDs do not automatically reuse existing online
-player data. The
-[deployment observation](validation/railway-preview.json) records the verified
-scope of the earlier online-mode release. An external status probe from the development environment could not
-resolve the proxy hostname (`EAI_AGAIN`), so a public status/pong response and a
-complete real-account login remain unverified. Hosting does not establish full
-vanilla gameplay compatibility. Player-data persistence across a public redeploy
-also remains to be verified with an actual online session.
+Preview address: **`hopper.proxy.rlwy.net:24418`**. Use a Minecraft Java **1.21**
+client. The preview runs with `MC_ONLINE_MODE=false`, without Mojang session
+verification. The image default remains `MC_ONLINE_MODE=true`. Offline nicknames
+are not authenticated, and name-derived UUIDs do not automatically reuse existing
+online player data. See the [deployment observation](validation/railway-preview.json).
+The development environment's direct external status/pong probe still fails DNS
+resolution; the live join was observed in deployment logs. Hosting and a successful
+join do not establish complete vanilla gameplay compatibility.
 
 ## Current integration check
 
@@ -41,7 +36,7 @@ The offline-login change passed a focused local client flow with public bind
 `0.0.0.0`: status/pong, unauthenticated PLAY login, the expected name-derived UUID,
 no online-authentication challenge and graceful shutdown. Invalid mode
 combinations were rejected. See [offline flow report](validation/offline-preview-flow.json).
-Railway deployment of this change is pending.
+The Railway deployment and a live PLAY join are also confirmed.
 
 The bucket fluid/redstone callback-ownership correction passed Rust type checking
 and a direct optimized release build. The limited native client flow completed

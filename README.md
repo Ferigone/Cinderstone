@@ -99,8 +99,8 @@ For a public server that accepts offline accounts:
 ```
 
 Public preview: **`hopper.proxy.rlwy.net:24418`**, using an unchanged Minecraft
-Java **1.21** client. An offline-mode update is being deployed for this preview;
-once active, a Mojang session or valid Java account is not required. Railway keeps
+Java **1.21** client. The preview accepts offline accounts: a Mojang session or
+valid Java account is not required. Railway keeps
 the world on persistent storage and deploys updates from `master`. See
 [operational status](docs/CURRENT_WORK.md) for deployment verification.
 
