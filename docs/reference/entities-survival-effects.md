@@ -178,6 +178,12 @@ The remaining instance forwarding callbacks, serialization/codecs, ordering,
 equality/hash and presentation APIs are outside this bounded implementation.
 No whole delivery or Main integration is claimed.
 
+Published effect draft: [PR #7](https://github.com/Ferigone/Cinderstone/pull/7).
+The [canonical per-instance status](https://github.com/Ferigone/Cinderstone/blob/teams/entities-survival/es-20261101-1425-a7c3/living-damage/docs/coordination/status/es-20261101-1425-a7c3.md)
+lives on the related damage branch ([PR #8](https://github.com/Ferigone/Cinderstone/pull/8)).
+One shared status location keeps the two independent source PRs from both
+adding the same status path. Actual issue/queue handoffs are linked there.
+
 ## Focused validation
 
 The dependency-free namespace compiles directly with Rust 1.85.1 using
@@ -186,6 +192,18 @@ stronger-shorter promotion, hidden-only update, Java copy versus snapshot,
 infinite tick arguments, synchronous removal/error prefixes, exhausted blend
 and post-countdown blending. This is callable component validation; there is no
 connected-player, production Main, damage or mob runtime result.
+
+Publication follow-up exposes `effects` through the actual native library.
+An isolated exact-source composition of both published stages onto master
+`f40d8bf066ecb446b46a66e1d6d9465ffb233d6e` passed full Main compiler check and
+focused `effects::`, `damage`, `combat::` native checks with Rust1.99.1 and the
+unchanged lockfile. After master advanced to connection-transport source
+`1e726940db75ea1bd9c6ece3f03f4886ef1b3a90`, that paired source overlay applied
+cleanly and passed full Main compiler check there too. Existing unrelated
+warnings remain. No master merge or native actor/world invocation is claimed.
+Effects must join the central operation/output sequence; actual connection send
+counting and safe frame writes stay with the connection task, and terminal
+closure between frames does not roll back prior gameplay mutations.
 
 The final status record supplies the exact implementation commit and any
 validation output identity. Comprehensive conformance is deferred.
