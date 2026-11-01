@@ -1,0 +1,61 @@
+# Required gate for pull requests and master (WP-P1, issue #17).
+# Railway redeploys every push to master, so nothing here may depend on the
+# proprietary Java server JAR, credentials or a deployed world volume.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  hygiene:
+    name: repository hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: AGENTS.md hygiene and fixed-checklist integrity
+        run: python3 .github/scripts/repo_hygiene.py
+
+  build:
+    name: cargo check and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the Dockerfile's Rust toolchain
+        run: |
+          version=$(sed -n 's/^FROM rust:\([0-9][0-9.]*\)-.*/\1/p' Dockerfile | head -n1)
+          test -n "$version"
+          echo "RUST_VERSION=$version" >> "$GITHUB_ENV"
+          rustup toolchain install "$version" --profile minimal
+          rustup default "$version"
+          cargo --version
+      - name: Cache cargo registry and build output
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - name: Compile library and server
+        run: cargo check --locked --bins --lib
+      - name: Compile every target (tests, tools included by the binary)
+        run: cargo check --locked --all-targets
+      - name: Library tests
+        run: cargo test --locked --lib
+      - name: Server binary tests
+        run: cargo test --locked --bin mc121-rust
