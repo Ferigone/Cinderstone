@@ -108,6 +108,7 @@ struct Options {
     bind: IpAddr,
     port: u16,
     allow_offline: bool,
+    allow_public_offline: bool,
     online_mode: bool,
     fixtures: PathBuf,
     world: PathBuf,
@@ -123,6 +124,7 @@ impl Options {
             bind: IpAddr::V4(Ipv4Addr::LOCALHOST),
             port: 25565,
             allow_offline: false,
+            allow_public_offline: false,
             online_mode: false,
             fixtures: "fixtures/configuration.json".into(),
             world: "runtime/world.json".into(),
@@ -137,12 +139,16 @@ impl Options {
                 options.allow_offline = true;
                 continue;
             }
+            if argument == "--allow-public-offline" {
+                options.allow_public_offline = true;
+                continue;
+            }
             if argument == "--online-mode" {
                 options.online_mode = true;
                 continue;
             }
             if argument == "--help" {
-                println!("mc121-rust (--online-mode | --allow-offline) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6]");
+                println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6]");
                 std::process::exit(0);
             }
             let value = args
@@ -165,11 +171,14 @@ impl Options {
                 _ => bail!("unknown option {argument}"),
             }
         }
+        if options.allow_public_offline && !options.allow_offline {
+            bail!("--allow-public-offline requires --allow-offline");
+        }
         if options.allow_offline == options.online_mode {
             bail!("select exactly one login mode: --online-mode or --allow-offline");
         }
-        if options.allow_offline && !options.bind.is_loopback() {
-            bail!("the unauthenticated fixture server may bind only to a loopback address");
+        if options.allow_offline && !options.bind.is_loopback() && !options.allow_public_offline {
+            bail!("public offline access requires explicit --allow-public-offline");
         }
         if !(2..=6).contains(&options.view_distance) {
             bail!("view distance must be 2..=6");
@@ -2458,7 +2467,7 @@ async fn main() -> Result<()> {
     println!(
         "{}",
         json!({"event":"listening","address":listener.local_addr()?.to_string(),
-        "minecraft":"1.21","protocol":PROTOCOL,"mode":if server.options.online_mode {"online"} else {"offline-loopback"}})
+        "minecraft":"1.21","protocol":PROTOCOL,"mode":if server.options.online_mode {"online"} else if server.options.bind.is_loopback() {"offline-loopback"} else {"offline"}})
     );
     let mut ticks = time::interval_at(Instant::now() + TICK_DURATION, TICK_DURATION);
     ticks.set_missed_tick_behavior(time::MissedTickBehavior::Burst);

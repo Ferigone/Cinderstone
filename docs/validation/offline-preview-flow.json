@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "scope": "Explicit public-bind offline login and entrypoint mode configuration",
+  "checks": {
+    "invalid_or_unapproved_public_modes_rejected": true,
+    "public_offline_listening": true,
+    "status_and_pong": true,
+    "unverified_client_reached_play": true,
+    "name_derived_uuid": true,
+    "no_online_authentication_challenge": true,
+    "graceful_shutdown": true
+  },
+  "full_vanilla_parity": false,
+  "completed_at": "2026-11-01T02:30:00.502Z",
+  "binary_sha256": "85b09d61c2f4d82d70b523ff29a6f8f852916efd865b86aca28cfcbaddef0ce0"
+}

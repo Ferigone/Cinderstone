@@ -76,8 +76,9 @@ For a local offline development session:
 ./target/release/mc121-rust --allow-offline
 ```
 
-Connect with Minecraft Java **1.21** to `127.0.0.1:25565`. Offline mode is
-restricted to a loopback bind address.
+Connect with Minecraft Java **1.21** to `127.0.0.1:25565`. `--allow-offline`
+is restricted to a loopback bind address unless `--allow-public-offline` is
+explicitly added.
 
 For an authenticated server reachable over TCP:
 
@@ -89,11 +90,23 @@ For an authenticated server reachable over TCP:
   --world runtime/world.json
 ```
 
-Public preview: **`hopper.proxy.rlwy.net:24418`**. Connect with an unchanged
-Minecraft Java **1.21** client and a valid Java account. Railway runs the preview
-in online mode with persistent storage and deploys updates from `master`.
-The service has reached its native listening state. A complete real-account login
-still awaits verification; see [operational status](docs/CURRENT_WORK.md).
+For a public server that accepts offline accounts:
+
+```bash
+./target/release/mc121-rust \
+  --allow-offline --allow-public-offline \
+  --bind 0.0.0.0 --world runtime/world.json
+```
+
+Public preview: **`hopper.proxy.rlwy.net:24418`**, using an unchanged Minecraft
+Java **1.21** client. An offline-mode update is being deployed for this preview;
+once active, a Mojang session or valid Java account is not required. Railway keeps
+the world on persistent storage and deploys updates from `master`. See
+[operational status](docs/CURRENT_WORK.md) for deployment verification.
+
+Offline mode does not authenticate nicknames. Player UUIDs are derived from the
+name and differ from online-account UUIDs, so existing online player data is not
+automatically transferred when the login mode changes.
 
 World changes, player data and native entity checkpoints must be kept together
 for restart. Keep the world path on persistent storage when running a container.

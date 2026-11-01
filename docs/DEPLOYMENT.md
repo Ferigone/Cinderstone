@@ -43,10 +43,18 @@ can be rejected as an inconsistent save. For backups, stop the server gracefully
 and snapshot the entire volume. Deployments that reuse this volume can have a
 short interruption while the previous process saves and releases it.
 
-Public startup uses `--online-mode`, binds to `0.0.0.0`, and verifies player
-sessions through the Mojang session service over outbound HTTPS. A valid Java
-account is required. The container includes trusted CA certificates and the
-OpenSSL runtime. No Java server process or JAR is included.
+By default, startup uses `--online-mode`, binds to `0.0.0.0`, and verifies player
+sessions through the Mojang session service over outbound HTTPS. Set
+`MC_ONLINE_MODE=false` to accept offline accounts instead. The entrypoint then
+uses `--allow-offline --allow-public-offline`, explicitly allowing the public
+bind address. This mode does not require a verified Mojang session or a valid
+Java account.
+
+Offline nicknames are not authenticated: someone using the same name receives
+the same name-derived offline UUID. These UUIDs differ from online-account UUIDs;
+existing online player data is not migrated automatically when changing modes.
+The container includes trusted CA certificates and the OpenSSL runtime. No Java
+server process or JAR is included.
 
 `railway.toml` records compatible deployment settings but does not create the
 GitHub connection, TCP proxy or volume. Railway's current documentation deprecates
@@ -59,6 +67,7 @@ The image entrypoint reads the following optional environment variables:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
+| `MC_ONLINE_MODE` | `true` | `true` verifies Mojang sessions; `false` accepts offline accounts |
 | `MC_BIND` | `0.0.0.0` | Listening interface |
 | `MC_PORT` | `25565` | Internal Minecraft TCP port |
 | `MC_DATA_DIR` | `/data` | Directory containing the paired native saves |
@@ -89,8 +98,9 @@ docker run --name cinderstone --rm \
 ```
 
 Use `docker stop --time 60 cinderstone` to stop it gracefully. Connect a
-Java 1.21 client to `localhost:25565`. Local startup uses the same online
-authentication as Railway.
+Java 1.21 client to `localhost:25565`. This command uses the image's default online
+authentication. Add `-e MC_ONLINE_MODE=false` before the image name to accept
+offline accounts.
 
 The multi-stage build pins Rust 1.99.1 on Debian Trixie. It builds with
 `cargo build --locked --release`, uses system OpenSSL 3.2 or newer during compilation, and

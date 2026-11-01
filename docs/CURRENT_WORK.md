@@ -17,20 +17,31 @@ Normal source files are published in the public
 
 Railway deploys the unpinned `master` branch automatically. The preview uses a
 persistent `/data` volume and one replica. The Trixie image supplies the OpenSSL
-version required for online authentication. The current server release reached
-Railway `SUCCESS` and `Online`; its native startup event confirms Minecraft 1.21,
-protocol 767, online mode and listening on `0.0.0.0:25565`.
+version required when online authentication is enabled. The last verified release
+reached Railway `SUCCESS` and `Online`; its native startup event confirmed
+Minecraft 1.21, protocol 767, online mode and listening on `0.0.0.0:25565`.
 
 Preview address: **`hopper.proxy.rlwy.net:24418`**. Use a stock Minecraft Java
-**1.21** client with a valid Java account. The
+**1.21** client. An update to accept offline accounts is being deployed with
+`MC_ONLINE_MODE=false`; its deployment and offline join still need verification.
+Once active, the preview will not require a Mojang session or a valid Java account.
+The image default remains `MC_ONLINE_MODE=true`. Offline mode does not authenticate
+nicknames, and its name-derived UUIDs do not automatically reuse existing online
+player data. The
 [deployment observation](validation/railway-preview.json) records the verified
-scope. An external status probe from the development environment could not
+scope of the earlier online-mode release. An external status probe from the development environment could not
 resolve the proxy hostname (`EAI_AGAIN`), so a public status/pong response and a
 complete real-account login remain unverified. Hosting does not establish full
 vanilla gameplay compatibility. Player-data persistence across a public redeploy
 also remains to be verified with an actual online session.
 
 ## Current integration check
+
+The offline-login change passed a focused local client flow with public bind
+`0.0.0.0`: status/pong, unauthenticated PLAY login, the expected name-derived UUID,
+no online-authentication challenge and graceful shutdown. Invalid mode
+combinations were rejected. See [offline flow report](validation/offline-preview-flow.json).
+Railway deployment of this change is pending.
 
 The bucket fluid/redstone callback-ownership correction passed Rust type checking
 and a direct optimized release build. The limited native client flow completed

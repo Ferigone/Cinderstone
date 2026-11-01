@@ -6,6 +6,13 @@ set -eu
 : "${MC_DATA_DIR:=/data}"
 : "${MC_VIEW_DISTANCE:=2}"
 : "${MC_DIFFICULTY:=easy}"
+: "${MC_ONLINE_MODE:=true}"
+
+case "$MC_ONLINE_MODE" in
+    true) set -- --online-mode "$@" ;;
+    false) set -- --allow-offline --allow-public-offline "$@" ;;
+    *) echo "MC_ONLINE_MODE must be true or false" >&2; exit 1 ;;
+esac
 
 case "$MC_PORT" in
     ''|*[!0-9]*) echo "MC_PORT must be an integer from 1 to 65535" >&2; exit 1 ;;
@@ -21,13 +28,12 @@ esac
 mkdir -p -- "$MC_DATA_DIR"
 
 # exec leaves no shell between tini and the server's graceful signal handler.
-# Public deployment always verifies Java account sessions; no offline fallback.
+# Offline access requires the explicit MC_ONLINE_MODE=false setting.
 exec /app/mc121-rust \
-    --online-mode \
+    "$@" \
     --bind "$MC_BIND" \
     --port "$MC_PORT" \
     --fixtures /app/fixtures/configuration.json \
     --world "$MC_DATA_DIR/world.json" \
     --view-distance "$MC_VIEW_DISTANCE" \
-    --difficulty "$MC_DIFFICULTY" \
-    "$@"
+    --difficulty "$MC_DIFFICULTY"

@@ -45,6 +45,7 @@ ENV MC_BIND=0.0.0.0 \
     MC_PORT=25565 \
     MC_DATA_DIR=/data \
     MC_VIEW_DISTANCE=2 \
+    MC_ONLINE_MODE=true \
     MC_DIFFICULTY=easy
 EXPOSE 25565/tcp
 # Persistent /data is mounted by Railway service configuration.
