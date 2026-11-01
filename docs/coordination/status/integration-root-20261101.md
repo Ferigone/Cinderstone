@@ -35,6 +35,13 @@ when comments or PR writes are unavailable; no shared credentials are published.
 
 ## Integration contracts
 
+Team 4 has an explicit current grant in
+[assignments/entities-survival.md](../assignments/entities-survival.md).
+The earlier integration-team damage audit and healing edits are complete; no
+competing survival_combat.2 implementation is active. The user supplied a
+screenshot of the external effects team asking for this clarification. Its
+actual capacity and unpublished source/branch are not inferred from that image.
+
 Teams should publish exact exported API, canonical state/RNG/scheduler owners,
 required Main call phase and source ordering. Mechanical new-namespace lib exports
 are permitted as documented. Main/runtime/manifests/deployment changes otherwise
