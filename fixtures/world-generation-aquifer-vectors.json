@@ -1,0 +1,2183 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "evidence": "Actual unchanged original NoiseChunk public constructor; source createFluidPicker via reflection; original Aquifer.computeSubstance called with original SinglePointContext and recorded density. No unsafe allocation, subclass overrides, or modified original classes.",
+  "oracle_source_sha256": "47d5820d0ce1dc1dcc47b98742c717bdf9b0c5f73fa6362dbad22cdd6d17114b",
+  "oracle_stdout_sha256": "b430f7e08081e9d3ea583655dd0a582c91df92b079be21ebf3f5287cf014624d",
+  "seed": 12345,
+  "settings": "minecraft:overworld",
+  "chunk": [
+    -1,
+    2
+  ],
+  "rows": [
+    {
+      "point": [
+        -16,
+        -64,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -64,
+        32
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -64,
+        32
+      ],
+      "density": -0.2,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -64,
+        32
+      ],
+      "density": -1.0,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -55,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -55,
+        32
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -55,
+        32
+      ],
+      "density": -0.2,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -55,
+        32
+      ],
+      "density": -1.0,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -54,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -54,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -54,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -54,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -53,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -53,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -53,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -53,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        -40,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -40,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -40,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -40,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -20,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -20,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -20,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -20,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -10,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -10,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -10,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -10,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        0,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        0,
+        32
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        0,
+        32
+      ],
+      "density": -0.2,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        0,
+        32
+      ],
+      "density": -1.0,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        20,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        20,
+        32
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        20,
+        32
+      ],
+      "density": -0.2,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        20,
+        32
+      ],
+      "density": -1.0,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        40,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        40,
+        32
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        40,
+        32
+      ],
+      "density": -0.2,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        40,
+        32
+      ],
+      "density": -1.0,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        62,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        62,
+        32
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        62,
+        32
+      ],
+      "density": -0.2,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        62,
+        32
+      ],
+      "density": -1.0,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        63,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        63,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        63,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        63,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        64,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        64,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        64,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        64,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        100,
+        32
+      ],
+      "density": 0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        100,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        100,
+        32
+      ],
+      "density": -0.2,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        100,
+        32
+      ],
+      "density": -1.0,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        62,
+        44
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        66,
+        42
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        11,
+        44
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -7,
+        55,
+        47
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        86,
+        34
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        -52,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        -31,
+        33
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        28,
+        45
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        23,
+        32
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        88,
+        42
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -4,
+        10,
+        33
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -11,
+        16,
+        36
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        25,
+        32
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        56,
+        33
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -12,
+        79,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        -34,
+        35
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        86,
+        32
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -14,
+        95,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -2,
+        57,
+        33
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -5,
+        51,
+        44
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        58,
+        39
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -13,
+        -4,
+        39
+      ],
+      "density": -0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -14,
+        32
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -2,
+        53,
+        47
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        -36,
+        46
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -1,
+        -47,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        86,
+        41
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -12,
+        79,
+        38
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        -52,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        9,
+        47
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        18,
+        40
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        -35,
+        34
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -4,
+        -44,
+        43
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -1,
+        -12,
+        42
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -6,
+        83,
+        47
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        62,
+        39
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -20,
+        32
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        1,
+        37
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -13,
+        68,
+        36
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        73,
+        44
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -2,
+        -8,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        69,
+        37
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        73,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -1,
+        73,
+        46
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        42,
+        37
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -3,
+        -25,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -4,
+        67,
+        40
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -5,
+        -52,
+        42
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -9,
+        65,
+        38
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        -64,
+        37
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        21,
+        36
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -10,
+        31,
+        36
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        -41,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -43,
+        39
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        -42,
+        32
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -9,
+        9,
+        40
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        -30,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -9,
+        3,
+        42
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -3,
+        76,
+        46
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        80,
+        41
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        -61,
+        32
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -3,
+        -6,
+        36
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        59,
+        46
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -9,
+        33,
+        43
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -5,
+        7,
+        42
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        -16,
+        43
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -6,
+        50,
+        41
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -7,
+        51,
+        44
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -14,
+        52,
+        32
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        20,
+        40
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -10,
+        35,
+        33
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -6,
+        -61,
+        46
+      ],
+      "density": -0.5,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        60,
+        35
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -5,
+        -62,
+        33
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        -30,
+        40
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -1,
+        54,
+        43
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -3,
+        -4,
+        47
+      ],
+      "density": -0.01,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        60,
+        37
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        61,
+        41
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        -17,
+        42
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -7,
+        -57,
+        46
+      ],
+      "density": -0.1,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        -64,
+        40
+      ],
+      "density": -0.5,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        34,
+        40
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        -57,
+        33
+      ],
+      "density": -0.5,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        53,
+        40
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -5,
+        -50,
+        38
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -12,
+        -44,
+        47
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        -62,
+        45
+      ],
+      "density": -0.1,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        6,
+        42
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        8,
+        44
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -3,
+        -1,
+        43
+      ],
+      "density": -0.01,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        -22,
+        37
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -5,
+        12,
+        38
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -8,
+        -21,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -3,
+        12,
+        32
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -9,
+        62,
+        46
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        66,
+        45
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -8,
+        84,
+        47
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        -14,
+        32
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        -54,
+        32
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        79,
+        44
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -2,
+        -35,
+        34
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        92,
+        47
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        -11,
+        33
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        47,
+        40
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -5,
+        79,
+        42
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -16,
+        25,
+        40
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        28,
+        40
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        -37,
+        33
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -6,
+        53,
+        34
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        -48,
+        41
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        16,
+        34
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        -40,
+        39
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        42,
+        45
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -6,
+        33,
+        44
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -1,
+        33,
+        37
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        -42,
+        33
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -13,
+        -5,
+        40
+      ],
+      "density": -0.1,
+      "material": null,
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -3,
+        -36,
+        33
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -8,
+        34,
+        41
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -5,
+        83,
+        35
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -5,
+        49,
+        46
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        -41,
+        34
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -1,
+        76,
+        44
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -5,
+        -39,
+        43
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -12,
+        65,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        -50,
+        35
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -11,
+        45,
+        33
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        88,
+        40
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        81,
+        44
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -3,
+        69,
+        38
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -4,
+        -46,
+        41
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        22,
+        36
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -14,
+        -9,
+        46
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -1,
+        41,
+        32
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        -28,
+        32
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -11,
+        11,
+        46
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -8,
+        55,
+        39
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -14,
+        -22,
+        33
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -11,
+        15,
+        37
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -13,
+        46,
+        41
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -14,
+        -45,
+        40
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -4,
+        -61,
+        39
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -14,
+        -40,
+        38
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        89,
+        37
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -16,
+        95,
+        38
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        5,
+        47
+      ],
+      "density": -0.01,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        92,
+        34
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        68,
+        34
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -15,
+        -31,
+        45
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -7,
+        41,
+        38
+      ],
+      "density": -0.1,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -3,
+        -55,
+        33
+      ],
+      "density": -0.5,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -1,
+        -15,
+        33
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -4,
+        -58,
+        44
+      ],
+      "density": -0.01,
+      "material": "lava",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        87,
+        41
+      ],
+      "density": -0.1,
+      "material": "air",
+      "schedule_fluid_update": true
+    },
+    {
+      "point": [
+        -15,
+        74,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -10,
+        -41,
+        43
+      ],
+      "density": -0.01,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -6,
+        58,
+        47
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -14,
+        -9,
+        47
+      ],
+      "density": -0.5,
+      "material": "air",
+      "schedule_fluid_update": false
+    },
+    {
+      "point": [
+        -2,
+        56,
+        45
+      ],
+      "density": -0.5,
+      "material": "water",
+      "schedule_fluid_update": true
+    }
+  ],
+  "not_verified": [
+    "Main integration",
+    "Full NOISE fill traversal and ore material ownership (separate generator check)",
+    "Surface stage",
+    "Nonempty Blender and structure beardifier",
+    "Custom fluid blocks"
+  ]
+}

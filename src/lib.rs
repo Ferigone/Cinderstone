@@ -92,3 +92,4 @@ pub mod tick;
 pub mod world;
 pub mod world_context;
 pub mod world_rules;
+pub mod worldgen;
