@@ -133,6 +133,49 @@ impl RecipeBook {
         let r = self.recipes.get(&canonical(id))?;
         Some((r.experience?, r.cookingtime?))
     }
+    /// Ingredient membership for a captured smithing recipe, before the other
+    /// two inputs are available. Menu routing must retain the recipe manager's
+    /// encounter order rather than using this book's sorted storage order.
+    pub fn smithing_accepts_input(
+        &self,
+        id: &str,
+        slot: usize,
+        stack: &ItemStack,
+    ) -> Result<bool> {
+        ensure!(slot < 3, "smithing input slot must be 0, 1 or 2");
+        let recipe = self
+            .recipes
+            .get(&canonical(id))
+            .ok_or_else(|| anyhow!("unknown recipe {id}"))?;
+        if !matches!(recipe.kind.as_str(), "smithing_transform" | "smithing_trim") {
+            return Ok(false);
+        }
+        Ok(accepts(
+            match slot {
+                0 => &recipe.template,
+                1 => &recipe.base,
+                _ => &recipe.addition,
+            },
+            stack,
+        ))
+    }
+    /// Pinned-default-catalog predicate. A menu holding a different recipe
+    /// snapshot must use `smithing_accepts_input` over its own captured list.
+    pub fn smithing_accepts_template(&self, stack: &ItemStack) -> bool {
+        self.smithing_accepts_any(0, stack)
+    }
+    pub fn smithing_accepts_base(&self, stack: &ItemStack) -> bool {
+        self.smithing_accepts_any(1, stack)
+    }
+    pub fn smithing_accepts_addition(&self, stack: &ItemStack) -> bool {
+        self.smithing_accepts_any(2, stack)
+    }
+    fn smithing_accepts_any(&self, slot: usize, stack: &ItemStack) -> bool {
+        self.recipes.iter().any(|(id, _)| {
+            self.smithing_accepts_input(id, slot, stack)
+                .expect("known recipe and smithing slot")
+        })
+    }
     pub fn evaluate(&self, id: &str, input: &RecipeInput) -> Result<Option<CraftResult>> {
         self.evaluate_with_context(id, input, &RecipeContext::default())
     }
