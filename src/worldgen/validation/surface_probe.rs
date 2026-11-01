@@ -9,10 +9,12 @@ struct ObservedBiome {
     biome: String,
     thermal: Value,
     callbacks: usize,
+    first_biome_query: Option<[i32; 3]>,
 }
 impl SurfaceContext for ObservedBiome {
-    fn biome(&mut self, _: i32, _: i32, _: i32) -> Result<String> {
+    fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
         self.callbacks += 1;
+        self.first_biome_query.get_or_insert([x, y, z]);
         Ok(self.biome.clone())
     }
     fn cold_enough_to_snow(&mut self, biome: &str, x: i32, y: i32, z: i32) -> Result<bool> {
@@ -140,8 +142,18 @@ fn main() -> Result<()> {
             biome: biome.to_owned(),
             thermal,
             callbacks: 0,
+            first_biome_query: None,
         };
         let report = generator.build_surface(&mut terrain, &mut observed_biome)?;
+        let first_biome_query = observed_biome
+            .first_biome_query
+            .context("missing initial biome query")?;
+        let first_quart = mc121_rust::worldgen::biome_zoom::BiomeZoom::from_world_seed(seed)
+            .selected_quart(
+                first_biome_query[0],
+                first_biome_query[1],
+                first_biome_query[2],
+            );
         ensure!(
             terrain.stage() == TerrainStage::Surface,
             "successful SURFACE call did not advance its stage"
@@ -197,7 +209,7 @@ fn main() -> Result<()> {
         );
         println!(
             "{}",
-            json!({"settings":name,"seed":seed,"x":x,"z":z,"biome":biome,"output":output,"changes":changes,"rule_replacements":report.rule_replacements,"columns":report.columns,"postprocess":terrain.postprocessing().len(),"noise_postprocess":before_posts.len(),"surface_postprocess":terrain.postprocessing().len()-before_posts.len(),"stage":format!("{:?}",terrain.stage()),"failed_context_preserves_noise":true,"duplicate_stage_rejected":true,"duplicate_stage_error":duplicate_error.to_string(),"duplicate_stage_context_callbacks":observed_biome.callbacks-callbacks_before_duplicate,"duplicate_stage_preserves_surface":true,"heights":terrain.world_surface_wg().as_slice(),"ocean_floor":terrain.ocean_floor_wg().as_slice()})
+            json!({"settings":name,"seed":seed,"x":x,"z":z,"biome":biome,"use_legacy_random_source":generator.graph().uses_legacy_random_source(),"first_biome_query":first_biome_query,"first_biome_quart_query":[first_quart.0,first_quart.1,first_quart.2],"output":output,"changes":changes,"rule_replacements":report.rule_replacements,"columns":report.columns,"postprocess":terrain.postprocessing().len(),"noise_postprocess":before_posts.len(),"surface_postprocess":terrain.postprocessing().len()-before_posts.len(),"stage":format!("{:?}",terrain.stage()),"failed_context_preserves_noise":true,"duplicate_stage_rejected":true,"duplicate_stage_error":duplicate_error.to_string(),"duplicate_stage_context_callbacks":observed_biome.callbacks-callbacks_before_duplicate,"duplicate_stage_preserves_surface":true,"heights":terrain.world_surface_wg().as_slice(),"ocean_floor":terrain.ocean_floor_wg().as_slice()})
         );
     }
     Ok(())

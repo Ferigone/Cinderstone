@@ -46,9 +46,13 @@ not claims that a Java server generated a complete playable world:
   `max(levelMinY, generatorMinY)` and `min(levelHeight, generatorDepth)` for
   vertical anchors. These are distinct from the chunk's build bounds.
 - `NoiseBasedChunkGenerator.buildSurface` obtains the chunk's existing
-  NoiseChunk and delegates to RandomState's SurfaceSystem. The supplied
-  legacy-biome-height flag is false. Actual biome-manager and registry owners
-  remain inputs, rather than converting raw climate values into invented biomes.
+  NoiseChunk and delegates to RandomState's SurfaceSystem. It forwards
+  `NoiseGeneratorSettings.useLegacyRandomSource()` (`dzd.n`, caller bytecodes
+  38–45) as the legacy-biome-height flag. Each column's initial biome query
+  uses Y `0` for legacy settings and the live surface height otherwise. Later
+  rule-context biome queries retain their actual Y. Actual biome-manager and
+  registry owners remain inputs, rather than converting raw climate values into
+  invented biomes.
 
 Existing canonical registry facts are reused: `items-1.21.json` resolves source
 state JSON, `inventory::block_state_with_properties` resolves properties, and
