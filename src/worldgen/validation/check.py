@@ -129,7 +129,10 @@ def compare(args, work):
                 index = z * 16 + x
                 native_heights.extend([b["heights"][index] - 1, b["ocean_floor"][index] - 1])
         if not (equal and heights == native_heights and a["postprocess"] == b["surface_postprocess"]
-                and b["failed_context_preserves_noise"] and b["duplicate_stage_rejected"]):
+                and b["failed_context_preserves_noise"] and b["duplicate_stage_rejected"]
+                and b["duplicate_stage_error"] == "surface stage already completed"
+                and b["duplicate_stage_context_callbacks"] == 0
+                and b["duplicate_stage_preserves_surface"]):
             raise RuntimeError(f"SURFACE mismatch: {a['settings']} {a['biome']}")
         before = [x[0] for x in struct.iter_unpack("<I", Path(a["input"]).read_bytes())]
         after = [x[0] for x in struct.iter_unpack("<I", Path(a["output"]).read_bytes())]
@@ -146,8 +149,11 @@ def compare(args, work):
             raise RuntimeError("selected badlands fixture did not exercise pillar growth")
         surface.append({k: a[k] for k in ["settings", "seed", "x", "z", "biome", "changes"]}
                        | dict(java_sha256=sha(a["output"]), native_sha256=sha(b["output"]), equal=equal,
-                              heightmaps_equal=True, surface_postprocessing_equal=True,
+                              heightmaps_equal=True, surface_postprocessing_count_equal=True,
                               failed_context_preserves_noise=True, duplicate_stage_rejected=True,
+                              duplicate_stage_error=b["duplicate_stage_error"],
+                              duplicate_stage_context_callbacks=b["duplicate_stage_context_callbacks"],
+                              duplicate_stage_preserves_surface=True,
                               original_air_to_nonair_voxels=added, original_raised_columns=raised))
     sources = [*sorted((ROOT / "src/worldgen").rglob("*.rs")), ROOT / "src/density.rs",
                ROOT / "src/density/chunk.rs", ROOT / "src/noise.rs", ROOT / "src/random.rs", ROOT / "src/lib.rs",

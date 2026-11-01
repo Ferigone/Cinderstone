@@ -50,12 +50,19 @@ This is direct original-class runtime execution, not execution of the original
 server's generation scheduler or `doFill` itself.
 
 The SURFACE comparison invokes the actual original SurfaceSystem on a real
-ProtoChunk containing original NOISE output, with real FixedBiomeSource,
-BiomeManager and WorldGenerationContext owners. The controlled original biomes
+ProtoChunk containing imported original NOISE block arrays, with real
+FixedBiomeSource, BiomeManager and WorldGenerationContext owners. It constructs
+a fresh original NoiseChunk for SURFACE; the native probe retains its NOISE
+owner. Original cross-stage cache-owner continuity is not compared. The
+controlled original biomes
 are plains, eroded badlands, frozen ocean, swamp, nether wastes and the End.
 Native NOISE-to-SURFACE output agrees on complete state arrays, both WG
-heightmaps and surface postprocessing deltas. Native unavailable-biome rejection
-preserves the NOISE image/stage; repeated SURFACE application is rejected.
+heightmaps and surface postprocessing-count deltas. The selected surface counts
+are zero; positions and list order are not verified by that comparison. Native
+unavailable-biome rejection preserves the NOISE image/stage. A repeated SURFACE
+call reuses the available context that succeeded, receives the specific
+duplicate-stage error, invokes no biome/thermal callbacks and preserves the
+completed image, both heightmaps, postprocessing and stage.
 Frozen-ocean terrain includes active iceberg growth. The additional seed `0`
 eroded-badlands case demonstrates positive pillar filling: the original adds
 321 non-air voxels and raises 37 columns, matching the native output.
