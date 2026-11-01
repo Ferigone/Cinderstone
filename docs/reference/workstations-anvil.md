@@ -78,8 +78,8 @@ input 0 and 1. Do not persist or return the derived output on menu closure.
 `AnvilState`; result computation remains in a single kernel function. Its
 layout is the actual two input slots 0/1, derived result slot 2, player slots
 3–38 (canonical inventory slots 9–44), and one level-cost DataSlot. It exposes
-initialization, broadcast, rename, all seven ordinary click modes, close,
-validity and inventory-baseline transfer. The caller supplies the actual
+initialization, ordinary/retained-full-state broadcast, rename, all seven
+ordinary click modes, close, validity and inventory-baseline transfer. The caller supplies the actual
 `AnvilMenuHost` transaction; no production default host is installed.
 
 The new narrowly additive kernel hooks distinguish raw stack mutation from a
@@ -163,11 +163,20 @@ is changed by this milestone. The central integrator must bind the actual
 repair/hover owners, inventory/cursor transaction, player XP, player RNG,
 captured block access, actual container listeners, world events and shared
 synchronization. `AnvilMenuHost` borrows one canonical player inventory and
-requires an actual player/Level/position/menu binding. The host and native menu
-must be staged together: **any error discards the entire host stage and menu
-stage before publication**. Private controller copies exist only during that
-staging; the caller must retain actual canonical menu ownership through the
-same transaction. Reentrant listeners and item click overrides such as bundles
+requires an actual player/Level/position/menu binding. Every public mutating
+action runs through one private controller transaction. Mandatory
+`begin_stage(token, action)` isolates **all** mutable real owners, callbacks and
+ordered outbox; a shallow clone of live shared world state is invalid. The
+controller executes all fallible work against that detached stage and a private
+menu copy, revalidates actual binding/enchantment snapshots, and checks the next
+native revision before calling mandatory `publish_stage(staged, token)`. The
+provider must atomically validate the captured actual owner revision/token and
+publish all staged owners, or publish nothing on error. Only infallible native
+menu installation follows successful owner publication. No public UI clone,
+reset-based rollback or caller-only save/restore convention is required or
+exposed. The ordered outbox is retained during publication: network dispatch
+must occur **after the outer lock/transaction is released and the action
+returns**, never inside `publish_stage`. Reentrant listeners and item click overrides such as bundles
 are explicit unsupported contexts. Before any equality-dependent operation the
 controller also invokes the shared `require_component_context` guard on actual
 inputs/result/cursor/player stacks and, for clicks, client prediction stacks.
@@ -278,3 +287,42 @@ rejection and certified conflicting-order outcomes. An adapter flow uses that
 restricted owner through actual menu input/cursor/XP transitions and rejects
 registry-epoch or capability drift without publication. No Main callsite or
 complete enchantment gameplay is claimed.
+
+
+## Concrete atomic action publication and retained full-state resend
+
+`AnvilMenuHost` now requires
+`begin_stage(&self, token, action) -> Result<Self>` and
+`publish_stage(&mut self, staged, token) -> Result<()>`; the trait is `Sized`.
+The private `transaction` wrapper is shared by initialization, incremental
+broadcast, rename, click and close. It validates current and detached actual
+binding/component/enchantment contexts, invokes staged preflight, executes all
+source callbacks and sync mutations privately, validates again, and checks
+revision advancement. If any item/XP/inventory/RNG/world/drop/listener/packet
+callback or final validation fails, neither owner publication nor menu
+installation occurs. A failed `publish_stage` must also leave every actual
+owner and outbox unchanged. Actual owner publication precedes the infallible UI
+installation, and outbox delivery belongs outside the enclosing lock after the
+action returns. A live-world shallow clone cannot implement this contract.
+
+`broadcast_full_state` uses the same transaction with the distinct
+`AnvilMenuAction::FullState`, forwarding to the existing source-derived
+`MenuSync.broadcast_full_state`. It updates retained local listener/data and
+remote baselines and stages current content/data packets. This is the callable
+resend for an eventual actual spectator packet-owner path; it does not perform
+click/rename/take callbacks or fabricate Main dispatch. The actual preflight
+owner must allow the source full-state action for a legitimate current spectator
+while retaining its actor/menu/context guards.
+
+The restricted native fixture no longer wraps public calls in an outer cloned
+menu/host rescue. Its required stage is a detached copy of owned mutable fixture
+values; only immutable registry holder references are shared. Focused failures
+occur after a result shift has changed the staged inventory, charged XP, drawn
+player RNG and destroyed the last anvil, and separately after all callbacks and
+packet-outbox work at atomic publication. Another failure occurs after the
+source take and staged item drop. Each direct public action proves both the
+actual fixture and complete UI/token/sync state unchanged. Successful retry
+publishes once. A retained full-state flow checks content/data publication,
+local slot observation and no duplicate incremental resend afterward. These
+are native transaction fixtures, not original-Java gameplay, a real production
+world provider or Main integration evidence.
