@@ -5,7 +5,28 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Furnace Main integration — bounded runtime flow passed
+## Furnace block removal — implemented; runtime check in progress
+
+The current implementation connects creative destruction of owned native
+furnaces, smokers and blast furnaces to their real inventory contents and stored
+recipe experience. It stages container stack splits and item-entity creation
+before recipe XP, using the actual random and shared entity owners, then removes
+the block entity and its ticker with the world change. A privately drained
+staging image is never published as a live furnace state. Creative destruction
+does not award a loot item for the furnace block itself.
+
+The focused removal runtime check is **IN PROGRESS**. There is no recorded
+end-to-end removal pass or hosted deployment result for this new batch yet.
+The earlier processing, XP-pickup and cold-restart observations below apply to
+their recorded binary; they do not validate the new destruction transaction.
+
+This path is restricted to the supported native creative-player profile and
+furnaces with no active menu viewers. Close every menu viewing the furnace before
+breaking it. Removal while a menu is open, survival breaking and other removal
+contexts remain unsupported. Comparator receivers, Mending repairs, custom
+cooking datapacks and menu output-XP actions that also drop items remain open.
+
+## Earlier furnace processing integration — bounded runtime flow passed
 
 The default cooking catalog was published in `872d638`; native furnace engines,
 menus and persistent block-entity foundations were published in `2f5f716`.
@@ -46,11 +67,12 @@ evidence boundaries are described in the
 
 Remaining furnace limits are explicit:
 
-- Block destruction, including nonempty contents, item drops and stored recipe
-  rewards, is unsupported.
+- The new bounded creative removal path is described above; its focused runtime
+  check remains in progress. Open-menu, survival and other removal contexts are
+  unsupported.
 - Comparator receivers and Mending experience repairs are unsupported.
-- Transactions combining furnace output experience and item drops are rejected
-  before commit.
+- Menu actions combining furnace output experience and item drops are rejected
+  before commit. The new block-removal transaction is a separate path.
 - The captured default catalog does not establish support for custom cooking
   datapacks or dynamic recipe reload.
 
@@ -59,8 +81,8 @@ experience interaction is complete.
 
 ## Normal-rate server clock — exercised in the bounded flow
 
-The current batch also replaces the unbounded timer-backlog behavior with the
-original ordinary 20 TPS deadline and overload policy. The first tick is ready
+The earlier processing batch also replaced the unbounded timer-backlog behavior
+with the original ordinary 20 TPS deadline and overload policy. The first tick is ready
 immediately after initialization; the period is 50,000,000 nanoseconds. Modest
 backlog is caught up. A lag greater than two seconds advances the deadline past
 whole missed periods only when `nextTickTime - lastOverloadWarning` is at least
@@ -110,9 +132,9 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) records the current
-furnace batch: optimized release build, successful automatic deployment, one
-running replica and native offline listening on `0.0.0.0:25565` at
+The [deployment observation](validation/railway-preview.json) records the earlier
+furnace processing batch: optimized release build, successful automatic deployment,
+one running replica and native offline listening on `0.0.0.0:25565` at
 03:33:55 UTC on 1 November 2026. The persistent volume is retained. The current
 release has no observed public PLAY join in that snapshot; the earlier offline
 join remains explicitly historical. A fresh external status/pong probe failed

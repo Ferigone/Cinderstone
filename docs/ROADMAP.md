@@ -64,8 +64,11 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [x] Bounded furnace/smoker/blast-furnace engines, default recipes/fuels,
       authoritative three-slot menus, processing ticks, counters and lit states.
 - [x] Native furnace persistence and real experience-orb reward integration.
-- [ ] Furnace destruction with owned item drops and recorded rewards.
-- [ ] Comparator receivers, Mending repairs and combined output-XP/item-drop paths.
+- [x] Bounded creative furnace destruction with owned contents and stored recipe
+      XP; the focused removal runtime check is in progress.
+- [ ] Furnace removal with active menu viewers, survival breaking and remaining
+      world-removal contexts.
+- [ ] Comparator receivers, Mending repairs and combined menu output-XP/item-drop paths.
 - [ ] Custom cooking datapacks and dynamic recipe reload.
 - [ ] Hoppers and inventory transfer between block entities.
 - [ ] All remaining menus, workstations and special containers.
@@ -73,7 +76,12 @@ status effects. Implemented numerical survival routines do not remove that limit
 - [ ] Remaining complex item components and context-dependent recipe processing.
 - [ ] Full loot, enchantment, durability and tool behavior.
 
-The bounded furnace Main integration passed its local protocol-client flow:
+The new creative block-removal implementation requires every furnace menu viewer
+to close first. It stages actual container contents and stored recipe XP without
+awarding the furnace block's loot item in creative mode. Its focused runtime check
+is **IN PROGRESS**; the earlier processing flow below does not validate it.
+
+The earlier bounded furnace Main integration passed its local protocol-client flow:
 all three cooking types, menu transfers, lit/light updates, XP pickup and native
 save/cold restart. The [recorded flow](validation/furnace-preview-flow.json)
 identifies the exact binary and scope. It also exercised the normal 20 TPS

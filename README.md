@@ -59,10 +59,18 @@ vanilla compatibility or a graphical-client check. The
 [deployment observation](docs/validation/railway-preview.json) records the hosted
 release build and offline startup separately.
 
-Furnace block destruction, including nonempty contents and recorded rewards,
-comparator receivers, Mending repairs and custom datapacks remain unsupported.
-Transactions combining furnace output XP with item drops are rejected before
-commit. The recipe catalog represents the captured default vanilla data.
+The current removal implementation adds bounded creative destruction of native
+furnaces, smokers and blast furnaces, staging their actual contents and stored
+recipe XP in one entity/random transaction. It does not drop the furnace block
+itself in creative mode. The focused removal runtime check is **IN PROGRESS**;
+the earlier processing-flow result does not validate this new removal path.
+A furnace must have no active menu viewers before it is broken; removal with an
+open menu remains unsupported.
+
+Comparator receivers, Mending repairs, custom datapacks and survival furnace
+breaking remain unsupported. Menu actions combining output XP with item drops
+are still rejected before commit. The recipe catalog represents the captured
+default vanilla data.
 
 These features have explicit limits. The full survival damage/death/respawn
 pipeline, mobs and AI, complete terrain generation, all menus and block entities,
