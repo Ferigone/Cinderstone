@@ -5,6 +5,7 @@ pub mod stonecutter;
 pub mod smithing;
 pub mod special_context;
 pub mod anvil;
+pub mod anvil_block;
 pub mod grindstone;
 pub mod loom;
 pub mod cartography;
