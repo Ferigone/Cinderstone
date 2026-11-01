@@ -76,7 +76,9 @@ impl<K> EffectInstance<K> {
         visible: bool,
         show_icon: bool,
     ) -> Self {
-        Self::with_hidden(effect, duration, amplifier, ambient, visible, show_icon, None)
+        Self::with_hidden(
+            effect, duration, amplifier, ambient, visible, show_icon, None,
+        )
     }
 
     pub fn with_hidden(
@@ -143,7 +145,6 @@ impl<K> EffectInstance<K> {
         !self.is_infinite_duration() && self.duration <= ticks
     }
 
-
     /// Java mapDuration: zero and -1 bypass the supplied mapping function.
     pub fn map_duration(&self, map: impl FnOnce(i32) -> i32) -> i32 {
         if self.is_infinite_duration() || self.duration == 0 {
@@ -154,7 +155,8 @@ impl<K> EffectInstance<K> {
     }
 
     fn is_shorter_duration_than(&self, other: &Self) -> bool {
-        !self.is_infinite_duration() && (self.duration < other.duration || other.is_infinite_duration())
+        !self.is_infinite_duration()
+            && (self.duration < other.duration || other.is_infinite_duration())
     }
 
     fn set_details_from(&mut self, other: &Self) {
@@ -172,6 +174,40 @@ impl<K> EffectInstance<K> {
         self.duration = self.map_duration(|duration| duration.wrapping_sub(1));
     }
 
+    /// Callback-free source fragment shared with the retained-handle driver.
+    pub(super) fn tick_down_and_promote_hidden(&mut self) -> bool {
+        self.tick_down_duration();
+        if self.duration == 0 {
+            if let Some(mut hidden) = self.hidden_effect.take() {
+                self.set_details_from(&hidden);
+                self.hidden_effect = hidden.hidden_effect.take();
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(super) fn begin_blend_tick(&mut self) {
+        self.blend_state.previous_factor = self.blend_state.factor;
+    }
+
+    pub(super) fn finish_zero_duration_blend_tick(&mut self) {
+        self.blend_state.factor = 1.0;
+    }
+
+    pub(super) fn advance_blend_tick(&mut self, blend_ticks: i32, target: f32) {
+        if self.blend_state.factor != target {
+            let step = 1.0_f32 / blend_ticks as f32;
+            let delta = target - self.blend_state.factor;
+            let change = if delta < -step {
+                -step
+            } else {
+                delta.min(step)
+            };
+            self.blend_state.factor += change;
+        }
+    }
+
     /// Execute one retained instance tick at the actor's actual effect phase.
     ///
     /// `false` means the instance has no remaining duration; the actor's
@@ -187,45 +223,35 @@ impl<K> EffectInstance<K> {
             } else {
                 self.duration
             };
-            if host.should_apply_effect_tick_this_tick(&self.effect, tick_argument, self.amplifier)? {
+            if host.should_apply_effect_tick_this_tick(
+                &self.effect,
+                tick_argument,
+                self.amplifier,
+            )? {
                 let amplifier = self.amplifier;
                 if !host.apply_effect_tick(self, amplifier)? {
                     host.remove_effect(self)?;
                 }
             }
-            self.tick_down_duration();
-            if self.duration == 0 {
-                if let Some(mut hidden) = self.hidden_effect.take() {
-                    self.set_details_from(&hidden);
-                    self.hidden_effect = hidden.hidden_effect.take();
-                    host.on_hidden_effect_promoted(self)?;
-                }
+            if self.tick_down_and_promote_hidden() {
+                host.on_hidden_effect_promoted(self)?;
             }
         }
         // Java performs this even when the instance entered with no duration.
-        self.blend_state.previous_factor = self.blend_state.factor;
+        self.begin_blend_tick();
         let blend_ticks = host.blend_duration_ticks(&self.effect)?;
         if blend_ticks == 0 {
-            self.blend_state.factor = 1.0;
+            self.finish_zero_duration_blend_tick();
         } else {
             // The source resolves getBlendDurationTicks again through its target
             // helper; retain the lookup and its position after previous_factor.
             let target = self.blend_target(host.blend_duration_ticks(&self.effect)?);
-            if self.blend_state.factor != target {
-                let step = 1.0_f32 / blend_ticks as f32;
-                let delta = target - self.blend_state.factor;
-                let change = if delta < -step {
-                    -step
-                } else {
-                    delta.min(step)
-                };
-                self.blend_state.factor += change;
-            }
+            self.advance_blend_tick(blend_ticks, target);
         }
         Ok(self.has_remaining_duration())
     }
 
-    fn blend_target(&self, blend_ticks: i32) -> f32 {
+    pub(super) fn blend_target(&self, blend_ticks: i32) -> f32 {
         if self.ends_within(blend_ticks) {
             0.0
         } else {
@@ -277,7 +303,11 @@ impl<K: Clone + PartialEq> EffectInstance<K> {
         self.update_inner(incoming, &mut mismatched_effects)
     }
 
-    fn update_inner(&mut self, incoming: &Self, mismatched_effects: &mut impl FnMut(&K, &K)) -> bool {
+    fn update_inner(
+        &mut self,
+        incoming: &Self,
+        mismatched_effects: &mut impl FnMut(&K, &K),
+    ) -> bool {
         if self.effect != incoming.effect {
             mismatched_effects(&self.effect, &incoming.effect);
         }
