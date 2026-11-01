@@ -16,3 +16,4 @@ pub mod dispenser;
 pub mod enchanting;
 pub mod hopper;
 pub mod shulker;
+pub mod ender_chest;
