@@ -150,7 +150,8 @@ block-entity identity. `registry_snapshot` captures the actual registry/curse-ta
 view used by the item holder IDs; an owner change rejects the action. A checked
 nonreused controller instance plus revision is required by `click` and `close`;
 window reuse or structurally identical contents cannot revive an old token.
-Public controller clones and replayable prepared result plans are not exposed.
+Generic public controller Clone and replayable prepared result plans are not
+exposed; the exact same-owner host staging capability is described below.
 Validity delegates the captured grindstone and actual player reach with +4.0.
 The central packet/tick owner still performs the source selected-menu,
 spectator, validity/close and disconnect dispatch checks.
@@ -212,6 +213,32 @@ Rejecting atomic publication leaves the original menu, cursor, inventory,
 RNG, callback records and queued sync unchanged. This fixture establishes the
 retained resync contract; production spectator dispatch and outbox publication
 remain central responsibilities.
+
+## Same-owner host staging capability
+
+Central issue-3 request `6564535444` adds the exact public
+`GrindstoneMenu::staged_copy_for_host(&self) -> Self`, delegating to the existing
+private staging operation. It preserves the **same** actual binding, registry
+snapshot, UI instance/token/revision, active state, inputs, derived preview,
+cursor, drag state and synchronization baselines. It allocates no new UI
+identity and does not provide a general derived Clone implementation.
+
+This capability lets the actual RootSharedContainer host keep its canonical
+menu unchanged until all fallible mixed Item/XP/native owner preparation has
+succeeded. The caller must then atomically adopt the staged menu and those same
+captured owners under the original owner/token lock. The copy cannot be rebound,
+registered as a second live UI, or used to return/drop stacks from both images.
+The staging images represent the same logical ownership; only one becomes
+canonical. Output draining, callback reentry and saves still wait for final
+menu installation and outer lock exit as required above. Existing read-only
+state/cursor/inventory APIs supply save views without a second inventory owner.
+
+A focused fixture flow rejects staged orb publication without changing the
+canonical menu/inventory/RNG, then prepares a result pickup on a detached host
+and menu, verifies the original is unchanged, and adopts only that successful
+image. The original token becomes stale after adoption. The retained full-sync
+flow also exercises this public capability while preserving an active drag,
+nonempty cursor, inputs, preview and synchronization state.
 
 Main has no grindstone callsite in this stage. Actual enchantment/tag/minimum-cost
 bindings, Level RNG/orb/event/drop transactions, canonical player callbacks and

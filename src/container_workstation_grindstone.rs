@@ -156,6 +156,16 @@ impl<K: Clone + Eq + Debug, S: Clone + Eq + Debug> GrindstoneMenu<K, S> {
             drag_slots: self.drag_slots.clone(),
         }
     }
+    /// Same-owner transaction capability for the actual host. This preserves
+    /// binding, registry, UI instance/token, revision and all retained state;
+    /// it does not open or authorize another live menu or duplicate ownership.
+    /// Keep the canonical menu unchanged until every fallible mixed Item/XP
+    /// owner preparation succeeds, then atomically adopt this staged menu and
+    /// those owners under the original captured owner/token lock. Never rebind
+    /// the copy, expose it as another UI, or return/drop stacks from both images.
+    pub fn staged_copy_for_host(&self) -> Self {
+        self.staged_copy()
+    }
     pub fn token(&self) -> GrindstoneMenuToken {
         self.token
     }
@@ -1433,7 +1443,10 @@ mod tests {
         act(&mut menu, &mut host, 5, 0, ClickType::Pickup)?;
         act(&mut menu, &mut host, -999, 0, ClickType::QuickCraft)?;
         act(&mut menu, &mut host, 6, 1, ClickType::QuickCraft)?;
-        let retained = menu.staged_copy();
+        let retained = menu.staged_copy_for_host();
+        assert_eq!(retained.binding, menu.binding);
+        assert_eq!(retained.registry, menu.registry);
+        assert_eq!(retained.active, menu.active);
         let inventory = host.inventory.clone();
         let random = host.random.state48();
         let generation = host.generation;
@@ -1514,6 +1527,69 @@ mod tests {
         assert!(host.sync_events.last().unwrap().0.is_empty());
         assert_eq!(menu.state, retained.state);
         assert_eq!(host.inventory.slots(), inventory.slots());
+        Ok(())
+    }
+
+    #[test]
+    fn host_staging_copy_keeps_canonical_menu_until_mixed_xp_owner_adoption() -> Result<()> {
+        let (mut menu, mut host) = pair()?;
+        let original_token = menu.token();
+        let original_inputs = menu.state.inputs().clone();
+        let original_preview = menu.state.preview().clone();
+        let inventory = host.inventory.clone();
+        let records = host.records.len();
+        let generation = host.generation;
+        let random = host.random.state48();
+        // Explicit fixture clone detaches every in-memory owner. This does not
+        // certify a shallow clone of production world/RNG/output owners.
+        let mut rejected_menu = menu.staged_copy_for_host();
+        let mut rejected_host = host.clone();
+        rejected_host.fail_orbs = true;
+        assert!(act(
+            &mut rejected_menu,
+            &mut rejected_host,
+            2,
+            0,
+            ClickType::Pickup
+        )
+        .is_err());
+        assert_eq!(menu.token(), original_token);
+        assert_eq!(menu.state.inputs(), &original_inputs);
+        assert_eq!(menu.state.preview(), &original_preview);
+        assert!(menu.carried().is_empty());
+        assert_eq!(host.inventory.slots(), inventory.slots());
+        assert_eq!(host.records.len(), records);
+        assert_eq!(host.generation, generation);
+        assert_eq!(host.random.state48(), random);
+
+        let mut staged_menu = menu.staged_copy_for_host();
+        let mut staged_host = host.clone();
+        act(&mut staged_menu, &mut staged_host, 2, 0, ClickType::Pickup)?;
+        assert_eq!(staged_menu.token().instance, original_token.instance);
+        assert_eq!(staged_menu.binding, menu.binding);
+        assert_eq!(staged_menu.registry, menu.registry);
+        assert_eq!(staged_menu.carried().count, 2);
+        assert!(staged_menu.state.inputs().iter().all(ItemStack::is_empty));
+        assert_eq!(menu.token(), original_token);
+        assert_eq!(menu.state.preview(), &original_preview);
+        assert!(menu.carried().is_empty());
+        assert_eq!(host.records.len(), records);
+        // Under this isolated fixture's original owner/token lock, all
+        // fallible work is complete. Only one image becomes canonical.
+        assert_eq!(menu.token(), original_token);
+        menu = staged_menu;
+        host = staged_host;
+        assert_eq!(menu.carried().count, 2);
+        assert!(menu.state.preview().is_empty());
+        assert!(menu.state.inputs().iter().all(ItemStack::is_empty));
+        assert_eq!(host.inventory.slots(), inventory.slots());
+        assert!(menu
+            .click(
+                original_token,
+                &click(&menu, 2, 0, ClickType::Pickup),
+                &mut host
+            )
+            .is_err());
         Ok(())
     }
 }
