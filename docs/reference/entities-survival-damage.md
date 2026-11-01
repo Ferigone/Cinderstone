@@ -202,12 +202,48 @@ No Main or reserved shared runtime/entity/persistence file changes are included.
 The creative-only admission profile stays in force. These are callable pipeline
 cores and an integration contract, not proof of a running survival server.
 
+### Coordination with current Main at `f40d8bf`
+
+Reviewed current master `f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`, including
+its chat/admission output and operation ownership. Damage publication must join
+`Server.entity_events` and the centrally owned `PlayerEvent::WorldAudience`
+path (`main.rs`, 653–675 and 3704–3744), or an explicitly assigned transient
+tracking event. WorldAudience does not filter visibility: recipients must already
+be the actual tracked audience plus self. Range and loaded chunks alone do not
+prove observer tracking. Do not encode damage as ordinary revisioned state,
+because snapshot barriers can coalesce it; transient animation handling in
+`replication.rs` (265–285) is the existing contrasting lifecycle to inspect.
+
+The outer damage producer needs an explicit shared operation-guard contract.
+Chat/admin retain `chat_dispatch` then `player_admission` across an entire
+operation, including callbacks while the player lock is temporarily released
+(`main_chat_dispatch.rs`, 56–89; `main_admin_dispatch.rs`, 133–162). Merely taking
+`players.write()` does not prevent their output interleaving within a hit. The
+central adapter must arrange the operation guard before world/player locks;
+a synchronous host already holding those locks must not acquire an async guard.
+The exact shared guard/token and any admission/removal requirements belong to
+the integrator, not an invented scheduler in this module.
+
+Cleanup (`main.rs`, 2208 onward) owns admission -> world -> players, closes actual
+menus/saves, removes native/chat owners and publishes removal. Respawn must
+compose with those owners and their identity. A separate exceptional disconnect
+watch still preempts queued output (3401/3422); normal death must not repurpose
+it, and ordering against exceptional cancellation needs a declared contract.
+These findings are static current-source observations and integration requests;
+no new Main behavior is claimed.
+
 ## Focused validation
 
 Full library compilation passed after installing a local Rust toolchain suitable
 for the unchanged lockfile. Rust 1.85.1 was too old for its existing ICU packages;
 no manifest/lockfile downgrade was made. Exact final compiler/test results and
 source commits are recorded in the per-instance status file.
+
+Compatibility check: the source-only damage diff from base `f1432ed` through
+`b5a042f` applied cleanly to `f40d8bf` in an isolated detached validation worktree.
+`cargo check --locked --bin mc121-rust` passed there with Rust 1.99.1 and the
+unchanged lockfile. This was an uncommitted validation composition, not a merge
+into master, a published branch or a production runtime flow.
 
 Focused native checks cover actual callback argument/order and failure prefixes,
 not fabricated production actors. Totem checks distinguish main/offhand
