@@ -11,5 +11,6 @@ pub mod surface;
 
 pub use generator::{
     resolve_block_state, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
-    NoiseGenerator, NoiseTerrain, SurfaceContext, TerrainStage,
+    NoiseGenerator, NoiseTerrain, OwnedNoiseFillOutcome, OwnedNoiseTerrain, SurfaceContext,
+    TerrainStage,
 };
