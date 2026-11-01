@@ -17,3 +17,4 @@ pub mod enchanting;
 pub mod hopper;
 pub mod shulker;
 pub mod ender_chest;
+pub mod crafter;
