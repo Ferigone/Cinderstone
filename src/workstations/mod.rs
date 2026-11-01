@@ -2,3 +2,5 @@
 //! These are callable native modules; Main adapters are coordinated separately.
 pub mod menu;
 pub mod stonecutter;
+pub mod smithing;
+pub mod special_context;
