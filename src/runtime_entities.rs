@@ -146,20 +146,65 @@ pub struct PreparedItemBatch<'a> {
     store: &'a mut RuntimeEntities,
     items: Vec<PreparedItem>,
 }
+
+/// Restricted publication capability borrowed from the actual prepared store.
+/// It exposes only Level.threadSafeRandom sound-seed consumption; callers
+/// cannot inspect, insert, remove or otherwise mutate prepared/live entities.
+pub struct ItemBatchPublication<'a> {
+    sound_random: &'a mut Option<LegacyRandomSource>,
+}
+
+impl ItemBatchPublication<'_> {
+    /// The same independent level sound owner as RuntimeEntities.next_sound_seed.
+    /// A caller must certify its availability before an infallible batch commit.
+    pub fn next_sound_seed(&mut self) -> Result<i64> {
+        Ok(self
+            .sound_random
+            .as_mut()
+            .context("level sound random owner unavailable")?
+            .next_i64())
+    }
+}
+
 impl PreparedItemBatch<'_> {
     pub fn commit(self) -> Vec<EntityHandle> {
-        self.commit_inner(None)
+        self.commit_inner(None, |_, _| {})
     }
     pub fn commit_with_world_random(self, random: LegacyRandomSource) -> Vec<EntityHandle> {
-        self.commit_inner(Some(random))
+        self.commit_inner(Some(random), |_, _| {})
     }
-    fn commit_inner(self, random: Option<LegacyRandomSource>) -> Vec<EntityHandle> {
+    /// Publish interleaved effects at their source position around actual item
+    /// additions. The callback runs before each insertion (0..len), then once
+    /// at len after all insertions, including once at zero for an empty batch.
+    ///
+    /// Preparation retains the exclusive store borrow and all existing entity,
+    /// tracking and outbox validation. Callers must preflight callback owners;
+    /// this commit cannot roll back already published items or consumed sounds.
+    pub fn commit_with_world_random_ordered(
+        self,
+        random: LegacyRandomSource,
+        before_item: impl FnMut(usize, &mut ItemBatchPublication<'_>),
+    ) -> Vec<EntityHandle> {
+        self.commit_inner(Some(random), before_item)
+    }
+    fn commit_inner(
+        self,
+        random: Option<LegacyRandomSource>,
+        mut before_item: impl FnMut(usize, &mut ItemBatchPublication<'_>),
+    ) -> Vec<EntityHandle> {
         let Self { store, items } = self;
         if let Some(random) = random {
             store.world_random = random;
         }
-        let mut handles = Vec::with_capacity(items.len());
-        for item in items {
+        let count = items.len();
+        let mut handles = Vec::with_capacity(count);
+        for (ordinal, item) in items.into_iter().enumerate() {
+            before_item(
+                ordinal,
+                &mut ItemBatchPublication {
+                    sound_random: &mut store.sound_random,
+                },
+            );
             let PreparedItem {
                 state,
                 random,
@@ -219,6 +264,12 @@ impl PreparedItemBatch<'_> {
             }
             handles.push(handle);
         }
+        before_item(
+            count,
+            &mut ItemBatchPublication {
+                sound_random: &mut store.sound_random,
+            },
+        );
         handles
     }
 }

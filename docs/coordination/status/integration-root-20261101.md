@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: completed_stage; published connection release verified
+State: implementing; Stonecutter PR72 publication review and Smithing Main assembly
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -13,7 +13,25 @@ accounting, persistent journal and Railway. External teams own unused default
 areas in the coordination guide. No separate external instance is assumed active
 without an actual issue or Git branch/status check-in.
 
-## Latest published delivery
+## Current stage
+
+Stonecutter Main PR72 publishes normal source files on
+`teams/integration/integration-root-20261101/stonecutter-main`, based on current
+master `2ad92fd`, preserving team kernels. Full Main build and composed positive
+and equipped-range flows passed on local source `57e90e6`; production ledger
+records exact binary/time/limits. Follow-up review fixes queued reach-packet
+retirement and atomic current-menu close. Railway release remains unverified.
+
+Working Smithing adapters have real Main fields/routes, phase/lifetime and pickup
+bridges under assembly. The genuine retained full-state API and component
+reference-context guard are pending workstation contracts. Root plus six actual
+subordinate slots are used for disjoint source work, review and runtime
+validation during the active turn; no work after a stopped session is implied.
+The user also authorizes independent team owners to self-review/merge their own
+source PRs. Root retains central Main, shared seams, metrics/journal and deployment.
+Scope_version1 checklist remains56/100 code and51/100 Main.
+
+## Earlier published delivery
 
 Published core `894a3cc9358144f967489018069396ac97c6db70`, Main
 `87dda91054478098ba86eebaaf32869fa176f307` and docs

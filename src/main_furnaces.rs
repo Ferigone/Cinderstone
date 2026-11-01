@@ -267,7 +267,30 @@ impl RecipeBookHost for NativeRecipeHost {
     }
 }
 impl Server {
+    /// Refresh the actual live/retired furnace menu's remote content/data
+    /// baselines. Full sync is not an output take, recipe award or local-listener
+    /// reinitialization, and retains the current external cursor.
+    pub(super) fn resync_native_furnace_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        _now: i64,
+        _border: CollisionBorder,
+    ) -> Result<()> {
+        let mut open = players.furnaces.menus.get(&id).cloned()
+            .context("resync requires the actual current furnace menu")?;
+        let shared = players.containers.get(&id)
+            .context("furnace resync inventory missing")?.clone();
+        let furnace = open_state(world, &players.furnaces, &open)?;
+        let packets = shared.read(|menu| open.menu.full_sync(&furnace, &menu.inventory))??;
+        players.furnaces.menus.insert(id, open);
+        send(&self.entity_events, id, packets);
+        Ok(())
+    }
+
     pub(super) async fn use_native_furnace(&self, id: i32, hand: i32, target: P) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -326,6 +349,18 @@ impl Server {
             }
             flat.native_block_entities().furnace_title(target)?
         };
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.furnaces.window_id(id) {
             self.furnace_menu_action_locked(
                 &mut world,
