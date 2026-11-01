@@ -1,0 +1,3 @@
+//! Java 1.21 workstation rules and explicit production owner contracts.
+//! These are callable native modules; Main adapters are coordinated separately.
+pub mod menu;
