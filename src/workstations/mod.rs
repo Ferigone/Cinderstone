@@ -4,3 +4,5 @@ pub mod menu;
 pub mod stonecutter;
 pub mod smithing;
 pub mod special_context;
+pub mod anvil;
+pub mod grindstone;
