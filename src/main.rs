@@ -2593,7 +2593,7 @@ async fn main() -> Result<()> {
             line = console.recv(), if console_open => {
                 match line {
                     Some(line) => {
-                        if let Err(error) = server.execute_administration(&line, None) {
+                        if let Err(error) = server.execute_administration(&line, None).await {
                             eprintln!("{}", json!({"event":"administration_command_failed","reason":error.to_string()}));
                         }
                     }
@@ -2826,7 +2826,8 @@ async fn negotiate_login(
     } else {
         PlayerProfile::offline(&username)?
     };
-    if !server.check_initial_admission(&profile, address, &codec, &mut writer).await? {
+    let admission_guard = server.player_admission.lock().await;
+    if !server.check_initial_admission(&profile, address, &codec, &mut writer, &admission_guard).await? {
         return Ok(None);
     }
     send(
@@ -2839,6 +2840,7 @@ async fn negotiate_login(
     )
     .await?;
     codec.compression = Some(256);
+    server.evict_duplicate_for_login(&profile, &admission_guard).await?;
     send(
         &codec,
         &mut writer,
@@ -2859,6 +2861,7 @@ async fn negotiate_login(
         }),
     )
     .await?;
+    drop(admission_guard);
     let acknowledged = receive_login(&codec, &mut reader, &mut writer, &mut login_cookies).await?;
     if acknowledged.id != 3 || !acknowledged.payload.is_empty() {
         bail!("expected Login Acknowledged");
@@ -3413,7 +3416,7 @@ async fn play(
                             play_disconnect(&codec, &mut writer, "multiplayer.disconnect.illegal_characters").await?;
                             return Ok(PlayExit::Disconnected);
                         }
-                        server.execute_administration(&command, Some(entity_id))?;
+                        server.execute_administration(&command, Some(entity_id)).await?;
                     },
                     0x05 => {
                         let _command=mc121_rust::command_protocol::decode_signed_command(&packet.payload)?;

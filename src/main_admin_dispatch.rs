@@ -65,12 +65,11 @@ impl Server {
     }
 
     pub(super) async fn check_initial_admission(&self, profile: &PlayerProfile, address: SocketAddr,
-        codec: &FrameCodec, writer: &mut NetworkWriter) -> Result<bool> {
+        codec: &FrameCodec, writer: &mut NetworkWriter, _admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<bool> {
         // Source policy runs before compression, duplicate eviction and success.
-        let admission = self.player_admission.lock().await;
-        let (online, duplicate) = {
+        let online = {
             let players = self.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
-            (players.registry.len(), players.registry.get_by_uuid(&profile.uuid).map(|player| player.entity_id))
+            players.registry.len()
         };
         let rejection = {
             let mut owner = self.administration.write().map_err(|_| anyhow!("administration lock poisoned"))?;
@@ -82,10 +81,18 @@ impl Server {
             send(codec, writer, 0x00, encoded(|w| { w.string(&component); })).await?;
             return Ok(false);
         }
-        if let Some(previous) = duplicate {
-            self.cleanup_player_admitted(previous, Some("multiplayer.disconnect.duplicate_login"), &admission).await?;
-        }
         Ok(true)
+    }
+
+    pub(super) async fn evict_duplicate_for_login(&self, profile: &PlayerProfile,
+        admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
+        // Java enables negotiated compression before evicting an old owner.
+        let duplicate = self.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?
+            .registry.get_by_uuid(&profile.uuid).map(|player| player.entity_id);
+        if let Some(previous) = duplicate {
+            self.cleanup_player_admitted(previous, Some("multiplayer.disconnect.duplicate_login"), admission).await?;
+        }
+        Ok(())
     }
 
     /// Called under player_admission after the CONFIGURATION finish and before
@@ -129,7 +136,10 @@ impl Server {
         })
     }
 
-    pub(super) fn execute_administration(&self, line: &str, source_id: Option<i32>) -> Result<()> {
+    pub(super) async fn execute_administration(&self, line: &str, source_id: Option<i32>) -> Result<()> {
+        // Match the source server-thread serialization: a policy mutation must
+        // not fit between final admission and publication of the actual actor.
+        let _admission = self.player_admission.lock().await;
         if command_protocol::command_contains_illegal_characters(line) {
             bail!("illegal command characters");
         }

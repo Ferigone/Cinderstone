@@ -306,10 +306,7 @@ impl Administration {
         };
         if permission.is_some_and(|required| source.permission_level < required) {
             return CommandOutcome {
-                result: Err(CommandError::Syntax {
-                    cursor: 0,
-                    detail: "Unknown or incomplete command, see below for error",
-                }),
+                result: Err(CommandError::Message(CommandMessage::plain_key("command.unknown.command"))),
                 effects: Vec::new(),
             };
         }
