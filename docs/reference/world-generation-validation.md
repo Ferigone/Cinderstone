@@ -28,6 +28,16 @@ traversal cleanup. Existing unrelated compiler warnings remain. The Main check
 includes the mechanically exported namespace; it proves compilation, not a
 production generation callsite.
 
+The exact generator source/fixture diff was also applied to a separate detached
+worktree at current pinned master
+`f40d8bf066ecb446b46a66e1d6d9465ffb233d6e`. The full Main build and the same
+focused native checks passed there. This source-overlay validation performed no
+master merge and changed no reserved Main implementation. The
+[compatibility report](../../fixtures/world-generation-main-compatibility.json)
+records the branch/base/master identities, exact patch/source hashes and
+sanitized log digest. This confirms compiler/native-flow compatibility with
+the later admission/chat code; production generation remains unconnected.
+
 The portable probe sources and invocation are documented in
 [`src/worldgen/validation/README.md`](../../src/worldgen/validation/README.md).
 The NOISE comparison constructs the original NoiseChunk and calls its real
