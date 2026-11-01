@@ -79,8 +79,9 @@ With two protocol clients, disconnecting a player carrying five quartz in a
 furnace menu created one real item entity observed by the remaining client.
 The saved cursor and inventory contained no quartz, and the same item ID and
 five quartz survived cold restart exactly once. Normal live menu closure still
-returns the cursor to inventory. Hosted startup for this newer source remains
-unverified. Player-death handling, full-inventory overflow conformance and the
+returns the cursor to inventory. Its optimized hosted release and native offline startup are verified in the
+[deployment observation](docs/validation/railway-preview.json); public gameplay
+remains unverified. Player-death handling, full-inventory overflow conformance and the
 complete Java `PlayerList.remove` persistence order remain incomplete.
 
 Comparator receivers, Mending repairs, custom datapacks and survival furnace

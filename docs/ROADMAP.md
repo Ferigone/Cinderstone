@@ -96,8 +96,9 @@ locally for source `07e290cc66411d0d1ededfae69a592899a2e5d10` on 1 November
 furnace cursor, the remaining protocol client observed one real item entity.
 The saved player cursor and inventory contained zero quartz, and item ID 3 with
 five quartz survived cold restart exactly once. Normal live closure retains the
-inventory-return branch. Hosted startup for this newer source remains
-unverified; death handling, full-inventory overflow conformance and the complete
+inventory-return branch. The optimized hosted release and native offline startup are verified separately
+in the [deployment observation](validation/railway-preview.json). Public gameplay,
+death handling, full-inventory overflow conformance and the complete
 Java `PlayerList.remove` persistence order remain open. This bounded subitem
 does not change the fixed checklist denominator or `scope_version: 1`.
 

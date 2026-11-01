@@ -1,8 +1,8 @@
 {
-  "observed_at": "2026-11-01T12:34:06.894446+00:00",
-  "source_commit": "482f11b1e269e8e8f78b2b3d7e4ccdf1763b1b1b",
-  "native_integration_commit": "482f11b1e269e8e8f78b2b3d7e4ccdf1763b1b1b",
-  "deployment_id": "973758cc-83ce-41c4-a9ac-87d06b068a96",
+  "observed_at": "2026-11-01T13:00:19.029081+00:00",
+  "source_commit": "1544e180c1afbce399c9d6f18f61dbb2f4a3ff33",
+  "native_integration_commit": "07e290cc66411d0d1ededfae69a592899a2e5d10",
+  "deployment_id": "f708d419-6432-46f7-ba5c-8d5416ee813b",
   "deployment_status": "SUCCESS",
   "service_state": "online",
   "running_replicas": 1,
@@ -12,7 +12,7 @@
     "minecraft": "1.21",
     "protocol": 767,
     "mode": "offline",
-    "event_timestamp": "2026-11-01T12:32:11.227189502Z"
+    "event_timestamp": "2026-11-01T12:59:45.591554008Z"
   },
   "public_tcp_endpoint": "hopper.proxy.rlwy.net:24418",
   "persistent_volume_mount": "/data",
@@ -31,5 +31,5 @@
     "timestamp": "2026-11-01T02:33:31.721552847Z",
     "mode": "offline"
   },
-  "verification_scope": "Optimized release build and successful active-viewer furnace autodeploy, one running replica, retained persistent volume and native offline listening. The three-client menu/replacement/conservation flow was local; current public gameplay was not observed."
+  "verification_scope": "Successful optimized release build and automatic deployment of disconnected furnace-cursor handling, one running replica, retained persistent volume and native offline listening. Cursor/item conservation was observed locally; current public gameplay was not observed."
 }

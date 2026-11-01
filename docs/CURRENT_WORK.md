@@ -25,9 +25,10 @@ player cursor and inventory contained zero quartz; exactly one item entity,
 ID 3 carrying five quartz, retained the same ID and count through cold restart.
 
 This result covers that local protocol flow, not a graphical vanilla-client
-session, public-network gameplay or every disconnection race. Deployment of
-this source is pending verification; the older hosted observation below retains
-its original scope. Full player-death handling, full-inventory overflow
+session, public-network gameplay or every disconnection race. The optimized hosted
+release reached SUCCESS and native offline listening at 12:59:45 UTC, as recorded
+in the [deployment observation](validation/railway-preview.json). Public gameplay
+remains unverified. Full player-death handling, full-inventory overflow
 conformance and the complete Java `PlayerList.remove` persistence order remain
 incomplete. The fixed checklist indicators remain 55/100 code and 50/100 Main
 integration at `scope_version: 1`.
@@ -223,10 +224,10 @@ The preview accepts offline accounts with `MC_ONLINE_MODE=false`; nicknames are
 not authenticated, and name-derived UUIDs do not automatically reuse existing
 online-account data. The image default remains `MC_ONLINE_MODE=true`.
 
-The [deployment observation](validation/railway-preview.json) records the active-
-viewer furnace batch: optimized release build, successful automatic deployment,
+The [deployment observation](validation/railway-preview.json) records the disconnected-
+furnace cursor batch: optimized release build, successful automatic deployment,
 one running replica and native offline listening on `0.0.0.0:25565` at
-12:32:11 UTC on 1 November 2026. The existing persistent volume is retained.
+12:59:45 UTC on 1 November 2026. The existing persistent volume is retained.
 No public PLAY join is recorded for this release; the earlier join remains
 explicitly historical. A fresh external status/pong probe failed DNS resolution
 from the development environment. Local gameplay, hosted startup and public
