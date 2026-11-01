@@ -1,6 +1,6 @@
 # Native Stonecutter production boundary
 
-Source stage: `5c496b2aba781944210bf518c5a3f447fe45baf6`, targeting
+Initial source stage: `5c496b2aba781944210bf518c5a3f447fe45baf6`, targeting
 Minecraft Java **1.21**, protocol **767**. This stage connects the native
 Stonecutter kernel to Main. It does not complete all workstations or establish
 full vanilla compatibility.
@@ -10,9 +10,14 @@ check and executable build passed. Actual offline loopback protocol execution
 completed at `2026-11-01T21:13:56.558189+00:00` on binary SHA-256
 `09f662444521fb4df9535fd05cf9947c2f0ed820c693c3d38502ec0778907cf9`.
 This records the bounded observations below, not all Stonecutter behavior.
-The composed publication candidate was also rechecked at
-`57e90e63e9dcd4c103761a909854886334a702c7`; its separate witnesses are recorded
-below without replacing the earlier source/binary attributions.
+The latest bounded execution used publication source
+`5553015344f939f6bb255f414439e1c3b022af5a`, tree
+`adf8b3920e3a75b60fa7d19451602112539d1178`, and binary SHA-256
+`526842c949dd1ab039e0b71a017cb8ce794e0241d526c1344002ad6e4c922539`.
+The positive flow and genuine FOOD-refusal/full-state recovery passed. Queued
+button retirement was exercised; queued click-handler coverage remains
+unresolved, as detailed below. Earlier `5c496b2`, `e18ad37` and `57e90e6`
+witnesses retain their separate source/binary attributions.
 
 ## Actual Main call paths
 
@@ -22,7 +27,8 @@ below without replacing the earlier source/binary attributions.
 | PLAY block use | `use_native_stonecutter` checks the real world block, actor, hand/sneak/reach and feature context, closes a preceding external menu and allocates the existing shared window counter |
 | Container button `0x0d` | Decode the original two VarInts; route selection through the actual current Stonecutter window and handler gates |
 | Container click `0x0e` | Decode actual Slot/prediction data and dispatch `click_native_stonecutter` before inactive InventoryMenu fallback |
-| Container close `0x0f` | Select the actual current server menu; the received window byte cannot revive an older menu |
+| Container close `0x0f` | Capture and retire the actual current server menu under one operation/world/player ownership interval; the received window byte cannot revive an older menu |
+| Unsupported FOOD candidate in PLAY `0x32` / `0x0e` | Refuse surviving explicit FOOD20 before canonical mutation, then call `resync_current_player_menu` for the actual retained owner |
 | Actual per-player menu phase | `tick_native_stonecutter_menu_for_player_locked` broadcasts first, then checks the captured block/reach and closes an invalid menu |
 | `PlayerBodyPhase::Pickup` and existing fallback pickup owner | `broadcast_for_inventory` synchronizes the actual current Stonecutter immediately after Collect; it does not replace it with window0 or defer it to the later validity phase |
 | Other block-menu openers | Container, furnace and crafting-table paths remove the captured Stonecutter before creating the replacement menu |
@@ -57,11 +63,15 @@ actual attribute owner is implemented. An inactive modifier in another slot
 group is not treated as an active reach override.
 
 When a later accepted inventory mutation activates that unsupported range while
-a Stonecutter is open, the native player phase retires the actual menu through
-its connected removal path. Only the typed reach-profile boundary selects this
-retirement; internal transaction/encoding failures are not silently classified
-as unsupported reach. This preserves the world process and owned items without
-pretending to implement custom interaction-range behavior.
+a Stonecutter is open, the native player phase or a queued button/click handler
+retires the actual menu through its connected removal path. The handlers catch
+only typed `UnsupportedMenuReach`, capture the real current window and close it
+with `AliveConnected` under the same ownership interval. Internal transaction or
+encoding failures are not silently classified as unsupported reach. This
+preserves the world process and owned items without pretending to implement
+custom interaction-range behavior. The queued button handler has runtime
+evidence below; the analogous click handler has source evidence but no isolated
+runtime witness.
 
 The gameplay registry must prove its native empty-criteria floor: no unsupported
 registered advancement predicates/rewards, statistic objectives, block listeners
@@ -69,6 +79,27 @@ or reentrant item hooks. Missing imported files do not prove empty registries.
 The ordinary block callback awards the interaction statistic, reads the actual
 post-use world block and dispatches the existing default-use criterion owner.
 The spectator provider branch precedes those ordinary-use effects.
+
+
+### Surviving FOOD identity boundary and recovery
+
+Well-formed protocol data does not establish the native ownership semantics of
+an explicit FOOD20 override. `main_workstation_components` first applies the
+existing proven component normalization; any surviving explicit FOOD20 requires
+its original nested ItemStack reference owner and is rejected with typed
+`UnsupportedFoodIdentity`. Inherited FOOD prototypes remain admitted. The guard
+also visits actual nested Slot values in components 29, 30 and 52; this runtime
+flow does not exercise that entire nesting boundary.
+
+The PLAY CreativeSlot and ContainerClick admission paths log
+`native_component_admission_refused` before installing the rejected stack or
+prediction. Recovery calls `resync_current_player_menu`, which captures the
+actual sole current owner under the normal operation/world/player interval and
+asks that retained owner for genuine full state. For Stonecutter this uses its
+real menu, revision, input, derived preview, player slots and separate cursor.
+It does not generate a dummy click or publish inactive window0 as the recovery
+for an external menu. The shared dispatcher has other current-owner branches;
+only actual Stonecutter recovery was exercised in this flow.
 
 ## Phase callbacks, output and ownership
 
@@ -225,6 +256,40 @@ Each recheck used a fresh private runtime and the same unchanged corresponding
 harness hash recorded above. All isolated processes completed graceful SIGINT
 shutdown with exit0. The earlier `5c496b2` positive and `e18ad37` reach witnesses
 remain separate. These composition checks do not extend their declared coverage.
+
+
+### Latest composed source: positive, queued reach and FOOD recovery
+
+The final frozen publication source `5553015344f939f6bb255f414439e1c3b022af5a`
+(tree `adf8b3920e3a75b60fa7d19451602112539d1178`) passed the full Main build.
+All observations in this subsection use binary SHA-256
+`526842c949dd1ab039e0b71a017cb8ce794e0241d526c1344002ad6e4c922539`
+and separate fresh private worlds. They preserve the earlier witnesses above.
+
+| Focused execution | Actual outcome |
+| --- | --- |
+| [Final positive flow](../validation/stonecutter-final-flow.json), completed `2026-11-01T21:56:22.857194+00:00` | Passed the same ordinary take, stale wire-close, cross-menu replacement, native cold restart, disconnect ownership and full QuickMove expectations. Initial 8 stone remained equivalent to 5 stone plus 6 slabs; the isolated QuickMove retained the source AIR0 crafted callback. Harness SHA-256 remained `f9b5656cfef8907b9f054f0abe96d942b1711839363d44319155949e370e31d7`. |
+| [Queued reach flow](../validation/stonecutter-queued-reach-flow.json), completed `2026-11-01T21:55:33.692366+00:00` | The valid reach CreativeSlot and Button were sent in one TCP write. The actual `container_button` handler retired the menu, conserving 7 stone, 2 slabs and one modified stick, empty cursor and continued PLAY. Its later queued click was safely retired by the player tick before handler dispatch: the client retained 6 stone, 4 slabs and one stick and received `/list` with status online1. The strict handler assertion failed, so this report remains `ok: false`; it does not establish click-handler runtime coverage or its unreached final saved-state assertions. |
+| [Single isolated queued-click retry](../validation/stonecutter-queued-click-flow.json), completed `2026-11-01T21:58:02.499401+00:00` | Setup timed out awaiting block-change/acknowledgement before the queued packets were sent. The saved world did contain the placed Stonecutter, state18467 at10,64,8; no internal server error was observed. A missing visibility/acknowledgement precondition is an inference, not a proven cause or a demonstrated Main defect. This report remains `ok: false`; no further timing retries were performed. |
+| [FOOD admission and actual current-menu recovery](../validation/stonecutter-food-flow.json), completed `2026-11-01T21:55:33.420526+00:00` | Passed. While input7 and cursor2 slabs were owned by the current Stonecutter, a valid explicit FOOD20 mushroom-stew override was refused before replacing player slot10's dirt3. A new full content packet for that same actual Stonecutter restored the client's prediction and retained input/cursor. Normal close/reopen independently conserved the actual inventory; an inherited mushroom stew without an explicit override remained admitted. PLAY `/list`, online1 and graceful native saved ownership all remained valid. |
+
+The FOOD case uses the captured prototype payload for item849 from
+`fixtures/item-components-1.21.json`, SHA-256
+`a0e45f91fd300767f95ea88690fd8401406b7ff9941f4bde08d836ec9ac62ab6`.
+Its harness SHA-256 is
+`2cf75eedc09a27b85abc33269017e02293a9a681ae3fdfe52b33b2fece346393`.
+The final saved player held 7 stone, 2 slabs, 3 dirt and one inherited mushroom
+stew, with empty carried state and none of those items in the world checkpoint;
+shutdown exited0. This is a defined unsupported custom-identity admission and
+recovery boundary. It does not implement custom FOOD reference identity,
+exercise the other surviving prototype overrides or certify all-menu recovery.
+
+Queued reach harnesses have SHA-256
+`50d04c569428f151ad54939bf21dcc6a26824ce8daa38ba37c64547b7fd53a0d`
+(two-path run) and
+`993480b2d0a86649cd5585588998e42c426bb55acc2958f90a6f69dec3d652d7`
+(single isolated click retry). Their partial/unexercised outcomes are retained
+without converting safe tick handling into proof of a queued click handler.
 
 Source inspection is direct JDK21 `javap` and bounded original-class/registry
 evidence, not an REA MCP execution. The original server and official mappings

@@ -349,6 +349,18 @@ impl Server {
             }
             flat.native_block_entities().furnace_title(target)?
         };
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.stonecutters.window_id(id) {
             self.close_stonecutter_with_context_locked(
                 &mut world,

@@ -175,6 +175,18 @@ impl Server {
             crate::main_workstation_components::require_supported_inventory(&menu.inventory)
         })??;
 
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.stonecutters.window_id(id) {
             self.stonecutter_action_locked(
                 &mut world, &mut players, id,

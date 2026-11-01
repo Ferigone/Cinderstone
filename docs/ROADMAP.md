@@ -97,8 +97,11 @@ core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
 - [x] Bounded native Stonecutter Main: canonical recipe/callback/transaction,
       immediate pickup, current-menu close, player phase and disconnect/save owners;
       focused local flows and [source evidence](reference/stonecutter-production.md).
-- [ ] Complete Smithing Main composition, retained full-state admission and actual
-      protocol/lifetime witness; current adapters remain an assembly stage.
+- [x] Bounded Smithing Main composition, genuine retained full-state recovery and
+      actual three-input transform/close/disconnect/native-restart witness;
+      [production limits](reference/smithing-production.md) remain explicit.
+- [ ] Complete Smithing trim/custom contexts, remaining workstation families and
+      their actual Main lifetime/owner contracts.
 - [ ] Complete custom component reference identity, remaining workstation contexts
       and all remaining menu families before closing aggregate checklist rows.
 - [ ] Complete furnace-family processing, rewards and world interactions.

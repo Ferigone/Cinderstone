@@ -149,7 +149,8 @@ impl Server {
                 || (!players.native_containers.has_open(id)
                     && !players.crafting_tables.has_open(id)
                     && !players.furnaces.has_open(id)
-                    && !players.stonecutters.has_open(id)),
+                    && !players.stonecutters.has_open(id)
+                    && !players.smithing_tables.has_open(id)),
             "close actual native menu before InventoryMenu cleanup"
         );
         // Player.remove cleans the retained InventoryMenu before the actual
@@ -319,6 +320,18 @@ impl Server {
         );
         let title = flat.native_block_entities().title(&key)?;
         let top = flat.native_block_entities().read_slots(&key)?;
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.stonecutters.window_id(id) {
             self.close_stonecutter_with_context_locked(
                 &mut world,

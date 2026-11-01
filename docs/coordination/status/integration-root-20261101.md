@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: implementing; Stonecutter PR72 publication review and Smithing Main assembly
+State: implementing; Stonecutter hosted, Smithing source publication and next native menu stages
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -15,21 +15,28 @@ without an actual issue or Git branch/status check-in.
 
 ## Current stage
 
-Stonecutter Main PR72 publishes normal source files on
-`teams/integration/integration-root-20261101/stonecutter-main`, based on current
-master `2ad92fd`, preserving team kernels. Full Main build and composed positive
-and equipped-range flows passed on local source `57e90e6`; production ledger
-records exact binary/time/limits. Follow-up review fixes queued reach-packet
-retirement and atomic current-menu close. Railway release remains unverified.
+Stonecutter Main PR72 merged as `dddc0e7807bf8caa91d5b57232e0535e6519f5ed`;
+exact head/tree `b19e160`/`adf8b392` matched local `5553015`. Full Main/actual CI
+passed. Local positive and FOOD current-menu recovery flows passed; queued
+button handler observed, queued click coverage explicitly unresolved.
+Railway `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS/native offline
+listen `2026-11-01T22:05:31.290410832Z`, one replica, volume, no pending work.
+Fresh public TCP status still fails DNS.
 
-Working Smithing adapters have real Main fields/routes, phase/lifetime and pickup
-bridges under assembly. The genuine retained full-state API and component
-reference-context guard are pending workstation contracts. Root plus six actual
-subordinate slots are used for disjoint source work, review and runtime
-validation during the active turn; no work after a stopped session is implied.
-The user also authorizes independent team owners to self-review/merge their own
-source PRs. Root retains central Main, shared seams, metrics/journal and deployment.
-Scope_version1 checklist remains56/100 code and51/100 Main.
+Smithing Main source `a4d5b460`/tree `e12ecb91` and binary `d6e1df77` passed
+actual transform/event1044/crafted-stat/close/disconnect/native-restart flow at
+`2026-11-01T22:05:07.066206+00:00`. Current-master composition `3241766` then
+passed full Main build. Source publication/self-review/CI is the current step;
+no hosted Smithing claim yet. Fixed scope1 stays56/100 code and51/100 Main.
+
+Root plus six actual subordinate slots handle disjoint active source tasks:
+isolated Grindstone mixed entity/XP/Host and compiler review; Loom configured
+registry/provider/callback/lifetime/primary code and original-source/runtime
+prerequisites. No coding after a stopped session is implied. The user's
+standing authorization permits independent teams to self-review/merge owned
+source; root retains central shared seams, checklist/journal and deployment.
+Team3's explicit new MainAnvil namespace assignment is
+[issue3 comment6564589182](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6564589182).
 
 ## Earlier published delivery
 
