@@ -28,6 +28,7 @@ pub enum WorkstationKind {
     Hopper,
     Dispenser,
     Shulker,
+    Brewing,
 }
 impl WorkstationKind {
     /// Original 1.21 MenuType registration IDs (protocol 767).
@@ -45,6 +46,7 @@ impl WorkstationKind {
             Self::Hopper => 16,
             Self::Dispenser => 6,
             Self::Shulker => 20,
+            Self::Brewing => 11,
         }
     }
     pub fn top_slots(self) -> usize {
@@ -54,7 +56,7 @@ impl WorkstationKind {
             // Nine actual inputs plus the noninteractive preview appended
             // AFTER the player inventory in CrafterMenu's slot list.
             Self::Crafter => 10,
-            Self::Hopper => 5,
+            Self::Hopper | Self::Brewing => 5,
             Self::Dispenser => 9,
             Self::Shulker => 27,
             _ => 3,
@@ -64,6 +66,7 @@ impl WorkstationKind {
         match self {
             Self::Anvil | Self::Loom | Self::Stonecutter => 1,
             Self::Enchanting | Self::Crafter => 10,
+            Self::Brewing => 2,
             _ => 0,
         }
     }
