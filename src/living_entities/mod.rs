@@ -16,3 +16,5 @@ pub mod tick;
 pub mod ai_step;
 pub mod travel;
 pub mod state;
+pub mod brain;
+pub mod metadata;
