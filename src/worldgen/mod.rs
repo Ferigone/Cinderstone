@@ -7,6 +7,7 @@ pub mod aquifer;
 pub mod biome_context;
 pub mod biome_source;
 pub mod biomes;
+pub mod blending;
 pub mod climate;
 pub mod carver;
 pub mod biome_temperature;
@@ -18,7 +19,7 @@ pub mod random_state;
 pub mod surface;
 
 pub use generator::{
-    resolve_block_state, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
+    resolve_block_state, BlendedGenerationContext, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
     NoiseGenerator, NoiseTerrain, OwnedNoiseFillOutcome, OwnedNoiseTerrain, PreparedGeneration,
     SurfaceContext, TerrainStage,
 };

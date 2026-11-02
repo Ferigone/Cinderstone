@@ -380,6 +380,11 @@ fn name<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
 /// contexts delegate markers; chunk contexts own their cache/counter state.
 pub trait DensityContext: Sized {
     type Error;
+    /// Metadata of the actual visited function. NoiseChunk's Blender wrappers
+    /// change child bounds without changing the shared RandomState graph.
+    fn bounds(&self, graph: &DensityGraph, id: NodeId) -> DensityBounds {
+        graph.bounds(id)
+    }
     /// A visitor may replace an ADD/MUL node with MulOrAdd after erasing its
     /// holder arguments. The input is evaluated before applying the constant,
     /// even when that constant is zero. Raw RandomState contexts do not perform
@@ -421,6 +426,32 @@ pub trait DensityContext: Sized {
     }
     fn blend_density(&mut self, _point: DensityPoint, value: f64) -> f64 {
         value
+    }
+    fn blend_alpha(&mut self, _id: NodeId, _point: DensityPoint) -> f64 {
+        1.0
+    }
+    fn blend_offset(&mut self, _id: NodeId, _point: DensityPoint) -> f64 {
+        0.0
+    }
+    /// Raw/empty BlendAlpha and BlendOffset use Arrays.fill, without visiting
+    /// provider indices. Nonempty NoiseChunk FlatCache wrappers override these.
+    fn blend_alpha_fill(
+        &mut self,
+        _graph: &DensityGraph,
+        _id: NodeId,
+        values: &mut [f64],
+    ) -> std::result::Result<(), Self::Error> {
+        values.fill(1.0);
+        Ok(())
+    }
+    fn blend_offset_fill(
+        &mut self,
+        _graph: &DensityGraph,
+        _id: NodeId,
+        values: &mut [f64],
+    ) -> std::result::Result<(), Self::Error> {
+        values.fill(0.0);
+        Ok(())
     }
 }
 struct RawDensityContext<'a> {
@@ -1150,8 +1181,9 @@ impl DensityGraph {
                 let value = self.eval_sampled(*input, point, context)?;
                 context.blend_density(point, value)
             }
-            DensityNode::BlendAlpha => 1.0,
-            DensityNode::BlendOffset | DensityNode::Beardifier => 0.0,
+            DensityNode::BlendAlpha => context.blend_alpha(id, point),
+            DensityNode::BlendOffset => context.blend_offset(id, point),
+            DensityNode::Beardifier => 0.0,
             DensityNode::Binary(kind, a, b) => {
                 if let Some((input, argument)) = context.rewritten_constant_argument(id) {
                     let value = self.eval_sampled(input, point, context)?;
@@ -1172,14 +1204,14 @@ impl DensityGraph {
                         }
                     }
                     Binary::Min => {
-                        if a < self.bounds(*b).min {
+                        if a < context.bounds(self, *b).min {
                             a
                         } else {
                             java_min(a, self.eval_sampled(*b, point, context)?)
                         }
                     }
                     Binary::Max => {
-                        if a > self.bounds(*b).max {
+                        if a > context.bounds(self, *b).max {
                             a
                         } else {
                             java_max(a, self.eval_sampled(*b, point, context)?)
@@ -1298,8 +1330,9 @@ impl DensityGraph {
     ) -> std::result::Result<(), C::Error> {
         match &self.nodes[id.0] {
             DensityNode::Constant(value) => values.fill(*value),
-            DensityNode::BlendAlpha => values.fill(1.0),
-            DensityNode::BlendOffset | DensityNode::Beardifier => values.fill(0.0),
+            DensityNode::BlendAlpha => context.blend_alpha_fill(self, id, values)?,
+            DensityNode::BlendOffset => context.blend_offset_fill(self, id, values)?,
+            DensityNode::Beardifier => values.fill(0.0),
             DensityNode::Reference(input) => self.fill_sampled(*input, values, context)?,
             DensityNode::Marker(kind, input) => {
                 context.marker_fill(self, id, *kind, *input, values)?
@@ -1386,7 +1419,7 @@ impl DensityGraph {
                         }
                     }
                     Binary::Min => {
-                        let bound = self.bounds(*b).min;
+                        let bound = context.bounds(self, *b).min;
                         for (index, value) in values.iter_mut().enumerate() {
                             if (*value).partial_cmp(&bound) != Some(std::cmp::Ordering::Less) {
                                 let point = context.for_index(index);
@@ -1395,7 +1428,7 @@ impl DensityGraph {
                         }
                     }
                     Binary::Max => {
-                        let bound = self.bounds(*b).max;
+                        let bound = context.bounds(self, *b).max;
                         for (index, value) in values.iter_mut().enumerate() {
                             if (*value).partial_cmp(&bound) != Some(std::cmp::Ordering::Greater) {
                                 let point = context.for_index(index);
