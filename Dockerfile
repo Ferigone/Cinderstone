@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Fast CI target: exercise the real ignore/COPY rules without compiling Rust.
 FROM scratch AS compile-input-check
-COPY src/worldgen/target/mod.rs /src/worldgen/target/mod.rs
+COPY src/worldgen/chunk_target/mod.rs /src/worldgen/chunk_target/mod.rs
 COPY tools/block_state_owner_facts.java /tools/block_state_owner_facts.java
 
 FROM rust:1.99.1-trixie AS builder

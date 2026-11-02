@@ -29,7 +29,7 @@
 **/*.class
 **/*.log
 **/*.zip
-# Exclude root Cargo output; src/worldgen/target is required Rust source.
+# Exclude root Cargo output while preserving nested source modules.
 /target/**
 **/runtime/**
 
