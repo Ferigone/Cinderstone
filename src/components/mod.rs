@@ -3,6 +3,7 @@
 
 pub mod java;
 pub mod text;
+mod decode;
 
 #[cfg(test)]
 mod tests;
