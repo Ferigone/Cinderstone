@@ -80,7 +80,33 @@ enum ExternalMenuSync<'a, H: RuntimeGameplayHooks + ?Sized> {
         player: PickupPlayer,
         sync: &'a mut dyn FnMut(&mut H, &PlayerInventory) -> Result<Vec<Packet>>,
     },
+    WithPickupPreflight {
+        player: PickupPlayer,
+        callback: &'a mut dyn FnMut(&mut H, &PlayerInventory, Option<&ItemStack>) -> Result<ExternalMenuPickupResult>,
+    },
 }
+
+/// Candidate admission is distinct from the later actual take publication.
+/// The embedding owner may Refuse only a known native profile boundary before
+/// Inventory.add. Unexpected failures remain errors; refusal is never a late
+/// replacement for an already-mutated take/synchronization callback.
+pub enum ExternalMenuPickupResult {
+    Admit,
+    Refuse,
+    Packets(Vec<Packet>),
+}
+
+/// Internal transaction abort minted only for the explicit pre-add Refuse
+/// result. The shared-container rollback also preserves its publication
+/// revision: refusal is not a successful empty container transaction.
+#[derive(Debug)]
+struct RefusedExternalMenuPickup;
+impl std::fmt::Display for RefusedExternalMenuPickup {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("external menu candidate was refused before inventory add")
+    }
+}
+impl std::error::Error for RefusedExternalMenuPickup {}
 
 pub struct RuntimeInventoryHost<'a, H: RuntimeGameplayHooks + ?Sized> {
     players: &'a EntityRegistry,
@@ -139,6 +165,20 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
         self
     }
 
+    /// One actual current-menu owner handles both pure candidate admission and
+    /// source-position take synchronization. Some(stack) is called before the
+    /// canonical Inventory.add mutation and returns Admit/Refuse, no packets;
+    /// None is the existing take/menu-sync phase. Both borrow the same hooks
+    /// and actual inventory, with no second menu, cursor or callback owner.
+    pub fn with_external_menu_sync_and_pickup_preflight(
+        mut self,
+        player: PickupPlayer,
+        callback: &'a mut dyn FnMut(&mut H, &PlayerInventory, Option<&ItemStack>) -> Result<ExternalMenuPickupResult>,
+    ) -> Self {
+        self.external_menu_sync = Some(ExternalMenuSync::WithPickupPreflight { player, callback });
+        self
+    }
+
     fn player(&self, player: PickupPlayer) -> Result<&PlayerState> {
         let current = self
             .players
@@ -171,6 +211,20 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
                     ensure!(bound.uuid == player.uuid, "external menu player UUID changed");
                     let hooks = &mut *self.hooks;
                     return container.transact(|menu| Ok(((), sync(hooks, &menu.inventory)?)));
+                }
+                ExternalMenuSync::WithPickupPreflight { player: bound, callback }
+                    if bound.entity_id == player.entity_id =>
+                {
+                    ensure!(bound.uuid == player.uuid, "external menu player UUID changed");
+                    let hooks = &mut *self.hooks;
+                    return container.transact(|menu| {
+                        let packets = match callback(hooks, &menu.inventory, None)? {
+                            ExternalMenuPickupResult::Packets(packets) => packets,
+                            ExternalMenuPickupResult::Admit | ExternalMenuPickupResult::Refuse =>
+                                anyhow::bail!("external menu cannot admit/refuse after canonical pickup mutation"),
+                        };
+                        Ok(((), packets))
+                    });
                 }
                 _ => {}
             }
@@ -291,12 +345,28 @@ impl<H: RuntimeGameplayHooks + ?Sized> RuntimeEntityHost for RuntimeInventoryHos
         stack: &mut ItemStack,
     ) -> Result<bool> {
         let creative = self.player(player)?.gamemode == 1;
-        self.container(player)?.transact(|menu| {
+        let container = self.container(player)?.clone();
+        let result = container.transact(|menu| {
+            if let Some(ExternalMenuSync::WithPickupPreflight { player: bound, callback }) = &mut self.external_menu_sync {
+                if bound.entity_id == player.entity_id {
+                    ensure!(bound.uuid == player.uuid, "external menu pickup player UUID changed");
+                    match callback(&mut *self.hooks, &menu.inventory, Some(&*stack))? {
+                        ExternalMenuPickupResult::Admit => {},
+                        ExternalMenuPickupResult::Refuse => return Err(RefusedExternalMenuPickup.into()),
+                        ExternalMenuPickupResult::Packets(_) =>
+                            anyhow::bail!("external menu pickup preflight cannot publish packets"),
+                    }
+                }
+            }
             let accepted = menu.add_pickup_to_inventory(stack, creative)?;
             // Inventory.add precedes Player.take. Keep the remote baseline
             // untouched and emit no private inventory packet at this stage.
             Ok((accepted, Vec::new()))
-        })
+        });
+        match result {
+            Err(error) if error.is::<RefusedExternalMenuPickup>() => Ok(false),
+            result => result,
+        }
     }
 
     fn collect_item(

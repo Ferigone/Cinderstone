@@ -21,7 +21,7 @@ use mc121_rust::{
     geometry::{self, static_block_intersects, Aabb, EntityCollisionContext, Vec3},
     inventory::{self, CreativeSlotAction, ItemStack},
     item_entity::{ItemState, PlayerDrop},
-    item_host::RuntimeInventoryHost,
+    item_host::{ExternalMenuPickupResult, RuntimeInventoryHost},
     level::LevelData,
     metadata::MetadataValue,
     nbt::Tag,
@@ -128,6 +128,16 @@ mod main_loom_callbacks;
 mod main_loom_dispatch;
 mod main_loom_lifecycle;
 mod main_loom_pickup;
+mod main_grindstone;
+mod main_grindstone_recipes;
+mod main_grindstone_dispatch;
+mod main_grindstone_lifecycle;
+mod main_grindstone_pickup;
+mod main_anvil;
+mod main_anvil_context;
+mod main_anvil_dispatch;
+mod main_anvil_lifecycle;
+mod main_anvil_pickup;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -502,6 +512,8 @@ struct LivePlayers {
     stonecutters: main_stonecutter::StonecutterRuntime,
     smithing_tables: main_smithing::SmithingRuntime,
     looms: main_loom::LoomRuntime,
+    grindstones: main_grindstone::GrindstoneRuntime,
+    anvils: main_anvil::NativeAnvilRuntime,
     experience_runtime: main_experience::MainExperienceRuntime,
     block_runtime: main_block_ticks::MainBlockRuntime,
     redstone_runtime: main_redstone::MainRedstoneRuntime,
@@ -766,6 +778,8 @@ impl LivePlayers {
             stonecutters: main_stonecutter::StonecutterRuntime::default(),
             smithing_tables: main_smithing::SmithingRuntime::default(),
             looms: main_loom::LoomRuntime::default(),
+            grindstones: main_grindstone::GrindstoneRuntime::default(),
+            anvils: main_anvil::NativeAnvilRuntime::default(),
             experience_runtime: main_experience::MainExperienceRuntime::default(),
             block_runtime: main_block_ticks::MainBlockRuntime::new(fresh_unedited),
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
@@ -847,6 +861,7 @@ impl LivePlayers {
         self.chunk_runtime.manager.player_add(id, chunk, false)?;
         self.connection_admissions.insert(admission, id);
         self.player_random.insert(id, random);
+        self.experience_runtime.initialize_player_cache(id);
         self.creative_drop.insert(id, CreativeDropGate::default());
         self.chunk_transports
             .insert(id, SessionChunkTransport::new());
@@ -1048,6 +1063,8 @@ impl Server {
         let inventory=players.stonecutters.inventory_snapshot(id,&inventory);
         let inventory=players.smithing_tables.inventory_snapshot(id,&inventory);
         let inventory=players.looms.inventory_snapshot(id,&inventory);
+        let inventory=players.grindstones.inventory_snapshot(id,&inventory);
+        let inventory=players.anvils.inventory_snapshot(id,&inventory);
         let stats = players.gameplay.snapshot_player_stats(uuid)?;
         let mut lifecycle = players
             .player_lifecycle
@@ -1155,6 +1172,8 @@ impl Server {
             Stonecutter(u8),
             Smithing(u8),
             Loom(u8),
+            Grindstone(u8),
+            Anvil(u8),
             CraftingTable(u8),
             NativeContainer(u8),
         }
@@ -1163,6 +1182,8 @@ impl Server {
             players.stonecutters.window_id(id).map(CurrentMenu::Stonecutter),
             players.smithing_tables.window_id(id).map(CurrentMenu::Smithing),
             players.looms.window_id(id).map(CurrentMenu::Loom),
+            players.grindstones.window_id(id).map(CurrentMenu::Grindstone),
+            players.anvils.window_id(id).map(CurrentMenu::Anvil),
             players.crafting_tables.window_id(id).map(CurrentMenu::CraftingTable),
             players.native_containers.window_id(id).map(CurrentMenu::NativeContainer),
         ].into_iter().flatten();
@@ -1180,6 +1201,16 @@ impl Server {
                 &mut world, &mut players, id, window, false, now, border,
                 mc121_rust::container::MenuCloseContext::AliveConnected,
             )?,
+            Some(CurrentMenu::Grindstone(window)) => self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, false, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?,
+            Some(CurrentMenu::Anvil(window)) => {
+                let context = main_anvil_lifecycle::connected_anvil_close_context(&players, id)?;
+                self.close_anvil_with_context_locked(
+                    &mut world, &mut players, id, window, false, now, border, context,
+                )?
+            }
             Some(CurrentMenu::Smithing(window)) => self.close_smithing_with_context_locked(
                 &mut world, &mut players, id, window, false, now, border,
                 mc121_rust::container::MenuCloseContext::AliveConnected,
@@ -1205,6 +1236,20 @@ impl Server {
         operation: impl FnOnce(&mut PlayerContainer) -> Result<ClickOutcome>,
         creative_attempt: Option<(i16, ItemStack)>,
     ) -> Result<()> {
+        self.execute_menu_action_with_candidate(
+            id, container, operation, creative_attempt, None,
+        ).await
+    }
+
+    async fn execute_menu_action_with_candidate(
+        &self,
+        id: i32,
+        container: &SharedContainer,
+        operation: impl FnOnce(&mut PlayerContainer) -> Result<ClickOutcome>,
+        creative_attempt: Option<(i16, ItemStack)>,
+        candidate: Option<ItemStack>,
+    ) -> Result<()> {
+        let _operation = self.chat_dispatch.lock().await;
         let game_time = self
             .clock
             .read()
@@ -1234,6 +1279,25 @@ impl Server {
             return Ok(());
         };
         let (uuid, position, pose) = (player.profile.uuid, player.position, player.metadata.pose);
+        if let Some(candidate) = &candidate {
+            if players.anvils.has_open(id) {
+                if let Err(error) = main_anvil_context::require_anvil_stack_context(candidate) {
+                    if !error.is::<main_anvil_context::UnsupportedAnvilEnchantmentContext>() {
+                        return Err(error);
+                    }
+                    eprintln!("{}", json!({
+                        "event":"native_component_admission_refused", "entity_id":id,
+                        "packet_id":0x32, "reason":format!("{error:#}"),
+                    }));
+                    // Selection, refusal and genuine retained-state recovery
+                    // share the same actual operation/world/player interval.
+                    self.resync_native_anvil_locked(
+                        &mut world, &mut players, id, game_time, border,
+                    )?;
+                    return Ok(());
+                }
+            }
+        }
         let mut staged_gate = None;
         if let Some((slot, stack)) = &creative_attempt {
             stack.validate_creative()?;
@@ -1424,7 +1488,9 @@ impl Server {
                 self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_smithing_menu_for_player_locked(world, players, id, game_time, border)?;
-                self.tick_native_loom_menu_for_player_locked(world, players, id, game_time, border)
+                self.tick_native_loom_menu_for_player_locked(world, players, id, game_time, border)?;
+                self.tick_native_grindstone_menu_for_player_locked(world, players, id, game_time, border)?;
+                self.tick_native_anvil_menu_for_player_locked(world, players, id, game_time, border)
             })
     }
 
@@ -1492,14 +1558,19 @@ impl Server {
                     stonecutters,
                     smithing_tables,
                     looms,
+                    grindstones,
+                    anvils,
                     ..
                 } = &mut *players;
                 let active_furnace = furnaces.has_open(id);
                 let active_stonecutter = stonecutters.has_open(id);
                 let active_smithing = smithing_tables.has_open(id);
                 let active_loom = looms.has_open(id);
+                let active_grindstone = grindstones.has_open(id);
+                let active_anvil = anvils.has_open(id);
                 ensure!(u8::from(active_furnace) + u8::from(active_stonecutter)
-                    + u8::from(active_smithing) + u8::from(active_loom) <= 1,
+                    + u8::from(active_smithing) + u8::from(active_loom)
+                    + u8::from(active_grindstone) + u8::from(active_anvil) <= 1,
                     "multiple current external menus during connection pickup");
                 let mut frame = gameplay.frame(registry, &chunk_runtime.manager, true);
                 let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
@@ -1518,7 +1589,31 @@ impl Server {
                                      inventory: &mc121_rust::inventory::PlayerInventory| {
                     looms.broadcast_for_inventory(id, pickup, inventory, hooks)
                 };
-                if active_loom {
+                let mut grindstone_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                           inventory: &mc121_rust::inventory::PlayerInventory| {
+                    grindstones.broadcast_for_inventory(id, pickup, inventory, hooks)
+                };
+                let mut anvil_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                      inventory: &mc121_rust::inventory::PlayerInventory,
+                                      candidate: Option<&ItemStack>| {
+                    if let Some(candidate) = candidate {
+                        match anvils.preflight_inventory_pickup(id, pickup, inventory, candidate, hooks) {
+                            Ok(()) => Ok(ExternalMenuPickupResult::Admit),
+                            Err(error) if error.is::<main_anvil_context::UnsupportedAnvilEnchantmentContext>()
+                                || error.is::<main_workstation_components::UnsupportedFoodIdentity>() =>
+                                Ok(ExternalMenuPickupResult::Refuse),
+                            Err(error) => Err(error),
+                        }
+                    } else {
+                        anvils.broadcast_for_inventory(id, pickup, inventory, hooks)
+                            .map(ExternalMenuPickupResult::Packets)
+                    }
+                };
+                if active_anvil {
+                    host = host.with_external_menu_sync_and_pickup_preflight(pickup, &mut anvil_sync);
+                } else if active_grindstone {
+                    host = host.with_external_menu_sync_and_hooks(pickup, &mut grindstone_sync);
+                } else if active_loom {
                     host = host.with_external_menu_sync_and_hooks(pickup, &mut loom_sync);
                 } else if active_smithing {
                     host = host.with_external_menu_sync_and_hooks(pickup, &mut smithing_sync);
@@ -2214,6 +2309,8 @@ impl Server {
                 self.close_stonecutters_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_smithing_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_looms_for_save_locked(&mut world,&mut players,clock.game_time)?;
+                self.close_grindstones_for_save_locked(&mut world,&mut players,clock.game_time)?;
+                self.close_anvils_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_crafting_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_native_containers_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 let b=self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
@@ -2366,15 +2463,34 @@ impl Server {
             ensure!(!players.stonecutters.has_open(id), "orphan stonecutter menu retained");
             ensure!(!players.smithing_tables.has_open(id), "orphan smithing menu retained");
             ensure!(!players.looms.has_open(id), "orphan loom menu retained");
+            ensure!(!players.grindstones.has_open(id), "orphan grindstone menu retained");
+            ensure!(!players.anvils.has_open(id), "orphan anvil menu retained");
             return Ok(());
         }
         if let Some(reason)=reason {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
         }
+        let external_owners = usize::from(players.native_containers.has_open(id))
+            + usize::from(players.crafting_tables.has_open(id))
+            + usize::from(players.furnaces.has_open(id))
+            + usize::from(players.stonecutters.has_open(id))
+            + usize::from(players.smithing_tables.has_open(id))
+            + usize::from(players.looms.has_open(id))
+            + usize::from(players.grindstones.has_open(id))
+            + usize::from(players.anvils.has_open(id));
+        ensure!(external_owners <= 1, "multiple current external menus during player cleanup");
         // Player.remove first invokes InventoryMenu.removed, then removes the
         // actual external menu. Keep that order for carried/grid drop RNG and
         // shared entity allocation even when a block menu remains current.
         self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        if let Some(window)=players.anvils.window_id(id) {
+            ensure!(self.close_anvil_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
+                "actual anvil owner changed during player cleanup");
+        }
+        if let Some(window)=players.grindstones.window_id(id) {
+            ensure!(self.close_grindstone_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
+                "actual grindstone owner changed during player cleanup");
+        }
         if let Some(window)=players.looms.window_id(id) {
             self.close_loom_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
@@ -3302,7 +3418,7 @@ async fn play(
         send(&codec, &mut writer, 0x1d, rejection.network_component()?).await?;
         return Ok(PlayExit::Disconnected);
     }
-    let (entity_id, player_random) = server.allocate_player_entity()?;
+    let (entity_id, mut player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
         let _ = menu_sender.send(PlayerEvent::Container {
@@ -3340,6 +3456,9 @@ async fn play(
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
         let uuid = profile.uuid;
+        let mut seed_admission = main_player_data::EnchantmentSeedAdmission::SavedData;
+        // Pending writes are saved-data proposals for this new Player too.
+        // Reconfiguration does not retain/copy the old Player object.
         let mut saved = match players.pending_player_saves.get(&uuid) {
             Some(data) => Some(data.clone()),
             None => server.player_store.load(uuid)?,
@@ -3361,10 +3480,11 @@ async fn play(
         let math=players.math_random.as_ref().context("actual global Math.random owner missing")?;
         let constructor_math=[math.next_f64()?,math.next_f64()?,math.next_f64()?];
         let mut player = PlayerState::new(entity_id, profile, position)?;
-        let (inventory, stats, lifecycle) = if let Some(saved) = saved {
+        let (inventory, stats, mut lifecycle) = if let Some(saved) = saved {
             saved.apply_to_player(&mut player)?;
             (saved.inventory, saved.stats, saved.lifecycle)
         } else {
+            seed_admission = main_player_data::EnchantmentSeedAdmission::NewPlayer;
             let mut stats = PlayerStats::default();
             if let Some(root) = &server.options.anvil_world {
                 let uuid_text = mc121_rust::player_data::uuid_string(uuid);
@@ -3388,6 +3508,11 @@ async fn play(
             lifecycle.dimension == "minecraft:overworld",
             "saved player dimension is unsupported by this world host"
         );
+        // This is the one real local Player.random created for this admission.
+        // Every actual saved-data admission, including reconfiguration and a
+        // pending native save, loads seed0 once. A genuinely new player keeps
+        // constructor zero. Move this advanced RNG into runtime below.
+        main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
         position = player.position;
         metadata = player.metadata;
@@ -3651,8 +3776,9 @@ async fn play(
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
-                        // switchToConfig removes the actual old ServerPlayer.
-                        // Re-entry uses the normal saved-player admission path.
+                        // switchToConfig removes/saves the old ServerPlayer.
+                        // Configuration completion constructs a new Player and
+                        // uses normal saved-data loading, not restoreFrom.
                         server.cleanup_player(entity_id, None).await?;
                         let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
                         send(&codec, &mut writer, terminal.id, terminal.payload).await?;
@@ -3730,6 +3856,10 @@ async fn play(
                     0x09 => { let action=fields.varint()?; fields.finish()?; ensure!((0..=1).contains(&action),"unknown client command"); if action==1 {if let Some(packet)=server.stats_packet(entity_id)? {send_packets(&codec,&mut writer,vec![packet]).await?;}} },
                     0x28 => server.recipe_settings(entity_id, &packet.payload)?,
                     0x29 => server.recipe_seen(entity_id, &packet.payload)?,
+                    0x2a => {
+                        let name=main_anvil_dispatch::decode_anvil_rename(&packet.payload)?;
+                        let _=server.rename_native_anvil(entity_id,&name).await?;
+                    },
                     0x18 => {
                         let id = fields.i64()?; fields.finish()?;
                         match protocol.keep_alive_mut().receive(server.epoch.elapsed().as_millis() as i64,id) {
@@ -3836,6 +3966,8 @@ async fn play(
                             server.resync_current_player_menu(entity_id).await?;
                             continue;
                         }
+                        if server.click_native_anvil(entity_id,&click).await? {continue;}
+                        if server.click_native_grindstone(entity_id,&click).await? {continue;}
                         if server.click_native_loom(entity_id,&click).await? {continue;}
                         if server.click_native_smithing_table(entity_id,&click).await? {continue;}
                         if server.click_native_stonecutter(entity_id,&click).await? {continue;}
@@ -3868,7 +4000,10 @@ async fn play(
                             finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                             continue;
                         }
-                        let result=server.execute_menu_action(entity_id,&container,|menu| {
+                        // A detached admission observation of the actual packet
+                        // stack; mutation still owns the decoded stack below.
+                        let candidate=stack.clone();
+                        let result=server.execute_menu_action_with_candidate(entity_id,&container,|menu| {
                             let mut packets=Vec::new();
                             match menu.inventory.set_creative_slot(slot, stack)? {
                                 CreativeSlotAction::Assigned{slot} => {
@@ -3879,7 +4014,7 @@ async fn play(
                                 CreativeSlotAction::Drop(_) | CreativeSlotAction::Ignored => {},
                             }
                             Ok(ClickOutcome{packets,..ClickOutcome::default()})
-                        },None).await;
+                        },None,Some(candidate)).await;
                         finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                     },
                     0x24 => {
@@ -3914,6 +4049,14 @@ async fn play(
                             continue;
                         }
                         if teleport_confirmed && server.use_native_stonecutter(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_grindstone(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_anvil(entity_id,hand,target).await? {
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                             continue;
                         }

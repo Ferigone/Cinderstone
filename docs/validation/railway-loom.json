@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-11-02T00:13:07.958705+00:00",
+  "master": "26c4d2ec13b885e51025e105f1edeb0fe78f6309",
+  "pr": 81,
+  "deployment": "7e85486e-40a8-4fce-89e0-78b794fa815a",
+  "status": "SUCCESS",
+  "listening_at": "2026-11-02T00:03:45.613716489Z",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "mode": "offline",
+  "running_replicas": 1,
+  "crashed_replicas": 0,
+  "has_volume": true,
+  "pending_work": [],
+  "public_play_verified": false,
+  "public_probe": "Not executed: executor TCP destination policy does not include the Railway proxy. Startup is not public PLAY proof."
+}

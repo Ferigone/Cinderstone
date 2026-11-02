@@ -168,6 +168,18 @@ impl Server {
             crate::main_workstation_components::require_supported_inventory(&menu.inventory)
         })??;
 
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.looms.window_id(id) {
             self.close_loom_with_context_locked(
                 &mut world, &mut players, id, window, true, now, border,

@@ -36,6 +36,8 @@ impl LivePlayers {
             ensure!(!players.stonecutters.has_open(id), "active stonecutter requires its actual level-player menu owner");
             ensure!(!players.smithing_tables.has_open(id), "active smithing menu requires its actual level-player menu owner");
             ensure!(!players.looms.has_open(id), "active loom requires its actual level-player menu owner");
+            ensure!(!players.grindstones.has_open(id), "active grindstone requires its actual level-player menu owner");
+            ensure!(!players.anvils.has_open(id), "active anvil requires its actual level-player menu owner");
             Ok(())
         })
     }
@@ -154,10 +156,14 @@ impl LivePlayers {
                     // invalidity can close it there, but must not cause a second
                     // inactive InventoryMenu broadcast later in this player entry.
                     let external_menu = if kind == EntityKind::Player {
-                        let owners = usize::from(self.furnaces.has_open(handle.id))
+                        let owners = usize::from(self.native_containers.has_open(handle.id))
+                            + usize::from(self.crafting_tables.has_open(handle.id))
+                            + usize::from(self.furnaces.has_open(handle.id))
                             + usize::from(self.stonecutters.has_open(handle.id))
                             + usize::from(self.smithing_tables.has_open(handle.id))
-                            + usize::from(self.looms.has_open(handle.id));
+                            + usize::from(self.looms.has_open(handle.id))
+                            + usize::from(self.grindstones.has_open(handle.id))
+                            + usize::from(self.anvils.has_open(handle.id));
                         ensure!(owners <= 1, "multiple current external menus during level-player phase");
                         owners != 0
                     } else {
