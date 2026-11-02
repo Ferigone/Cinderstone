@@ -122,6 +122,12 @@ mod main_smithing_recipes;
 mod main_smithing_dispatch;
 mod main_smithing_lifecycle;
 mod main_smithing_pickup;
+mod main_loom;
+mod main_loom_patterns;
+mod main_loom_callbacks;
+mod main_loom_dispatch;
+mod main_loom_lifecycle;
+mod main_loom_pickup;
 use main_chunk_runtime::MainChunkRuntime;
 use main_chunk_transport::{ChunkTransportUpdate, SessionChunkTransport};
 use main_drop_commit::{menu_action_with_items, DropCommitCallbacks, DropCommitOwner};
@@ -495,6 +501,7 @@ struct LivePlayers {
     furnaces: main_furnaces::FurnaceRuntime,
     stonecutters: main_stonecutter::StonecutterRuntime,
     smithing_tables: main_smithing::SmithingRuntime,
+    looms: main_loom::LoomRuntime,
     experience_runtime: main_experience::MainExperienceRuntime,
     block_runtime: main_block_ticks::MainBlockRuntime,
     redstone_runtime: main_redstone::MainRedstoneRuntime,
@@ -758,6 +765,7 @@ impl LivePlayers {
             furnaces: main_furnaces::FurnaceRuntime::default(),
             stonecutters: main_stonecutter::StonecutterRuntime::default(),
             smithing_tables: main_smithing::SmithingRuntime::default(),
+            looms: main_loom::LoomRuntime::default(),
             experience_runtime: main_experience::MainExperienceRuntime::default(),
             block_runtime: main_block_ticks::MainBlockRuntime::new(fresh_unedited),
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
@@ -1039,6 +1047,7 @@ impl Server {
         let inventory=players.furnaces.inventory_snapshot(id,&inventory);
         let inventory=players.stonecutters.inventory_snapshot(id,&inventory);
         let inventory=players.smithing_tables.inventory_snapshot(id,&inventory);
+        let inventory=players.looms.inventory_snapshot(id,&inventory);
         let stats = players.gameplay.snapshot_player_stats(uuid)?;
         let mut lifecycle = players
             .player_lifecycle
@@ -1145,6 +1154,7 @@ impl Server {
             Furnace(u8),
             Stonecutter(u8),
             Smithing(u8),
+            Loom(u8),
             CraftingTable(u8),
             NativeContainer(u8),
         }
@@ -1152,6 +1162,7 @@ impl Server {
             players.furnaces.window_id(id).map(CurrentMenu::Furnace),
             players.stonecutters.window_id(id).map(CurrentMenu::Stonecutter),
             players.smithing_tables.window_id(id).map(CurrentMenu::Smithing),
+            players.looms.window_id(id).map(CurrentMenu::Loom),
             players.crafting_tables.window_id(id).map(CurrentMenu::CraftingTable),
             players.native_containers.window_id(id).map(CurrentMenu::NativeContainer),
         ].into_iter().flatten();
@@ -1162,6 +1173,10 @@ impl Server {
                 &mut world, &mut players, id, None, Some(window), false, now, border,
             )?,
             Some(CurrentMenu::Stonecutter(window)) => self.close_stonecutter_with_context_locked(
+                &mut world, &mut players, id, window, false, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?,
+            Some(CurrentMenu::Loom(window)) => self.close_loom_with_context_locked(
                 &mut world, &mut players, id, window, false, now, border,
                 mc121_rust::container::MenuCloseContext::AliveConnected,
             )?,
@@ -1408,7 +1423,8 @@ impl Server {
             |players, world, id| {
                 self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;
-                self.tick_native_smithing_menu_for_player_locked(world, players, id, game_time, border)
+                self.tick_native_smithing_menu_for_player_locked(world, players, id, game_time, border)?;
+                self.tick_native_loom_menu_for_player_locked(world, players, id, game_time, border)
             })
     }
 
@@ -1472,15 +1488,24 @@ impl Server {
                     containers,
                     gameplay,
                     chunk_runtime,
+                    furnaces,
                     stonecutters,
                     smithing_tables,
+                    looms,
                     ..
                 } = &mut *players;
+                let active_furnace = furnaces.has_open(id);
                 let active_stonecutter = stonecutters.has_open(id);
                 let active_smithing = smithing_tables.has_open(id);
-                ensure!(!(active_stonecutter && active_smithing), "multiple current external menus during connection pickup");
+                let active_loom = looms.has_open(id);
+                ensure!(u8::from(active_furnace) + u8::from(active_stonecutter)
+                    + u8::from(active_smithing) + u8::from(active_loom) <= 1,
+                    "multiple current external menus during connection pickup");
                 let mut frame = gameplay.frame(registry, &chunk_runtime.manager, true);
                 let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                let mut furnace_sync = |inventory: &mc121_rust::inventory::PlayerInventory| {
+                    furnaces.broadcast_for_inventory(&*world, id, inventory)
+                };
                 let mut stonecutter_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
                                            inventory: &mc121_rust::inventory::PlayerInventory| {
                     stonecutters.broadcast_for_inventory(id, pickup, inventory, hooks)
@@ -1489,10 +1514,18 @@ impl Server {
                                         inventory: &mc121_rust::inventory::PlayerInventory| {
                     smithing_tables.broadcast_for_inventory(id, pickup, inventory, hooks)
                 };
-                if active_smithing {
+                let mut loom_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                     inventory: &mc121_rust::inventory::PlayerInventory| {
+                    looms.broadcast_for_inventory(id, pickup, inventory, hooks)
+                };
+                if active_loom {
+                    host = host.with_external_menu_sync_and_hooks(pickup, &mut loom_sync);
+                } else if active_smithing {
                     host = host.with_external_menu_sync_and_hooks(pickup, &mut smithing_sync);
                 } else if active_stonecutter {
                     host = host.with_external_menu_sync_and_hooks(pickup, &mut stonecutter_sync);
+                } else if active_furnace {
+                    host = host.with_external_menu_sync(id, &mut furnace_sync);
                 }
                 item_runtime.player_touch(pickup, &mut host)?;
             }
@@ -2180,6 +2213,7 @@ impl Server {
                 self.close_furnaces_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_stonecutters_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_smithing_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
+                self.close_looms_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_crafting_tables_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 self.close_native_containers_for_save_locked(&mut world,&mut players,clock.game_time)?;
                 let b=self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
@@ -2331,6 +2365,7 @@ impl Server {
             ensure!(!players.furnaces.has_open(id), "orphan furnace menu retained");
             ensure!(!players.stonecutters.has_open(id), "orphan stonecutter menu retained");
             ensure!(!players.smithing_tables.has_open(id), "orphan smithing menu retained");
+            ensure!(!players.looms.has_open(id), "orphan loom menu retained");
             return Ok(());
         }
         if let Some(reason)=reason {
@@ -2340,6 +2375,9 @@ impl Server {
         // actual external menu. Keep that order for carried/grid drop RNG and
         // shared entity allocation even when a block menu remains current.
         self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        if let Some(window)=players.looms.window_id(id) {
+            self.close_loom_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+        }
         if let Some(window)=players.smithing_tables.window_id(id) {
             self.close_smithing_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
@@ -3786,6 +3824,7 @@ async fn play(
                     0x36 => { let hand=fields.varint()?; fields.finish()?; server.animate(entity_id, hand)?; },
                     0x0d => {
                         let window=fields.varint()?; let button=fields.varint()?; fields.finish()?;
+                        if server.loom_button(entity_id,window,button).await? { continue; }
                         let _=server.stonecutter_button(entity_id,window,button).await?;
                     },
                     0x0e => {
@@ -3797,6 +3836,7 @@ async fn play(
                             server.resync_current_player_menu(entity_id).await?;
                             continue;
                         }
+                        if server.click_native_loom(entity_id,&click).await? {continue;}
                         if server.click_native_smithing_table(entity_id,&click).await? {continue;}
                         if server.click_native_stonecutter(entity_id,&click).await? {continue;}
                         if server.click_native_furnace(entity_id,&click).await? {continue;}
@@ -3874,6 +3914,10 @@ async fn play(
                             continue;
                         }
                         if teleport_confirmed && server.use_native_stonecutter(entity_id,hand,target).await? {
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_loom(entity_id,hand,target).await? {
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                             continue;
                         }

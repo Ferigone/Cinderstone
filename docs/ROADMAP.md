@@ -100,6 +100,10 @@ core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
 - [x] Bounded Smithing Main composition, genuine retained full-state recovery and
       actual three-input transform/close/disconnect/native-restart witness;
       [production limits](reference/smithing-production.md) remain explicit.
+- [x] Bounded native Loom Main with actual configured patterns, source-phased
+      callbacks, sound/drop owners and [local pattern/lifetime/restart witness](validation/loom-flow.json).
+- [ ] Complete Loom templates/custom/reentrant/identity-order contexts and
+      remaining runtime coverage; multi-target drag still needs its actual owner.
 - [ ] Complete Smithing trim/custom contexts, remaining workstation families and
       their actual Main lifetime/owner contracts.
 - [ ] Complete custom component reference identity, remaining workstation contexts

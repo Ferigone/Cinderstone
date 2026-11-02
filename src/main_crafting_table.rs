@@ -126,6 +126,12 @@ impl Server {
             players.world_context.rules.boolean("doLimitedCrafting") == Some(false),
             "limited crafting requires actual known-recipe unlock owner"
         );
+        if let Some(window) = players.looms.window_id(id) {
+            self.close_loom_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.smithing_tables.window_id(id) {
             self.close_smithing_with_context_locked(
                 &mut world,
@@ -303,9 +309,10 @@ impl Server {
         let Some(open) = players.crafting_tables.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|window| window != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
+        }
+        if close.is_some_and(|window| window != open.menu.window_id) {
             return Ok(false);
         }
         let player = players

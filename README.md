@@ -10,6 +10,19 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Loom Main
+
+The Loom uses actual configured banner patterns/template tags, canonical inputs,
+source-phased callbacks and the existing item/sound owners. Full Main build and
+[local protocol flow](docs/validation/loom-flow.json) passed: patterned banner
+component49, ingredient consumption, sound1429 and close/disconnect/native restart
+conserved owned items without duplicating the preview. See
+[production scope](docs/reference/loom-production.md). A current-kernel recheck
+also passed: stale window0 clicks do not mutate the inactive menu, and all seven
+fixture stones remain owned. Source phases retain the real inventory-counter
+timeline; internal counter instrumentation is not claimed. This source stage is
+under publication; templates/custom and broader runtime paths remain open.
+
 ## Native Smithing Main
 
 The three-input Smithing controller is connected to actual Main owners. A full
@@ -18,7 +31,10 @@ netherite-sword transformation, actual level event1044, crafted statistics,
 current-menu close, disconnect and native cold restart preserved owned items.
 [Production scope](docs/reference/smithing-production.md) separates that observed
 path from unexercised trim, custom component, pickup and range contexts. Its
-source PR is under publication; a hosted Smithing release is not yet verified.
+[PR78](https://github.com/Ferigone/Cinderstone/pull/78) merged as `005e759`.
+Railway deployment `138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS and
+native offline listening at `2026-11-01T22:24:46.700522705Z`, one running replica,
+retained volume and no pending work. Public gameplay remains unverified.
 
 ## Native Stonecutter Main
 

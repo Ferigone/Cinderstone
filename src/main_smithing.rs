@@ -31,6 +31,14 @@ impl SmithingRuntime {
     }
     pub(super) fn has_open(&self, id: i32) -> bool { self.menus.contains_key(&id) }
     pub(super) fn pending_players(&self) -> Vec<i32> { self.menus.keys().copied().collect() }
+    pub(super) fn preflight_close_return_stacks(&self, id: i32,
+        check: &mut dyn FnMut(&ItemStack) -> Result<()>) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) {
+            check(open.menu.sync().carried())?;
+            for stack in open.menu.station().inputs() { check(stack)?; }
+        }
+        Ok(())
+    }
     pub(super) fn inventory_snapshot(&self, id: i32, inventory: &PlayerInventory) -> PlayerInventory {
         self.menus.get(&id).map_or_else(
             || inventory.clone(),
@@ -76,6 +84,24 @@ fn publish(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet
     }
 }
 
+/// Project only the counter obligations left to the actual Main owner. Each
+/// marker keeps its before-image; later phase images include prior increments.
+fn project_inventory_counter(events: &mut [SmithingMenuEvent], inventory: &mut PlayerInventory, before: i32) -> Result<()> {
+    ensure!(inventory.get_times_changed() == before, "smithing kernel counter ownership changed");
+    let mut preceding = 0_usize;
+    for event in events {
+        let marker = matches!(event, SmithingMenuEvent::PlayerInventoryChanged { .. });
+        let phase = match event {
+            SmithingMenuEvent::Effect { phase, .. } | SmithingMenuEvent::Sync { phase, .. }
+            | SmithingMenuEvent::PlayerInventoryChanged { phase } | SmithingMenuEvent::Drop { phase, .. } => phase,
+        };
+        ensure!(phase.player_inventory.get_times_changed() == before, "smithing phase counter requires a new kernel handoff");
+        for _ in 0..preceding { phase.player_inventory.set_changed(); }
+        if marker { inventory.set_changed(); preceding += 1; }
+    }
+    Ok(())
+}
+
 struct PreparedSmithingCommit<'a> {
     items: PreparedItemBatch<'a>,
     player_random: &'a mut LegacyRandomSource,
@@ -94,6 +120,7 @@ struct PreparedSmithingCommit<'a> {
     stats_after_event: Vec<PlayerStats>,
     drop_ordinals: Vec<Option<usize>>,
     level_event_recipients: Arc<Vec<i32>>,
+    final_inventory: PlayerInventory,
 }
 
 impl PreparedSmithingCommit<'_> {
@@ -102,7 +129,7 @@ impl PreparedSmithingCommit<'_> {
             items, player_random, next_player_random, next_world_random,
             entity_counter, next_entity_id, gameplay, recipe_book, menus,
             next_open, close, close_packet, publication, callbacks,
-            stats_after_event, drop_ordinals, level_event_recipients,
+            stats_after_event, drop_ordinals, level_event_recipients, final_inventory,
         } = self;
         *player_random = next_player_random;
         entity_counter.store(next_entity_id, Ordering::Relaxed);
@@ -126,6 +153,7 @@ impl PreparedSmithingCommit<'_> {
                 while cursor < publication.events.len() {
                     let index = cursor;
                     let event = &publication.events[index];
+                    canonical_menu.inventory = main_smithing_recipes::smithing_event_phase(event).player_inventory.clone();
                     if let SmithingMenuEvent::Drop { index: drop_index, .. } = event {
                         if let Some(expected) = drop_ordinals[*drop_index] {
                             assert_eq!(expected, ordinal, "validated indexed drop publication order");
@@ -165,6 +193,9 @@ impl PreparedSmithingCommit<'_> {
                 }
             });
         assert!(pending_drop.is_none() && cursor == publication.events.len());
+        assert_eq!(canonical_menu.inventory.get_times_changed(), final_inventory.get_times_changed(),
+            "smithing source counter timeline differs from its prepared owner");
+        canonical_menu.inventory = final_inventory;
         *recipe_book = callbacks.into_book();
     }
 }
@@ -265,6 +296,7 @@ impl Server {
         let actual_player_random = player_random.get_mut(&id).context("smithing player RNG missing")?;
         let book = recipe_books.get_mut(&player.profile.uuid).context("smithing actual recipe book missing")?;
         shared.transact_with_menu_commit(move |menu| {
+            let counter_before = menu.inventory.get_times_changed();
             let mut next_open = open;
             let full_state = matches!(&request, SmithingRequest::Resync)
                 || spectator && matches!(&request, SmithingRequest::Click(_));
@@ -294,6 +326,7 @@ impl Server {
                     plan.commit(&mut next_open.menu, &mut menu.inventory)?
                 }
             };
+            project_inventory_counter(&mut publication.events, &mut menu.inventory, counter_before)?;
             let callbacks = PreparedSmithingCallbacks::prepare(gameplay, book, &publication.events)?;
             callbacks.validate_book(book)?;
             // This validates each player-backed source listener and all 41
@@ -348,12 +381,13 @@ impl Server {
                 entries.push(entry);
             }
             callbacks.validate_book(book)?;
+            let final_inventory = menu.inventory.clone();
             let items = item_runtime.prepare_items(entries)?;
             Ok((PreparedSmithingCommit {
                 items, player_random: actual_player_random, next_player_random, next_world_random,
                 entity_counter: &self.entities, next_entity_id, gameplay, recipe_book: book,
                 menus: &mut smithing_tables.menus, next_open, close, close_packet, publication,
-                callbacks, stats_after_event, drop_ordinals, level_event_recipients,
+                callbacks, stats_after_event, drop_ordinals, level_event_recipients, final_inventory,
             }, vec![]))
         }, |prepared, menu| prepared.commit(id, player.profile.uuid, &self.entity_events, menu))
     }

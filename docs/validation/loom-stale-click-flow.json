@@ -1,0 +1,273 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "972cf8b9fb43e3f1a266e176d1eb37789b438c4b",
+  "binary_sha256": "0008b1ac57e5e84a5e9d0a1e5b9e6d71c9b95ca666e62931dd04d1498a715e27",
+  "harness_sha256": "286d2e28c24d9ccad709c3eed64ee9f21bfe08a13e91cdb473043b523859cfda",
+  "started_at": "2026-11-01T23:45:31.818492+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One composed Main Loom flow plus active-menu stale-window click regression: seven canonical stone retained and inactive window0 cursor empty; original no-template index0 banner/dye/component49/sound/close/disconnect/native restart ownership unchanged. No timing or other workstation matrix.",
+  "checks": {
+    "active_loom_ignores_window0_click_before_inactive_inventory_fallback": {
+      "ok": true,
+      "actual_old_loom_window": 1,
+      "wire_window": 0,
+      "wire_slot": 11,
+      "valid_click_payload_hex": "0006000b00000000",
+      "canonical_stone_count": 7,
+      "cursor_empty": true,
+      "observation_barrier": "actual normal close and reopened current Loom",
+      "protocol_state_id_is_not_inventory_times_changed": true
+    },
+    "real_loom_menu_button_and_actual_component49_holder": {
+      "ok": true,
+      "menu_type": 18,
+      "menu_slots": 40,
+      "window": 2,
+      "input_counts": [
+        2,
+        2,
+        0
+      ],
+      "button_index": 0,
+      "preview_layers": [
+        [
+          26,
+          14
+        ]
+      ],
+      "preview_count": 1
+    },
+    "take_consumes_banner_and_dye_without_owning_remaining_preview": {
+      "ok": true,
+      "input_counts_after": [
+        1,
+        1,
+        0
+      ],
+      "owned_cursor_count": 1,
+      "owned_cursor_layers": [
+        [
+          26,
+          14
+        ]
+      ],
+      "remaining_derived_preview_count": 1
+    },
+    "actual_take_sound": {
+      "ok": true,
+      "registry_raw_id": 1429,
+      "category": 4,
+      "position": [
+        10.5,
+        64.5,
+        8.5
+      ],
+      "volume": 1.0,
+      "pitch": 1.0,
+      "signed_seed_present": true,
+      "sound_rng_sequence_proven_by_runtime": false
+    },
+    "client_close_returns_actual_inputs_cursor_without_preview": {
+      "ok": true,
+      "player": {
+        "plain_banner": 1,
+        "patterned_banner": 1,
+        "dye": 1
+      },
+      "cursor_empty": true
+    },
+    "native_save_and_no_crafted_recipe_or_experience_award": {
+      "ok": true,
+      "player": {
+        "plain_banner": 1,
+        "patterned_banner": 1,
+        "dye": 1
+      },
+      "retained_stone": {
+        "player": 7,
+        "world_items": 0,
+        "cursor": 0
+      },
+      "world_items": {
+        "plain_banner": 0,
+        "patterned_banner": 0,
+        "dye": 0
+      },
+      "cursor_empty": true,
+      "crafted_stats": {},
+      "recipe_entries": [],
+      "recipe_highlights": [],
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      }
+    },
+    "cold_restart_restores_component49_identity_and_owned_counts": {
+      "ok": true,
+      "player": {
+        "plain_banner": 1,
+        "patterned_banner": 1,
+        "dye": 1
+      }
+    },
+    "open_loom_disconnect_drops_owned_inputs_never_derived_preview": {
+      "ok": true,
+      "player": {
+        "plain_banner": 0,
+        "patterned_banner": 1,
+        "dye": 0
+      },
+      "retained_stone": {
+        "player": 7,
+        "world_items": 0,
+        "cursor": 0
+      },
+      "world_items": {
+        "plain_banner": 1,
+        "patterned_banner": 0,
+        "dye": 1
+      },
+      "cursor_empty": true,
+      "crafted_stats": {},
+      "recipe_entries": [],
+      "recipe_highlights": [],
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      }
+    },
+    "cold_restart_accepts_nonempty_native_items_without_preview_duplication": {
+      "ok": true,
+      "player": {
+        "plain_banner": 0,
+        "patterned_banner": 1,
+        "dye": 0
+      },
+      "retained_stone": {
+        "player": 7,
+        "world_items": 0,
+        "cursor": 0
+      },
+      "world_items": {
+        "plain_banner": 1,
+        "patterned_banner": 0,
+        "dye": 1
+      },
+      "cursor_empty": true,
+      "crafted_stats": {},
+      "recipe_entries": [],
+      "recipe_highlights": [],
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      },
+      "play_actors_created": 0,
+      "restored_item_tracking_and_ticking_proven": false
+    }
+  },
+  "configured_contract": {
+    "items": {
+      "banner": 1133,
+      "dye": 958,
+      "loom": 1194
+    },
+    "stone_item": 1,
+    "template_used": false,
+    "tag": "minecraft:no_item_required",
+    "button_index": 0,
+    "holder_raw_id": 26,
+    "holder_key": "minecraft:square_bottom_left",
+    "configured_holder_order": [
+      26,
+      27,
+      28,
+      29,
+      31,
+      38,
+      35,
+      37,
+      32,
+      36,
+      34,
+      33,
+      25,
+      5,
+      30,
+      39,
+      40,
+      41,
+      42,
+      7,
+      10,
+      9,
+      8,
+      3,
+      23,
+      19,
+      17,
+      20,
+      18,
+      1,
+      6,
+      14,
+      15,
+      2
+    ],
+    "dye_color_id": 14,
+    "sound_raw_id": 1429,
+    "sound_source": 4
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/configuration.json": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+    "fixtures/loom-production-sound.json": "c2e05f0d8d7ccda16b19f215c214ee6a39987f09d82135094d1bd3ac5fecf52b",
+    "tools/crafting_metadata.json": "807fa677e6bc122ba2183d792ef0a208306a6f241d553a55f92992ac7e3fd395"
+  },
+  "disconnect_state": {
+    "input_counts": [
+      1,
+      1,
+      0
+    ],
+    "preview_layers": [
+      [
+        26,
+        14
+      ]
+    ],
+    "derived_preview_count": 1,
+    "preview_taken": false
+  },
+  "conservation": {
+    "initial_plain_banners": 2,
+    "initial_dye": 2,
+    "actual_takes": 1,
+    "owned_patterned_banners": 1,
+    "remaining_plain_banners": 1,
+    "remaining_dye": 1
+  },
+  "completed_at": "2026-11-01T23:46:20.279010+00:00",
+  "source_tree": "1e702a720ff44cf462d52dae3af641e828e136d2",
+  "process_completion": {
+    "all_isolated_server_exits": 0,
+    "shutdown": "actual SIGINT path"
+  },
+  "previous_harness_preserved": {
+    "original_sha256": "7e66156976e27161612199cd06370fd7d6a5198e3cc277b13691fb045286e1f2",
+    "original_source_commit": "17f1fa6f73c3fed1688d8403e03a0507f6bcb549"
+  },
+  "validation_limits": [
+    "Only current Loom stale-window fallback dispatch is runtime-exercised here; analogous other-menu fixes have no new witness in this flow.",
+    "No direct internal Inventory.timesChanged or per-phase callback instrumentation; protocol state IDs are not substituted for those owners.",
+    "One no-template configured index0 pattern with plain white banner/red dye; no template/custom/drag/reach/resync/timing matrix.",
+    "Sound packet identity/category/center/volume/pitch were observed, not full RNG sequence or multiplayer audience edges.",
+    "Final no-PLAY native checkpoint restart proves acceptance/count retention, not restored entity tracking/ticking or Java-save interoperability.",
+    "No graphical/public-client, full workstation, performance or checklist delivery claim."
+  ]
+}
