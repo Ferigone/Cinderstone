@@ -3,9 +3,9 @@
 //! Canonical holder/instance/supplier ownership is supplied by the embedding
 //! runtime. This module owns the actual native table/set state, but creates no
 //! actor, registry, identity-hash allocator, health field or scheduler. Null
-//! keys/elements, mutable raw Java collection views, NBT persistence, multimap
-//! bulk operations and assignAllValues/assignBaseValues remain outside this
-//! bounded implementation.
+//! keys/elements and mutable raw Java collection views remain outside this
+//! state owner. Source transfer and NBT persistence are separate callers of its
+//! two distinct live value traversal protocols; multimap operations are separate.
 
 use super::attribute_instance::{
     AttributeDefinition, AttributeInstance, DirtyListener, ResourceLocationKey,
@@ -168,6 +168,24 @@ pub enum DirtyIterationError {
     MissingWrappedEntries,
 }
 
+/// Source values().forEach captures initial table position, not size. Each
+/// next fragment reads the then-current table, allowing source reentry order.
+pub(crate) struct ValuesForEachCursor {
+    position: isize,
+}
+
+/// Source values().iterator() captures initial size and table position. It is
+/// distinct from forEach: additions do not extend its remaining element count.
+pub(crate) struct ValuesIteratorCursor {
+    position: isize,
+    remaining: usize,
+}
+impl ValuesIteratorCursor {
+    pub(crate) fn has_next(&self) -> bool {
+        self.remaining != 0
+    }
+}
+
 /// Actual state of one AttributeMap. Supplier is the real immutable bound
 /// source supplier handle; instance keys retain the actual instance objects.
 pub struct AttributeMapState<H: JavaObjectKey, I: JavaObjectKey, S> {
@@ -193,6 +211,65 @@ impl<H: JavaObjectKey, I: JavaObjectKey, S> AttributeMapState<H, I, S> {
     }
     pub fn instantiated_len(&self) -> usize {
         self.instances.size
+    }
+    pub(crate) fn values_for_each_cursor(&self) -> ValuesForEachCursor {
+        ValuesForEachCursor {
+            position: self.instances.table.len() as isize,
+        }
+    }
+    pub(crate) fn next_for_each_value(
+        &self,
+        cursor: &mut ValuesForEachCursor,
+    ) -> Result<Option<I>, DirtyIterationError> {
+        while cursor.position != 0 {
+            cursor.position -= 1;
+            let position = cursor.position as usize;
+            if position == self.instances.table.len() {
+                continue;
+            }
+            let entry = self
+                .instances
+                .table
+                .get(position)
+                .ok_or(DirtyIterationError::TableIndexOutOfBounds)?;
+            if let Some(entry) = entry {
+                return Ok(Some(entry.value.clone()));
+            }
+        }
+        Ok(None)
+    }
+    pub(crate) fn values_iterator_cursor(&self) -> ValuesIteratorCursor {
+        ValuesIteratorCursor {
+            position: self.instances.table.len() as isize,
+            remaining: self.instances.size,
+        }
+    }
+    pub(crate) fn next_iterator_value(
+        &self,
+        cursor: &mut ValuesIteratorCursor,
+    ) -> Result<Option<I>, DirtyIterationError> {
+        if !cursor.has_next() {
+            return Ok(None);
+        }
+        cursor.remaining -= 1;
+        loop {
+            cursor.position -= 1;
+            if cursor.position < 0 {
+                return Err(DirtyIterationError::MissingWrappedEntries);
+            }
+            let position = cursor.position as usize;
+            if position == self.instances.table.len() {
+                continue;
+            }
+            let entry = self
+                .instances
+                .table
+                .get(position)
+                .ok_or(DirtyIterationError::TableIndexOutOfBounds)?;
+            if let Some(entry) = entry {
+                return Ok(Some(entry.value.clone()));
+            }
+        }
     }
     fn dirty(&self, set: DirtySet) -> &ObjectTable<I, ()> {
         match set {
@@ -899,6 +976,39 @@ mod tests {
             ))
         );
         assert!(host.map.borrow().dirty_contains(DirtySet::Update, &first));
+    }
+
+    #[test]
+    fn transfer_for_each_sees_added_lower_slot_but_save_iterator_keeps_initial_count() {
+        let high = ObjectKey {
+            id: 1,
+            hash: hash_for_slot(20),
+        };
+        let low = ObjectKey {
+            id: 2,
+            hash: hash_for_slot(5),
+        };
+        let mut state = State::new(9);
+        state.instances.put(high, key(101));
+        let mut for_each = state.values_for_each_cursor();
+        let mut iterator = state.values_iterator_cursor();
+        assert_eq!(
+            state.next_for_each_value(&mut for_each).unwrap(),
+            Some(key(101))
+        );
+        assert_eq!(
+            state.next_iterator_value(&mut iterator).unwrap(),
+            Some(key(101))
+        );
+        // Native callbacks may insert while traversal retains only position.
+        state.instances.put(low, key(102));
+        assert_eq!(
+            state.next_for_each_value(&mut for_each).unwrap(),
+            Some(key(102))
+        );
+        assert_eq!(state.next_for_each_value(&mut for_each).unwrap(), None);
+        assert!(!iterator.has_next());
+        assert_eq!(state.next_iterator_value(&mut iterator).unwrap(), None);
     }
 
     #[test]
