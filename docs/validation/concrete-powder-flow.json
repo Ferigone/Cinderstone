@@ -1,0 +1,280 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "43a5dbf573a4c0732910c1f9f755655f12fcb1f1",
+  "source_tree": "fbbc5641ef1452095c0fff36d5cb5d535fa3af57",
+  "started_at": "2026-11-02T05:04:59.325693+00:00",
+  "harness_sha256": "7351405242b6cc91b1fc5baedc8bc123d8388bd6768b01d1ee377da3e393299d",
+  "scope": "One real dry supported white-powder placement, bucket-water basin, native airborne save, hidden restart and same-actor water hardening continuation. No edited scene/save/integrity or direct-water player placement.",
+  "checks": {
+    "real_bucket_water_basin": {
+      "ok": true,
+      "position": [
+        10,
+        65,
+        8
+      ],
+      "state": 80,
+      "setup_uses_protocol_only": true
+    },
+    "actual_dry_powder_stable_on_support": {
+      "ok": true,
+      "origin": [
+        10,
+        70,
+        8
+      ],
+      "support": [
+        10,
+        69,
+        8
+      ],
+      "state": 12744,
+      "water_five_blocks_below": true,
+      "time_publications": [
+        {
+          "ordinal": 152,
+          "game_time": 39
+        },
+        {
+          "ordinal": 153,
+          "game_time": 59
+        }
+      ]
+    },
+    "real_powder_actor_captured_before_landing": {
+      "ok": true,
+      "spawn": {
+        "ordinal": 159,
+        "entity_id": 2,
+        "type": 40,
+        "position": [
+          10.5,
+          70.0,
+          8.5
+        ],
+        "carried_state": 12744,
+        "spawn_motion_raw": [
+          0,
+          0,
+          0
+        ]
+      },
+      "normal_shutdown_requested_with_client_still_connected": true
+    },
+    "normal_airborne_native_save": {
+      "ok": true,
+      "actor": {
+        "entity_id": 2,
+        "position": {
+          "x": 10.5,
+          "y": 69.8808,
+          "z": 8.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "on_ground": false
+        },
+        "velocity": {
+          "x": 0.0,
+          "y": -0.07761599999999999,
+          "z": 0.0
+        },
+        "tick_count": 2,
+        "fall_distance": 0.1192,
+        "time": 2,
+        "block_state": 12744,
+        "start_position": [
+          10,
+          70,
+          8
+        ],
+        "removed": false,
+        "random_state48_sha256": "4e7fbc48d9065cb9b295a3b6adce7ffbb5fa62ffd352a82b18f11fe4138d387f",
+        "actual_full_snapshot_sha256": "3c6479301bd25006e0223c0d23801ddbd9a520e82e0dbd3d1f583fadd37c2989"
+      },
+      "checkpoint_sha256": "83b32f82b18ba70ce0bad76a67c7c746e819bdee0d55e3f408af936e93bbcf5e",
+      "saved_file_edited": false
+    },
+    "hidden_resume_preserves_actual_actor_without_play": {
+      "ok": true,
+      "entire_actual_actor_snapshot_equal": true,
+      "entity_id_equal": true,
+      "uuid_equal": true,
+      "random_state48_equal": true,
+      "actor_advanced": false,
+      "play_sessions_created": 0,
+      "checkpoint_sha256": "f10cfcfc30c45d93085154dcee9fc3e296e832c5929d2926df8a8b30cb942d64",
+      "cross_process_generation_equality_asserted": false
+    },
+    "same_saved_actor_water_hardening_after_new_chunks": {
+      "ok": true,
+      "chunk_publication": {
+        "ordinal": 22,
+        "chunk": [
+          0,
+          0
+        ]
+      },
+      "actual_saved_actor_spawn": {
+        "ordinal": 32,
+        "entity_id": 2,
+        "type": 40,
+        "position": [
+          10.5,
+          69.8808,
+          8.5
+        ],
+        "carried_state": 12744,
+        "spawn_motion_raw": [
+          0,
+          -620,
+          0
+        ]
+      },
+      "saved_position_and_quantized_motion_restored": true,
+      "start_position_metadata": {
+        "ordinal": 33,
+        "entity_id": 2,
+        "index": 8,
+        "serializer": 10,
+        "start_position": [
+          10,
+          70,
+          8
+        ]
+      },
+      "actual_concrete_publication": {
+        "ordinal": 80,
+        "position": [
+          10,
+          65,
+          8
+        ],
+        "state": 12728
+      },
+      "actual_actor_removal": {
+        "ordinal": 79,
+        "entity_id": 2
+      },
+      "cross_process_generation_equality_asserted": false
+    },
+    "final_unedited_native_save_conserves_one_concrete_block": {
+      "ok": true,
+      "concrete_blocks": [
+        {
+          "x": 10,
+          "y": 65,
+          "z": 8,
+          "state": 12728
+        }
+      ],
+      "powder_blocks": [],
+      "falling_owners": 0,
+      "item_owners": 0,
+      "xp_owners": 0,
+      "next_id_increase_is_one_new_play_player_only": true,
+      "checkpoint_sha256": "e193d65ed0d5e72d48839af45eb45c260387785184c30b4f7f13e7e2682f8fc9",
+      "saved_file_edited": false
+    }
+  },
+  "binary_sha256": "910eafad98e6677f8f089cb55ffed88428eae01091ffd11b1ee7546033250e22",
+  "local_public_service_key_source": {
+    "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+    "server_sources": [
+      {
+        "stage": "powder-real-setup-airborne-save",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      },
+      {
+        "stage": "powder-hidden-no-play",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      },
+      {
+        "stage": "powder-resumed-play-water-landing",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      }
+    ],
+    "empty_trust_set_only": true,
+    "signed_certificate_validation_claim": false
+  },
+  "contract": {
+    "powder_state": 12744,
+    "concrete_state": 12728,
+    "water_state": 80,
+    "native_player_placement_profile": "dry/fluid-quiescent only",
+    "landing": [
+      10,
+      65,
+      8
+    ]
+  },
+  "completed_at": "2026-11-02T05:06:07.410166+00:00",
+  "runtime_observations": {
+    "server_tick_overload": [
+      {
+        "stage": "powder-real-setup-airborne-save",
+        "behind_ms": 10231,
+        "event": "server_tick_overload",
+        "skipped_deadline_ticks": 204
+      },
+      {
+        "stage": "powder-resumed-play-water-landing",
+        "behind_ms": 7068,
+        "event": "server_tick_overload",
+        "skipped_deadline_ticks": 141
+      }
+    ],
+    "wall_clock_performance_measured": false,
+    "high_speed_ray_exercised": false,
+    "direct_water_player_placement_exercised": false
+  }
+}

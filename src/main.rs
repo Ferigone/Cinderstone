@@ -96,6 +96,7 @@ mod main_experience;
 mod main_falling_block;
 mod main_falling_block_generic;
 mod main_falling_block_powder;
+mod main_concrete_powder_placement;
 mod main_falling_block_sequence;
 mod main_falling_block_clip;
 mod main_falling_block_clip_admission;
@@ -2517,7 +2518,7 @@ impl Server {
             // locks as the shared item/index/order owners. They belong to the
             // atomic entity checkpoint, never a second unanchored world array.
             let experience_orbs = players.experience_runtime.snapshot()?;
-            let falling_blocks = players.falling_blocks.snapshot()?;
+            let falling_blocks = main_falling_block_persistence::snapshot_native_falling_blocks(&players, &world)?;
             ensure!(players.entity_source.is_some() || (experience_orbs.is_empty() && falling_blocks.is_empty()),
                 "cannot persist XP/falling bodies without the actual native entity source");
             let LivePlayers {
@@ -3055,9 +3056,6 @@ async fn main() -> Result<()> {
         initial_native_entities = restored.native_entities;
     }
     players.entity_source = entity_source;
-    main_falling_block_persistence::restore_native_entity_cohort(
-        &mut players, initial_native_entities, initial_experience_orbs, next_entity_id,
-    )?;
     if let Some(random) = initial_fluid_random {
         *players.item_runtime.world_random_mut() = random;
     }
@@ -3072,8 +3070,13 @@ async fn main() -> Result<()> {
     players.block_runtime.adopt_legacy_fire(&mut players.fire_runtime,initial_clock.game_time)?;
     if supported_native_source {
         let falling_owner = main_falling_block_damage::NativeFallingDamageTypes::capture(&fixtures)?;
+        let powder_owner = main_falling_block_powder::NativeConcretePowderOwner::capture(&fixtures)?;
         players.block_runtime.install_falling_owner(falling_owner)?;
+        players.block_runtime.install_concrete_powder_owner(powder_owner)?;
     }
+    main_falling_block_persistence::restore_native_entity_cohort(
+        &mut players, &world, initial_native_entities, initial_experience_orbs, next_entity_id,
+    )?;
     if let Some(cache) = initial_fluid_shapes {
         players.world_interactions.fluid_shapes = cache;
     }
