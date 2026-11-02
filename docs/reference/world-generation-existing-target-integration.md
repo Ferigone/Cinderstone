@@ -17,6 +17,13 @@ Bounded original/native paired validation passed for native source commit
 and [validation fixture](../../fixtures/world-generation-existing-target-validation.json)
 record the exact source, probe and artifact hashes and the limits of that result.
 
+A separately scoped extension is in progress for constructing actual retained
+NoiseChunk/aquifer owners when the full-build noise clamp has zero height but
+BIOMES or SURFACE still needs those owners. Its paired validation is pending.
+The validated cache-absent no-cell material return does not establish this
+owner-producing path: that profile skips BIOMES, constructs no NoiseChunk and
+returns before generation dependencies are accessed.
+
 ## Owners and accessors
 
 Four domains remain separate:
@@ -111,6 +118,26 @@ context. Errors leave the live mutation prefix and poison the session.
 clone/rebind/reset operation or cache replacement. Retained owners remain alive
 after successful SURFACE. The local phase and outcome enums certify only these
 invocations, never original generation status or dependency readiness.
+
+## Central status events and the next stage
+
+The concrete status-event adapter remains open. `TargetGeneration::target()`
+returns `&T`, while `NativeProtoTarget::set_persisted_status` requires `&mut self`.
+The session exposes no consuming extraction or mutable access to its boxed
+target. The standalone native box therefore cannot receive central ChunkStep
+status events through the current session API. A narrow status-event adapter,
+or an actual shared live host with its synchronization owner, must connect those
+events while preserving the same target and cached owners. Phase success alone
+does not advance persisted status or clear retrogen; clearing must follow the
+actual source status event at or above its real target status.
+
+After successful SURFACE, this live-target session must remain
+`PendingCarvers`. The existing `BiomeTerrain::carve_air` entry uses the separate
+image-backed staged path; no existing-target CARVERS adapter transfers this
+session's live target and retained aquifer into that entry. Reaching
+`PendingFeatures` requires the actual intervening CARVERS implementation and
+owner-preserving handoff. Neither pending state establishes FULL readiness,
+persistence or a Main callsite.
 
 ## Bounded validation
 

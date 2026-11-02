@@ -222,9 +222,13 @@ impl<'g> NoiseChunk<'g> {
             .ok_or_else(|| anyhow!("noise-settings vertical extent overflows"))?;
         let min_y = level_min_y.max(settings.min_y);
         let max_y = level_max_y.min(settings_max_y);
+        // The original forChunk constructor can retain a zero-height clamp:
+        // BIOMES and SURFACE still use its real caches/aquifer even when the
+        // separate fillFromNoise entry returns without material traversal.
+        // Negative constructor grids remain an explicit unsupported boundary.
         ensure!(
-            max_y > min_y,
-            "level and noise settings have no vertical overlap"
+            max_y >= min_y,
+            "negative clamped NoiseChunk height is unsupported"
         );
         let grid = NoiseGrid {
             min_y,
@@ -562,5 +566,63 @@ mod tests {
             assert_eq!(chunk.density().allocation_fingerprint(), allocations);
             assert_eq!(chunk.phase, phase);
         }
+    }
+
+    #[test]
+    fn zero_height_constructor_retains_sampling_owner_across_skipped_fill() {
+        // Actual original BIOMES -> NoCells -> SURFACE profiles construct and
+        // retain these owners rather than rejecting their zero-height clamp.
+        for (settings, min_y, height, clamped_min) in
+            [("nether", -64, 64, 0), ("overworld", 320, 64, 320)]
+        {
+            let graph = DensityGraph::builtin(123456789, settings).unwrap();
+            let mut chunk = NoiseChunk::new(&graph, 0, 0, min_y, height).unwrap();
+            assert_eq!((chunk.grid().min_y, chunk.grid().height), (clamped_min, 0));
+            let temperature = graph.root("temperature").unwrap();
+            let point = DensityPoint::new(0, min_y, 0);
+            let before = chunk
+                .density_mut()
+                .sample_external(&graph, temperature, point)
+                .unwrap();
+            let preliminary = chunk
+                .density_mut()
+                .preliminary_surface_level(&graph, 0, 0)
+                .unwrap();
+            let state = chunk.density().state();
+            let allocations = chunk.density().allocation_fingerprint();
+            chunk
+                .visit_blocks(|_, _, _| panic!("zero-height owner traversed material cells"))
+                .unwrap();
+            assert_eq!(chunk.phase, TraversalPhase::Ready);
+            assert_eq!(chunk.density().state(), state);
+            assert_eq!(chunk.density().allocation_fingerprint(), allocations);
+            let mut restored = NoiseChunk::restore(&graph, chunk.into_retained()).unwrap();
+            assert_eq!(restored.density().allocation_fingerprint(), allocations);
+            assert_eq!(
+                restored
+                    .density_mut()
+                    .sample_external(&graph, temperature, point)
+                    .unwrap()
+                    .to_bits(),
+                before.to_bits()
+            );
+            assert_eq!(
+                restored
+                    .density_mut()
+                    .preliminary_surface_level(&graph, 0, 0)
+                    .unwrap(),
+                preliminary
+            );
+        }
+    }
+
+    #[test]
+    fn negative_clamped_constructor_height_remains_explicitly_unsupported() {
+        let graph = DensityGraph::builtin(0, "overworld").unwrap();
+        let error = NoiseChunk::new(&graph, 0, 0, 321, 63).unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "negative clamped NoiseChunk height is unsupported"
+        );
     }
 }

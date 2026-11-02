@@ -1,0 +1,444 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "evidence_kind": "Actual unchanged original component executions; native source-backed regressions are separate, no world or Main",
+  "original_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "empty_beardifier": {
+    "observations": {
+      "minecraft": "1.21",
+      "protocol": 767,
+      "original_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+      "expression": {
+        "type": "minecraft:min",
+        "argument1": -1,
+        "argument2": {
+          "type": "minecraft:add",
+          "argument1": {
+            "type": "minecraft:beardifier"
+          },
+          "argument2": {
+            "type": "minecraft:interpolated",
+            "argument": 0
+          }
+        }
+      },
+      "raw_marker_bounds": [
+        "0000000000000000",
+        "0000000000000000"
+      ],
+      "actual_empty_beardifier_bounds": [
+        "fff0000000000000",
+        "7ff0000000000000"
+      ],
+      "raw_expression_bounds": [
+        "bff0000000000000",
+        "bff0000000000000"
+      ],
+      "marker_visited_bounds": [
+        "bff0000000000000",
+        "bff0000000000000"
+      ],
+      "empty_visited_bounds": [
+        "fff0000000000000",
+        "bff0000000000000"
+      ],
+      "owner_before_interpolation_marker": {
+        "value_bits": "bff0000000000000"
+      },
+      "owner_before_interpolation_empty": {
+        "error_message": "Trying to sample interpolator outside the interpolation loop",
+        "error_class": "java.lang.IllegalStateException"
+      },
+      "external_marker": {
+        "value_bits": "bff0000000000000"
+      },
+      "external_empty": {
+        "value_bits": "bff0000000000000"
+      },
+      "raw_marker_fill": {
+        "for_index_calls": [],
+        "values": [
+          "0000000000000000",
+          "0000000000000000",
+          "0000000000000000"
+        ]
+      },
+      "actual_empty_fill": {
+        "for_index_calls": [
+          0,
+          1,
+          2
+        ],
+        "values": [
+          "0000000000000000",
+          "0000000000000000",
+          "0000000000000000"
+        ]
+      },
+      "marker_replaced_with_actual_owner": true,
+      "scope": "Original constructors, CODEC and actual NoiseChunk visitor; deliberate marker control versus actual zero-list Beardifier. No server, structure selection, full terrain replay or ChunkStatus advancement."
+    },
+    "observations_sha256": "373a8eee0fa87a65abfc03e2537d4dcfcc26d63ddd683b8c3ca2b7f8bdc1f766",
+    "execution": {
+      "exit_code": 0,
+      "timed_out": false,
+      "process_reaped": true,
+      "elapsed_seconds": 4.946,
+      "max_wall_seconds": 60
+    },
+    "execution_sha256": "88d1eff3abb764b54c3ed9c12ac26e4df011430bd90d8888b947bca360eb36b3",
+    "source_sha256": {
+      "src/worldgen/validation/EmptyBeardifierBootstrap.java": "c0ffa598b56ccd63f659e8244a732c70303a7cf3c07b9f5edd06667d0853bac6",
+      "src/worldgen/validation/EmptyBeardifierProbe.java": "25ccdfec495012204f41662c05ee72ddc629c6bcd12576fe60977bfcef53b7af"
+    },
+    "stdout_sha256": "4f00f5356f901896a2a2575824e5a3b15ba63b75441f14f9b010a030eef2bd09",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "aquifer_constructor": {
+    "observations": {
+      "seed": 123456789,
+      "scope": "Actual original constructors only; no interpolation, material samples, BIOMES, SURFACE, scheduler or world execution.",
+      "standalone_aquifer": [
+        {
+          "min_y": 320,
+          "height": 0,
+          "constructed": true,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 27,
+            "location_cache_length": 27
+          }
+        },
+        {
+          "min_y": 320,
+          "height": -1,
+          "constructed": true,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 27,
+            "location_cache_length": 27
+          }
+        },
+        {
+          "min_y": 320,
+          "height": -12,
+          "constructed": true,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 18,
+            "location_cache_length": 18
+          }
+        },
+        {
+          "min_y": 320,
+          "height": -24,
+          "constructed": true,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 9,
+            "location_cache_length": 9
+          }
+        },
+        {
+          "min_y": 320,
+          "height": -36,
+          "constructed": true,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 0,
+            "location_cache_length": 0
+          }
+        },
+        {
+          "min_y": 320,
+          "height": -48,
+          "constructed": false,
+          "error_class": "java.lang.NegativeArraySizeException",
+          "error_message": "-9"
+        }
+      ],
+      "protocol": 767,
+      "factory": [
+        {
+          "settings": "minecraft:overworld",
+          "build_min_y": 320,
+          "build_height": 64,
+          "clamped_min_y": 320,
+          "clamped_height": 0,
+          "cell_height": 8,
+          "constructed": true,
+          "cell_count_y": 0,
+          "min_cell_y": 40,
+          "precomputed_clamp_same_object": false,
+          "retained_grid_height": 0,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 27,
+            "location_cache_length": 27
+          },
+          "interpolator_left_slice_shapes": [
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ],
+            [
+              5,
+              1
+            ]
+          ]
+        },
+        {
+          "settings": "minecraft:nether",
+          "build_min_y": -64,
+          "build_height": 64,
+          "clamped_min_y": 0,
+          "clamped_height": 0,
+          "cell_height": 8,
+          "constructed": true,
+          "cell_count_y": 0,
+          "min_cell_y": 0,
+          "precomputed_clamp_same_object": false,
+          "retained_grid_height": 0,
+          "aquifer": {
+            "class": "dyk$1",
+            "schedule_fluid_update": false
+          },
+          "interpolator_left_slice_shapes": [
+            [
+              5,
+              1
+            ]
+          ]
+        },
+        {
+          "settings": "minecraft:overworld",
+          "build_min_y": 321,
+          "build_height": 16,
+          "clamped_min_y": 321,
+          "clamped_height": -1,
+          "cell_height": 8,
+          "constructed": true,
+          "cell_count_y": -1,
+          "min_cell_y": 40,
+          "precomputed_clamp_same_object": false,
+          "retained_grid_height": -1,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 25,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 27,
+            "location_cache_length": 27
+          },
+          "interpolator_left_slice_shapes": [
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ]
+          ]
+        },
+        {
+          "settings": "minecraft:overworld",
+          "build_min_y": 328,
+          "build_height": 16,
+          "clamped_min_y": 328,
+          "clamped_height": -8,
+          "cell_height": 8,
+          "constructed": true,
+          "cell_count_y": -1,
+          "min_cell_y": 41,
+          "precomputed_clamp_same_object": false,
+          "retained_grid_height": -8,
+          "aquifer": {
+            "class": "dyk$c",
+            "schedule_fluid_update": false,
+            "source_grid_fields": {
+              "x": -2,
+              "y": 26,
+              "z": 1,
+              "A": 3,
+              "B": 3
+            },
+            "status_cache_length": 18,
+            "location_cache_length": 18
+          },
+          "interpolator_left_slice_shapes": [
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ],
+            [
+              5,
+              0
+            ]
+          ]
+        },
+        {
+          "settings": "minecraft:overworld",
+          "build_min_y": 329,
+          "build_height": 16,
+          "clamped_min_y": 329,
+          "clamped_height": -9,
+          "cell_height": 8,
+          "constructed": false,
+          "error_class": "java.lang.NegativeArraySizeException",
+          "error_message": "-1"
+        }
+      ],
+      "minecraft": "1.21",
+      "chunk": [
+        -1,
+        2
+      ],
+      "inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01"
+    },
+    "observations_sha256": "3fe503dd6bbf03fcad638d2eaecbc3f4a2a74e4ec782b3f2d4723a0379528421",
+    "execution": {
+      "exit_code": 0,
+      "timed_out": false,
+      "process_reaped": true,
+      "elapsed_seconds": 4.539,
+      "max_wall_seconds": 50
+    },
+    "execution_sha256": "14e0d826197df0b9b7a7be6b28d6a3a5fa57ca3f4b5d02eed5890ef782dc62bf",
+    "source_sha256": {
+      "src/worldgen/validation/ZeroOverlapAquiferWitness.java": "3fde944e7c30a6daf004281be9d04017d97c92b71abd258eb6877d427068fba2"
+    },
+    "stdout_sha256": "ee1fe71a01301c09817a41041605703451f097aea49a5f6930e79afaa58056e2",
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "failure_history": [
+    "Empty-Beardifier launcher wrapper typo happened before successful JVM start; preserved external prelaunch-error.json.",
+    "First AQ original.execution.json exited1 during signed-package bootstrap; success uses packaged helper original-2.execution.json."
+  ],
+  "scope": "Constructor/cache shape and empty-owner metadata/provider behavior only. Negative source constructors may succeed; native negative profile remains unsupported. No structure selection, saved world, full terrain, scheduler/FULL or production Main."
+}

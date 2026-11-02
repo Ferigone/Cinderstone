@@ -85,7 +85,11 @@ callback observation, not an execution of the complete ChunkStep. SURFACE
 uses the public generator overload with an actual retained NoiseChunk,
 generation context and biome manager. StructureManager is absent only where
 the installed NoiseChunk makes the source creation callback unused; the
-empty Blender and BeardifierMarker are explicit controlled inputs.
+empty Blender and BeardifierMarker were explicit controlled inputs in the
+recorded `a28bfc2`/`8ac66497` run. The current oracle instead supplies an actual
+empty `Beardifier` owner; its new paired observations are recorded separately
+in [zero-overlap validation](world-generation-zero-overlap.md). Historical
+fixture hashes and results are retained unchanged.
 
 BIOMES invokes the actual original private `doCreateBiomes` body
 (`dzb.b(eaa,dzm,ddq,duy)`) synchronously on one controlled worker. The public
