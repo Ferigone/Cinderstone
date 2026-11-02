@@ -84,8 +84,8 @@ killed and reaped on failure; raw transcripts remain external. Outputs are
 written only after every selected comparison and positive guard passes, with
 artifact paths sanitized relative to the external work area.
 
-The new actual-empty-owner paired runner has not executed at this note's initial
-handoff. It does not establish negative-overlap support, arbitrary dimensions,
+The initial handoff preceded paired execution; the accepted run is recorded
+below. It does not establish negative-overlap support, arbitrary dimensions,
 nonempty structures, scheduler behavior, saved-world import, Main, persistence
 or FULL delivery.
 
@@ -111,3 +111,29 @@ source, execution and capture hashes. The full library/server compiler check
 and explicit library rebuild passed again after this data dependency changed.
 Historical paired reports retain their old source/catalog/facts pins; they are
 not relabeled as observations of the current catalog.
+
+## Accepted actual-empty-owner pair
+
+Native source `dbbc19d` passed all three controlled cases. Original Java took
+4.989s and native took0.917s; both exited0 and were reaped. Every source owner
+was the actual empty Beardifier (`dyl`), rather than its marker. Complete
+physical states, stored biome arrays, WG first-available values, counters,
+ordered post lists/allocation and actual status/accessor metadata match at all
+five snapshots. Exact source/artifact/probe hashes and process records are in
+the zero-overlap runtime and validation fixtures.
+
+| Controlled profile | Observed NOISE | Actual SURFACE changes |
+| --- | --- | --- |
+| Nether build[-64,0), retained grid[0,0] |256 BIOMES samples, same retained cache, no target mutation |16361 cells |
+| Overworld build[320,384), retained grid[320,0] |256 BIOMES samples, same retained cache, no target mutation |730 cells |
+| Aligned existing Overworld control |28627 changes,92 AIR-skipped gold markers preserved,1250 added posts |15749 cells |
+
+The two zero cases retain all23 tail gold markers. Foreign stored biome reads
+are positive in all three SURFACE cases. No case adds a SURFACE-only post;
+that positive insertion branch is not runtime proof here. Original private
+NC/AQ/Blender/cache identities are observed. Native public cache presence and
+actual Box/section/state/map/post-array retention are observed separately;
+native private NC/AQ/grid pointer identity or acquisition-order traces are not.
+All original targets stay actual persisted EMPTY. These are controlled phase
+invocations with declared palettes, not WorldGenRegion/scheduler/save/Main/FULL
+delivery or nonempty structure support.
