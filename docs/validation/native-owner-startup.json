@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "scope": "One fresh native STATUS-only startup and normal SIGINT; no PLAY or gameplay scenario.",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "09da4e0185cf54330a7401deeff61fe7f329b07f",
+  "source_tree": "93f95249be0ec6c8f86b42800fa339cd89862ff2",
+  "started_at": "2026-11-02T04:11:43.219515+00:00",
+  "harness_sha256": "44c6d0971e1567936c4f5b02c4a1c75348b65d633f9aa4c04a3cf0f9a73c4cd8",
+  "checks": {
+    "native_status_protocol_and_ping": {
+      "ok": true,
+      "version": {
+        "name": "1.21",
+        "protocol": 767
+      },
+      "online": 0,
+      "players_max": 20,
+      "ping_echo": true,
+      "play_sessions_created": 0
+    },
+    "actual_native_constructor_path_reached_listening": {
+      "ok": true,
+      "minecraft": "1.21",
+      "protocol": 767,
+      "mode": "offline-loopback",
+      "loopback_bind": true,
+      "evidence": "At the recorded source commit, production fixtures() constructs the retained block registry from the actual admitted configuration and canonical original-certified inventory/placement owners before listening can be emitted.",
+      "constructor_success_is_inferred_from_source_control_flow_and_listening": true
+    },
+    "normal_sigint_exit": {
+      "ok": true,
+      "exit_code": 0,
+      "signal": "SIGINT",
+      "fresh_native_world": true,
+      "save_or_scene_inputs_edited": false
+    }
+  },
+  "binary_sha256": "0ea5130fcfa819463df73e40f1e2667cb7548c1a222c60af1d358ab3388d2caa",
+  "local_public_service_key_source": {
+    "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+    "server_sources": [
+      {
+        "stage": "native-owner-startup",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      }
+    ],
+    "empty_trust_set_only": true,
+    "signed_certificate_validation_claim": false
+  },
+  "completed_at": "2026-11-02T04:11:43.796152+00:00"
+}

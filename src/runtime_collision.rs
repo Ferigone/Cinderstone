@@ -192,6 +192,96 @@ pub fn state_collision_shape(
     context: EntityCollisionContext,
     block_entity: BlockEntityShape<'_>,
 ) -> Result<(VoxelShape, bool)> {
+    let (local, canonical_block) =
+        state_collision_shape_local_details(state, position, context, block_entity)?;
+    if local.is_empty() {
+        return Ok((local, false));
+    }
+    // Keep the original second addition separate from the dynamic offset.
+    // A ray clip needs the local result before this integer translation; an
+    // inverse translation would lose the source's coordinate precision.
+    let axes = [Axis::X, Axis::Y, Axis::Z];
+    let coords = axes.map(|axis| {
+        local.coordinates(axis).iter().map(|value| {
+            *value + match axis {
+                Axis::X => position.0 as f64,
+                Axis::Y => position.1 as f64,
+                Axis::Z => position.2 as f64,
+            }
+        }).collect::<Vec<_>>()
+    });
+    Ok((VoxelShape::new(coords[0].clone(), coords[1].clone(), coords[2].clone(),
+        local.occupied().to_vec()).map_err(|error| anyhow!(error))?, canonical_block))
+}
+
+/// The same genuine BlockState collision grid BEFORE the BlockCollisions
+/// iterator's integer position translation. State-owned dynamic offsets are
+/// already applied with the original rounding/order. The caller supplies the
+/// actual entity context and block-entity availability, as for movement.
+/// Animated AABBs do not certify a source voxel grid and remain unsupported.
+pub fn state_collision_shape_local(
+    state: u32,
+    position: (i32, i32, i32),
+    context: EntityCollisionContext,
+    block_entity: BlockEntityShape<'_>,
+) -> Result<VoxelShape> {
+    state_collision_shape_local_details(state, position, context, block_entity)
+        .map(|(shape, _)| shape)
+}
+
+/// Pure capability inspection of the immutable source grid metadata for a
+/// FallingBlockEntity. It neither evaluates a counterfactual entity context
+/// nor invokes the actual shape query. The real post-move query must still
+/// supply its genuine bottom/fall-distance/descending fields and position.
+/// This is not world, chunk, block-entity absence or source ownership proof.
+pub fn require_falling_collision_shape_capability(state: u32) -> Result<()> {
+    let c = catalog();
+    let &(base, kind, detail, horizontal, vertical, _, _) = c.states.get(state as usize)
+        .context("unknown exact 1.21 falling collision capability state")?;
+    c.shapes.get(base).context("falling collision source base grid is unavailable")?;
+    let require_special = |name: &str| -> Result<()> {
+        let id = c.special.get(name)
+            .with_context(|| format!("falling collision selector lacks source asset {name}"))?;
+        c.shapes.get(*id)
+            .with_context(|| format!("falling collision source grid {name} is unavailable"))?;
+        Ok(())
+    };
+    match kind {
+        0 | 1 => {},
+        2 | 3 => {
+            ensure!(horizontal.is_finite() && vertical.is_finite()
+                && horizontal >= 0. && vertical >= 0.,
+                "falling collision source offset metadata is unavailable");
+        }
+        4 => {
+            ensure!(detail <= 15, "falling scaffolding source selector metadata is unknown");
+            // Actual post-move bottom/descending may select any of these
+            // branches. Inspect the real assets rather than probing invented
+            // entity heights through state_collision_shape_local.
+            require_special("scaffolding_stable")?;
+            require_special("scaffolding_bottom")?;
+            require_special("empty")?;
+        }
+        5 => {
+            // Falling always satisfies is_falling_block; the earlier source
+            // fallDistance>2.5 branch may still select powder_falling.
+            require_special("powder_falling")?;
+            require_special("full")?;
+            require_special("empty")?;
+        }
+        6 | 7 => anyhow::bail!(
+            "falling collision requires an actual animated block-entity grid/absence owner"),
+        _ => anyhow::bail!("unknown exact 1.21 falling collision selector kind {kind}"),
+    }
+    Ok(())
+}
+
+fn state_collision_shape_local_details(
+    state: u32,
+    position: (i32, i32, i32),
+    context: EntityCollisionContext,
+    block_entity: BlockEntityShape<'_>,
+) -> Result<(VoxelShape, bool)> {
     let c = catalog();
     let &(base, kind, detail, horizontal, vertical, vertical_offset, _) = c
         .states
@@ -246,25 +336,19 @@ pub fn state_collision_shape(
     } else {
         Vec3::ZERO
     };
-    // VoxelShape.move uses one offset for the local dynamic shape, then the
-    // BlockCollisions iterator moves that shape by the integer block position.
+    // VoxelShape.move applies the local dynamic offset first. Leave the final
+    // BlockCollisions integer-block translation to state_collision_shape.
     let axes = [Axis::X, Axis::Y, Axis::Z];
     let coords = axes.map(|axis| {
         fact.shape
             .coordinates(axis)
             .iter()
             .map(|v| {
-                let dynamic = if kind == 2 || kind == 3 {
+                if kind == 2 || kind == 3 {
                     *v + offset.get(axis)
                 } else {
                     *v
-                };
-                dynamic
-                    + match axis {
-                        Axis::X => position.0 as f64,
-                        Axis::Y => position.1 as f64,
-                        Axis::Z => position.2 as f64,
-                    }
+                }
             })
             .collect::<Vec<_>>()
     });

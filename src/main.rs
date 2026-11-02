@@ -95,7 +95,13 @@ mod main_server_timing;
 mod main_experience;
 mod main_falling_block;
 mod main_falling_block_generic;
+mod main_falling_block_powder;
+mod main_falling_block_sequence;
+mod main_falling_block_clip;
+mod main_falling_block_clip_admission;
+mod main_block_state_warnings;
 mod main_native_enchantments;
+mod main_block_state_registry;
 mod main_falling_block_world;
 mod main_falling_block_runtime;
 mod main_falling_block_persistence;
@@ -326,6 +332,7 @@ struct Capture {
 struct Fixtures {
     chat_type: i32,
     configuration: Vec<Packet>,
+    block_state_registry: main_block_state_registry::NativeBlockStateRegistry,
     dimension: i32,
     dimension_facts: DimensionFacts,
     seed_hash: i64,
@@ -448,9 +455,15 @@ async fn fixtures(path: &Path) -> Result<Fixtures> {
     )?;
     let seed_hash = ((u64::from(high as u32) << 32) | u64::from(low as u32)) as i64;
     let chat_type = main_chat_keys::captured_chat_type(&configuration)?;
+    let block_state_registry = main_block_state_registry::NativeBlockStateRegistry::capture(
+        &configuration,
+        inventory::block_state_catalog(),
+        mc121_rust::placement::canonical_placement_catalog(),
+    )?;
     Ok(Fixtures {
         chat_type,
         configuration,
+        block_state_registry,
         dimension,
         dimension_facts,
         seed_hash,

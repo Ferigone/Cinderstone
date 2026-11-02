@@ -5,11 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Native pressure callbacks — local Main stage; one Item flow passed
+## Native source-owner composition — compiler and startup passed
+
+Local source `09da4e0185cf54330a7401deeff61fe7f329b07f`, tree `93f95249be0ec6c8f86b42800fa339cd89862ff2`, passed locked offline all-target check30.05s and full executable42.50s. Actual binary `0ea5130fcfa819463df73e40f1e2667cb7548c1a222c60af1d358ab3388d2caa` then passed one [STATUS/PING plus normal-shutdown observation](reference/native-owner-startup.md), with explicit offline loopback/local public-key source and no PLAY session. Mandatory constructor success follows from that exact source path before listening, not a fabricated instrumentation event. Later factual docs do not change compiled product inputs.
+
+Source now composes concrete fresh CompoundTag history, canonical EMPTY component branches, decoder-issued immutable map views and source getCompound defaults; the original-certified same-owner Block/Property/StateHolder catalogue, actual retained current-Fixtures tag view, bound BlockState load and real SNBT/stderr warning adapters; and powder hardening/ordered-write/landing/real clip/local-shape/one-tick capability receipts. Original bootstrap captured all1060 blocks and26684 states with matching IDs/values/order. The fluid extractor correction changes30flags only and independently recaptured unchanged falling predicates against the new full catalogue hash.
+
+Production powder classification remains disabled: actual owner installation, placement/shape and scheduler dispatch still need a coherent Main delivery. Java chunk/Falling import, actual Enchanting BE map/Level/save/factory/menu, nonempty component codecs, unknown prior compound histories, required tree bins and floating SNBT without a genuine numeric formatter remain unsupported/pending. No source-only capability is relabeled working gameplay. Existing unrelated master modules remain preserved; scope1 checklist56/51 is unchanged.
+
+## Native pressure callbacks — merged Main stage; one Item flow passed
 
 Source `49643deaea532a38ae01327213c4b821cb643215`, tree `1d76c8da562b9b01954e2f54b444188c7465b452`, passed all-target check21.82s and full executable build37.78s. Actual binary `3cd05a5f8de8e29c8bc3e0ca3ec719638e761a0638867c8d1c2c5895ef3b15ed` then passed one [real Item/wooden-plate flow](reference/pressure-item-runtime.md): same Item activation, pickup and scheduled release conserved one stone. Exact source/binary/packet evidence stays separate from later source composition. One real overload event is retained, not hidden or turned into a performance assertion.
 
-The production path borrows actual Item TickParts query/sound state or full XP/Falling owners synchronously at the original entityInside phase, keeps fluid/rain/cache borrows local, and supplies the original world-update publisher. Actual scheduled release uses the Server host, same shared query and scheduler, with no legacy item-count fallback. New base/Enchanting BlockEntity library source is exported as a separate prerequisite; no working table/map/menu is claimed. Active controller neighborhoods, arbitrary imports and wider pressure runtime coverage remain open. This stage is being published for review; fixed scope1 indicators stay56/51.
+The production path borrows actual Item TickParts query/sound state or full XP/Falling owners synchronously at the original entityInside phase, keeps fluid/rain/cache borrows local, and supplies the original world-update publisher. Actual scheduled release uses the Server host, same shared query and scheduler, with no legacy item-count fallback. New base/Enchanting BlockEntity library source is exported as a separate prerequisite; no working table/map/menu is claimed. Active controller neighborhoods, arbitrary imports and wider pressure runtime coverage remain open. PR113 merged as `c9e37eabb4d73e0151b0c672838aae2b73390c0a`; fixed scope1 indicators stay56/51.
 
 ## Native Anvil/FallingBlock — Main connected; bounded runtime passed
 
@@ -21,7 +29,7 @@ A later [genuine mid-flight native resume](reference/falling-midflight-local-key
 
 ## Latest hosted Main release
 
-PR100 merged as `40d161505e946fd69c2c098c894acc7a0fda4767` after exact-head required CI and source review. Its Railway deployment `2b91af86-dfa3-4c15-abdf-3faa8f049154` reached SUCCESS and native1.21/767/offline listening at `2026-11-02T03:22:23.820868584Z`. The directly observed environment had one running/zero crashed replica, retained volume and no pending work. Default Official service keys remained selected and two actual profile keys loaded. This is startup evidence; public/graphical PLAY remains unverified. Earlier Root97 and other releases were superseded after successful startups.
+PR113 merged as `c9e37eabb4d73e0151b0c672838aae2b73390c0a` after exact-head required CI and source review. Its Railway deployment `a7a9a9cb-5c19-4104-acbe-5a014d375ccb` reached SUCCESS and native1.21/767/offline listening at `2026-11-02T03:54:37.106188636Z`. The directly observed environment had one running/zero crashed replica, retained volume and no pending work. Default Official service keys remained selected and two actual profile keys loaded. This is startup evidence; public/graphical PLAY remains unverified. Earlier Root100/97 and other releases were superseded after successful startups.
 
 ## Native Grindstone — Main connected; bounded runtime passed
 

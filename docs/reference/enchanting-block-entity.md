@@ -342,10 +342,189 @@ native resource profile permits up to4096keys/map, capacity8192, depth128 and
 262144operation visits. These are native admission limits, not Minecraft NBT
 rules. Existing roots/children are actual known state; a private admission
 shadow copies their bucket history without executing source constructors/RNG.
-Unsupported boundary detection occurs there before adoption, leaving the real
-target untouched. No general arbitrary-import or tree-bin byte parity is
+Unsupported boundary detection occurs in that shadow. Only after admission does
+the same deterministic operation mutate the real retained map; the shadow is
+never adopted as a replacement source object. The actual existing node/key
+ownership therefore survives an overwrite/merge. Live Java iterators,
+concurrent structural mutation and shared mutable aliases are outside this
+exclusive-owner save profile. No general arbitrary-import or tree-bin parity is
 claimed. No Rust build/runtime check was run by this owner; Root handles focused
 compilation and subsequent source-runtime verification.
+
+## Canonical EMPTY component owner and exact helper branch
+
+`block_entity_empty_components.rs` supplies the genuine native
+`DataComponentMap.EMPTY` owner needed by a freshly constructed default table.
+`NativeEmptyComponentMap::singleton()` retains one private process/library
+`OnceLock<Arc<EmptyObject>>`; Clone retains that same object, and equality/
+`same_identity`/`is_empty_singleton` use actual Arc pointer identity. This is
+the dedicated original EMPTY object, not a general empty-map container or a
+successful conversion of unknown data. There is no from-map/from-bytes/Default
+conversion and no nonempty constructor.
+
+Direct pinned-original javap establishes `DataComponentMap` (`km`) class init
+creates one `km$1` EMPTY object. Its get(any type) returns null, keySet is
+Set.of(), and iterator is Collections.emptyIterator. `km$a.buildFromMapTrusted`,
+lines210–216, returns that same EMPTY when the actual decoded map is empty;
+nonempty maps use actual reference-key maps and remain outside this slice.
+`BlockEntity.ComponentHelper` (`dqh$a`) initializes exactly
+`DataComponentMap.CODEC.optionalFieldOf("components", EMPTY).codec()`.
+
+The concrete codec is
+`NativeEmptyComponentCodec<R,D>::new(actual_diagnostics)`, implementing
+`BlockEntityComponentCodec<NativeEmptyComponentMap>`. R must implement
+`EmptyComponentRegistryContext::create_component_nbt_ops()`, returning and
+retaining the actual HolderLookup.Provider serialization-context view for this
+operation. There is no `()` registry or default successful registry callback.
+This source prefix runs before parsing/encoding, even when no element codec
+will be queried. The associated Ops type can retain the genuine shared registry
+owner; the empty path never resolves a component type, holder or value.
+
+| Actual helper input/operation | Implemented source result |
+| --- | --- |
+| Actual compound with absent `components` | Successful optional default: Some(the canonical EMPTY), no warning. Other root fields are not interpreted by this helper. |
+| Actual compound with `components:{}` | Empty dispatched-map decode plus buildFromMapTrusted returns Some(the same canonical EMPTY), no component-key/value lookup or warning. |
+| Actual compound with nonempty `components` compound | Typed `UnsupportedEmptyComponentCodec::NonemptyComponents`, no invented warning/default/partial result. Validity/partial handling requires the genuine type/value registry codecs. The actual BE field is not mutated by this error. |
+| Actual compound with present wrong-type `components` value | Genuine strict codec error; actual source failed-load diagnostic first, then Some(partial canonical EMPTY). This is the traced source malformed-data branch, not a fallback for unsupported nonempty maps. |
+| Standalone helper given a noncompound root | Outer MapCodec/NbtOps getMap error and real warning, then None: the optional/default field codec was never reached. Actual BlockEntity.loadWithComponents already takes a compound, and the native base enforces that boundary. |
+| Encode the canonical EMPTY object | Objects.equals(value, EMPTY) produces Optional.empty; omit `components` entirely and return actual successful empty helper compound. No element codec or warning is invoked. |
+
+The strict wrong-type partial deserves explicit evidence: bundled
+DataFixerUpper8.0.16 (SHA256
+`ffc138bc2596c291781b0d5e211ccac51f0f2345f27fc2742f335cedf7e2870d`)
+`OptionalFieldCodec.decode` calls
+`parsed.map(Optional::of).setPartial(parsed.resultOrPartial())`. A failed
+element decode with no value thereby gains partial Optional.empty. The
+`Codec.optionalFieldOf` default xmap uses `Optional.orElse(EMPTY)`, yielding
+partial EMPTY while retaining the actual error. It is not lenientOptionalFieldOf.
+`DispatchedMapCodec.decode` calls NbtOps.getMap first, so a wrong-type value
+never reaches its per-entry registry/value parser. Its actual empty-map path
+does not parse any key/value. NbtOps (`up.e`) emits `Not a map: <Tag.toString>`
+without a partial map for a noncompound; it is the optional wrapper that then
+supplies the genuine partial default.
+Original `dqh.loadWithComponents75–80` invokes resultOrPartial with its warning
+callback, then assigns an available full/partial map. Unknown/nonempty native
+codec support cannot be relabelled as that genuine Java wrong-type rejection.
+
+`EmptyComponentDiagnostics` requires the actual Tag.toString/StringTagVisitor
+formatter and real warning sink. Native code constructs the exact NbtOps
+message prefix `Not a map: ` over lossless JavaString code units and invokes
+`Failed to load components: {}` with that genuine message. There is no Debug,
+JSON, lossy-string formatter or no-op logger substitute. Missing formatter,
+registry or logger ownership propagates an error before exposing a map result;
+in particular the malformed branch does not assign EMPTY if its real warning
+fails. The successful fresh-empty encode/decode branches produce no diagnostics.
+
+Central construction may supply
+`|| Ok(NativeEmptyComponentMap::singleton())` only at the genuine source
+constructor/default/decoded-empty branch. Later actual component maps must not
+be discarded or forced into this dedicated type. The eventual general owner
+must preserve the canonical EMPTY identity while adding its real nonempty
+codecs. Main/world map, actual registry/diagnostic adapters, item component
+application and production integration are still pending. This module adds no
+text model, Level owner or class RNG and invokes no Enchanting constructor.
+
+## Binary-decoder-issued immutable NBT history
+
+`source_nbt_decode.rs::SourceDecodedNbt` is a separate genuine binary-load
+capability. Its public constructors are only `decode_named`,
+`decode_anonymous`, `decode_anonymous_prefix` and their `_with_limits` variants,
+all taking actual bytes. They use the existing `nbt::{NbtRoot,Tag}` decoder at
+the actual named/anonymous boundary, preserving its existing malformed-data and
+budget admission. Raw NBT APIs are unchanged. There is no public fromTag,
+fromPointer, caller-created history or value-equality adoption constructor.
+
+Source evidence is direct javap of original `CompoundTag$1` (`ub$1`):
+`load61–66` pushes/pops NbtAccounter depth; `loadCompound70–81` creates
+Maps.newHashMap at offsets7–10, reads the actual type/key, fully loads that
+child at29–40, then executes Map.put42–52 before the next wire entry.
+`readString148–151` uses DataInput.readUTF. The existing native decoder retains
+that exact wire encounter sequence, duplicate entries and lossless JavaString
+units. The private issuer recursively replays it into actual fresh native
+map/list/compound owners. This is a source binary load, not HashMap(Map) copy,
+codec encounter-order speculation or a reordering of arbitrary in-memory data.
+
+Duplicate wire names therefore replace the logical value while keeping the
+first key/node position and all actual prior capacity/resize history. A
+duplicate Properties compound's final value is the actual fully loaded last
+compound. Earlier replaced values still must load completely; an unsupported
+tree/history boundary in a later-discarded value is not silently skipped.
+The retained public Tag observation is source-logical: unique keys in actual
+HashMap encounter order, with duplicate-last values. The legacy raw decoder's
+wire-vector/duplicate representation remains available through its old API.
+
+The Root-approved additive owner API retains the same actual tree using opaque
+`NativeOwnedNbt`. `owned_noncompound` accepts only values without bare nested
+compound history; `owned_compound` takes an actual native owner;
+`owned_list` preserves its actual owned children; `put_owned_value` transfers
+them into their actual map. `observe_owned_tag` observes that retained history
+without invoking source CompoundTag.copy, replacing owners or issuing a
+decoder capability. Nested compounds in lists therefore survive with their
+original fresh-load histories. Existing source map algorithms are unchanged.
+
+The decoded document privately owns both immutable `Box<Tag>` and the
+associated actual NativeOwnedNbt tree. It supplies borrowed `tag/name/framing/
+consumed` observations. Anonymous-prefix `consumed` is the real input byte
+count from the existing decoder, not normalized re-encoding length.
+`root_compound()` returns a genuine `SourceCompoundView<'_>` only for an actual
+compound root. Its private fields/constructor bind the actual Tag node and map
+history under the document's lifetime. Public Clone/Copy of the VIEW retains
+those same immutable borrows, not another decoded object.
+
+`SourceCompoundView` exposes borrowed `tag()`, `child_compound(&str)`, lossless
+`child_compound_key(&JavaString)`, actual unique `key_order()` and
+`matches_node(&Tag)`. Identity matching is permitted only under this already
+retained byte-decoder ownership; it cannot create provenance from a free
+pointer/address, bless an equal clone or outlive the genuine node. Immutability
+prevents its internal node addresses/history from changing while borrowed.
+There is currently no borrowed compound-in-list navigation API, although those
+actual nested owners are retained; that capability is not claimed.
+
+The intended concrete BlockStateNbtContext constructor takes this genuine
+original BlockState compound view and mandatory real warning sink. It retains
+the original and its actual child Properties view, validates the raw callback
+references against those issued nodes, uses actual key_order, and forwards
+the original warning template/property/value/original input. The source-bound
+read entry must validate the original view even for a Name-only input that
+would never call a property/warning callback. This contract was coordinated
+with the actual registry-provider owner. A cloned Falling block_data/raw Tag
+cannot satisfy it; the caller must retain the real decoded document and borrow
+its actual node. No Main/import caller is claimed by this module.
+
+Actual fresh-load treeification/native resource boundaries remain the concrete
+owner's typed errors. Unknown prior in-memory/imported history is still not
+adopted, and this new capability does not authenticate a world, registry,
+checkpoint or original save's source history. It proves this actual native
+binary-load operation only. No class RNG/source constructor is executed in
+provenance checks. An independent read-only source review found no defect
+inside these stated ownership/order bounds; no test, oracle or build was run.
+
+### Parent-bound source getCompound default owner
+
+`SourceCompoundView::get_compound(&str)` and lossless
+`get_compound_key(&JavaString)` now perform the actual parent-bound source
+operation, returning opaque `SourceCompoundLookup<'a>`. Existing `child_compound`
+remains child-only. Direct original `ub.getCompound435–441` (mapped `p`) first
+checks contains(key,10), returns the actual retained object at offsets10–23,
+otherwise constructs a NEW CompoundTag at45–52. The default is not inserted
+back into the parent and is not a shared EMPTY singleton.
+
+The lookup privately retains the actual parent view/key and either its genuine
+borrowed child or the newly constructed native fresh map plus immutable Tag.
+Its `view(&self)->SourceCompoundView<'_>` borrows the lookup itself, retaining
+that fresh owner through the complete state-read/warning phase. `parent`, `key`
+and `kind` are observations only. There is no public lookup/enum-payload
+constructor, arbitrary-Tag or fresh-pointer adoption.
+
+Each missing/wrong-type call constructs a different actual fresh empty object;
+an actually present empty compound is borrowed with its original identity.
+This extends issued views only through the genuine already-issued parent's
+source getCompound call. It is neither an unknown/imported-data fallback nor a
+capability to bless arbitrary in-memory compounds. The registry/load adapter
+retains the lookup before constructing its bound context/codec. The parser's
+AIR result and Falling load's later AIR-to-sand finalization remain distinct
+source phases; no new default state is invented here. No map algorithms, raw
+NBT APIs, class RNG, shared files, build or tests were changed for this scope.
 
 No Rust build or runtime check was run by this owner; the coordinator handles
 focused assembly/compilation. The local `rustfmt` executable was unavailable.
