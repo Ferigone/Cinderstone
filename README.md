@@ -10,11 +10,17 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Anvil falling runtime
+
+The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. Source is published in [PR97](https://github.com/Ferigone/Cinderstone/pull/97); release review is pending.
+
+The primary path supports the native Anvil/flat/creative profile. Active fluid/fire/redstone/BE callbacks, generic falling types, passenger graphs and survival damage remain open here. A separate mid-flight restore attempt was interrupted by automatic execution review and has no persistence result. Future sand/gravel/WATER/placement/codec source has a compiler check, not primary runtime evidence.
+
 ## Native Grindstone and Anvil integration
 
 The Grindstone Main path passed a [bounded actual protocol flow](docs/validation/grindstone-flow-supported.json): real enchantment removal, XP orb, level event1042, item drop, menu lifetime and native cold-checkpoint conservation. The [source and limits](docs/reference/grindstone-production.md) retain the separate earlier failure at unsupported equipped-enchantment effects. The supported flow keeps an inert stone selected; this is not unrestricted enchanted-equipment support.
 
-Anvil Main adapters are connected in source, but ordinary placement is blocked by the missing FallingBlock scheduled callback/entity integration. No Anvil menu runtime pass is claimed. These partial workstation stages do not complete an aggregate checklist row.
+The earlier Anvil placement blocker is resolved by the separately published bounded Falling runtime above. Grindstone/current-menu PR84 is merged as `f19197a`; Railway `7f39646a-63ba-4218-9419-e6f7cc70005b` reached SUCCESS/native offline listening at `2026-11-02T01:19:07.247485044Z`, one running replica and the retained volume. Partial workstation stages do not complete an aggregate checklist row.
 
 ## Native Loom Main
 

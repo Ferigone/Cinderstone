@@ -7,9 +7,13 @@ pub(super) struct MainBlockRuntime {
     pub(super) queue:BlockTickScheduler,
     loaded:BTreeSet<(i32,i32)>, saved:BTreeMap<(i32,i32),Vec<SavedTick<u32>>>,
     stopped:Option<String>, native_source:bool, was_used:bool,
+    falling_owner:Option<main_falling_block_damage::NativeFallingDamageTypes>,
 }
 impl MainBlockRuntime {
-    pub fn new(native_source:bool)->Self{Self{queue:BlockTickScheduler::new(),loaded:BTreeSet::new(),saved:BTreeMap::new(),stopped:None,native_source,was_used:false}}
+    pub fn new(native_source:bool)->Self{Self{queue:BlockTickScheduler::new(),loaded:BTreeSet::new(),saved:BTreeMap::new(),stopped:None,native_source,was_used:false,falling_owner:None}}
+    pub(super) fn install_falling_owner(&mut self, owner:main_falling_block_damage::NativeFallingDamageTypes)->Result<()>{self.require_healthy()?;ensure!(self.falling_owner.is_none(),"falling callback owner was already installed");self.falling_owner=Some(owner);Ok(())}
+    pub(super) fn falling_damage_types(&self)->Result<&main_falling_block_damage::NativeFallingDamageTypes>{self.require_healthy()?;self.falling_owner.as_ref().context("actual configured falling callback owner is unavailable")}
+    pub(super) fn owns_anvil_tick(&self,state:u32,delay:i32)->Result<bool>{Ok(self.falling_owner.is_some()&&mc121_rust::placement::anvil_falling_delay(state)?==Some(delay))}
     pub fn require_healthy(&self)->Result<()>{ensure!(self.native_source,"global BLOCK source unavailable");ensure!(self.stopped.is_none(),"global BLOCK runtime stopped: {:?}",self.stopped);Ok(())}
     pub fn pending_count(&self)->usize{self.queue.count()+self.saved.values().map(Vec::len).sum::<usize>()}
     pub fn was_used(&self)->bool{self.was_used}
@@ -22,7 +26,7 @@ impl MainBlockRuntime {
 }
 impl LivePlayers {
     pub(super) fn schedule_native_block_tick(&mut self,world:&WorldBackend,tick:&PlannedBlockTick,now:i64)->Result<()>{
-        ensure!(main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5),"unported scheduled block callback");
+        ensure!(main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||self.block_runtime.owns_anvil_tick(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5),"unported scheduled block callback");
         self.block_runtime.prepare_halo(world,&self.chunk_runtime,(tick.position.0.div_euclid(16),tick.position.2.div_euclid(16)),now)?;
         self.block_runtime.was_used=true;
         if let Some(source)=self.entity_source.as_mut(){source.observe_block_scheduler_use();}
@@ -48,6 +52,7 @@ impl Server{
    // same toRunSet and queue; restore it even when the callback fails.
    std::mem::swap(queue,&mut players.block_runtime.queue);
    let done=(||{if main_fire_simulation::MainFireRuntime::supports_scheduled_state(state){let fire=players.tick_fire_block(&mut world,p,now,border,&self.entity_events)?;report.fire.executed+=fire.executed;report.fire.stale+=fire.stale;report.fire.changed_blocks+=fire.changed_blocks;Ok(())}
+   else if players.block_runtime.owns_anvil_tick(state,2)?{self.tick_native_anvil_block_locked(&mut world,&mut players,p,state,now,border)}
    else if mc121_rust::native_block_entities::container_kind(state).is_some(){self.tick_native_container_block_locked(&mut world,&mut players,p,state,now,border)}
    else{players.tick_redstone_block(&mut world,p,now,border,&self.entity_events)}})();
    std::mem::swap(queue,&mut players.block_runtime.queue);done
