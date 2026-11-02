@@ -5,12 +5,13 @@ use mc121_rust::{
     chunk_readiness::ChunkStatus,
     density::DensityPoint,
     worldgen::{
+        beardifier::{Beardifier, BlockBox, Junction, Rigid, TerrainAdjustment},
         biome_source::{select_end_biome, BuiltinMultiNoiseBiomeSource, MultiNoisePreset},
         biome_temperature::BiomeTemperature,
         biome_zoom::{BiomeZoom, QuartBiomeProvider},
         biomes::ResolvedBiome,
         blending::Blender,
-        generator::{GenerationInfluence, NoiseGenerator, TargetGeneration, TargetSurfaceOutcome},
+        generator::{NoiseGenerator, TargetGeneration, TargetSurfaceOutcome},
         noise_chunk::NoiseFillPlan,
         retrogen::{parse_status, BelowZeroRetrogen, RetrogenSlot},
         target::{
@@ -51,6 +52,102 @@ fn seed(v: &Value) -> Result<i64> {
         return Ok(value);
     }
     Ok(text(v, "seed")?.parse()?)
+}
+
+fn point(v: &Value) -> Result<DensityPoint> {
+    let values = v.as_array().context("beardifier point must be an array")?;
+    ensure!(
+        values.len() == 3,
+        "beardifier point needs three coordinates"
+    );
+    let coordinate = |n: usize| -> Result<i32> {
+        Ok(values[n]
+            .as_i64()
+            .context("noninteger beardifier coordinate")?
+            .try_into()?)
+    };
+    Ok(DensityPoint::new(
+        coordinate(0)?,
+        coordinate(1)?,
+        coordinate(2)?,
+    ))
+}
+
+/// Ordered data ingress only. These declared parts are not a StructureManager
+/// selection/dependency witness and contain no future original phase output.
+fn beardifier(q: &Value) -> Result<Arc<Beardifier>> {
+    let Some(parts) = q.get("beardifier") else {
+        return Ok(Beardifier::empty());
+    };
+    let mut rigids = Vec::new();
+    for row in parts["rigids"]
+        .as_array()
+        .context("missing ordered rigid list")?
+    {
+        let bounds = row["box"].as_array().context("missing rigid box")?;
+        ensure!(bounds.len() == 6, "rigid box needs six coordinates");
+        let coordinate = |n: usize| -> Result<i32> {
+            Ok(bounds[n]
+                .as_i64()
+                .context("noninteger rigid box coordinate")?
+                .try_into()?)
+        };
+        let terrain_adjustment = match text(row, "terrain_adjustment")? {
+            "none" => TerrainAdjustment::None,
+            "bury" => TerrainAdjustment::Bury,
+            "beard_thin" => TerrainAdjustment::BeardThin,
+            "beard_box" => TerrainAdjustment::BeardBox,
+            "encapsulate" => TerrainAdjustment::Encapsulate,
+            value => bail!("unsupported terrain adjustment {value}"),
+        };
+        rigids.push(Rigid {
+            bounds: BlockBox {
+                min_x: coordinate(0)?,
+                min_y: coordinate(1)?,
+                min_z: coordinate(2)?,
+                max_x: coordinate(3)?,
+                max_y: coordinate(4)?,
+                max_z: coordinate(5)?,
+            },
+            terrain_adjustment,
+            ground_level_delta: i(row, "ground_level_delta")?,
+        });
+    }
+    let mut junctions = Vec::new();
+    for row in parts["junctions"]
+        .as_array()
+        .context("missing ordered junction list")?
+    {
+        junctions.push(Junction {
+            source_x: i(row, "source_x")?,
+            source_ground_y: i(row, "source_ground_y")?,
+            source_z: i(row, "source_z")?,
+        });
+    }
+    Ok(Beardifier::from_ordered_parts(rigids, junctions))
+}
+
+fn beardifier_observation(q: &Value, owner: &Beardifier) -> Result<Value> {
+    let mut samples = Vec::new();
+    if let Some(points) = q.get("beardifier_points") {
+        for coordinates in points
+            .as_array()
+            .context("beardifier_points must be an array")?
+        {
+            let p = point(coordinates)?;
+            samples.push(json!([
+                p.x,
+                p.y,
+                p.z,
+                owner.compute(p).to_bits().to_string()
+            ]));
+        }
+    }
+    Ok(json!({
+        "beardifier_samples":samples,
+        "beardifier_min_bits":f64::NEG_INFINITY.to_bits().to_string(),
+        "beardifier_max_bits":f64::INFINITY.to_bits().to_string()
+    }))
 }
 fn digest(bytes: &[u8]) -> String {
     openssl::sha::sha256(bytes)
@@ -463,6 +560,18 @@ fn run(
         );
     }
     let q = input.get("query").unwrap_or(&input);
+    if q.get("mode").and_then(Value::as_str) == Some("beardifier_kernel") {
+        ensure!(
+            input
+                .as_object()
+                .is_some_and(|row| row.len() == 1 && row.contains_key("query")),
+            "kernel replay accepts exactly query and no original state"
+        );
+        let owner = beardifier(q)?;
+        let mut result = beardifier_observation(q, &owner)?;
+        result["query"] = q.clone();
+        return Ok(result);
+    }
     let initial = input
         .get("initial")
         .context("only original INITIAL must be supplied")?;
@@ -490,7 +599,24 @@ fn run(
         .get("skip_biomes")
         .and_then(Value::as_bool)
         .unwrap_or(false);
-    let mut job = TargetGeneration::new_with_optional_blender(
+    let structure_owner = if skip_biomes {
+        ensure!(
+            q.get("beardifier").is_none(),
+            "unavailable no-BIOMES context cannot supply structure parts"
+        );
+        None
+    } else {
+        Some(beardifier(q)?)
+    };
+    let structure_observation = structure_owner
+        .as_ref()
+        .map(|owner| beardifier_observation(q, owner))
+        .transpose()?;
+    ensure!(
+        structure_owner.is_some() || q.get("beardifier_points").is_none(),
+        "beardifier samples need an actual owner"
+    );
+    let mut job = TargetGeneration::new_with_influences(
         generator,
         target,
         if skip_biomes {
@@ -498,13 +624,14 @@ fn run(
         } else {
             Some(Blender::empty())
         },
-        if skip_biomes {
-            GenerationInfluence::Unavailable
-        } else {
-            GenerationInfluence::ObservedEmpty
-        },
+        structure_owner.clone(),
     );
     let mut result = json!({"query":q,"initial":snapshot(job.target(),base,id,"initial")?,"native_cache_initially_absent":!job.has_cached_noise_chunk()});
+    if let Some(observation) = structure_observation {
+        for (key, value) in observation.as_object().expect("observation object") {
+            result[key] = value.clone();
+        }
+    }
     let source_name = if skip_biomes {
         String::new()
     } else {
@@ -547,6 +674,11 @@ fn run(
             Ok(ResolvedBiome::from_holder(biome.clone(), Some(biome)))
         })?;
         result["biomes"] = snapshot(job.target(), base, id, "biomes")?;
+        result["native_beardifier_identity_after_biomes"] = json!(job
+            .captured_beardifier()?
+            .as_ref()
+            .zip(structure_owner.as_ref())
+            .is_some_and(|(captured, initial)| Arc::ptr_eq(captured, initial)));
     }
     result["biomes_ran"] = json!(!skip_biomes);
     if !skip_biomes {
@@ -559,6 +691,13 @@ fn run(
     result["noise_before_retrogen"] = snapshot(job.target(), base, id, "noise-before-retrogen")?;
     job.finish_noise_task()?;
     result["noise"] = snapshot(job.target(), base, id, "noise")?;
+    if structure_owner.is_some() {
+        result["native_beardifier_identity_after_noise"] = json!(job
+            .captured_beardifier()?
+            .as_ref()
+            .zip(structure_owner.as_ref())
+            .is_some_and(|(captured, initial)| Arc::ptr_eq(captured, initial)));
+    }
     if let Some(descriptions) = q.get("surface_neighbors") {
         let mut neighbors = Neighbors {
             chunks: BTreeMap::new(),
@@ -589,8 +728,9 @@ fn run(
         }
         *trace.borrow_mut() = Some(Vec::new());
         let build = job.target().build_height();
-        let surface = job.build_surface(
+        let surface = job.build_surface_with_influences(
             Blender::empty(),
+            None,
             build,
             BiomeZoom::from_world_seed(actual_seed),
             &mut neighbors,
@@ -614,6 +754,13 @@ fn run(
         }
     } else {
         result["surface_biome_queries"] = json!([]);
+    }
+    if structure_owner.is_some() && q.get("surface_neighbors").is_some() {
+        result["native_beardifier_identity_after_surface"] = json!(job
+            .captured_beardifier()?
+            .as_ref()
+            .zip(structure_owner.as_ref())
+            .is_some_and(|(captured, initial)| Arc::ptr_eq(captured, initial)));
     }
     result["surface_ran"] = json!(q.get("surface_neighbors").is_some());
     result["native_phase"] = json!(format!("{:?}", job.phase()));

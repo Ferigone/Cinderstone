@@ -1,6 +1,6 @@
-//! NoiseChunk marker caches, Blender wrappers and interpolation phase state.
+//! NoiseChunk marker caches, retained influence owners and interpolation state.
 use super::*;
-use crate::worldgen::blending::Blender;
+use crate::worldgen::{beardifier::Beardifier, blending::Blender};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -106,6 +106,7 @@ pub struct ChunkDensity {
     first_quart_z: i32,
     quart_count: usize,
     blender: Arc<Blender>,
+    beardifier: Arc<Beardifier>,
     blend_alpha: Vec<Vec<f64>>,
     blend_offset: Vec<Vec<f64>>,
     last_blending_pos: i64,
@@ -146,6 +147,26 @@ impl ChunkDensity {
         cell_count_xz: usize,
         blender: Arc<Blender>,
     ) -> ChunkResult<Self> {
+        Self::new_with_influences(
+            grid,
+            origin_x,
+            origin_z,
+            cell_count_xz,
+            blender,
+            Beardifier::empty(),
+        )
+    }
+
+    /// Capture the actual chunk influence owners before mapping any density
+    /// functions. Their identities cannot change after marker/cache creation.
+    pub fn new_with_influences(
+        grid: NoiseGrid,
+        origin_x: i32,
+        origin_z: i32,
+        cell_count_xz: usize,
+        blender: Arc<Blender>,
+        beardifier: Arc<Beardifier>,
+    ) -> ChunkResult<Self> {
         if grid.cell_width <= 0
             || grid.cell_height <= 0
             || grid.height < 0
@@ -184,6 +205,7 @@ impl ChunkDensity {
             first_quart_z,
             quart_count,
             blender,
+            beardifier,
             blend_alpha,
             blend_offset,
             last_blending_pos: pack_xz(1_875_066, 1_875_066),
@@ -252,6 +274,11 @@ impl ChunkDensity {
     /// Same immutable Blender owner retained with this NoiseChunk's caches.
     pub fn blender(&self) -> &Arc<Blender> {
         &self.blender
+    }
+
+    /// Same immutable structure-influence owner retained with this chunk.
+    pub fn beardifier(&self) -> &Arc<Beardifier> {
+        &self.beardifier
     }
 
     /// Bounds of the actual visited function, without mutating RandomState's
@@ -770,15 +797,19 @@ impl DensityContext for ChunkDensity {
             value
         }
     }
+    fn beardifier(&mut self, _id: NodeId, point: DensityPoint) -> f64 {
+        // The wrapped function captures this structure owner independently of
+        // whether its sampling context is this chunk or an external point.
+        self.beardifier.compute(point)
+    }
     fn beardifier_fill(
         &mut self,
         graph: &DensityGraph,
         id: NodeId,
         values: &mut [f64],
     ) -> ChunkResult<()> {
-        // The observed-empty structure contract supplies an actual empty
-        // Beardifier, not the raw marker. Its SimpleFunction default delegates
-        // to the current provider, including external SinglePoint contexts.
+        // Actual Beardifier inherits SimpleFunction: delegate to the current
+        // provider, including external SinglePoint contexts and empty owners.
         self.fill_direct(graph, id, values)
     }
     fn rewritten_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {

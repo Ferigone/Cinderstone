@@ -2,9 +2,9 @@
 //!
 //! This owns interpolation state, not a ChunkStatus or a fabricated FULL chunk.
 //! The caller supplies block material/aquifer work in the visit callback. The
-//! density graph retains its actual Blender; structure beardifiers remain an
-//! explicit separate generation contract.
-use super::blending::Blender;
+//! density owner retains its actual Blender and structure Beardifier before
+//! router wrapping; unavailable influences are not replaced by empty owners.
+use super::{beardifier::Beardifier, blending::Blender};
 use crate::density::{ChunkDensity, DensityGraph, DensityPoint, NoiseGrid};
 use anyhow::{anyhow, bail, ensure, Result};
 use std::sync::Arc;
@@ -152,6 +152,10 @@ impl RetainedNoiseChunk {
         self.require_graph(graph)?;
         Ok(Arc::clone(self.density.blender()))
     }
+    pub(super) fn beardifier_for(&self, graph: &DensityGraph) -> Result<Arc<Beardifier>> {
+        self.require_graph(graph)?;
+        Ok(Arc::clone(self.density.beardifier()))
+    }
     #[cfg(test)]
     pub(super) fn density_for(&self, graph: &DensityGraph) -> Result<&ChunkDensity> {
         self.require_graph(graph)?;
@@ -193,7 +197,7 @@ impl<'g> NoiseChunk<'g> {
         )
     }
 
-    /// Capture the actual Blender before router wrapping and aquifer creation.
+    /// Capture the actual Blender and the known empty structure influence.
     pub fn new_with_blender(
         graph: &'g DensityGraph,
         chunk_x: i32,
@@ -201,6 +205,28 @@ impl<'g> NoiseChunk<'g> {
         level_min_y: i32,
         level_height: i32,
         blender: Arc<Blender>,
+    ) -> Result<Self> {
+        Self::new_with_influences(
+            graph,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            blender,
+            Beardifier::empty(),
+        )
+    }
+
+    /// Capture both actual influences before router wrapping and aquifer creation.
+    /// The supplied owners are retained unchanged across prepared stage moves.
+    pub fn new_with_influences(
+        graph: &'g DensityGraph,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        blender: Arc<Blender>,
+        beardifier: Arc<Beardifier>,
     ) -> Result<Self> {
         let settings = graph
             .grid()
@@ -238,12 +264,13 @@ impl<'g> NoiseChunk<'g> {
         };
         let origin_x = chunk_x.wrapping_shl(4);
         let origin_z = chunk_z.wrapping_shl(4);
-        let mut density = ChunkDensity::new_with_blender(
+        let mut density = ChunkDensity::new_with_influences(
             grid,
             origin_x,
             origin_z,
             (16 / grid.cell_width) as usize,
             blender,
+            beardifier,
         )?;
         // This also registers the aquifer/router functions before the first
         // slice is filled, preserving the source wrapper and cache ownership.
@@ -434,6 +461,41 @@ mod tests {
         let chunk = NoiseChunk::new(&graph, 0, 0, 0, 8).unwrap();
         let retained = chunk.into_retained();
         assert!(NoiseChunk::restore(&other, retained).is_err());
+    }
+
+    #[test]
+    fn explicit_influence_owners_survive_retained_moves_and_graph_checks() {
+        let graph = DensityGraph::builtin(123456789, "nether").unwrap();
+        let other = DensityGraph::builtin(123456789, "nether").unwrap();
+        let blender = Blender::empty();
+        let beardifier = Beardifier::empty();
+        let chunk = NoiseChunk::new_with_influences(
+            &graph,
+            0,
+            0,
+            -64,
+            64,
+            Arc::clone(&blender),
+            Arc::clone(&beardifier),
+        )
+        .unwrap();
+        // A zero-height NoiseChunk can be retained before BIOMES/after a
+        // skipped fill. Its captured influences must not be reconstructed.
+        assert_eq!((chunk.grid().min_y, chunk.grid().height), (0, 0));
+        assert!(Arc::ptr_eq(chunk.density().blender(), &blender));
+        assert!(Arc::ptr_eq(chunk.density().beardifier(), &beardifier));
+        let retained = chunk.into_retained();
+        assert!(retained.beardifier_for(&other).is_err());
+        assert!(Arc::ptr_eq(
+            &retained.beardifier_for(&graph).unwrap(),
+            &beardifier
+        ));
+        let mut restored = NoiseChunk::restore(&graph, retained).unwrap();
+        restored
+            .visit_blocks(|_, _, _| panic!("zero-height fill reached material callback"))
+            .unwrap();
+        assert!(Arc::ptr_eq(restored.density().blender(), &blender));
+        assert!(Arc::ptr_eq(restored.density().beardifier(), &beardifier));
     }
 
     #[test]

@@ -117,6 +117,46 @@ public final class WorldgenExistingTargetOracle {
  }
  static List<?> cacheOwners(dzc noise,String name)throws Exception{return new ArrayList<>((List<?>)field(noise,dzc.class,name));}
  static boolean sameOwners(List<?> before,List<?> after){if(before.size()!=after.size())return false;for(int i=0;i<before.size();i++)if(before.get(i)!=after.get(i))return false;return true;}
+ static int structureInt(JsonObject input,String key) {
+  if(!input.has(key)||!input.get(key).isJsonPrimitive()||!input.getAsJsonPrimitive(key).isNumber())throw new IllegalArgumentException("integer structure field required: "+key);
+  return input.get(key).getAsBigDecimal().intValueExact();
+ }
+ static dyl beardifier(JsonObject query)throws Exception {
+  ObjectArrayList<dyl.a> rigid=new ObjectArrayList<>();ObjectArrayList<eku> junctions=new ObjectArrayList<>();
+  if(query.has("beardifier")) {
+   JsonObject input=query.getAsJsonObject("beardifier");
+   if(!input.has("rigids")||!input.has("junctions"))throw new IllegalArgumentException("ordered rigid/junction arrays required");
+   for(JsonElement element:input.getAsJsonArray("rigids")) {
+    JsonObject part=element.getAsJsonObject();JsonArray box=part.getAsJsonArray("box");if(box.size()!=6)throw new IllegalArgumentException("six bounding coordinates required");
+    int[] bounds=new int[6];for(int i=0;i<6;i++)bounds[i]=box.get(i).getAsBigDecimal().intValueExact();
+    for(int axis=0;axis<3;axis++)if(bounds[axis]>bounds[axis+3])throw new IllegalArgumentException("ordered bounding coordinates required");
+    String name=part.get("terrain_adjustment").getAsString();ekc adjustment=null;for(ekc candidate:ekc.values())if(candidate.c().equals(name)){adjustment=candidate;break;}
+    if(adjustment==null)throw new IllegalArgumentException("unsupported actual terrain adjustment: "+name);
+    rigid.add(new dyl.a(new ejj(bounds[0],bounds[1],bounds[2],bounds[3],bounds[4],bounds[5]),adjustment,structureInt(part,"ground_level_delta")));
+   }
+   for(JsonElement element:input.getAsJsonArray("junctions")) {
+    JsonObject part=element.getAsJsonObject();
+    // The actual Beardifier reads only these three coordinates. Remaining
+    // original Junction fields are explicit fixture values, not placement data.
+    elb.a projection=(elb.a)Class.forName("elb$a").getField("b").get(null);
+    junctions.add(new eku(structureInt(part,"source_x"),structureInt(part,"source_ground_y"),structureInt(part,"source_z"),0,projection));
+   }
+  }
+  return new dyl(rigid.iterator(),junctions.iterator());
+ }
+ static Map<String,Object> beardifierObservations(JsonObject query,dyl owner)throws Exception {
+  String actual=sha(Files.readAllBytes(Path.of(owner.getClass().getProtectionDomain().getCodeSource().getLocation().toURI())));
+  if(!INNER.equals(actual))throw new AssertionError("wrong actual Beardifier artifact: "+actual);
+  Map<String,Object> result=new LinkedHashMap<>();result.put("beardifier_input_kind",query.has("beardifier")?"actual_ordered_beardifier":"actual_empty_beardifier");result.put("structure_owner_class",owner.getClass().getName());result.put("structure_owner_jar_sha256",actual);
+  result.put("beardifier_min_bits",Long.toUnsignedString(Double.doubleToRawLongBits(owner.a())));result.put("beardifier_max_bits",Long.toUnsignedString(Double.doubleToRawLongBits(owner.b())));
+  List<Object> samples=new ArrayList<>();
+  if(query.has("beardifier_points"))for(JsonElement element:query.getAsJsonArray("beardifier_points")) {
+   JsonArray p=element.getAsJsonArray();if(p.size()!=3)throw new IllegalArgumentException("three point coordinates required");
+   int x=p.get(0).getAsBigDecimal().intValueExact(),y=p.get(1).getAsBigDecimal().intValueExact(),z=p.get(2).getAsBigDecimal().intValueExact();
+   samples.add(List.of(x,y,z,Long.toUnsignedString(Double.doubleToRawLongBits(owner.a(new dyr.e(x,y,z))))));
+  }
+  result.put("beardifier_samples",samples);return result;
+ }
  static void noiseTaskContinuation(Owner owner)throws Exception {Method callback=dwb.class.getDeclaredMethod("b",duy.class);callback.setAccessible(true);if(callback.invoke(null,owner.proto)!=owner.proto)throw new AssertionError("NOISE task callback replaced ProtoChunk");}
  @SuppressWarnings("unchecked") static Object run(JsonObject q)throws Exception {
   String id=q.get("id").getAsString();if(!id.matches("[A-Za-z0-9_-]+"))throw new IllegalArgumentException("safe unique case id required");
@@ -139,12 +179,12 @@ public final class WorldgenExistingTargetOracle {
    // configuration. The original constructor stores its source lazily.
    result.put("no_cells_entry","controlled_null_argument_early_return_probe");result.put("original_noise_task_callback_executed",true);result.put("biomes_ran",false);result.put("surface_ran",false);result.put("biome_queries",source==null?List.of():source.queries);result.put("noise_chunk_absent",field(owner.proto,duy.class,"e")==null);result.put("persisted_status_unchanged",owner.proto.j()==dvz.c);return result;
   }
-  Method pickerMethod=dzb.class.getDeclaredMethod("a",dzd.class);pickerMethod.setAccessible(true);dyk.a picker=(dyk.a)pickerMethod.invoke(null,settings);dys.c beard=new dyl(new ObjectArrayList().iterator(),new ObjectArrayList().iterator());result.put("beardifier_input_kind","actual_empty_beardifier");result.put("structure_owner_class",beard.getClass().getName());dzc noise=dzc.a(owner.proto,state,beard,settings,picker,blender);if(owner.proto.a((Function<duy,dzc>)unused->noise)!=noise)throw new AssertionError("NC install changed owner");dyk aquifer=noise.i();
+  Method pickerMethod=dzb.class.getDeclaredMethod("a",dzd.class);pickerMethod.setAccessible(true);dyk.a picker=(dyk.a)pickerMethod.invoke(null,settings);dyl beard=beardifier(q);result.putAll(beardifierObservations(q,beard));dzc noise=dzc.a(owner.proto,state,beard,settings,picker,blender);if(owner.proto.a((Function<duy,dzc>)unused->noise)!=noise)throw new AssertionError("NC install changed owner");dyk aquifer=noise.i();
   // Execute the exact original body on this controlled worker. Its public
   // async wrapper otherwise chooses an arbitrary ThreadLocal RTree cursor.
-  Method createBiomes=dzb.class.getDeclaredMethod("b",eaa.class,dzm.class,ddq.class,duy.class);createBiomes.setAccessible(true);createBiomes.invoke(generator,blender,state,null,owner.proto);result.put("biomes_ran",true);result.put("biomes_entry","original_private_doCreateBiomes_controlled_one_worker");result.put("biomes",snapshot(owner,id,"biomes"));List<?> interpolators=cacheOwners(noise,"i"),cells=cacheOwners(noise,"j");result.put("biome_queries",source.queries);result.put("biomes_same_sampler",source.firstSampler!=null&&source.differentSamplers==0);
+  Method createBiomes=dzb.class.getDeclaredMethod("b",eaa.class,dzm.class,ddq.class,duy.class);createBiomes.setAccessible(true);createBiomes.invoke(generator,blender,state,null,owner.proto);result.put("biomes_ran",true);result.put("biomes_entry","original_private_doCreateBiomes_controlled_one_worker");result.put("biomes",snapshot(owner,id,"biomes"));List<?> interpolators=cacheOwners(noise,"i"),cells=cacheOwners(noise,"j");result.put("biome_queries",source.queries);result.put("biomes_same_sampler",source.firstSampler!=null&&source.differentSamplers==0);result.put("same_beardifier_after_biomes",field(noise,dzc.class,"s")==beard);
   if(generator.a(blender,state,null,owner.proto).join()!=owner.proto)throw new AssertionError("NOISE replaced ProtoChunk");result.put("noise_before_retrogen",snapshot(owner,id,"noise-before-retrogen"));
-  noiseTaskContinuation(owner);result.put("noise",snapshot(owner,id,"noise"));result.put("original_noise_task_callback_executed",true);
+  noiseTaskContinuation(owner);result.put("noise",snapshot(owner,id,"noise"));result.put("original_noise_task_callback_executed",true);result.put("same_beardifier_after_noise",field(noise,dzc.class,"s")==beard);
   List<String> centerPalette=palette(owner);List<Object> surfaceQueries=new ArrayList<>();
   if(q.has("surface_neighbors")) {
    Map<String,Owner> neighbors=new LinkedHashMap<>();neighbors.put(cx+","+cz,owner);List<List<String>> neighborBefore=new ArrayList<>();List<Owner> inputNeighbors=new ArrayList<>();
@@ -152,7 +192,7 @@ public final class WorldgenExistingTargetOracle {
    ddy manager=new ddy((qx,qy,qz)->{Owner n=neighbors.get(Math.floorDiv(qx,4)+","+Math.floorDiv(qz,4));if(n==null)throw new IllegalStateException("missing supplied SURFACE palette owner for "+qx+","+qy+","+qz);jm<ddw> value=n.rawBiome(qx,qy,qz);surfaceQueries.add(List.of(qx,qy,qz,biomeName(value)));return value;},ddy.a(seed));
    generator.a(owner.proto,new dzv(generator,owner.proto),state,null,manager,biomeRegistry,blender);result.put("surface",snapshot(owner,id,"surface"));for(int i=0;i<inputNeighbors.size();i++)if(!neighborBefore.get(i).equals(palette(inputNeighbors.get(i))))throw new AssertionError("SURFACE mutated supplied foreign palette");
   }
-  result.put("surface_biome_queries",surfaceQueries);result.put("surface_ran",q.has("surface_neighbors"));result.put("surface_stored_biomes_unchanged",centerPalette.equals(palette(owner)));
+  result.put("surface_biome_queries",surfaceQueries);result.put("surface_ran",q.has("surface_neighbors"));result.put("surface_stored_biomes_unchanged",centerPalette.equals(palette(owner)));result.put("same_beardifier_after_surface",field(noise,dzc.class,"s")==beard);
   result.put("same_noise_chunk",owner.proto.a((Function<duy,dzc>)unused->{throw new AssertionError("lost NC");})==noise);result.put("same_aquifer",noise.i()==aquifer);result.put("same_blender",noise.d()==blender);result.put("same_cache_owners",sameOwners(interpolators,cacheOwners(noise,"i"))&&sameOwners(cells,cacheOwners(noise,"j")));result.put("persisted_status_unchanged",owner.proto.j()==dvz.c);
   dzg grid=(dzg)field(noise,dzc.class,"a");result.put("noise_grid_min_y",grid.c());result.put("noise_grid_height",grid.d());result.put("source_use_legacy_random_source",settings.n());return result;
  }
