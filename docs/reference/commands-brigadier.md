@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value arguments (WP-E3 stages 1-7)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value arguments (WP-E3 stages 1-8)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-7
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-8
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -138,6 +138,15 @@ Stage 7 (`src/commands/simple_arguments.rs`, value arguments that need no other 
 - Network forms from the executed `ArgumentTypeInfos`: `angle` 27, `swizzle` 31, `entity_anchor` 37, `time` 42
   (the minimum as a big-endian `int`) and `uuid` 53; only `time` has a template.
 
+Stage 8 (`usable_tree` in `src/commands/tree_packet.rs`): the step before the packet. The server does not send
+its registered tree; `Commands.fillUsableCommands` copies, depth first, only the children the source may use
+(`canUse`). Each copy has no requirement, every executable node shares one no-op `Command` (so equal nodes
+merge far more than in the registered tree), an unregistered suggestion provider becomes `ask_server`, and a
+redirect is retargeted to the copy of its target. The retargeting map is the `HashMap` `sendCommands` creates,
+keyed by `CommandNode.equals` and seeded with the root (found in the bytecode, not an identity map): a target
+resolves to the latest copied node *equal* to it, `put` overwrites an equal key, and a target with no copy yet
+drops the redirect. `usable_tree(tree, root, source)` returns a new tree for `encode_commands_packet`.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
@@ -233,6 +242,18 @@ compares the cursor afterwards and the value or the exception as for stage 6. Re
 round-half-away, ignoring the `Long.parseLong` overflow, allowing repeated swizzle letters or dropping the
 angle wrap each make the test fail. The registry ids and templates come from seven more fixed trees appended
 to the tree-packet fixture (the earlier 164 cases are unchanged).
+
+Stage 8. The tree-packet fixture gains a `usable` field: for every tree and each permission level 0 to 4 the
+bytes of `ClientboundCommandsPacket` for the tree the original `Commands.fillUsableCommands` builds for a
+source of that level (the method is private and does not touch the `Commands` instance, so the harness runs it
+by reflection on an uninitialised object, with the same seeded `HashMap` as `sendCommands`). Nodes carry
+`req` permission-level requirements. The 173 trees give 865 packets; 121 trees yield level-dependent packets and
+at level 4 the usable packet differs from the registered tree's in 42 trees because of the shared no-op command.
+Two fixed trees make the structural map observable: a redirect whose target is unusable at low levels while an
+equal node elsewhere is usable, and equal nodes whose copies differ (requirements are not part of `equals`) so
+that the overwrite decides. `cargo test --locked --lib commands::tree_packet_tests` compares all of it. Keeping
+each node's own command, not seeding the root, resolving redirects by identity or letting the first equal node
+win each make the test fail. The earlier fields of the fixture (the 171 trees of stages 5-7) are unchanged.
 
 Reproduce (the oracle directory must stay outside git):
 

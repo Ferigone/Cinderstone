@@ -35,7 +35,7 @@ pub use simple_arguments::{
     TimeArgumentType, UuidArgumentType,
 };
 pub use suggestion::{Suggestion, SuggestionError, SuggestionProvider, Suggestions, SuggestionsBuilder};
-pub use tree_packet::{encode_commands_packet, CommandTreePacketError};
+pub use tree_packet::{encode_commands_packet, usable_tree, CommandTreePacketError};
 
 #[cfg(test)]
 mod dispatcher_tests;

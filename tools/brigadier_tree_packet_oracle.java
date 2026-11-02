@@ -1,10 +1,13 @@
-// Executed command-tree packet oracle for WP-E3 stage 5 (docs/reference/commands-brigadier.md).
+// Executed command-tree packet oracle for WP-E3 stages 5-8 (docs/reference/commands-brigadier.md).
 //
 // Builds command trees from JSON descriptions with the UNCHANGED com.mojang.brigadier 1.2.9
 // builders, wraps the root in the dedicated server's own ClientboundCommandsPacket and records
 // the bytes its StreamCodec writes (packet body, no packet id). The server classes come from the
 // pinned 1.21 server jar remapped with the official mappings (tools/loot_oracle_setup.py builds
 // <oracle-dir>/server-named.jar and cp.txt); everything stays OUTSIDE git.
+//
+// Stage 8 also records, for permission levels 0-4, the packet of the tree Commands.fillUsableCommands
+// builds for a source of that level ("usable"); a node's "req" is a permission-level requirement.
 //
 // Usage: java -cp <server-named.jar:libraries/**/*.jar:classes>
 //        cinderstone.oracle.brigadier_tree_packet_oracle cases.json out.json
@@ -38,9 +41,17 @@ import io.netty.buffer.Unpooled;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.SharedConstants;
+import net.minecraft.commands.CommandSource;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.AngleArgument;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
@@ -83,7 +94,37 @@ public final class brigadier_tree_packet_oracle {
         ((StreamCodec) ClientboundCommandsPacket.STREAM_CODEC).encode(buffer, new ClientboundCommandsPacket(root));
         JsonObject result = new JsonObject();
         result.addProperty("packet", hex(buffer));
+        JsonArray usable = new JsonArray();
+        for (int level = 0; level <= 4; level++) {
+            usable.add(usablePacket(dispatcher, level));
+        }
+        result.add("usable", usable);
         return result;
+    }
+
+    // The tree the server sends to a player of the given permission level: Commands.fillUsableCommands, a private
+    // instance method that does not touch the instance, run on an uninitialised Commands object. The map is the
+    // HashMap that sendCommands creates (keyed by CommandNode.equals), seeded with the root.
+    private static String usablePacket(CommandDispatcher<SharedSuggestionProvider> dispatcher, int level) {
+        try {
+            Field unsafeField = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
+            unsafeField.setAccessible(true);
+            sun.misc.Unsafe unsafe = (sun.misc.Unsafe) unsafeField.get(null);
+            Commands commands = (Commands) unsafe.allocateInstance(Commands.class);
+            Method fill = Commands.class.getDeclaredMethod("fillUsableCommands", CommandNode.class, CommandNode.class, CommandSourceStack.class, Map.class);
+            fill.setAccessible(true);
+            Map map = com.google.common.collect.Maps.newHashMap();
+            RootCommandNode<SharedSuggestionProvider> out = new RootCommandNode<>();
+            CommandNode root = dispatcher.getRoot();
+            map.put(root, out);
+            CommandSourceStack source = new CommandSourceStack(CommandSource.NULL, Vec3.ZERO, Vec2.ZERO, null, level, "n", Component.literal("n"), null, null);
+            fill.invoke(commands, root, out, source, map);
+            FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+            ((StreamCodec) ClientboundCommandsPacket.STREAM_CODEC).encode(buffer, new ClientboundCommandsPacket(out));
+            return hex(buffer);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private static String hex(ByteBuf buffer) {
@@ -102,6 +143,10 @@ public final class brigadier_tree_packet_oracle {
             JsonObject sug = spec.getAsJsonObject("sug");
             SuggestionProvider provider = sug.has("name") ? registered(sug.get("name").getAsString()) : (context, suggestions) -> suggestions.buildFuture();
             ((RequiredArgumentBuilder) builder).suggests(provider);
+        }
+        if (spec.has("req")) {
+            int required = spec.get("req").getAsInt();
+            builder.requires(source -> ((CommandSourceStack) source).hasPermission(required));
         }
         if (spec.has("cmd")) {
             String key = spec.get("cmd").getAsString();

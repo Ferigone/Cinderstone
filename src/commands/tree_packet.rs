@@ -19,12 +19,16 @@
 //!   and, when flagged, the suggestion provider's name (an argument);
 //! * the packet is the VarInt entry count, the entries, and the VarInt index of the root.
 //!
+//! [`usable_tree`] is the step before the packet: the server does not send its registered tree but
+//! `Commands.fillUsableCommands`' copy of the nodes the player may use.
+//!
 //! Argument types without a [`network_info`](super::arguments::ArgumentType::network_info) cannot
 //! be encoded (the original throws for an unregistered type); Minecraft's own argument types are a
 //! later stage. Permission filtering belongs to the caller: the original builds the tree sent to a
 //! player by copying only the nodes the player may use.
 
-use super::dispatcher::{CommandTree, NodeId, NodeKind};
+use super::dispatcher::{Command, CommandTree, NodeId, NodeKind};
+use super::suggestion::{SuggestionProvider, Suggestions};
 use std::collections::{HashMap, VecDeque};
 use std::rc::Rc;
 
@@ -66,14 +70,23 @@ struct ClassKey {
     children: Vec<(String, usize)>,
 }
 
-struct Classifier<'a, S> {
+pub(super) struct Classifier<'a, S> {
     tree: &'a CommandTree<S>,
     interned: HashMap<ClassKey, usize>,
     class_of: HashMap<NodeId, usize>,
 }
 
 impl<'a, S: Clone> Classifier<'a, S> {
-    fn class(&mut self, node: NodeId) -> usize {
+    pub(super) fn new(tree: &'a CommandTree<S>) -> Self {
+        Self {
+            tree,
+            interned: HashMap::new(),
+            class_of: HashMap::new(),
+        }
+    }
+
+    /// The equivalence class of `node` under `CommandNode.equals`.
+    pub(super) fn class(&mut self, node: NodeId) -> usize {
         if let Some(class) = self.class_of.get(&node) {
             return *class;
         }
@@ -141,11 +154,7 @@ fn index_i32(value: usize) -> Result<i32, CommandTreePacketError> {
 
 /// The body of `ClientboundCommandsPacket` for the tree below `root`.
 pub fn encode_commands_packet<S: Clone>(tree: &CommandTree<S>, root: NodeId) -> Result<Vec<u8>, CommandTreePacketError> {
-    let mut classifier = Classifier {
-        tree,
-        interned: HashMap::new(),
-        class_of: HashMap::new(),
-    };
+    let mut classifier = Classifier::new(tree);
     // enumerateNodes: breadth first, redirect targets queued after the children; a node whose
     // equivalence class already has an index is skipped.
     let mut index_of_class: HashMap<usize, usize> = HashMap::new();
@@ -213,4 +222,59 @@ pub fn encode_commands_packet<S: Clone>(tree: &CommandTree<S>, root: NodeId) -> 
     }
     write_varint(&mut out, index_i32(index_of_class[&classifier.class(root)])?);
     Ok(out)
+}
+
+/// `Commands.fillUsableCommands`: the copy of `tree` a player (or other source) is sent.
+///
+/// Only the children the source may use are copied, depth first. Each copy has no requirement,
+/// every executable node shares one no-op command, unregistered suggestion providers are replaced
+/// by the ask-the-server provider, and a redirect points at the copy of its target. The original
+/// finds that copy in a `HashMap` keyed by `CommandNode.equals` (not by identity) that
+/// `sendCommands` seeds with the root, and `put` overwrites an equal key: so a target resolves to
+/// the *latest* copied node equal to it, and a target not copied yet drops the redirect.
+pub fn usable_tree<S: Clone + 'static>(tree: &CommandTree<S>, root: NodeId, source: &S) -> (CommandTree<S>, NodeId) {
+    let mut copy = CommandTree::default();
+    let copy_root = copy.new_root();
+    let no_op: Command<S> = Rc::new(|_| Ok(0));
+    let ask_server: SuggestionProvider<S> = Rc::new(|_, _| Ok(Suggestions::empty()));
+    let mut classifier = Classifier::new(tree);
+    let mut copies: HashMap<usize, NodeId> = HashMap::new();
+    copies.insert(classifier.class(root), copy_root);
+    fill_usable(tree, root, copy_root, source, &mut copy, &no_op, &ask_server, &mut classifier, &mut copies);
+    (copy, copy_root)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn fill_usable<S: Clone + 'static>(
+    tree: &CommandTree<S>,
+    from: NodeId,
+    into: NodeId,
+    source: &S,
+    copy: &mut CommandTree<S>,
+    no_op: &Command<S>,
+    ask_server: &SuggestionProvider<S>,
+    classifier: &mut Classifier<'_, S>,
+    copies: &mut HashMap<usize, NodeId>,
+) {
+    for child in tree.children(from) {
+        if !tree.can_use(child, source) {
+            continue;
+        }
+        let mut builder = tree
+            .create_builder(child)
+            .with_requirement(Rc::new(|_| true))
+            .with_swapped_suggestions(Rc::clone(ask_server));
+        if builder.has_command() {
+            builder = builder.executes(Rc::clone(no_op));
+        }
+        if let Some(target) = tree.redirect(child) {
+            builder = builder.with_redirect_target(copies.get(&classifier.class(target)).copied());
+        }
+        let built = copy.build(&builder);
+        copies.insert(classifier.class(child), built);
+        copy.add_child(into, built);
+        if !tree.children(child).is_empty() {
+            fill_usable(tree, child, built, source, copy, no_op, ask_server, classifier, copies);
+        }
+    }
 }

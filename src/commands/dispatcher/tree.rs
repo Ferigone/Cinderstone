@@ -297,6 +297,29 @@ impl<S: Clone> CommandTree<S> {
     }
 }
 
+impl<S: Clone + 'static> CommandTree<S> {
+    /// `createBuilder()`: a builder with the node's own name or type, requirement, command,
+    /// suggestion provider and redirect, but none of its children. A redirect target is a node of
+    /// *this* tree; the caller retargets it with [`ArgumentBuilder::with_redirect_target`] when the
+    /// builder is built into another tree.
+    pub fn create_builder(&self, id: NodeId) -> ArgumentBuilder<S> {
+        let node = &self.nodes[id];
+        let mut builder = match &node.kind {
+            NodeKind::Root => panic!("a RootCommandNode has no builder"),
+            NodeKind::Literal { literal, .. } => ArgumentBuilder::literal(literal),
+            NodeKind::Argument { name, argument_type } => ArgumentBuilder::argument(name, Rc::clone(argument_type)),
+        };
+        builder.requirement = Rc::clone(&node.requirement);
+        builder.command = node.command.clone();
+        builder.target = node.redirect;
+        builder.modifier = node.modifier.clone();
+        builder.forks = node.forks;
+        builder.suggestions = node.suggestions.clone();
+        builder.suggestion_name = node.suggestion_name.clone();
+        builder
+    }
+}
+
 enum BuilderKind<S> {
     Literal(String),
     Argument(String, Rc<dyn ErasedArgumentType<S>>),
@@ -391,6 +414,35 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
     /// `fork(target, modifier)`.
     pub fn fork(self, target: NodeId, modifier: RedirectModifier<S>) -> Self {
         self.forward(target, Some(modifier), true)
+    }
+
+    /// `redirect(target)` where `target` may be missing: the original's `redirect(null)` clears the
+    /// redirect, the modifier and the fork flag.
+    pub fn with_redirect_target(mut self, target: Option<NodeId>) -> Self {
+        self.target = target;
+        self.modifier = None;
+        self.forks = false;
+        self
+    }
+
+    /// Replace the requirement.
+    pub fn with_requirement(mut self, requirement: Requirement<S>) -> Self {
+        self.requirement = requirement;
+        self
+    }
+
+    /// `SuggestionProviders.safelySwap(provider)`: a provider registered under a name is kept,
+    /// any other becomes `provider` (the ask-the-server provider). Nothing happens without a provider.
+    pub fn with_swapped_suggestions(mut self, unregistered_replacement: SuggestionProvider<S>) -> Self {
+        if self.suggestions.is_some() && self.suggestion_name.is_none() {
+            self.suggestions = Some(unregistered_replacement);
+        }
+        self
+    }
+
+    /// Whether the builder carries a command (`getCommand() != null`).
+    pub fn has_command(&self) -> bool {
+        self.command.is_some()
     }
 
     /// `forward(target, modifier, fork)`; throws if the node already has children.
