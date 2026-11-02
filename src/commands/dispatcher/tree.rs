@@ -40,6 +40,7 @@ pub struct CommandNode<S> {
     forks: bool,
     command: Option<Command<S>>,
     suggestions: Option<SuggestionProvider<S>>,
+    suggestion_name: Option<String>,
 }
 
 impl<S> CommandNode<S> {
@@ -55,9 +56,14 @@ impl<S> CommandNode<S> {
             forks: false,
             command: None,
             suggestions: None,
+            suggestion_name: None,
         }
     }
 }
+
+/// `SuggestionProviders.ASK_SERVER`'s name: what the client is told for any provider that is
+/// not registered under a name of its own.
+pub const ASK_SERVER: &str = "minecraft:ask_server";
 
 /// The arena owning every node of one dispatcher (and the temporary roots builders use).
 pub struct CommandTree<S> {
@@ -126,6 +132,19 @@ impl<S: Clone> CommandTree<S> {
     /// `getChild(name)`.
     pub fn child(&self, id: NodeId, name: &str) -> Option<NodeId> {
         self.nodes[id].children.iter().find(|(key, _)| key == name).map(|(_, child)| *child)
+    }
+
+    /// `ArgumentCommandNode.getCustomSuggestions() != null`.
+    pub fn has_custom_suggestions(&self, id: NodeId) -> bool {
+        self.nodes[id].suggestions.is_some()
+    }
+
+    /// `SuggestionProviders.getName(provider)`: the registered name of the node's custom
+    /// provider, `minecraft:ask_server` for an unregistered one, `None` without a provider.
+    pub fn suggestion_provider_name(&self, id: NodeId) -> Option<&str> {
+        let node = &self.nodes[id];
+        node.suggestions.as_ref()?;
+        Some(node.suggestion_name.as_deref().unwrap_or(ASK_SERVER))
     }
 
     pub fn can_use(&self, id: NodeId, source: &S) -> bool {
@@ -269,6 +288,7 @@ impl<S: Clone> CommandTree<S> {
         node.modifier = builder.modifier.clone();
         node.forks = builder.forks;
         node.suggestions = builder.suggestions.clone();
+        node.suggestion_name = builder.suggestion_name.clone();
         let id = self.push(node);
         for child in self.children(temporary_root) {
             self.add_child(id, child);
@@ -292,6 +312,7 @@ pub struct ArgumentBuilder<S> {
     modifier: Option<RedirectModifier<S>>,
     forks: bool,
     suggestions: Option<SuggestionProvider<S>>,
+    suggestion_name: Option<String>,
 }
 
 impl<S: Clone + 'static> ArgumentBuilder<S> {
@@ -305,6 +326,7 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
             modifier: None,
             forks: false,
             suggestions: None,
+            suggestion_name: None,
         }
     }
 
@@ -343,6 +365,15 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
             panic!("Only argument nodes take a suggestion provider");
         }
         self.suggestions = Some(provider);
+        self.suggestion_name = None;
+        self
+    }
+
+    /// `suggests(provider)` with a provider registered under `name` (`SuggestionProviders.register`);
+    /// the command-tree packet tells the client the name instead of `minecraft:ask_server`.
+    pub fn suggests_named(mut self, name: &str, provider: SuggestionProvider<S>) -> Self {
+        self = self.suggests(provider);
+        self.suggestion_name = Some(name.to_string());
         self
     }
 

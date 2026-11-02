@@ -15,6 +15,7 @@ pub mod exception;
 pub mod java_text;
 pub mod string_reader;
 pub mod suggestion;
+pub mod tree_packet;
 
 pub use arguments::{
     ArgumentType, ArgumentValue, ErasedArgumentType, BoolArgumentType, DoubleArgumentType, FloatArgumentType, IntegerArgumentType,
@@ -24,10 +25,13 @@ pub use dispatcher::{ArgumentBuilder, CommandContext, CommandDispatcher, ParseRe
 pub use exception::{CommandArg, CommandMessage, CommandSyntaxException};
 pub use string_reader::StringReader;
 pub use suggestion::{Suggestion, SuggestionError, SuggestionProvider, Suggestions, SuggestionsBuilder};
+pub use tree_packet::{encode_commands_packet, CommandTreePacketError};
 
 #[cfg(test)]
 mod dispatcher_tests;
 #[cfg(test)]
 mod suggestion_tests;
+#[cfg(test)]
+mod tree_packet_tests;
 #[cfg(test)]
 mod tests;

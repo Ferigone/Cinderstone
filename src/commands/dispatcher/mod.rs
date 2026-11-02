@@ -13,7 +13,9 @@ pub use chain::ContextChain;
 pub use context::{
     CommandContext, CommandContextBuilder, ParsedArgument, ParsedCommandNode, StringRange, SuggestionContext,
 };
-pub use tree::{ArgumentBuilder, Command, CommandNode, CommandTree, NodeId, NodeKind, RedirectModifier, Requirement};
+pub use tree::{
+    ArgumentBuilder, Command, CommandNode, CommandTree, NodeId, NodeKind, RedirectModifier, Requirement, ASK_SERVER,
+};
 
 use super::exception::{built_in, CommandSyntaxException};
 use super::java_text::java_to_lower_case_root;
