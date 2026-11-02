@@ -10,12 +10,15 @@ use mc121_rust::{
     worldgen::{
         biome_source::{BuiltinMultiNoiseBiomeSource, ClimateSampler, MultiNoisePreset},
         biome_temperature::BiomeTemperature,
+        biome_zoom::{BiomeZoom, QuartBiomeProvider},
         biomes::{BiomeResolver, PreparedBiomes, RetrogenContext},
         blending::{
             chunk_key, height_to_offset, Blender, BlendingData, Direction8, Direction8Set,
             OldChunkDataHost,
         },
-        generator::{BlendedGenerationContext, GenerationInfluence, NoiseGenerator},
+        generator::{
+            BlendedGenerationContext, GenerationInfluence, NoiseGenerator, OwnedNoiseTerrain,
+        },
         PreparedGeneration,
     },
 };
@@ -314,7 +317,119 @@ impl BiomeResolver for ObserveResolver<'_> {
         self.source.get_noise_biome(x, y, z, sampler)
     }
 }
-fn run(q: Value, output: &Path, source: &mut BuiltinMultiNoiseBiomeSource) -> Result<Value> {
+
+enum SurfacePalette<'a> {
+    Old(&'a Snapshot),
+    New(PreparedBiomes),
+}
+impl SurfacePalette<'_> {
+    fn values(&self) -> &[String] {
+        match self {
+            Self::Old(snapshot) => &snapshot.biomes,
+            Self::New(prepared) => prepared.biomes().values(),
+        }
+    }
+
+    fn get(&self, x: i32, y: i32, z: i32) -> Result<String> {
+        match self {
+            Self::Old(snapshot) => {
+                anyhow::ensure!(
+                    (x.div_euclid(4), z.div_euclid(4)) == snapshot.chunk,
+                    "old SURFACE palette query belongs to another chunk"
+                );
+                // This is the existing full-level Snapshot palette, not the
+                // narrower old-generation BlendingData height span.
+                Ok(snapshot.biomes
+                    [(y.clamp(-16, 79) + 16) as usize * 16 + ((z & 3) * 4 + (x & 3)) as usize]
+                    .clone())
+            }
+            Self::New(prepared) => prepared
+                .biomes()
+                .get_noise_biome(x, y, z)
+                .map(str::to_owned),
+        }
+    }
+}
+
+struct SurfaceNeighbors<'a> {
+    palettes: BTreeMap<(i32, i32), SurfacePalette<'a>>,
+    queries: Vec<Value>,
+}
+impl QuartBiomeProvider for SurfaceNeighbors<'_> {
+    type Biome = String;
+    type Error = anyhow::Error;
+
+    fn get_noise_biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+        let chunk = (x.div_euclid(4), z.div_euclid(4));
+        let palette = self
+            .palettes
+            .get(&chunk)
+            .with_context(|| format!("SURFACE requested unavailable neighbor palette {chunk:?}"))?;
+        let biome = palette.get(x, y, z)?;
+        // The public BiomeTerrain adapter serves its own center image before
+        // this provider. These are actual foreign-center callbacks only.
+        self.queries.push(json!([x, y, z, biome]));
+        Ok(biome)
+    }
+}
+
+fn neighbor_blender(
+    chunk: (i32, i32),
+    data: &BTreeMap<(i32, i32), Arc<BlendingData>>,
+    singleton_empty: bool,
+) -> Result<Arc<Blender>> {
+    let mut heights = Vec::new();
+    let mut densities = Vec::new();
+    for dx in -7_i32..=7 {
+        for dz in -7_i32..=7 {
+            if dx * dx + dz * dz > 64 {
+                continue;
+            }
+            let position = (chunk.0.wrapping_add(dx), chunk.1.wrapping_add(dz));
+            if let Some(value) = data.get(&position) {
+                let key = chunk_key(position.0, position.1);
+                heights.push((key, Arc::clone(value)));
+                if (-1..=1).contains(&dx) && (-1..=1).contains(&dz) {
+                    densities.push((key, Arc::clone(value)));
+                }
+            }
+        }
+    }
+    if singleton_empty || (heights.is_empty() && densities.is_empty()) {
+        Ok(Blender::empty())
+    } else {
+        Blender::from_calculated_data(heights, densities)
+    }
+}
+
+fn terrain_image(terrain: &OwnedNoiseTerrain, file: &Path) -> Result<Value> {
+    let mut bytes = Vec::new();
+    for y in terrain.min_y()..terrain.min_y() + terrain.height() {
+        for x in 0..16 {
+            for z in 0..16 {
+                bytes.extend_from_slice(&terrain.block(x, y, z)?.to_le_bytes());
+            }
+        }
+    }
+    std::fs::write(file, bytes)?;
+    let mut posts = vec![Vec::<i16>::new(); 24];
+    for point in terrain.postprocessing() {
+        posts[((point.y + 64) >> 4) as usize]
+            .push(((point.x & 15) | ((point.y & 15) << 4) | ((point.z & 15) << 8)) as i16);
+    }
+    Ok(
+        json!({"file":file,"world_surface_wg":terrain.world_surface_wg().to_vec(),
+        "ocean_floor_wg":terrain.ocean_floor_wg().to_vec(),"posts":posts,
+        "post_count":terrain.postprocessing().len(),"stage":format!("{:?}",terrain.stage())}),
+    )
+}
+
+fn run(
+    q: Value,
+    output: &Path,
+    source: &mut BuiltinMultiNoiseBiomeSource,
+    temperature: &mut BiomeTemperature,
+) -> Result<Value> {
     let seed = q["seed"].as_str().context("seed missing")?.parse::<i64>()?;
     let settings = q["settings"].as_str().context("settings missing")?;
     let mut graph = DensityGraph::builtin(seed, settings)?;
@@ -538,7 +653,7 @@ fn run(q: Value, output: &Path, source: &mut BuiltinMultiNoiseBiomeSource) -> Re
     )?;
     let retained = Arc::ptr_eq(&prepared.blender()?, &blender);
     let mut observed = ObserveResolver {
-        source,
+        source: &mut *source,
         expected: Arc::clone(&blender),
         calls: Vec::new(),
     };
@@ -547,23 +662,10 @@ fn run(q: Value, output: &Path, source: &mut BuiltinMultiNoiseBiomeSource) -> Re
     let id = q["id"].as_str().context("id missing")?;
     let biome_file = output.join(format!("native-blending-biomes-{id}.json"));
     std::fs::write(&biome_file, serde_json::to_vec(job.biomes().values())?)?;
-    let terrain = job.fill_noise()?;
-    let t = terrain.terrain();
-    let mut bytes = Vec::new();
-    for y in -64..320 {
-        for x in 0..16 {
-            for z in 0..16 {
-                bytes.extend_from_slice(&t.block(x, y, z)?.to_le_bytes());
-            }
-        }
-    }
+    let mut terrain = job.fill_noise()?;
     let file = output.join(format!("native-blending-{id}.bin"));
-    std::fs::write(&file, bytes)?;
-    let mut posts = vec![Vec::<i16>::new(); 24];
-    for p in t.postprocessing() {
-        posts[((p.y + 64) >> 4) as usize]
-            .push(((p.x & 15) | ((p.y & 15) << 4) | ((p.z & 15) << 8)) as i16);
-    }
+    let noise_image = terrain_image(terrain.terrain(), &file)?;
+    let noise_states = terrain.terrain().states().to_vec();
     let shift = mc121_rust::noise::NormalNoise::new(
         &mut mc121_rust::random::XoroshiroRandomSource::new(42),
         mc121_rust::noise::NoiseParameters {
@@ -586,11 +688,103 @@ fn run(q: Value, output: &Path, source: &mut BuiltinMultiNoiseBiomeSource) -> Re
             bits(shift.noise(f64::from(p[0]), 0.0, f64::from(p[1])))
         ])
     });
+
+    // Controlled continuation history: finish the existing center BIOMES and
+    // NOISE first, then assemble the 3x3 palette owners with X outer/Z inner.
+    // Existing old palettes are borrowed; new jobs retain their own prepared
+    // sampler/aquifer and center-specific Blender over the same old data pool.
+    let mut neighbors = SurfaceNeighbors {
+        palettes: BTreeMap::new(),
+        queries: Vec::new(),
+    };
+    let mut surface_neighbors = Vec::new();
+    for dx in -1_i32..=1 {
+        for dz in -1_i32..=1 {
+            let position = (chunk.0.wrapping_add(dx), chunk.1.wrapping_add(dz));
+            if position == chunk {
+                surface_neighbors.push(json!({
+                    "chunk":[position.0,position.1],"owner":"center","biome_file":biome_file
+                }));
+                continue;
+            }
+            let (owner_name, palette) = match hosts.iter().find(|host| host.chunk == position) {
+                Some(snapshot) => ("old", SurfacePalette::Old(snapshot)),
+                None => {
+                    let neighbor_blender =
+                        neighbor_blender(position, &data, q["singleton_empty"] == true)?;
+                    let prepared = generator.prepare_chunk_with_blender(
+                        position.0,
+                        position.1,
+                        -64,
+                        384,
+                        BlendedGenerationContext {
+                            initial_blocks: GenerationInfluence::ObservedEmpty,
+                            structure_beardifier: GenerationInfluence::ObservedEmpty,
+                            blender: neighbor_blender,
+                        },
+                    )?;
+                    let prepared = PreparedBiomes::fill(
+                        prepared,
+                        RetrogenContext::ObservedAbsent,
+                        &mut *source,
+                    )?;
+                    ("new", SurfacePalette::New(prepared))
+                }
+            };
+            let palette_file = output.join(format!(
+                "native-blending-surface-biomes-{id}-{}-{}.json",
+                position.0, position.1
+            ));
+            std::fs::write(&palette_file, serde_json::to_vec(palette.values())?)?;
+            surface_neighbors.push(json!({
+                "chunk":[position.0,position.1],"owner":owner_name,"biome_file":palette_file
+            }));
+            neighbors.palettes.insert(position, palette);
+        }
+    }
+
+    let center_palette_owner = terrain.biomes() as *const _;
+    let center_noise_owner = terrain.terrain() as *const _;
+    let center_palette_values = terrain.biomes().values().to_vec();
+    let neighbor_palette_values = neighbors
+        .palettes
+        .iter()
+        .map(|(position, palette)| (*position, palette.values().to_vec()))
+        .collect::<Vec<_>>();
+    terrain.build_surface(
+        BiomeZoom::from_world_seed(seed),
+        &mut neighbors,
+        temperature,
+    )?;
+    anyhow::ensure!(
+        center_palette_owner == terrain.biomes() as *const _
+            && center_noise_owner == terrain.terrain() as *const _,
+        "SURFACE replaced the retained native center owner"
+    );
+    let mut surface_image = terrain_image(
+        terrain.terrain(),
+        &output.join(format!("native-blending-surface-{id}.bin")),
+    )?;
+    surface_image["stored_biomes_unchanged"] = json!(
+        center_palette_values == terrain.biomes().values()
+            && neighbor_palette_values.iter().all(|(position, values)| {
+                neighbors
+                    .palettes
+                    .get(position)
+                    .is_some_and(|palette| palette.values() == values)
+            })
+    );
+    surface_image["changed_blocks_from_noise"] = json!(noise_states
+        .iter()
+        .zip(terrain.terrain().states())
+        .filter(|(before, after)| before != after)
+        .count());
     Ok(
         json!({"shift_noise":shift_values,"query":q,"data":data_images,"age_queries":ages,"second_calculation_skipped":second,"height_map_order":height_order,"density_map_order":density_order,"height_to_offset":heights,
         "scalars":scalars,"resolved_biomes":resolved,"resolver_calls":resolver_calls,"prefill":prefill,"cache_samples":cache_samples,"density_contexts":contexts,"custom":custom,
         "biome_file":biome_file,"biome_fallback":fallback,"prepared_blender_identity":retained,
-        "noise":{"file":file,"world_surface_wg":t.world_surface_wg().to_vec(),"ocean_floor_wg":t.ocean_floor_wg().to_vec(),"posts":posts,"post_count":t.postprocessing().len(),"stage":format!("{:?}",t.stage())}}),
+        "noise":noise_image,"surface":surface_image,"surface_neighbors":surface_neighbors,
+        "surface_biome_queries":neighbors.queries}),
     )
 }
 // This compiles the exact production source file, rather than a copied map
@@ -652,6 +846,7 @@ fn main() -> Result<()> {
     let output = Path::new(&output);
     std::fs::create_dir_all(output)?;
     let mut source = BuiltinMultiNoiseBiomeSource::new(MultiNoisePreset::Overworld)?;
+    let mut temperature = BiomeTemperature::builtin()?;
     for line in io::stdin().lock().lines() {
         let q: Value = serde_json::from_str(&line?)?;
         println!(
@@ -659,7 +854,7 @@ fn main() -> Result<()> {
             if q["mode"] == "maps" {
                 map_witness(&q)?
             } else {
-                run(q, output, &mut source)?
+                run(q, output, &mut source, &mut temperature)?
             }
         );
     }

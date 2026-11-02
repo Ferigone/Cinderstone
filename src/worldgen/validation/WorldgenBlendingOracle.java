@@ -79,6 +79,50 @@ public class WorldgenBlendingOracle extends WorldgenOreOracle {
   return Map.of("file",file.toString(),"sha256",sha(bytes.array()),"world_surface_wg",surface,"ocean_floor_wg",floor,"posts",posts,"post_count",count,"status",target.j().f().toString());
  }
  static List<Object> keys(Long2ObjectOpenHashMap<eab> data){List<Object> keys=new ArrayList<>();data.forEach((k,v)->keys.add(List.of((int)(long)k,(int)((long)k>>32))));return keys;}
+ static eaa surfaceNeighborBlender(int cx,int cz,Map<String,Snapshot> snapshots,boolean forceEmpty)throws Exception {
+  Long2ObjectOpenHashMap<eab> heights=new Long2ObjectOpenHashMap<>(),densities=new Long2ObjectOpenHashMap<>();
+  for(int dx=-7;dx<=7;dx++)for(int dz=-7;dz<=7;dz++){if(dx*dx+dz*dz>64)continue;Snapshot owner=snapshots.get(key(cx+dx,cz+dz));if(owner==null||owner.t()==null)continue;heights.put(packed(cx+dx,cz+dz),owner.t());if(dx>=-1&&dx<=1&&dz>=-1&&dz<=1)densities.put(packed(cx+dx,cz+dz),owner.t());}
+  if(forceEmpty||(heights.isEmpty()&&densities.isEmpty()))return eaa.a();
+  Constructor<eaa> ctor=eaa.class.getDeclaredConstructor(Long2ObjectOpenHashMap.class,Long2ObjectOpenHashMap.class);ctor.setAccessible(true);return ctor.newInstance(heights,densities);
+ }
+ static List<String> storedPalette(duy owner)throws Exception {
+  List<String> values=new ArrayList<>();for(dvj section:owner.d())for(int y=0;y<4;y++)for(int z=0;z<4;z++)for(int x=0;x<4;x++)values.add(biomeName(section.c(x,y,z)));return values;
+ }
+ static final class SurfacePaletteOwner {
+  final duy chunk;final dzc noise;final List<String> before;
+  SurfacePaletteOwner(duy chunk,dzc noise)throws Exception {this.chunk=chunk;this.noise=noise;this.before=storedPalette(chunk);}
+ }
+ static Map<String,Object> runSurface(JsonObject q,Map<String,Snapshot> oldSnapshots,dvs center,dzc centerNoise,Object centerAquifer,eaa centerBlender,dzm randomState,jm<dzd> settingsHolder,dys.c beard,dyk.a picker)throws Exception {
+  int cx=center.f().e,cz=center.f().f;dzd settings=settingsHolder.a();boolean forceEmpty=q.has("singleton_empty")&&q.get("singleton_empty").getAsBoolean();String id=q.get("id").getAsString();
+  Map<String,SurfacePaletteOwner> paletteOwners=new LinkedHashMap<>();List<Object> neighbors=new ArrayList<>();Method cached=dzc.class.getDeclaredMethod("a",dze.class,List.class);cached.setAccessible(true);
+  // Only actual old snapshots retain their previous palettes. Other age-query
+  // snapshots are metadata views, not substitutes for generated new palettes.
+  // New BIOMES jobs are prepared here in original X-major/Z-minor order, after
+  // the center's already recorded NOISE; all use the same worker/source owner.
+  for(int dx=-1;dx<=1;dx++)for(int dz=-1;dz<=1;dz++){
+   int x=cx+dx,z=cz+dz;duy chunk;dzc noise=null;String ownerKind;
+   if(dx==0&&dz==0){chunk=center;noise=centerNoise;ownerKind="center";}
+   else {Snapshot old=oldSnapshots.get(key(x,z));if(old!=null&&old.t()!=null){chunk=old;ownerKind="old";}
+    else {dvs generated=new dvs(new dcd(x,z),dvv.a,dcy.e(-64,384),biomeRegistry,null);eaa blender=surfaceNeighborBlender(x,z,oldSnapshots,forceEmpty);noise=dzc.a(generated,randomState,beard,settings,picker,blender);final dzc retained=noise;generated.a((Function<duy,dzc>)unused->retained);def.f sampler=(def.f)cached.invoke(noise,randomState.a(),settings.k());generated.a(blender.a((ddz)workerSource),sampler);chunk=generated;ownerKind="new";}
+   }
+   SurfacePaletteOwner owner=new SurfacePaletteOwner(chunk,noise);paletteOwners.put(key(x,z),owner);Path file=output.resolve("java-blending-surface-biomes-"+id+"-"+x+"-"+z+".json");Files.writeString(file,JSON.toJson(owner.before));neighbors.add(Map.of("chunk",List.of(x,z),"owner",ownerKind,"biome_file",file.toString()));
+  }
+  List<Object> allQueries=new ArrayList<>(),foreignQueries=new ArrayList<>();
+  ddy.a stored=(qx,qy,qz)->{
+   int x=Math.floorDiv(qx,4),z=Math.floorDiv(qz,4);SurfacePaletteOwner owner=paletteOwners.get(key(x,z));if(owner==null)throw new IllegalStateException("missing actual SURFACE BIOMES owner "+x+","+z);
+   // Explicit base ChunkAccess storage view. ProtoChunk's actual EMPTY guard
+   // is never bypassed by fabricating a BIOMES status on the controlled job.
+   duy chunk=owner.chunk;int min=chunk.I_()>>2,max=min+(chunk.J_()>>2)-1,clamped=Math.max(min,Math.min(max,qy));jm<ddw> biome=chunk.b(Math.floorDiv(clamped,4)-chunk.ao()).c(qx&3,clamped&3,qz&3);
+   try{List<Object> row=Arrays.asList(qx,qy,qz,biomeName(biome));allQueries.add(row);if(x!=cx||z!=cz)foreignQueries.add(row);}catch(Exception error){throw new RuntimeException(error);}return biome;
+  };
+  ddy manager=new ddy(stored,ddy.a(q.get("seed").getAsLong()));dzb generator=new dzb(workerSource,settingsHolder);dzv context=new dzv(generator,center.z());
+  byte[] before=Files.readAllBytes(output.resolve("java-blending-"+id+".bin"));
+  randomState.c().a(randomState,manager,biomeRegistry,settings.n(),context,center,centerNoise,settings.j());
+  Map<String,Object> surface=new LinkedHashMap<>(image(center,output.resolve("java-blending-surface-"+id+".bin")));byte[] after=Files.readAllBytes(Path.of((String)surface.get("file")));int changed=0;ByteBuffer a=ByteBuffer.wrap(before).order(ByteOrder.LITTLE_ENDIAN),b=ByteBuffer.wrap(after).order(ByteOrder.LITTLE_ENDIAN);while(a.hasRemaining())if(a.getInt()!=b.getInt())changed++;
+  boolean same=center.a((Function<duy,dzc>)unused->{throw new AssertionError("lost center SURFACE NoiseChunk");})==centerNoise&&centerNoise.i()==centerAquifer&&centerNoise.d()==centerBlender;boolean unchanged=true;for(SurfacePaletteOwner owner:paletteOwners.values())unchanged&=owner.before.equals(storedPalette(owner.chunk))&&owner.chunk.j()==dvz.c;
+  surface.put("changed_blocks_from_noise",changed);surface.put("same_noise_aquifer_blender",same);surface.put("stored_biomes_unchanged",unchanged);
+  Map<String,Object> result=new LinkedHashMap<>();result.put("surface",surface);result.put("surface_neighbors",neighbors);result.put("surface_biome_queries",foreignQueries);result.put("surface_source_all_biome_queries",allQueries);return result;
+ }
  static Object runBlend(JsonObject q)throws Exception {
   String settings=q.get("settings").getAsString();long seed=q.get("seed").getAsLong();JsonArray chunk=q.getAsJsonArray("chunk");int cx=chunk.get(0).getAsInt(),cz=chunk.get(1).getAsInt();
   Object settingsRegistry=inherited("registry"),settingsHolder=shared("getHolder",new Class<?>[]{Object.class,String.class},settingsRegistry,settings),set=((jm<?>)settingsHolder).a(),getters=inherited("getters"),source=workerSource;
@@ -118,7 +162,7 @@ public class WorldgenBlendingOracle extends WorldgenOreOracle {
   Object completed=((java.util.concurrent.CompletableFuture<?>)new dzb((dea)source,(jm<dzd>)settingsHolder).a(blender,(dzm)state,null,target)).join();if(completed!=target)throw new AssertionError("NOISE returned a replacement chunk");boolean same=target.a((Function<duy,dzc>)unused->{throw new AssertionError("lost NoiseChunk");})==jobNoise&&jobNoise.i()==jobAquifer&&jobNoise.d()==blender;
   Map<String,Object> noiseImage=image(target,output.resolve("java-blending-"+q.get("id").getAsString()+".bin"));
   Map<String,Object> result=new LinkedHashMap<>();List<Object> shiftValues=new ArrayList<>();eoh shift=(eoh)field(null,eaa.class,"b");for(int[] p:new int[][]{{0,0},{1,-1},{-1,1},{27,-27},{1875066,1875066},{Integer.MAX_VALUE,Integer.MIN_VALUE}})shiftValues.add(List.of(p[0],p[1],bits(shift.a((double)p[0],0.0,(double)p[1]))));
-  result.put("shift_noise",shiftValues);result.put("query",q);result.put("biome_file",biomeFile.toString());result.put("biome_fallback",biomeFallback);result.put("data",dataImages);result.put("age_queries",ageQueries);result.put("second_calculation_skipped",secondCalculationSkipped);result.put("height_map_order",keys(height));result.put("density_map_order",keys(density));result.put("height_to_offset",offsets);result.put("scalars",scalar);result.put("resolved_biomes",resolved);result.put("resolver_calls",resolverCalls);result.put("prefill",prefill);result.put("cache_samples",cacheSamples);result.put("last_cache_after_samples",beforeLast);result.put("density_contexts",contexts);result.put("custom",custom);result.put("noise",noiseImage);result.put("same_noise_aquifer_blender",same);result.put("oracle_inner_sha256",INNER);return result;
+  result.put("shift_noise",shiftValues);result.put("query",q);result.put("biome_file",biomeFile.toString());result.put("biome_fallback",biomeFallback);result.put("data",dataImages);result.put("age_queries",ageQueries);result.put("second_calculation_skipped",secondCalculationSkipped);result.put("height_map_order",keys(height));result.put("density_map_order",keys(density));result.put("height_to_offset",offsets);result.put("scalars",scalar);result.put("resolved_biomes",resolved);result.put("resolver_calls",resolverCalls);result.put("prefill",prefill);result.put("cache_samples",cacheSamples);result.put("last_cache_after_samples",beforeLast);result.put("density_contexts",contexts);result.put("custom",custom);result.put("noise",noiseImage);result.put("same_noise_aquifer_blender",same);result.put("oracle_inner_sha256",INNER);result.putAll(runSurface(q,owners,target,jobNoise,jobAquifer,blender,(dzm)state,(jm<dzd>)settingsHolder,beard,picker));return result;
  }
  static Object mapWitness()throws Exception {
   List<Object> rows=new ArrayList<>();Long2ObjectOpenHashMap<Object> map=new Long2ObjectOpenHashMap<>();Field capacity=map.getClass().getDeclaredField("n");capacity.setAccessible(true);List<int[]> stencil=new ArrayList<>();for(int x=-7;x<=7;x++)for(int z=-7;z<=7;z++)if(x*x+z*z<=64)stencil.add(new int[]{x,z});

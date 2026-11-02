@@ -1,13 +1,13 @@
 # Nonempty Blender observations
 
-Calculated old-generation snapshots change native BIOMES and NOISE through the
-retained Blender. In the selected controlled cases, the original and native
-implementations agree on calculated columns, iterator/map order, double bits,
-lazy biome resolution, wrapped bounds and fills, complete biome palettes and
-complete NOISE block arrays, WG heightmaps and postprocessing lists. The same
-matrix includes the actual EMPTY singleton and a constructed zero-map Blender
-as distinct controls. These observations do not complete a server generation
-status or Main integration.
+The selected controlled jobs retain Blender from BIOMES through NOISE and
+SURFACE. Original and native execution agree on calculated columns,
+iterator/map order, double bits, lazy biome resolution, wrapped bounds and
+fills, complete biome palettes and complete before/after block arrays, WG
+heightmaps and postprocessing section lists. All seven SURFACE continuations
+make measured block replacements. The matrix retains the actual EMPTY singleton
+and a constructed zero-map Blender as distinct controls. These observations do
+not complete a server generation status or Main integration.
 
 The target is the unchanged Minecraft Java 1.21 server, protocol 767, inner
 SHA-256 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`.
@@ -17,6 +17,10 @@ CodeSource. Inspection used direct Java 21 `javap` and original execution. REA
 tools were unavailable; no REA Evidence is claimed. Both reports identify the
 native source/composed commits and hash the implementation, dependencies and
 probes. A pinned-source run rejects changed production blobs before execution.
+The recorded production-source pin is
+`fc64e1997f4246a57de93dda58c5e87ea9d355a0`; the run's checkout HEAD was
+`6902eecc38f6712fca0c8affc8abe4cbe303c45d`. The reports' actual probe hashes
+identify the validation sources used, including the added SURFACE continuation.
 
 | Original source | Actual observed boundary |
 | --- | --- |
@@ -28,6 +32,7 @@ probes. A pinned-source run rejects changed production blobs before execution.
 | Biome functions, lines 261–304 | Keep the actual nearest-old tie order and fixed source shift noise. Old success suppresses fallback; fallback receives unchanged quart coordinates and the same sampler. |
 | `NoiseChunk.wrapNew` and blending wrappers (`dzc`, mapped lines 773–780, 783–857, 868–895) | Preserve singleton-sensitive substitution, prefilled quart caches, shared fallback pair, owner versus external density context, visited bounds and provider fills. |
 | Actual cached climate sampler and public `fillFromNoise` | Fill full target palettes through the actual blended resolver, then fill NOISE using that job's retained NoiseChunk, aquifer and Blender. The original future returns the same target; its status stays EMPTY. |
+| `SurfaceSystem.buildSurface` (`dzq.a`, mapped lines 82–195) | Continue the same center job with the actual settings flag, seeded BiomeManager and ordered 3×3 stored palettes. Compare complete SURFACE images, live WG values and packed section queues; original owners remain EMPTY. |
 
 The old owners are explicit controlled `ChunkAccess` snapshots. Their original
 base storage contains real section palettes, heightmaps and canonical states.
@@ -74,10 +79,36 @@ primitive map witness values are not substituted for terrain or biome data.
 The component wrapper probe and the full generation job are separate real
 owners sharing the same immutable Blender. Component queries intentionally warm
 its cache; they cannot contaminate the independent full-job witness. That job
-retains its own actual owner from blended BIOMES through NOISE. Original
-NoiseChunk/aquifer/Blender identity is observed directly; the native prepared
-Blender handle and actual callback owner are checked before consuming the typed
-stage into NOISE.
+retains its own actual owner from blended BIOMES through NOISE and SURFACE.
+Original NoiseChunk/aquifer/Blender identity is observed directly before and
+after the continuation. The native prepared Blender handle and actual callback
+owner are checked before NOISE, then the same typed `BiomeTerrain` continues
+through its public `build_surface` API. Native checks compare the center terrain
+and biome-image addresses and palette contents. Its private aquifer/NoiseChunk
+continuity remains the typed API and source contract.
+
+After recording center NOISE, each probe assembles nine palette owners with
+delta-X outermost and delta-Z innermost. The center reuses its existing BIOMES.
+Actual old snapshots keep their stored palettes; other neighbors run blended
+BIOMES with their own prepared NoiseChunk/sampler and center-specific ordered
+Blender maps over the same calculated old-data pool. The persistent raw
+multi-noise worker retains its encounter history. Age-query metadata snapshots
+are not used as new-generation palette substitutes. All nine complete palettes
+match between original and native and remain unchanged after SURFACE.
+
+The original SURFACE callback reads actual section palette storage with the
+source quart-Y clamp `[-16,79]` for the full `[-64,320)` level accessor. That span
+is separate from the old snapshots' narrower BlendingData generation area. This explicit
+storage callback avoids calling ProtoChunk's guarded biome getter while its
+status is EMPTY; it does not construct a WorldGenRegion or satisfy that region's
+status/dependency prerequisites. Actual original BiomeManager zoom and biome
+thermal methods supply the rule context; native uses its seeded zoom and worker
+temperature owner. The complete original quart callback trace is checked
+against the actual clamped palettes. Its foreign-center subsequence matches
+native callbacks in order, including duplicates. Native serves center cells
+inside its existing typed neighborhood, so the source-only center trace is not
+reported as a paired native trace. Published observations retain trace counts
+and digests.
 
 A far-coordinate case makes the original fallback-key sentinel observable.
 Its first query at `(1875066,0,1875066)` returns the initial `(1,0)` pair. After a
@@ -98,13 +129,36 @@ density result differs from the external SinglePointContext result even though
 both receive the same coordinate and raw value. This also exercises the case
 where a constant child still requires every transform provider index.
 
-The full native output must equal the original complete 384×16×16 canonical
-NOISE array, complete target biome palettes, both WG maps and every packed
-postprocessing section list in insertion order. Nonempty west/high/corner cases
-must change actual original terrain compared with the EMPTY control. Successful
-identity controls, isolated function values or numeric test quantities cannot
-replace those material-effect guards. Signed primitive values are compared by
-raw double bits, including infinities in function bounds.
+The full native output equals the original complete 384×16×16 canonical NOISE
+and SURFACE arrays, complete target/neighborhood biome palettes, both WG maps
+and every packed postprocessing section list in insertion order. The nonempty
+west/high/corner cases change actual original NOISE terrain compared with the
+EMPTY control. SURFACE also makes positive measured replacements and reaches
+actual foreign palette owners:
+
+| Case | Blocks changed from its NOISE image | Paired foreign quart callbacks |
+| --- | ---: | ---: |
+| EMPTY singleton | 15,749 | 422 |
+| Constructed zero maps | 15,749 | 422 |
+| West old boundary | 15,737 | 266 |
+| High old boundary | 17,077 | 414 |
+| Corner ties | 16,237 | 271 |
+| Negative chunk | 18,335 | 439 |
+| Initial cache sentinel | 18,000 | 436 |
+
+These are actual image differences, with exact SURFACE digests recorded in
+`fixtures/world-generation-blending-runtime.json` and matching results in
+`fixtures/world-generation-blending-validation.json`. Successful identity
+controls, isolated function values or numeric test quantities cannot replace
+those material-effect guards. Signed primitive values are compared by raw
+double bits, including infinities in function bounds.
+
+Every selected SURFACE continuation adds **zero** postprocessing entries. The
+checker compares complete before/after section queues, preserves duplicates and
+requires each NOISE list to remain its section's exact prefix. This proves
+retention of the existing queues in these cases; a positive SURFACE-only
+insertion branch remains unproven. It does not infer a global call order across
+different section lists.
 
 Run with Java 21 and Rust, keeping artifacts/classes/arrays outside the checkout:
 
@@ -112,7 +166,7 @@ Run with Java 21 and Rust, keeping artifacts/classes/arrays outside the checkout
 python3 src/worldgen/validation/check_blending.py \
   --oracle-dir /path/to/pinned-oracle \
   --work-dir /path/outside/checkout/blending-check \
-  --native-source-commit <verified-implementation-commit> \
+  --native-source-commit fc64e1997f4246a57de93dda58c5e87ea9d355a0 \
   --runtime-report fixtures/world-generation-blending-runtime.json \
   --report fixtures/world-generation-blending-validation.json
 ```
@@ -126,7 +180,8 @@ contain sanitized observations and hashes; no Java binaries, private saves,
 raw disassembly or machine paths are committed.
 
 This matrix does not cover actual region collection, retrogen, existing target
-blocks, structures, mixed-age SURFACE recollection, old/new carving-mask filters,
-border ticks, complete FEATURES, lighting, persistence or FULL publication.
+blocks, structures, WorldGenRegion SURFACE recollection/status prerequisites,
+old/new carving-mask filters, border ticks, every surface rule/biome branch,
+complete FEATURES, lighting, persistence or FULL publication.
 The public native generator's explicit blended context is callable; its real
 region/status/dependency and Main owners remain separate integration work.

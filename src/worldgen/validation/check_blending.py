@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Actual calculated old snapshots, Blender functions/wrappers and BIOMES/NOISE.
+"""Actual old snapshots, Blender wrappers and retained BIOMES/NOISE/SURFACE.
 
 The original controlled ChunkAccess snapshot uses real section/height/biome
 owners. No WorldGenRegion, fake ProtoChunk status, scheduler or FULL is supplied.
@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import tempfile
 import zipfile
@@ -29,13 +30,21 @@ public class WorldgenBlendingBootstrap {
 }
 """
 PRODUCTION = ["src/density.rs", "src/density/chunk.rs", "src/worldgen/biomes.rs",
-              "src/worldgen/generator.rs", "src/worldgen/noise_chunk.rs", "src/worldgen/mod.rs"] + [
+              "src/worldgen/generator.rs", "src/worldgen/noise_chunk.rs", "src/worldgen/mod.rs",
+              "src/worldgen/biome_context.rs", "src/worldgen/biome_temperature.rs",
+              "src/worldgen/biome_zoom.rs", "src/worldgen/surface/mod.rs",
+              "src/worldgen/surface/rules.rs"] + [
                   "src/worldgen/blending/" + name + ".rs" for name in
                   ["mod", "data", "blender", "density", "biome", "ordered_map"]]
 DEPENDENCIES = ["src/random.rs", "src/noise.rs", "src/hotspot_math.rs", "src/geometry.rs",
+                "src/lighting.rs", "src/worldgen/aquifer.rs", "src/worldgen/random_state.rs",
                 "src/worldgen/biome_source.rs", "src/worldgen/climate.rs", "src/placement.rs",
                 "src/inventory.rs", "fixtures/source-lock.json", "fixtures/geometry-collisions-1.21.rs",
-                "fixtures/placement-block-tags-1.21.json", "fixtures/world-generation-multinoise-parameters.json"]
+                "fixtures/placement-block-tags-1.21.json", "fixtures/world-generation-multinoise-parameters.json",
+                "fixtures/world-generation-biome-climate.json", "fixtures/world-generation-surface-rules.json",
+                "fixtures/density_builtin-1.21.json", "fixtures/noise_parameters-1.21.json",
+                "fixtures/placement-1.21.json", "fixtures/items-1.21.json",
+                "fixtures/item-components-1.21.json"]
 PROBES = ["src/worldgen/validation/" + name for name in [
     "WorldgenBlendingOracle.java", "blending_probe.rs", "check_blending.py", "check_biome_stage.py",
     "WorldgenOreOracle.java", "WorldgenSurfaceOracle.java", "WorldgenBiomeStageOracle.java",
@@ -49,6 +58,84 @@ def require(value, message):
 
 def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def image_bytes(image, identity, phase):
+    raw = Path(image["file"]).read_bytes()
+    require(len(raw) == 384 * 256 * 4, identity + ": incomplete " + phase + " array")
+    if "sha256" in image:
+        require(hashlib.sha256(raw).hexdigest() == image["sha256"], identity + ": stale " + phase + " digest")
+    for key in ["world_surface_wg", "ocean_floor_wg"]:
+        require(len(image[key]) == 256, identity + ": incomplete " + phase + " " + key)
+    require(len(image["posts"]) == 24 and sum(map(len, image["posts"])) == image["post_count"],
+            identity + ": " + phase + " section queues/count disagree")
+    return raw
+
+
+def compare_surface(query, old, new, before):
+    identity = query["id"]
+    source, native = old["surface"], new["surface"]
+    require(source["status"] == "minecraft:empty" and native["stage"] == "Surface",
+            identity + ": SURFACE runtime/status fabricated")
+    require(source["same_noise_aquifer_blender"], identity + ": SURFACE replaced the original center owner")
+    require(source["stored_biomes_unchanged"] and native["stored_biomes_unchanged"],
+            identity + ": SURFACE changed retained BIOMES palettes")
+    for key in ["world_surface_wg", "ocean_floor_wg", "posts", "post_count", "changed_blocks_from_noise"]:
+        require(source[key] == native[key], identity + ": SURFACE " + key + " mismatch")
+    after = image_bytes(source, identity, "original SURFACE")
+    require(after == image_bytes(native, identity, "native SURFACE"), identity + ": complete SURFACE arrays differ")
+    changed = sum(a[0] != b[0] for a, b in zip(struct.iter_unpack("<I", before), struct.iter_unpack("<I", after)))
+    require(changed == source["changed_blocks_from_noise"], identity + ": SURFACE change count differs from actual arrays")
+    delta = source["post_count"] - old["noise"]["post_count"]
+    require(delta >= 0, identity + ": SURFACE removed prior NOISE postprocessing")
+    for prior, current in zip(old["noise"]["posts"], source["posts"]):
+        require(current[:len(prior)] == prior, identity + ": SURFACE reordered prior NOISE section postprocessing")
+
+    cx, cz = query["chunk"]
+    expected_chunks = [[cx + dx, cz + dz] for dx in range(-1, 2) for dz in range(-1, 2)]
+    old_chunks = {tuple(entry["chunk"]) for entry in query["old"]}
+    palettes, neighbors = {}, []
+    require(len(old["surface_neighbors"]) == len(new["surface_neighbors"]) == 9,
+            identity + ": incomplete SURFACE neighborhood")
+    for chunk, original, actual in zip(expected_chunks, old["surface_neighbors"], new["surface_neighbors"]):
+        owner = "center" if chunk == [cx, cz] else "old" if tuple(chunk) in old_chunks else "new"
+        require(original["chunk"] == actual["chunk"] == chunk and original["owner"] == actual["owner"] == owner,
+                identity + ": SURFACE neighbor order/owner mismatch")
+        raw = Path(original["biome_file"]).read_bytes()
+        require(raw == Path(actual["biome_file"]).read_bytes(), identity + ": complete SURFACE neighbor palettes differ")
+        palette = json.loads(raw)
+        require(len(palette) == 96 * 16 and all(isinstance(b, str) and b for b in palette),
+                identity + ": incomplete SURFACE neighbor palette")
+        if owner == "center":
+            require(raw == Path(old["biome_file"]).read_bytes(), identity + ": SURFACE replaced center BIOMES")
+        palettes[tuple(chunk)] = palette
+        neighbors.append(dict(chunk=chunk, owner=owner, biome_sha256=hashlib.sha256(raw).hexdigest()))
+
+    complete_queries = old["surface_source_all_biome_queries"]
+    require(complete_queries, identity + ": original SURFACE made no quart biome query")
+    for row in complete_queries:
+        require(len(row) == 4, identity + ": malformed original SURFACE quart query")
+        x, y, z, biome = row
+        chunk = (x >> 2, z >> 2)
+        require(chunk in palettes, identity + ": original SURFACE queried outside supplied neighborhood")
+        # All fixture ChunkAccess owners expose the actual full -64..320
+        # accessor, independently of their old-generation BlendingData bounds.
+        index = (max(-16, min(79, y)) + 16) * 16 + (z & 3) * 4 + (x & 3)
+        require(palettes[chunk][index] == biome, identity + ": SURFACE query differs from actual clamped palette")
+    foreign_queries = [row for row in complete_queries if (row[0] >> 2, row[2] >> 2) != (cx, cz)]
+    require(old["surface_biome_queries"] == new["surface_biome_queries"] == foreign_queries,
+            identity + ": ordered foreign SURFACE quart callbacks differ")
+    return dict(complete_surface_arrays_equal=True, surface_heightmaps_posts_equal=True,
+        actual_surface_changed_blocks=changed, surface_added_postprocessing=delta,
+        surface_sha256=hashlib.sha256(after).hexdigest(), surface_native_stage="Surface",
+        surface_original_status="minecraft:empty", surface_same_original_noise_aquifer_blender=True,
+        surface_stored_biomes_unchanged=True,
+        surface_neighbors=neighbors, surface_foreign_quart_queries=len(foreign_queries),
+        surface_foreign_quart_queries_sha256=digest(foreign_queries),
+        surface_source_all_quart_queries=len(complete_queries),
+        surface_source_all_quart_queries_sha256=digest(complete_queries),
+        source_surface_heightmap_post_sha256=digest({k:source[k] for k in
+            ["world_surface_wg", "ocean_floor_wg", "posts", "post_count"]}))
 
 
 def roots():
@@ -91,10 +178,10 @@ def cases():
 def compare(args, work):
     composed = run(["git", "rev-parse", "HEAD"], cwd=ROOT).strip()
     if args.native_source_commit:
-        for path in PRODUCTION:
+        for path in PRODUCTION + DEPENDENCIES:
             raw = subprocess.run(["git", "show", args.native_source_commit + ":" + path], cwd=ROOT,
                                  capture_output=True, check=True).stdout
-            require(hashlib.sha256(raw).hexdigest() == sha(ROOT / path), "production changed after source commit: " + path)
+            require(hashlib.sha256(raw).hexdigest() == sha(ROOT / path), "production/dependency changed after source commit: " + path)
     oracle = args.oracle_dir.resolve()
     lock = json.loads((ROOT / "fixtures/source-lock.json").read_text())
     for section, name in [("oracle", "server-1.21.jar"), ("mappings", "server-1.21-mappings.txt")]:
@@ -156,6 +243,7 @@ def compare(args, work):
     for query, old, new in zip(queries, original, native):
         identity = query["id"]
         require(old["oracle_inner_sha256"] == INNER, identity + ": wrong actually loaded original")
+        require(old["query"] == new["query"] == query, identity + ": paired case query changed")
         for key in compared:
             if old[key] != new[key]:
                 detail = ""
@@ -168,22 +256,24 @@ def compare(args, work):
         require(old["noise"]["status"] == "minecraft:empty" and new["noise"]["stage"] == "Noise", identity + ": runtime/status fabricated")
         for key in ["world_surface_wg", "ocean_floor_wg", "posts", "post_count"]:
             require(old["noise"][key] == new["noise"][key], identity + ": NOISE " + key + " mismatch")
-        a, b = Path(old["noise"]["file"]).read_bytes(), Path(new["noise"]["file"]).read_bytes()
-        require(len(a) == len(b) == 384 * 256 * 4 and a == b, identity + ": complete NOISE arrays differ")
+        a, b = image_bytes(old["noise"], identity, "original NOISE"), image_bytes(new["noise"], identity, "native NOISE")
+        require(a == b, identity + ": complete NOISE arrays differ")
         require(Path(old["biome_file"]).read_bytes() == Path(new["biome_file"]).read_bytes(), identity + ": complete BIOMES palettes differ")
         require(all(call[3] for call in old["biome_fallback"] + old["resolver_calls"]), identity + ": original fallback sampler identity changed")
+        surface = compare_surface(query, old, new, a)
         snapshot = {key: old[key] for key in compared if key not in ["biome_fallback"]}
         snapshot |= dict(noise_sha256=sha(old["noise"]["file"]), biome_sha256=sha(old["biome_file"]),
             biome_fallback_count=len(old["biome_fallback"]), biome_fallback_sha256=digest(old["biome_fallback"]),
             noise_heightmap_post_sha256=digest({k:old["noise"][k] for k in ["world_surface_wg", "ocean_floor_wg", "posts", "post_count"]}),
             original_status="minecraft:empty", original_same_noise_aquifer_blender=True,
             source_last_cache_after_samples=old["last_cache_after_samples"])
+        snapshot |= surface
         observations.append(snapshot)
         results.append(dict(id=identity, data_and_iterator_bits_equal=True, function_bits_equal=True,
             lazy_biome_resolution_equal=True, wrapped_bounds_scalar_fill_equal=True, provider_index_calls_equal=True,
             complete_biome_palettes_equal=True, complete_noise_arrays_equal=True, noise_heightmaps_posts_equal=True,
             original_status_remains_empty=True, native_stage="Noise", noise_sha256=sha(old["noise"]["file"]),
-            biome_sha256=sha(old["biome_file"]), biome_fallback_count=len(old["biome_fallback"])))
+            biome_sha256=sha(old["biome_file"]), biome_fallback_count=len(old["biome_fallback"])) | surface)
         by_id[identity] = (old, new)
     empty = by_id["empty_singleton"][0]
     zero = by_id["constructed_zero_maps"][0]
@@ -194,6 +284,9 @@ def compare(args, work):
         require(any(s[3] != "4607182418800017408" and s[4] != "0" for s in row["scalars"]), identity + ": no nonempty alpha/offset effect")
         require(any(s[5] != "4600427019358961664" for s in row["scalars"]), identity + ": no density effect")
         require(0 < len(row["biome_fallback"]) < 96 * 16, identity + ": no lazy old/new biome branch coverage")
+    require(any(row["actual_surface_changed_blocks"] > 0 and row["surface_foreign_quart_queries"] > 0
+                for row in results if row["id"] in ["west_old", "high_old", "corner_ties"]),
+            "selected nonempty original SURFACE did not change actual NOISE blocks and query adjacent BIOMES")
     require(by_id["west_old"][0]["density_contexts"][0][-1] != by_id["west_old"][0]["density_contexts"][1][-1], "owner/external density contexts did not differ")
     sentinel = by_id["initial_cache_sentinel"][0]["cache_samples"]
     require(sentinel[0][3:] == ["4607182418800017408", "0"] and sentinel[-1][3:] != sentinel[0][3:], "initial shared-last sentinel behavior absent")
@@ -219,19 +312,23 @@ def compare(args, work):
     common = dict(minecraft="1.21", protocol=767, oracle_inner_sha256=INNER,
         native_source_commit=args.native_source_commit, native_composed_commit=composed,
         production_sha256=hashes, probe_sha256=probes, bootstrap_sha256=hashlib.sha256(BOOTSTRAP.encode()).hexdigest())
-    runtime = common | dict(evidence="unchanged original calculated-data/function/cache/BIOMES/NOISE runtime observations",
+    runtime = common | dict(evidence="unchanged original calculated-data/function/cache/BIOMES/NOISE/SURFACE runtime observations",
                             map_witnesses=maps, cases=observations)
     report = common | dict(success=True, cases=results,
-        scope="Actual calculated old-data snapshots and private Blender construction; coherent public retained BIOMES/NOISE over explicit empty target/beardifier. No actual WorldGenRegion or ChunkStep.",
+        scope="Actual calculated old-data snapshots and private Blender construction; coherent retained BIOMES then public NOISE then actual SURFACE over explicit empty target/beardifier. No actual WorldGenRegion or ChunkStep.",
         snapshot_scope="Controlled original ChunkAccess subclass with actual block/height/biome section storage and base getNoiseBiome. All snapshot and target statuses remain EMPTY. Explicit old fixed-biome sources are fixture inputs; remaining old palettes use the retained raw multi-noise worker.",
         collection_scope="Source-reviewed X-major/Z-minor region scan adapter over supplied calculated snapshots, not execution of Blender.of(WorldGenRegion)/getOrUpdateBlendingData. Actual sideByGenerationAge executes against a rejecting WorldGenLevel interface proxy.",
-        owner_scope="Component wrapper probes mutate an independent real ChunkDensity/NoiseChunk sharing the same immutable Blender. Separate full-job BIOMES then NOISE retain their actual production owner; probing a sentinel cannot warm that job's cache.",
-        layout="NOISE canonical u32 LE: Y, local X, local Z. BIOMES: section Y, local quart Y/Z/X. Data/iterator/map arrays retain original encounter order.",
+        owner_scope="Component wrapper probes mutate an independent real ChunkDensity/NoiseChunk sharing the same immutable Blender. Separate full-job BIOMES then NOISE then SURFACE retain the same center job; original center NoiseChunk/aquifer/Blender identity is checked before and after. Probing a sentinel cannot warm that job's cache. Neighbor BIOMES owners are constructed only after capturing the existing center NOISE image, in delta-X outer/delta-Z inner order; the center is reused.",
+        surface_scope="SURFACE reads actual ordered 3x3 section palette owners through a controlled callback. Old snapshot palettes retain the actual full level accessor and source quart-Y clamp, independently of their narrower BlendingData generation bounds. This does not execute or recollect through WorldGenRegion. All original targets remain EMPTY; native center data advances to Surface only.",
+        surface_trace_scope="The complete original SURFACE quart callback trace is observed. Only foreign-center callbacks are compared with native, because the existing typed neighborhood resolves center cells internally; the source-only center trace is not claimed as a native trace comparison. Every original callback value is checked against the actual clamped palette.",
+        surface_postprocessing_scope="Complete before/after section queues and insertion order are compared, preserving duplicates and each NOISE prefix. An observed zero SURFACE-added count proves retained NOISE queues, not a positive SURFACE-only insertion branch; no global inter-section call order is inferred.",
+        layout="NOISE and SURFACE canonical u32 LE: Y, local X, local Z. BIOMES: section Y, local quart Y/Z/X. Data/iterator/map arrays retain original encounter order.",
         map_scope="The native probe compiles the exact production ordered_map.rs by path and compares primitive Arc value-owner order/replacement/collisions over193source-stencil keys at growth thresholds. Original capacities are observed; native capacity is not inspected. Actual calculated-data Blender functions are also paired independently; map primitive values never stand in for terrain data.",
         native_map_order_growth_replacement_equal=True,
         not_verified=["Actual concrete ServerLevel/WorldGenRegion construction, Blender.of/getOrUpdate public region entry points or storage old-chunk scan.",
                       "Structure-beardifier effects, BelowZeroRetrogen, existing target block preservation, old/new CARVERS masks or border ticks.",
-                      "SURFACE across mixed-age dependencies, complete FEATURES, lighting, persistence, Main integration or FULL publication.",
+                      "Actual WorldGenRegion SURFACE/status prerequisites, complete FEATURES, lighting, persistence, Main integration or FULL publication.",
+                      "Every SURFACE biome/rule branch or a positive SURFACE-only postprocessing insertion unless a selected case actually adds entries.",
                       "Arbitrary out-of-contract protected getter coordinates, datapack registries or natural historical terrain generation."])
     return runtime, report
 
@@ -257,8 +354,10 @@ def main():
     for path, value in [(args.runtime_report, runtime), (args.report, report)]:
         if path:
             path.write_text(json.dumps(value, indent=2) + "\n")
-    print(json.dumps(dict(success=True, scope="controlled old-data Blender and retained BIOMES/NOISE",
-        cases=[dict(id=r["id"], noise_equal=r["complete_noise_arrays_equal"], biomes_equal=r["complete_biome_palettes_equal"]) for r in report["cases"]])))
+    print(json.dumps(dict(success=True, scope="controlled old-data Blender and retained BIOMES/NOISE/SURFACE",
+        cases=[dict(id=r["id"], noise_equal=r["complete_noise_arrays_equal"], biomes_equal=r["complete_biome_palettes_equal"],
+                    surface_equal=r["complete_surface_arrays_equal"], surface_changed_blocks=r["actual_surface_changed_blocks"],
+                    surface_added_postprocessing=r["surface_added_postprocessing"]) for r in report["cases"]])))
 
 
 if __name__ == "__main__":
