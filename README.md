@@ -10,6 +10,12 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Grindstone and Anvil integration
+
+The Grindstone Main path passed a [bounded actual protocol flow](docs/validation/grindstone-flow-supported.json): real enchantment removal, XP orb, level event1042, item drop, menu lifetime and native cold-checkpoint conservation. The [source and limits](docs/reference/grindstone-production.md) retain the separate earlier failure at unsupported equipped-enchantment effects. The supported flow keeps an inert stone selected; this is not unrestricted enchanted-equipment support.
+
+Anvil Main adapters are connected in source, but ordinary placement is blocked by the missing FallingBlock scheduled callback/entity integration. No Anvil menu runtime pass is claimed. These partial workstation stages do not complete an aggregate checklist row.
+
 ## Native Loom Main
 
 The Loom uses actual configured banner patterns/template tags, canonical inputs,
@@ -20,8 +26,7 @@ conserved owned items without duplicating the preview. See
 [production scope](docs/reference/loom-production.md). A current-kernel recheck
 also passed: stale window0 clicks do not mutate the inactive menu, and all seven
 fixture stones remain owned. Source phases retain the real inventory-counter
-timeline; internal counter instrumentation is not claimed. This source stage is
-under publication; templates/custom and broader runtime paths remain open.
+timeline; internal counter instrumentation is not claimed. [PR81](https://github.com/Ferigone/Cinderstone/pull/81) is merged as `26c4d2e`. Railway deployment `7e85486e-40a8-4fce-89e0-78b794fa815a` reached SUCCESS and native offline listening at `2026-11-02T00:03:45.613716489Z`, with one running replica and retained volume. Public PLAY is unverified; templates/custom and broader runtime paths remain open.
 
 ## Native Smithing Main
 

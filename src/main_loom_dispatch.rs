@@ -94,11 +94,24 @@ impl Server {
         // There is exactly one source current external menu, never a second
         // shadow owner. InventoryMenu keeps its separate cursor/grid.
         let active = [
+            players.grindstones.window_id(id), players.anvils.window_id(id),
             players.looms.window_id(id), players.smithing_tables.window_id(id),
             players.stonecutters.window_id(id), players.crafting_tables.window_id(id),
             players.native_containers.window_id(id), players.furnaces.window_id(id),
         ];
         ensure!(active.iter().flatten().count() <= 1, "loom opening found competing current-menu owners");
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.looms.window_id(id) {
             self.close_loom_with_context_locked(&mut world, &mut players, id, window, true,
                 now, border, MenuCloseContext::AliveConnected)?;

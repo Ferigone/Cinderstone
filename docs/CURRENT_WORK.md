@@ -5,6 +5,12 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native Grindstone — Main connected; bounded runtime passed
+
+Source `18314fecde381929a1984d3ab941abebdaa2d113` passed the full executable build and one [supported local flow](validation/grindstone-flow-supported.json) at `2026-11-01T23:59:21.627444+00:00`: actual enchantment removal, XP1 entity before event1042 before item entity, connected return, open-menu disconnect and cold native checkpoint preserved owned swords/XP/IDs. The [initial failed attempt](validation/grindstone-flow-initial.json) remains separate: selecting a returned Sharpness sword reaches existing unsupported equipment effects. The successful flow keeps real stone selected. [Production evidence](reference/grindstone-production.md) states unexercised pickup/internal counter/restored ticking and broader profiles.
+
+Anvil Main source is composed with retained actors, canonical inventory, real current-menu recovery and pre-add component refusal. Its actual placement attempt stopped at the unported FallingBlock scheduler callback; no OpenScreen/rename/take execution passed. Genuine falling entity/index/tracking/save integration is in progress, reusing merged Anvil block kernel PR83. No fabricated settled-world checkpoint is admitted.
+
 ## Native Loom — Main connected; local runtime passed
 
 A full Main build and actual offline protocol767 flow passed on source
@@ -35,8 +41,7 @@ claimed. All current upstream controller/ore source remains preserved.
 configured HolderSet/template binding, default-listener phases, actual counter,
 indexed drops and independent sound RNG. Templates, custom/reentrant contexts,
 multi-target Slot-identity drag and unexercised pickup/recovery/audience paths
-remain unsupported or unproven. Source publication/review/CI is in progress; no
-hosted Loom release is claimed yet. Fixed scope1 stays56code/51Main.
+remain unsupported or unproven. PR81 merged as `26c4d2ec13b885e51025e105f1edeb0fe78f6309`. Railway `7e85486e-40a8-4fce-89e0-78b794fa815a` reached SUCCESS/native offline listening at `2026-11-02T00:03:45.613716489Z`, one running/zero crashed replica, retained volume/no pending work. Public PLAY remains unverified. Fixed scope1 stays56code/51Main.
 
 ## Native Smithing — merged and hosted
 
@@ -84,16 +89,7 @@ fresh public status probe still failed DNS. See
 
 ## Active next source stages
 
-Grindstone's actual configured enchantment context, provider, mixed Item/XP
-preparation/publication and synchronous XP stage are under isolated composition.
-Focused library and existing-Main compiler checks passed for the mixed runtime
-and XP modules. The unexported Host still needs genuine retained-menu APIs and
-Main assembly; it is not working Grindstone gameplay. Enchanting provider,
-genuine server block-entity/name, configured enchantment and player seed/XP
-source owners are under implementation. Missing live owner registration is not
-replaced with a fabricated successful host. Team3 has a
-narrow explicit new MainAnvil namespace assignment in issue3; central shared
-seams remain reserved.
+Native FallingBlock entity state, server tick, actual world/scheduler host and shared runtime integration are assigned to distinct central agents. Enchanting Player seed/NBT/reconfiguration and real XP-cache ownership passed isolated ordinary lib+Main compiler checks and a focused source peer review; its source is not yet composed/published. Real Enchanting block entity/provider/registry/menu delivery remains partial. Comprehensive conformance work follows implementation.
 
 Other teams self-review/merge their owned source PRs. Fixed scope_version1
 checklist remains56/100 code and51/100 Main; these bounded stages do not close

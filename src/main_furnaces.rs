@@ -144,6 +144,14 @@ impl FurnaceRuntime {
             |v| v.menu.inventory_snapshot(inventory),
         )
     }
+    /// Only the retained menu's real cursor returns on close. Fuel, input and
+    /// output remain owned by the actual live/retired furnace block entity.
+    pub(super) fn preflight_close_return_stacks(
+        &self, id: i32, check: &mut dyn FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) { check(open.menu.carried())?; }
+        Ok(())
+    }
 }
 fn send(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet>) {
     if !packets.is_empty() {
@@ -349,6 +357,18 @@ impl Server {
             }
             flat.native_block_entities().furnace_title(target)?
         };
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.looms.window_id(id) {
             self.close_loom_with_context_locked(
                 &mut world, &mut players, id, window, true, now, border,
