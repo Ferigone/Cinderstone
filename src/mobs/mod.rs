@@ -12,3 +12,5 @@ pub mod controls;
 pub mod equipment_drops;
 pub mod sensing;
 pub mod lifecycle;
+pub mod goals;
+pub mod navigation;
