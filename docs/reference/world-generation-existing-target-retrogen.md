@@ -2,8 +2,9 @@
 
 Target: Minecraft Java **1.21**, protocol **767**. Original inner-server SHA-256
 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`;
-official mappings are pinned by `fixtures/source-lock.json`. Evidence here is
-direct Java 21 `javap` inspection, not REA execution or a runtime parity claim.
+official mappings are pinned by `fixtures/source-lock.json`. Source analysis
+uses direct Java 21 `javap` inspection, not REA execution. The paired runtime
+observations below have a separate, controlled scope.
 
 | Original source | Native requirement |
 | --- | --- |
@@ -68,3 +69,23 @@ generation requires actual blocks, palettes, accessors, retrogen, registry and
 stage owners from the separately owned target/session adapters. These helpers
 alone establish no Main invocation, persistence compatibility, successful
 ChunkStatus future or FULL publication.
+
+The actual paired results in
+[the validation fixture](../../fixtures/world-generation-existing-target-validation.json)
+and [runtime fixture](../../fixtures/world-generation-existing-target-runtime.json)
+match complete phase block images, palettes and metadata. The active-retrogen
+case rewrites only the lower BIOMES sections, preserves all upper palettes and
+positively exercises old quart-Y-zero Ocean/Plains fallback. It observes 1,280
+BEDROCK-to-DEEPSLATE replacements and 115 masked-to-AIR changes; the NoCells
+case still runs the continuation and observes 1,280 replacements plus six
+masked changes, with no NoiseChunk cache created. Ordered existing queue
+prefixes are preserved. The source retains its full-height 384-block NoiseChunk
+while the retrogen generation accessor spans 64 blocks.
+
+Both controlled retrogen cases keep persisted status EMPTY. Highest SPAWN
+comes only from the supplied actual retrogen metadata and proves no SPAWN work
+or status advancement. Registered cave retention, matching unbound cave
+rejection and a high-only mask are not observed runtime branches; their
+semantics have source/unit evidence only. The supplied payload retains a
+nonzero high BitSet word. Nonempty source Beardifier influence remains
+unsupported, and these cases establish no whole-checklist-item completion.

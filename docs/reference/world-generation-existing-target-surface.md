@@ -19,19 +19,20 @@ badlands, iceberg and positional RNG algorithms are not duplicated.
 | `ChunkStatusTasks.generateSurface` (`dwb.g`, 82–85) | Call the actual surface stage; BelowZeroRetrogen does not skip the entire phase. |
 | `NoiseBasedChunkGenerator.buildSurface` (`dzb.a`, 236–250) | Retain the chunk's existing NoiseChunk and use the settings' actual legacy-biome-height flag. Public debug-void handling and phase dependencies belong to the caller. |
 | `WorldGenerationContext` (`dzv`, 10–13) | Anchor minimum is `max(region.minY, generator.minY)`; depth is independently `min(region.height, generator.genDepth)`, not an intersection height. |
-| `SurfaceSystem.buildSurface` (`dzq.a`, 82–195) | Read and scan the full physical target, live WORLD_SURFACE_WG heights and retained preliminary-surface owner. |
+| `SurfaceSystem.buildSurface` (`dzq.a`, 82–195) | Read and scan the full chunk build bounds, live WORLD_SURFACE_WG heights and retained preliminary-surface owner. |
 | `SurfaceSystem$1.setBlock` (`dzq$1.a`, 91–103) | Obtain the current generation accessor before each attempted write; outside it, perform neither Proto write nor fluid postprocessing. |
-| `ChunkAccess.getNoiseBiome` (`duy`, 418–427), `ProtoChunk.getNoiseBiome` (`dvs`, 244–247) | Center quart queries use the actual stored target palettes, physical Y clamp and real highest-generated-status guard. Foreign queries retain their mandatory provider and coordinates. |
+| `ChunkAccess.getNoiseBiome` (`duy`, 418–427), `ProtoChunk.getNoiseBiome` (`dvs`, 244–247) | Center quart queries use the actual stored target palettes, source quart-Y clamp derived from build bounds and real highest-generated-status guard. Foreign queries retain their mandatory provider and coordinates. |
 | `BiomeManager.getBiome` (`ddy`, 35–79) | Reuse the real zoom seed to select one quart query; temperature remains a later lazy rule callback. |
 
-Physical build bounds, the target's current generation accessor and region
+Chunk build bounds, the target's current generation accessor and region
 anchor bounds have distinct owners. While BelowZeroRetrogen is present, its
-generation accessor is `[-64,0)`. The adapter still scans the full physical
-chunk and executes original queries/rules above zero; its setter suppresses
+generation accessor is `[-64,0)`. The adapter still scans the full chunk build
+bounds and executes original queries/rules above zero; its setter suppresses
 those writes. The guard precedes logical `proto_set_block`, WG-heightmap changes
 inside that operation, and any fluid post. It is not a bedrock-correction guard:
 the separate post-NOISE bedrock replacement intentionally uses logical Proto
-writes at Y `0..4`.
+writes at Y `0..4`. Physical section padding is retained and compared separately;
+outside the logical build bounds, block reads return VOID_AIR.
 
 An allowed write calls the target's actual logical Proto mutation with the
 source `false` behavior, then marks the position only when the requested new

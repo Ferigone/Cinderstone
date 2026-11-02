@@ -4,8 +4,8 @@ The target is the pinned Minecraft Java 1.21 server, protocol 767, in
 `fixtures/source-lock.json`. Its inner server SHA-256 is
 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`.
 The source evidence here is direct Java 21 `javap -p -c` inspection with the
-official mappings. No REA execution or partial-cell runtime result is claimed
-by this note.
+official mappings. Runtime comparisons are identified separately below. No REA
+execution is claimed.
 
 ## Two actual accessors
 
@@ -43,8 +43,9 @@ writes. Existing AIR results are skipped. Untouched physical palette cells,
 heightmaps and postprocessing queues belong to the existing target and must
 not be replaced with a new AIR image.
 
-For the built-in Overworld cell height 8, these are source-derived coordinate
-examples, not runtime observations:
+For the built-in Overworld cell height 8, this table gives source-derived
+geometry. The first two cases also have the runtime block observations below;
+section acquisition order was not measured at runtime.
 
 | Actual accessor minimum/height | Traversed block Y | Untouched logical tail | Descending acquired section Ys |
 | --- | --- | --- | --- |
@@ -88,3 +89,28 @@ Physical target storage, its existing section owners/maps/queues and phase
 integration are separate from this geometry module. These APIs do not fabricate
 target contents, round a logical height accessor, certify retrogen provenance,
 complete a ChunkStatus, or establish production Main integration.
+
+## Pinned runtime comparison
+
+The final original/native replay at native source commit
+`a28bfc2ef8b11581b9a09f76a9d54f25e8afc890` is recorded in the
+[validation fixture](../../fixtures/world-generation-existing-target-validation.json).
+For accessors `1 / 127` and `-63 / 127`, complete physical section buffers,
+palettes, WG first-available heights and ordered per-section queues matched.
+Each original fill changed 256 physical cells below the logical minimum and
+preserved all 2,048 cells in the untouched tail, including 69 gold markers.
+
+The original retrogen case directly exposed a retained NoiseChunk grid of
+`-64 / 384` and a generation accessor of `-64 / 64`. The native private grid
+and aquifer pointer were not runtime observations: their construction and
+retention are source-reviewed. Native field guards measured the same target
+Box, section/state/map/outer-post-array allocations and released section
+leases. Neither original nor native runtime acquisition order is claimed.
+
+The NoCells case used absent original generation dependencies and native typed
+`None` Blender with unavailable structure input. The material fill left the
+target unchanged and created no NoiseChunk cache. Its separately executed
+successful NOISE-task continuation later applied retrogen bedrock and hole
+fixups; that later mutation is not a material fill. Original persisted status
+remained EMPTY. These controlled observations do not establish saved-world
+import, scheduler completion or production Main integration.

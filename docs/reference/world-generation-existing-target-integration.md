@@ -10,9 +10,12 @@ This is native staged data, not a ChunkStatus, scheduler result or FULL chunk.
 The original reference is the pinned Java 1.21/protocol 767 server, inner JAR
 SHA256 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`.
 Evidence here is direct official-mapping/javap inspection, not REA execution.
-Paired validation for this additive implementation is pending coordinator work;
-earlier fresh-target or original-only upgrade observations do not validate this
-new native path by themselves.
+Bounded original/native paired validation passed for native source commit
+`a28bfc2ef8b11581b9a09f76a9d54f25e8afc890`. The
+[validation note](world-generation-existing-target-validation.md),
+[runtime fixture](../../fixtures/world-generation-existing-target-runtime.json)
+and [validation fixture](../../fixtures/world-generation-existing-target-validation.json)
+record the exact source, probe and artifact hashes and the limits of that result.
 
 ## Owners and accessors
 
@@ -43,6 +46,16 @@ they are not implicit implementations of the generation host.
 `TargetGeneration::new(generator, target, blender, structure_beardifier)` stores
 owners without querying the target, allocating a NoiseChunk, or assuming empty
 blocks/maps/queues. Its local phase is `Prepared`.
+
+`new_with_optional_blender(generator, target, blender, structure_beardifier)`
+also accepts `None` for an actually unavailable Blender, without substituting
+EMPTY. A no-cell material fill returns before accessing it or the structure
+beardifier. A positive cache factory requires `Some(actual_owner)` and an
+observed-empty structure beardifier; a real observed EMPTY Blender is supplied
+as `Some(Blender::empty())`. Existing cached owners remain authoritative and
+are not recreated from the constructor argument. The no-cell paired profile
+uses unavailable generation dependencies and still executes the separate
+successful-task retrogen continuation.
 
 `with_sampler` creates/reuses the full-build cache and passes a
 `TargetClimateSampler` implementing the existing climate and raw-erosion traits.
@@ -98,6 +111,45 @@ context. Errors leave the live mutation prefix and poison the session.
 clone/rebind/reset operation or cache replacement. Retained owners remain alive
 after successful SURFACE. The local phase and outcome enums certify only these
 invocations, never original generation status or dependency readiness.
+
+## Bounded validation
+
+The paired profiles cover aligned existing Overworld data, positive and
+negative partial-cell accessors, active below-zero retrogen, and a no-cell
+retrogen fill. Complete physical block images and biome palettes, live WG
+first-available heights, section counters, queue allocation/order/duplicates,
+status and retrogen metadata match at every selected phase. Actual writes
+below the logical minimum, preserved partial-cell tails and AIR-skipped old
+blocks, bedrock/mask repairs, and clipped SURFACE mutations supply positive
+behavior witnesses. The selected SURFACE runs add no new posts; they do not
+prove its positive post-insertion branch.
+
+The original runs first on immutable controlled input. Native receives only
+that query and the original INITIAL snapshot, never future source phase data.
+Original BIOMES invokes the actual private `doCreateBiomes` body on one
+controlled worker with its persistent builtin selector; it does not exercise
+the public asynchronous wrapper. NOISE invokes the public original fill and
+its actual successful-task continuation. SURFACE invokes the original
+generator overload with the retained owners and declared stored-biome
+neighbors. Actual ProtoChunk status remains EMPTY. The probes expose the
+declared base-ChunkAccess palette view for SURFACE without fabricating BIOMES
+status, a WorldGenRegion or ChunkStep completion.
+
+Original NoiseChunk/aquifer/Blender/cache continuity and the BIOMES sampler
+delivered to callbacks are observed. Native target-box, section/state/map and
+post-array identity and released leases are separately checked. Native private
+aquifer/cache allocation identity and original runtime lock order are not
+observed. WG first-available values are compared; unused packed-word bits are
+outside this evidence. The selected profiles do not cover absent WG-map
+creation, cave-key/unbound-cave resolver branches or a high-only missing-bedrock
+mask.
+
+An external compile assertion also passed for
+`TargetGeneration<NativeProtoTarget<()>>: Send + 'static` (imported in that
+assertion as `NativeTargetGeneration`). This establishes that the owned native
+session can outlive a local binding and move to a worker; selector and thermal
+owners still follow their separate worker contracts. It supplies no Main or
+scheduler integration proof.
 
 ## Original source anchors and remaining scope
 
