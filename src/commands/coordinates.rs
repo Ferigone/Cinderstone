@@ -40,11 +40,13 @@ pub struct CoordinateSource {
     pub rotation: (f32, f32),
 }
 
-/// `Mth.floor(double)`.
+/// `Mth.floor(double)`: `(int) d`, minus one when that rounded up. Java's `d2i` saturates and
+/// maps NaN to 0 like Rust's cast, and `i - 1` wraps, so a value below `Integer.MIN_VALUE`
+/// floors to `Integer.MAX_VALUE`.
 fn floor(value: f64) -> i32 {
-    let truncated = value as i32; // Java's d2i saturates and maps NaN to 0, like Rust's cast
+    let truncated = value as i32;
     if value < f64::from(truncated) {
-        truncated - 1
+        truncated.wrapping_sub(1)
     } else {
         truncated
     }

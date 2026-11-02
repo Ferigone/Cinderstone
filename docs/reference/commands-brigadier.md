@@ -118,7 +118,9 @@ Stage 6 (`src/commands/coordinates.rs`, position arguments): `Vec3Argument` (cen
 - `Coordinates::position`, `rotation` and `block_pos` resolve them for a `CoordinateSource`
   (position, the anchored position and the rotation as pitch, yaw). Local coordinates use Minecraft's
   float sine table (`geometry::vanilla_sin` / `vanilla_cos`) and the original's operation order;
-  `BlockPos.containing` is `Mth.floor` with Java's saturating `(int)` cast.
+  `BlockPos.containing` is `Mth.floor` with Java's saturating `(int)` cast and wrapping `i - 1`, so a
+  coordinate below `Integer.MIN_VALUE` floors to `Integer.MAX_VALUE` (1,025 resolved coordinates in the
+  fixture; a Codex review caught the first version panicking on this in debug builds).
 - Network forms: `block_pos` 8, `column_pos` 9, `vec3` 10, `vec2` 11, no template. The registry ids and
   the empty templates are compared with the original's `ClientboundCommandsPacket` in the stage 5 fixture.
 
@@ -196,9 +198,9 @@ builders), so that detail rests on the bytecode reading.
 Stage 6. `fixtures/commands-mc-arguments-vectors.json` (2 MB, `tools/mc_arguments_generate.py`,
 `tools/mc_arguments_oracle.java`, seed 20261106) holds 4,200 runs of the original argument classes (700 per
 type) on seeded inputs built from absolute, relative and local tokens, malformed, mixed and truncated ones,
-with and without a start cursor: 2,549 parse (293 of them local) and 1,651 fail with all five position
+with and without a start cursor: 2,563 parse (288 of them local) and 1,637 fail with all five position
 exceptions. For each success the harness resolves the coordinates for two command sources (position and
-rotation drawn from awkward values such as 3e9, -30000000.5, 720 degrees) and records the position,
+rotation drawn from awkward values such as 3e9, -3e9, -30000000.5, 720 degrees) and records the position,
 rotation and block position. `cargo test --locked --lib commands::mc_arguments_tests` compares the cursor
 afterwards, the exception (key, typed arguments, `getMessage()`, context, cursor) or the relative flags and
 the resolved values bit for bit. The sources are built with the unchanged `CommandSourceStack` constructor
