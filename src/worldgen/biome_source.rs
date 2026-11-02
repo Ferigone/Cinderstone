@@ -15,8 +15,10 @@ use anyhow::{anyhow, Context, Result};
 use serde::Deserialize;
 use std::{collections::BTreeMap, sync::OnceLock};
 
-/// The actual chunk's wrapped Climate.Sampler. Missing owners must fail; a raw
-/// DensityGraph, a fixed target or reconstructed sampler is not a substitute.
+/// The actual caller phase's Climate.Sampler. BIOMES binds the retained wrapped
+/// chunk owner; CARVERS explicitly binds the original raw RandomState owner.
+/// Missing owners must fail, and a raw graph must not silently replace the
+/// wrapped BIOMES sampler or a fixed target replace either phase.
 pub trait ClimateSampler {
     type Error;
     fn sample_climate(

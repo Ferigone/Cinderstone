@@ -6,7 +6,9 @@ server JAR, SHA-256
 Official server mappings SHA-1 is
 `31c77994d96f05ba25a870ada70f47f315330437`.
 This stage used **JDK 21 `javap -p -c`**, not REA: `GrindstoneMenu` (`cqt`),
-its input slots (`cqt$2`, `cqt$3`) and result slot (`cqt$4`),
+its `SimpleContainer` (`cqt$1`), input slots (`cqt$2`, `cqt$3`) and result slot (`cqt$4`),
+`AbstractContainerMenu` (`cpu`), `Slot` (`crq`), `SimpleContainer` (`bra`),
+`ResultContainer` (`crl`),
 `EnchantmentHelper` (`dae`), `ItemEnchantments.Mutable` (`dai$a`),
 `ItemStack` (`cuq`) and `Container` (`bqk`). Raw disassembly and proprietary
 Java artifacts are outside the source checkout and are not redistributed.
@@ -30,7 +32,9 @@ Java artifacts are outside the source checkout and are not redistributed.
   existing level-one curse is not upgraded by a second level-three curse.
   Non-curses are removed after merging. Tooltip visibility is inherited from
   the first crafting enchantment component. Repair cost resets to zero and
-  applies `2 * cost + 1` once per retained curse, using Java integer wrapping.
+  applies `min(2L * cost + 1, Integer.MAX_VALUE)` once per retained curse.
+  `cqt.removeNonCurses` calls `cpw.e`; this is a saturating long calculation,
+  not wrapping integer arithmetic.
 - An enchanted book without remaining curses becomes a normal book through
   `ItemStack.transmuteCopy`; this retains its component patch while changing
   the item prototype. Reconstructing a component-free book loses unrelated data.
@@ -40,9 +44,14 @@ Java artifacts are outside the source checkout and are not redistributed.
 `GrindstoneState` owns exactly two inputs and one derived preview. `set_input`
 recomputes atomically. `prepare_take(amount, registry)` does not consume an input
 or RNG draw. Its token cannot be cloned through the public API, and commit
-checks the exact captured inputs and preview. Removing a result consumes both
-inputs even for a partial take of a count-two result; the remaining displayed
-result is not another owned stack.
+checks the exact captured inputs and preview. Ordinary `ResultContainer.removeItem`
+ignores the requested amount and removes the **whole** result, including a
+right-click or throw-one of a count-two result. `Slot.tryRemove` first rejects
+a destination that cannot accept that whole count. The wrapper
+`prepare_take(amount)` represents the actual destination transfer, with a partial
+count possible during quick-move only. Quick-move consumes both inputs even
+when only one of a count-two result fits; the remaining preview disappears. It
+is not an additional owned item.
 
 `commit_take` requires the real Level RNG callback. XP sums each non-curse's
 actual registry minimum cost over both original inputs. Positive totals produce
@@ -64,6 +73,11 @@ the real captured block/Level access and the ordinary distance check.
 
 ## Verification and integration limits
 
+A focused native regression assigns32 actual registered enchantment holder IDs
+to an explicitly labeled fixture curse tag and verifies the retained result
+repair cost saturates at `Integer.MAX_VALUE`. This exercises the actual tag-owner
+contract, not vanilla's ordinary two-curse tag or a Java gameplay flow.
+
 A temporary local reflection harness invoked the **unchanged** `cqt.computeResult`
 on an allocated menu object; it supplied vanilla registries and explicitly bound
 the official curse tag. It did not simulate a Level, clicks or PLAY traffic.
@@ -81,7 +95,152 @@ bound-one RNG draw, a partial count-two take and close ownership. These checks
 use a labeled fixture enchantment registry; that test fixture is not a production
 world owner. Full compiler/runtime results belong in the team PR handoff.
 
-Main has no grindstone callsite in this stage. Click modes, destination transfer,
-cursor/state-ID synchronization, world validity, actual XP entities, closing and
-disconnect dispatch require the central adapter and real owners described above.
-This bounded kernel does not complete `inventory.4` or `crafting.5`.
+## Native controller and exact callback phases
+
+`container_workstation_grindstone.rs` supplies `GrindstoneMenu<Binding,
+RegistrySnapshot>` over the existing single `GrindstoneState` preview and
+`MenuSync` cursor. There is no retained live player inventory copy. All 36
+player slots are borrowed through the host's canonical inventory: menu3–38 maps
+to inventory9–44; SWAP additionally uses the actual offhand at45.
+
+All seven ordinary modes are implemented: PICKUP, QUICK_MOVE, SWAP, CLONE,
+THROW, QUICK_CRAFT and PICKUP_ALL. Result2 never accepts a placed stack or drag.
+Creative CLONE deliberately copies up to the item's maximum without consuming
+inputs or awarding XP, as the source does. No crafted-item/stat/recipe or
+advancement callback is fabricated. Input-to-player quick move is forward;
+result-to-player is reversed. Player-to-input tries0–1 whenever either input is
+empty, with no hotbar fallback if that attempt fails. If both inputs are full,
+main inventory and hotbar exchange. Nonempty compatible targets are merged by
+`moveItemStackTo` before its empty-slot `mayPlace` checks.
+
+The source `cqt$1.setChanged` first runs actual SimpleContainer listeners, then
+`cqt.slotsChanged`. The latter calls the superclass broadcast **before**
+recomputing the result, then `createResult` broadcasts the newly derived result.
+The controller preserves both phases and every source Slot/container setter
+notification; a zero-accept matching safeInsert still invokes the setters.
+Signed safeInsert capacity for an overfull observed target is preserved. Result
+container dirty calls are no-ops and cannot recompute a second result preview.
+
+For normal PICKUP, the whole extracted result is on the cursor before onTake.
+For SWAP to an empty hotbar/offhand, it is in that actual inventory slot first.
+For THROW and PICKUP_ALL, safeTake's onTake runs before the caller drops the
+item or grows the cursor. The controller reads the **current** inputs for XP,
+so earlier PickupAll input removals cannot leave a cached XP award. The source
+order is actual Level draw when positive, actual orb award at the captured block
+centre (including the zero-amount call), event1042/data0, input0 container
+setter with old/new preview broadcasts, then input1 setter and its broadcasts.
+An item throw happens afterward. A single staged transaction must cover orb
+allocation/merging and Player.drop's RNG and entity allocation together.
+
+Outside-left PICKUP drops the whole cursor before clearing it; outside-right
+splits one first. Drag completion requires the real Slot-identity HashSet's
+encounter order from the host. One-slot creative drag recursively dispatches
+PICKUP button2, which does nothing. Close follows removed/clearContainer:
+cursor first, then removeItemNoUpdate for input0 and input1, returning each to
+the actual inventory or dropping with traceItem=false. Removal does not award XP,
+broadcast input changes or return the preview. The actual server close-window
+packet precedes removal, and the central owner transfers old inventory sync
+baselines to window0 afterward.
+
+## Required real-owner transaction contract
+
+`GrindstoneMenuHost` must bind the actual ServerPlayer and captured
+ContainerLevelAccess Level/position/menu lifetime. A grindstone has no invented
+block-entity identity. `registry_snapshot` captures the actual registry/curse-tag
+view used by the item holder IDs; an owner change rejects the action. A checked
+nonreused controller instance plus revision is required by `click` and `close`;
+window reuse or structurally identical contents cannot revive an old token.
+Generic public controller Clone and replayable prepared result plans are not
+exposed; the exact same-owner host staging capability is described below.
+Validity delegates the captured grindstone and actual player reach with +4.0.
+The central packet/tick owner still performs the source selected-menu,
+spectator, validity/close and disconnect dispatch checks.
+
+`begin_stage` must detach **all** mutable real owners and callbacks, including
+inventory, RNG, orb merging/allocation, drops and packet outbox; a shallow clone
+of shared mutable world state is insufficient. `publish_stage` validates the
+captured owner revision and completes all fallible preparation **before** its
+atomic live commit. Failure publishes nothing. Success queues the ordered
+outbox under the same outer owner lock, then the controller installs its menu
+infallibly. The host must never drain packets, permit callback reentry or save
+menu/player state before that final UI installation and outer lock exit.
+`menu.state()`, `menu.carried()` and the host's canonical `inventory()` already
+provide the actual read-only save views; no additional inventory owner is
+introduced. Host `preflight` rejects unavailable actual owners
+and reentrant listener contexts. Read-only `GrindstonePhase` records the exact
+callback entry inputs, preview, canonical inventory and cursor. The actual
+Inventory.add/placeItemBack owner is responsible for its own internal mutation,
+packet and overflow-drop phases; the mutable stack argument is the same logical
+owned stack throughout that callback. SimpleContainer callbacks must retain
+their real listeners, not substitute packets for dirty notifications.
+
+The adapter rejects bundles and explicit food-component20 overrides before
+click processing. Nested ItemStack identity in those FoodProperties values is
+not established by equal wire bytes. Stable item prototype food values remain
+supported. The host must reject unsupported mutable/reentrant listeners and
+unknown drag identity/order; no fake curse registry, no-op world or direct player
+XP replacement is supplied.
+
+Focused native controller checks execute a restricted recording host with the
+real native Level RNG algorithm. They cover all seven modes, whole count-two
+right extraction and insufficient cursor capacity, partial shift with derived
+leftover discarded, source old/new preview broadcasts, actual borrowed hotbar
+mutation before XP, an orb failure rolling back inventory/menu/RNG together,
+bound-one draw, XP-before-throw, outside cursor phases, stale/reused UI and
+registry/player binding guards, and close returning only the two inputs. This
+is a native controller scenario, not an original-Java click replay, production
+world, PLAY runtime or complete conformance suite.
+
+## Retained full-state resynchronization
+
+The central integration request recorded on issue 3 as comment `6564455352`
+adds `GrindstoneMenu::broadcast_full_state<H: GrindstoneMenuHost<Binding = K,
+RegistrySnapshot = S>>(&mut self, host: &mut H) -> Result<()>` and the explicit
+`GrindstoneMenuAction::FullState` preflight action. This uses the existing private
+transaction: snapshot the retained menu, invoke
+`MenuSync.broadcast_full_state(actual_top, host.inventory(), [])`, stage every
+sync event with the actual `GrindstonePhase`, check the next UI revision,
+atomically publish/queue the host stage and install the menu. It does not call
+initialize, recompute the preview, consume inputs, reset drag/cursor, draw RNG,
+or award XP. The ordinary full-content packet advances the protocol state ID
+and updates synchronization baselines; older dispatch tokens become stale.
+
+A focused native flow preserves a real count-two derived result, its two inputs,
+an actual picked-up cursor and an active drag selection across full resync. It
+checks the thirty-nine-slot content packet and source phase, confirms stale
+click/close tokens fail, and observes an empty subsequent incremental broadcast.
+Rejecting atomic publication leaves the original menu, cursor, inventory,
+RNG, callback records and queued sync unchanged. This fixture establishes the
+retained resync contract; production spectator dispatch and outbox publication
+remain central responsibilities.
+
+## Same-owner host staging capability
+
+Central issue-3 request `6564535444` adds the exact public
+`GrindstoneMenu::staged_copy_for_host(&self) -> Self`, delegating to the existing
+private staging operation. It preserves the **same** actual binding, registry
+snapshot, UI instance/token/revision, active state, inputs, derived preview,
+cursor, drag state and synchronization baselines. It allocates no new UI
+identity and does not provide a general derived Clone implementation.
+
+This capability lets the actual RootSharedContainer host keep its canonical
+menu unchanged until all fallible mixed Item/XP/native owner preparation has
+succeeded. The caller must then atomically adopt the staged menu and those same
+captured owners under the original owner/token lock. The copy cannot be rebound,
+registered as a second live UI, or used to return/drop stacks from both images.
+The staging images represent the same logical ownership; only one becomes
+canonical. Output draining, callback reentry and saves still wait for final
+menu installation and outer lock exit as required above. Existing read-only
+state/cursor/inventory APIs supply save views without a second inventory owner.
+
+A focused fixture flow rejects staged orb publication without changing the
+canonical menu/inventory/RNG, then prepares a result pickup on a detached host
+and menu, verifies the original is unchanged, and adopts only that successful
+image. The original token becomes stale after adoption. The retained full-sync
+flow also exercises this public capability while preserving an active drag,
+nonempty cursor, inputs, preview and synchronization state.
+
+Main has no grindstone callsite in this stage. Actual enchantment/tag/minimum-cost
+bindings, Level RNG/orb/event/drop transactions, canonical player callbacks and
+server dispatch remain integration contracts. This bounded controller does not
+complete `inventory.4`, `crafting.2` or `crafting.5`.

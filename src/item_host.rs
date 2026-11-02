@@ -69,12 +69,25 @@ pub trait RuntimeGameplayHooks {
     ) -> Result<()>;
 }
 
+/// A host has one actual external-menu synchronization owner. Installing either
+/// variant replaces the previous one, preventing duplicate publication.
+enum ExternalMenuSync<'a, H: RuntimeGameplayHooks + ?Sized> {
+    Packets {
+        player: i32,
+        sync: &'a mut dyn FnMut(&PlayerInventory) -> Result<Vec<Packet>>,
+    },
+    WithHooks {
+        player: PickupPlayer,
+        sync: &'a mut dyn FnMut(&mut H, &PlayerInventory) -> Result<Vec<Packet>>,
+    },
+}
+
 pub struct RuntimeInventoryHost<'a, H: RuntimeGameplayHooks + ?Sized> {
     players: &'a EntityRegistry,
     containers: &'a BTreeMap<i32, SharedContainer>,
     hooks: &'a mut H,
     external_menu_player: Option<i32>,
-    external_menu_sync: Option<(i32, &'a mut dyn FnMut(&PlayerInventory) -> Result<Vec<Packet>>)>,
+    external_menu_sync: Option<ExternalMenuSync<'a, H>>,
 }
 
 impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
@@ -106,7 +119,23 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
         player: i32,
         sync: &'a mut dyn FnMut(&PlayerInventory) -> Result<Vec<Packet>>,
     ) -> Self {
-        self.external_menu_sync = Some((player, sync));
+        self.external_menu_sync = Some(ExternalMenuSync::Packets { player, sync });
+        self
+    }
+
+    /// Synchronize the actual active menu with the same gameplay hook owner
+    /// already borrowed by this host. The callback runs at the existing
+    /// ServerPlayer.take/menu-sync phase inside the canonical shared-container
+    /// transaction. It can execute that menu's local inventory listeners before
+    /// returning its ordered packets, without cloning hooks or inventing a
+    /// second inventory/cursor owner. The caller retains the actual player fact
+    /// in its callback; the bound identity is checked before dispatch.
+    pub fn with_external_menu_sync_and_hooks(
+        mut self,
+        player: PickupPlayer,
+        sync: &'a mut dyn FnMut(&mut H, &PlayerInventory) -> Result<Vec<Packet>>,
+    ) -> Self {
+        self.external_menu_sync = Some(ExternalMenuSync::WithHooks { player, sync });
         self
     }
 
@@ -131,9 +160,19 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
 
     fn sync_menu(&mut self, player: PickupPlayer) -> Result<()> {
         let container = self.container(player)?.clone();
-        if let Some((id, sync)) = &mut self.external_menu_sync {
-            if *id == player.entity_id {
-                return container.transact(|menu| Ok(((), sync(&menu.inventory)?)));
+        if let Some(external) = &mut self.external_menu_sync {
+            match external {
+                ExternalMenuSync::Packets { player: id, sync } if *id == player.entity_id => {
+                    return container.transact(|menu| Ok(((), sync(&menu.inventory)?)));
+                }
+                ExternalMenuSync::WithHooks { player: bound, sync }
+                    if bound.entity_id == player.entity_id =>
+                {
+                    ensure!(bound.uuid == player.uuid, "external menu player UUID changed");
+                    let hooks = &mut *self.hooks;
+                    return container.transact(|menu| Ok(((), sync(hooks, &menu.inventory)?)));
+                }
+                _ => {}
             }
         }
         container.transact(|menu| {

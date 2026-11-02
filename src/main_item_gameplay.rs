@@ -40,6 +40,7 @@ pub enum GameplayCriterion {
     ThrownItemPickedUpByPlayer,
     InventoryChanged,
     Tick,
+    DefaultBlockUse,
 }
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct InventorySlotCounts {
@@ -249,6 +250,23 @@ impl MainItemGameplay {
             self.listener_blocks.remove(&position);
         }
         Ok(())
+    }
+    /// Dispatch the source DefaultBlockInteractionTrigger for an actual player.
+    /// The caller must first query the post-use target through its real world
+    /// owner, while retaining the world/player lock. This registry owns only
+    /// the explicitly empty-listener branch: no location predicate consumes
+    /// the target and no synthetic LootContext or advancement is created.
+    pub(super) fn default_block_use(
+        &mut self,
+        uuid: Uuid,
+        _target: (i32, i32, i32),
+    ) -> Result<()> {
+        self.require_supported_floor()?;
+        ensure!(
+            self.active_players.values().any(|active| *active == uuid),
+            "default block-use criterion player is not active"
+        );
+        self.empty_criterion(uuid, GameplayCriterion::DefaultBlockUse)
     }
     /// Call only at the actual ContainerListener.slotChanged boundary for the
     /// player's InventoryMenu. It has a separate local baseline from remote

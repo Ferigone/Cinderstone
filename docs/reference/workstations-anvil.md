@@ -23,9 +23,10 @@ Raw Java artifacts and disassembly stay outside the repository.
   the actual item's `isValidRepairItem` callback, not a menu-local item list.
 - Addition `STORED_ENCHANTMENTS` **presence** selects the source's book branch.
   Enchantment merging uses actual holders, compatibility/applicability, max
-  levels, anvil costs and map encounter order. This stage explicitly rejects
-  that branch and enchanted sacrifices; existing base enchantments survive
-  supported renames/material repairs/unenchanted sacrifices.
+  levels, anvil costs and map encounter order. The native owner-backed branch
+  below implements those rules; an absent actual owner explicitly rejects the
+  branch. Existing base enchantments also survive supported renames/material
+  repairs/unenchanted sacrifices without inventing a registry.
 - `setItemName` filters each Java UTF-16 character with
   `StringUtil.isAllowedChatCharacter` (exclude U+00A7, values below U+0020 and
   U+007F), then rejects filtered strings longer than 50 UTF-16 units. The blank
@@ -65,21 +66,336 @@ implementation is an integration boundary.
 input, XP, RNG, block or cursor. Its plan is only a proposed transfer;
 `validate_take` must run before any real-owner changes. The host must reserve the
 **entire** derived output in the destination, apply the level delta, commit
-input/cost changes once, then invoke `finish_anvil_take` against the captured actual owners in that order.
+input/cost changes once, then invoke `finish_anvil_take` against the captured
+actual owners in that order. This standalone whole-result plan remains available;
+the menu controller below additionally handles the source partial-shift branch.
 The prepared result is not a second owned stack. `close_inputs` returns only
 input 0 and 1. Do not persist or return the derived output on menu closure.
 
+## Native ordinary-menu controller
+
+`src/container_workstation_anvil.rs` adds a bounded `AnvilMenu<K>` over the same
+`AnvilState`; result computation remains in a single kernel function. Its
+layout is the actual two input slots 0/1, derived result slot 2, player slots
+3–38 (canonical inventory slots 9–44), and one level-cost DataSlot. It exposes
+initialization, ordinary/retained-full-state broadcast, rename, all seven
+ordinary click modes, close, validity and inventory-baseline transfer. The caller supplies the actual
+`AnvilMenuHost` transaction; no production default host is installed.
+
+The new narrowly additive kernel hooks distinguish raw stack mutation from a
+source container notification and identify `createResult`'s normal tail. Direct
+`javap` inspection of `ItemCombinerMenu.slotsChanged` (`cqx.a(Container)`) shows
+that it calls superclass `broadcastChanges` **before** recomputation.
+`AnvilMenu.createResult` (`cpw.m`) broadcasts again at offsets 1066–1069 only
+when it reaches its normal tail. Its early returns do not broadcast again.
+Its empty/missing-enchantment first-input return precedes resetting the source
+repair-material count, which the observed kernel path now preserves. The kernel
+also emits source-granular field observations: cost becomes 1 before the first
+input guard, the material count resets to 0 at `cpw.m` offset 133 before the
+actual repair-item predicate at offset 172, and the completed material count is
+assigned at offset 284 before the later hover-name callback. The controller's
+mandatory observed-context wrapper forwards these changes to the actual phase
+owner; a previous two-material preview cannot leak into the repair predicate or
+a subsequent one-material hover-name callback. Ordinary
+`Slot.setByPlayer` retains both the input-container and subsequent slot
+`setChanged` boundaries; player inventory dirty callbacks remain distinct from
+menu slot listeners and packets.
+
+Result ownership follows `ResultContainer.removeItem` (`crl.a(int,int)`), which
+ignores the requested amount and removes the entire derived stack. The inherited
+`Slot.tryRemove` (`crq.a(int,int,Player)`) rejects a destination whose maximum
+cannot hold that entire result because the result slot disallows modification.
+Consequently right-clicking an empty cursor onto a renamed stack of 64 takes
+all 64, rather than half. `ItemCombinerMenu.quickMoveStack` can insert only part
+of a result, then still calls `onTake`: that consumes the inputs, charges the
+levels and discards the remainder when clearing input 0 recomputes the preview.
+The controller preserves this source branch instead of manufacturing a second
+owned remainder. Input quick-move accepts every item and attempts input 0 then
+1, as the inherited `canMoveIntoInputSlots` returns true.
+
+Unlike SmithingMenu and StonecutterMenu, **AnvilMenu does not override
+`canTakeItemForPickAll`**. The inherited AbstractContainerMenu method returns
+true, so matching affordable anvil results participate in PICKUP_ALL, subject
+to the whole-result capacity rule. CLONE does not invoke result `onTake`; THROW
+and empty-hotbar/offhand SWAP do. There is no fabricated item-crafted, recipe,
+statistic or advancement callback: `cqx$2.onTake` delegates directly to the
+anvil's actual XP/input/world method.
+
+Result `onTake` stages actual `Player.giveExperienceLevels` unless instabuild,
+then the first input-container clear and its previous-preview/cost broadcast,
+then the second input's recorded material decrement/clear and notification,
+then cost reset, and finally `finish_anvil_take` against the actual player RNG
+and captured current block. Cursor installation precedes result onTake for
+PICKUP; PICKUP_ALL grows its cursor after safeTake/onTake. Output shift inserts
+into the actual borrowed inventory before XP/input/world callbacks. The host
+receives read-only `AnvilPhase` views at callbacks rather than replaying them
+against the final menu. These views are observations, never inventory or
+result owners.
+
+`ServerGamePacketListenerImpl.handleRenameItem` (`aru.a(ahr)`) checks that the
+current menu is an anvil and still valid, then invokes only `setItemName`. It
+adds no unconditional broadcast. The controller applies the same block/reach
+gate and relies on the recomputation tail for rename synchronization, including
+the no-broadcast early-return case. Clicks use shared MenuSync state-ID,
+client-prediction and stale-state correction. Active-menu and captured
+player/Level/position/menu binding checks reject a substituted session. A
+nonreused checked native instance plus revision token is required by click,
+rename and close; protocol window reuse or structurally equal item contents do
+not revive a stale token. Public controller cloning is not exposed. Successful
+publication advances the native revision and verifies that the captured actual
+binding survived callbacks. This token is an internal dispatch guard, not a
+replacement for the wire state ID. The host must provide the actual
+actor/window/spectator and owner preflight.
+
+Closing returns the cursor first and only the two owned input stacks in order,
+using the existing native return/drop engine and its per-insertion raw inventory
+packets. Input removal does not recompute the derived preview during those
+source callbacks. The preview and cost are discarded once closure finishes;
+no result is returned or dropped. Dead/disconnected drops retain the original
+cursor/input phases. Alive close insertion and overflow observations use the
+same canonical staged player inventory, with scratch snapshots only to replay
+the shared engine's ordered packet boundaries.
+
 ## Integration status and limits
 
-No Main block-use/click/name-packet dispatch or player/world adapter is changed
-by this module. The central integrator must provide the actual repair/hover
-owners, inventory/cursor transaction, player XP owner, player RNG, captured
-block access, source world events, listener ordering and shared synchronization.
-Partial result extraction, every click mode, enchantment combining, recipe-book
-or advancement ownership and complete anvil gameplay are not claimed.
+No Main block-use/click/name-packet dispatch or production player/world adapter
+is changed by this milestone. The central integrator must bind the actual
+repair/hover owners, inventory/cursor transaction, player XP, player RNG,
+captured block access, actual container listeners, world events and shared
+synchronization. `AnvilMenuHost` borrows one canonical player inventory and
+requires an actual player/Level/position/menu binding. Every public mutating
+action runs through one private controller transaction. Mandatory
+`begin_stage(token, action)` isolates **all** mutable real owners, callbacks and
+ordered outbox; a shallow clone of live shared world state is invalid. The
+controller executes all fallible work against that detached stage and a private
+menu copy, revalidates actual binding/enchantment snapshots, and checks the next
+native revision before calling mandatory `publish_stage(staged, token)`. The
+provider must atomically validate the captured actual owner revision/token and
+publish all staged owners, or publish nothing on error. Only infallible native
+menu installation follows successful owner publication. No public UI clone,
+reset-based rollback or caller-only save/restore convention is required or
+exposed. The ordered outbox is retained during publication: network dispatch
+must occur **after the outer lock/transaction is released and the action
+returns**, never inside `publish_stage`. Reentrant listeners and item click overrides such as bundles
+are explicit unsupported contexts. Before any equality-dependent operation the
+controller also invokes the shared `require_component_context` guard on actual
+inputs/result/cursor/player stacks and, for clicks, client prediction stacks.
+An explicit FoodProperties component 20 override with unresolved nested
+ItemStack reference identity is rejected before transfer, callbacks, packet
+baseline mutation or close. Stable prototypes and the original codec's proved
+primitive-only prototype elisions remain supported; equal wire bytes alone do
+not establish Java nested-stack identity. Multi-slot drag additionally
+requires the actual selected Slot-identity HashSet encounter order.
 
-The focused native checks cover the expensive rename-only cap, material
-consumption and discarded preview on close, and UTF-16/name filtering. They are
-small native contract checks, not comprehensive conformance or Java runtime
-observations. The fixed aggregate deliveries `inventory.4` and `crafting.5`
-remain incomplete.
+Enchantment combining is callable only through the actual-owner capability
+below. Its default is explicitly unavailable, so existing basic hosts still
+reject stored-enchantment and enchanted same-item sacrifices rather than
+fabricate a registry, compatibility, repair list or translation fallback. A
+production enchantment registry/map/component adapter remains pending alongside
+Main integration. Complete anvil gameplay and all-menu compatibility are not
+claimed.
+
+Focused native flows execute the new adapter rather than an unused test filter.
+They observe repair cost/materials, old-preview and cost callback phases,
+shared-inventory shrink before input callbacks, cursor/XP/player-RNG/block
+ordering, whole-stack right pickup, partial output shift, result PICKUP_ALL,
+ordinary drag/SWAP/CLONE/THROW, disconnected close without returning a preview,
+initial packet layout, rename's early-return publication, native material-count
+reset/assignment at actual repair and hover callbacks, unresolved food in actual
+and prediction stacks, stale/reused/closed UI tokens, session/block refusal and
+complete host-stage rollback for unsupported enchantment input.
+The existing kernel checks retain the expensive rename-only cap, material
+consumption, stale unsupported input atomicity and UTF-16 filtering. These are
+native contract checks, not Java gameplay or comprehensive conformance runs.
+The fixed aggregate deliveries `inventory.4` and `crafting.5` remain incomplete.
+
+
+## Actual-owner enchantment combination increment
+
+The same native computation now supports the `cpw.m` enchantment branch at
+bytecode offsets 434–758 through `AnvilEnchantmentSession`. No second result
+computation or preview is introduced. `AnvilContext`'s new capability defaults
+to **None/unavailable**, preserving existing public callers and their explicit
+unsupported boundary. The menu captures the actual enchantment snapshot at
+opening and validates it before and after every action; a newly appearing,
+disappearing, foreign or reloaded owner cannot silently replace it. Owner
+changes must be handled by the central transaction while preserving owned
+inputs, not retried with fabricated definitions.
+
+The provider returns opaque actual holder/snapshot references, copies the base
+`ItemEnchantments.Mutable` and its tooltip state into scratch ownership, and
+supplies actual incoming entries, current keys/levels, holder equality,
+definitions, supported-item membership, both exclusive sets, exact level setters
+and selected-component serialization. It must reject foreign/unresolved values.
+The scratch map owns no live input, player inventory or output. Queries consume
+no RNG and do not mutate live owners. The provider's write-back replaces only
+the chosen enchantment component, preserving unrelated output components and
+base tooltip visibility. There is no production provider or fixed default
+rarity/cost table in this milestone.
+
+A single incoming entry is admitted without guessing an encounter order.
+Multiple entries require the provider to certify the actual holder/hash-map
+encounter order; a boolean default or protocol-ID/BTree/wire ordering is not a
+source certificate. The native guard rejects uncertified multi-entry contexts.
+The actual current mutable-map key order is also supplied after each setter.
+This matters when incoming enchantments conflict: accepted earlier entries can
+reject later entries, and the stack-count cost rule can also make order visible.
+
+For each entry, native code reads the existing level, chooses incoming+1 for
+equal levels or max(existing,incoming) otherwise, and clamps an accepted level
+to the actual definition's maximum. `Enchantment.canEnchant` (`dac.c(ItemStack)`)
+checks `supported_items`; creative or an exact enchanted-book base overrides
+that applicability result. Neither overrides compatibility. Each incompatible
+different current holder adds one level to operation cost, even when the
+incoming entry was already inapplicable. A rejected entry records rejection;
+an accepted entry uses **Mutable.set**, not upgrade/max(old,new), so an overlevel
+base can be reduced to its definition maximum. `dai$a.set` removes nonpositive
+levels and otherwise puts min(level,255). Normal decoded definitions require
+max_level 1–255 and a nonnegative anvil_cost.
+
+Each accepted entry adds `anvil_cost * accepted_level`, retaining Java signed
+integer wrapping. Addition `STORED_ENCHANTMENTS` **presence**, even empty or on
+a non-book item, changes its multiplier to max(1,anvil_cost/2), bypasses the
+same-item requirement and suppresses the durability-combine bonus. However,
+`EnchantmentHelper.getEnchantments` (`dae.b/d`) still reads stored component 23
+only for the exact enchanted-book item and ordinary component 9 otherwise.
+Thus presence and selected map type must not be conflated. If base count is
+above one, each accepted entry sets operation cost to 40; subsequent rejected
+entry penalties may increase it again. All-rejected with none accepted returns
+empty/cost zero **before rename**, discarding any previous durability-work cost.
+No curse/treasure restriction, primary-items test, enchanting-table tag, weight,
+minimum/maximum enchantability, recipe, advancement or preview RNG is added.
+Compatibility is `dac.areCompatible`: different holder identity and absence from
+both actual exclusive sets.
+
+Rename, long prior-work addition, operation-cost wrapping, total clamp,
+rename-only cap39, survival result refusal at40+, saturating prior-work increase,
+XP/input consumption and actual player-RNG/block callbacks retain the existing
+source path. Final `dae.setEnchantments` writes only the output-selected 9/23
+component after the prior-work component is set and only for a nonempty result.
+The basic no-owner path continues to preserve existing enchantments for repairs
+and rename without parsing holders it does not own.
+
+Focused native fixtures use actual registered IDs and the pinned original
+sharpness/smite/unbreaking resource max-level/anvil-cost facts. Their restricted
+item/exclusive sets and ordered maps are explicitly test fixtures, not production
+bindings, Java Fastutil observations or a gameplay oracle. Checks cover book
+cost/level/tooltip behavior, lowering an overlevel base via exact set, book-base
+applicability override, stored-presence versus exact-item map choice, creative
+compatibility refusal, 40+ survival/creative behavior, uncertified multi-entry
+rejection and certified conflicting-order outcomes. An adapter flow uses that
+restricted owner through actual menu input/cursor/XP transitions and rejects
+registry-epoch or capability drift without publication. No Main callsite or
+complete enchantment gameplay is claimed.
+
+
+## Concrete atomic action publication and retained full-state resend
+
+`AnvilMenuHost` now requires
+`begin_stage(&self, token, action) -> Result<Self>` and
+`publish_stage(&mut self, staged, token) -> Result<()>`; the trait is `Sized`.
+The private `transaction` wrapper is shared by initialization, incremental
+broadcast, rename, click and close. It validates current and detached actual
+binding/component/enchantment contexts, invokes staged preflight, executes all
+source callbacks and sync mutations privately, validates again, and checks
+revision advancement. If any item/XP/inventory/RNG/world/drop/listener/packet
+callback or final validation fails, neither owner publication nor menu
+installation occurs. A failed `publish_stage` must also leave every actual
+owner and outbox unchanged. Actual owner publication precedes the infallible UI
+installation, and outbox delivery belongs outside the enclosing lock after the
+action returns. A live-world shallow clone cannot implement this contract.
+
+`broadcast_full_state` uses the same transaction with the distinct
+`AnvilMenuAction::FullState`, forwarding to the existing source-derived
+`MenuSync.broadcast_full_state`. It updates retained local listener/data and
+remote baselines and stages current content/data packets. This is the callable
+resend for an eventual actual spectator packet-owner path; it does not perform
+click/rename/take callbacks or fabricate Main dispatch. The actual preflight
+owner must allow the source full-state action for a legitimate current spectator
+while retaining its actor/menu/context guards.
+
+The restricted native fixture no longer wraps public calls in an outer cloned
+menu/host rescue. Its required stage is a detached copy of owned mutable fixture
+values; only immutable registry holder references are shared. Focused failures
+occur after a result shift has changed the staged inventory, charged XP, drawn
+player RNG and destroyed the last anvil, and separately after all callbacks and
+packet-outbox work at atomic publication. Another failure occurs after the
+source take and staged item drop. Each direct public action proves both the
+actual fixture and complete UI/token/sync state unchanged. Successful retry
+publishes once. A retained full-state flow checks content/data publication,
+local slot observation and no duplicate incremental resend afterward. These
+are native transaction fixtures, not original-Java gameplay, a real production
+world provider or Main integration evidence.
+
+## Retained inventory synchronization at ServerPlayer.take
+
+Original `ServerPlayer.take(Entity,int)` (`aqv`, mapped996–998) first delegates
+its real item-take/Collect behavior, then calls the **actual current menu's**
+broadcastChanges. It does not create a menu, recompute an anvil result, check a
+new XP/repair/world context or substitute the later tick-validity phase.
+
+The narrowly additive core bridge now exposes:
+
+```rust
+menu.prepare_inventory_broadcast(&actual_inventory)
+    -> Result<AnvilInventorySyncPlan<'inventory, K>>;
+menu.prepare_inventory_full_state(&actual_inventory)
+    -> Result<AnvilInventorySyncPlan<'inventory, K>>;
+plan.events() -> &[SyncEvent];
+plan.phase() -> &AnvilPhase;
+plan.inventory() -> &PlayerInventory;
+plan.next_token() -> AnvilMenuToken;
+plan.validate(&actual_menu) -> Result<()>;
+plan.into_validated(&mut actual_menu)
+    -> Result<ValidatedAnvilInventorySync<'menu, 'inventory, K>>;
+// The capability exposes the same events/phase/inventory/next_token getters.
+capability.commit() -> AnvilInventorySyncPublication; // infallible
+```
+
+Preparation borrows the caller's **actual canonical PlayerInventory** immutably,
+checks component support and next token revision, and computes ordered listener/
+packet events on a private copy of the retained MenuSync. It invokes no host,
+XP, registry, repair, text, world, RNG or crafting callback. Inputs, preview,
+name, cost, material count, cursor, drag, enchantment-owner identity and UI
+instance are retained. The full-state counterpart uses existing
+broadcast_full_state, preserving local and remote baselines rather than
+initializing/resetting a new menu.
+
+Before admitting publication, validation checks original binding/token/active
+state, retained sync, input/preview/name state, captured enchantment-owner
+reference identity and drag state. The inventory is the same held immutable
+borrow, so its slots, selected hotbar, retained window0 cursor and state ID cannot
+be changed during this preparation/capability scope. The dispatch token guards
+all supported mutation of the private kernel; adoption never overwrites its
+state or kernel revision. The validated capability exclusively borrows the
+canonical menu until commit/cancel. Cancellation or stale/preparation refusal
+adopts no native baseline or token. Successful commit moves only the already
+prepared sync and checked token, then returns the one ordered publication;
+it performs no fallible work or owner callback.
+
+This is not a substitute full AnvilMenuHost. Main's actual pickup owner must
+prove its retained active-menu/player/session binding and provide the genuine
+canonical inventory borrow after Collect at the literal source take boundary.
+It must pure-preflight **all** actual MainGameplayFrame listeners and their
+counts/component/source/registration conditions before the first real hook.
+The supported readonly empty-criteria hooks then run while the capability
+protects menu and inventory, followed by infallible adoption. There must be no
+remaining Result-producing validation/encoding/world/item work after that first
+hook, and no replay of already executed listeners. Unknown/effectful/reentrant
+listeners reject through the real Main owner, not an always-empty fake host.
+Packet publication remains with the actual ordered outbox after adoption and
+its enclosing source transaction; each packet is sent once. Core preparation
+alone neither executes that frame nor proves an existing Main callsite.
+
+Focused native bridge regressions verify an actual retained renamed result and
+independent cursor/drag, actual player-slot packet/backing index and state ID,
+readonly observation before deferred adoption, empty incremental resend after
+commit, cancellation, stale token/sync/reopen, component/revision-exhaustion
+refusal and retained full-state content/cost/name/cursor. They use the existing
+restricted fixture only to establish retained state; the bridge itself needs
+no fabricated full host and changes no fixture XP/RNG/world/callback owner.
+`cargo test --locked --lib container_workstation_anvil::tests -- --nocapture`
+with the shared target passed twelve native adapter flows on 1 November 2026,
+including the prior transaction/source flows. The owned Rust file passed
+rustfmt and the owned changes passed whitespace checks. This is not Main or
+original-Java gameplay verification and completes no aggregate checklist row.

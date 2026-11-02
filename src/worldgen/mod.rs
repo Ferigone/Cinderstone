@@ -1,4 +1,4 @@
-//! Native NOISE and SURFACE generation stages for the pinned Java 1.21 data.
+//! Native BIOMES, NOISE, SURFACE and AIR-carver data for pinned Java 1.21.
 //!
 //! These APIs return staged terrain, never a fabricated FULL/runtime chunk.
 //! The integration coordinator must supply the actual world identity, biome
@@ -6,10 +6,13 @@
 pub mod aquifer;
 pub mod biome_context;
 pub mod biome_source;
+pub mod biomes;
 pub mod climate;
+pub mod carver;
 pub mod biome_temperature;
 pub mod biome_zoom;
 pub mod generator;
+pub mod feature;
 pub mod noise_chunk;
 pub mod random_state;
 pub mod surface;
@@ -29,3 +32,8 @@ pub use biome_source::{
     MultiNoisePreset, MultiNoiseQuartProvider,
 };
 pub use climate::{ClimateParameter, ClimateParameterList, ClimateParameterPoint, ClimateSearch};
+
+pub use biomes::{
+    BiomeImage, BiomeNeighborhood, BiomeResolver, BiomeTerrain, BuiltinBiomeResolver, PreparedBiomes,
+    RetrogenContext,
+};

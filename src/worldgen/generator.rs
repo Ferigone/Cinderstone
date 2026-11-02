@@ -2,9 +2,15 @@
 //!
 //! The initial supported boundary is an actually empty new ProtoChunk with
 //! empty Blender and structure beardifier. Those are caller-owned facts, not
-//! defaults. This does not select biomes, carve, place features or return FULL.
+//! defaults. Paired staged adapters retain actual BIOMES and AIR carver data;
+//! feature placement, scheduling and FULL publication remain external.
 use super::{
     aquifer::{Aquifer, AquiferBlock, AquiferContext, AquiferNoise, FluidStatus},
+    biome_temperature::BiomeTemperature,
+    carver::{
+        self, AirCarvingContext, CarverHost, CarvingMask, CarvingReport, CarvingTargetHost,
+        RawBiomeManager,
+    },
     noise_chunk::{NoiseChunk, RetainedNoiseChunk},
     random_state::RandomStateRandoms,
     surface::{self, SurfaceHost, SurfaceReport, SurfaceSystem},
@@ -60,6 +66,8 @@ impl FreshGenerationContext {
 pub enum TerrainStage {
     Noise,
     Surface,
+    /// Native AIR-carver data only, not original ChunkStatus/readiness.
+    Carvers,
 }
 
 /// The result of the source fillFromNoise entry point. A no-cell result means
@@ -500,11 +508,15 @@ impl NoiseGenerator {
             chunk_z: chunk.1,
             void_air: self.palette.void_air,
         };
-        // NoiseBasedChunkGenerator.buildSurface supplies false. This is not the
-        // old blending-height biome path, which requires its own dependencies.
-        let report = self
-            .surface
-            .build_surface(&mut host, chunk.0, chunk.1, false)?;
+        // NoiseBasedChunkGenerator.buildSurface forwards the settings'
+        // useLegacyRandomSource flag. It selects Y=0 for each column's initial
+        // biome lookup; the later rule-context lookups retain their actual Y.
+        let report = self.surface.build_surface(
+            &mut host,
+            chunk.0,
+            chunk.1,
+            self.graph.uses_legacy_random_source(),
+        )?;
         *image = staged;
         *stage = TerrainStage::Surface;
         Ok(report)
@@ -698,7 +710,7 @@ pub struct OwnedNoiseTerrain {
     generator: Arc<NoiseGenerator>,
     density: ChunkDensity,
     // The original per-chunk aquifer remains alive with its caches even though
-    // SURFACE does not query it. This is not a carver-context implementation.
+    // SURFACE does not query it; the AIR carver adapter reuses this exact owner.
     _aquifer: Box<Aquifer>,
     chunk_x: i32,
     chunk_z: i32,
@@ -756,6 +768,80 @@ impl OwnedNoiseTerrain {
         self.generator.sample_erosion_from(&mut self.density, point)
     }
 
+    /// Consuming AIR invocation used only by the paired BIOMES adapter. The
+    /// live image, mask and caches are mutated in source order, not privately
+    /// cloned/rolled back. An error consumes the failed job; no completed image
+    /// or retryable SURFACE owner is returned.
+    pub(super) fn apply_air_carvers(
+        mut self,
+        context: AirCarvingContext<'_>,
+    ) -> Result<(Self, CarvingMask, CarvingReport)> {
+        ensure!(
+            self.stage == TerrainStage::Surface,
+            "AIR carvers require completed native SURFACE data"
+        );
+        let generator = Arc::clone(&self.generator);
+        let AirCarvingContext {
+            world_seed,
+            source,
+            zoom,
+            temperature,
+            neighbors,
+            registry,
+            facts,
+            mut mask,
+        } = context;
+        ensure!(
+            world_seed == generator.seed(),
+            "carver world seed differs from the retained generation owner"
+        );
+        let chunk = (self.chunk_x, self.chunk_z);
+        mask.install_before_invocation(chunk, self.level_min_y, self.level_height)?;
+        // Original withDifferentSource view precedes RandomSupport's real
+        // process-global uniquifier/nanoTime invocation, even for empty lists.
+        let mut biomes = RawBiomeManager::new(generator.graph(), source, zoom);
+        let mut random = crate::random::WorldgenRandom::new(crate::random_seed::create_random()?);
+        let accessor = facts.generation_height(chunk)?;
+        let upgrading = facts.is_upgrading(chunk)?;
+        ensure!(
+            accessor == (self.level_min_y, self.level_height),
+            "actual CARVERS accessor differs from retained chunk build bounds"
+        );
+        ensure!(
+            !upgrading,
+            "upgrading/retrogen CARVERS context is unsupported"
+        );
+        let grid = generator
+            .graph
+            .grid()
+            .context("missing actual noise settings")?;
+        let min_gen_y = accessor.0.max(grid.min_y);
+        let gen_depth = accessor.1.min(grid.height);
+        let mut mask = mask.acquire_after_rng(self.level_min_y, self.level_height)?;
+        let mut report = {
+            let mut host = TerrainCarverHost {
+                generator: &generator,
+                terrain: &mut self,
+                biomes: &mut biomes,
+                temperature,
+                min_gen_y,
+                gen_depth,
+                upgrading,
+            };
+            carver::run_air(
+                &mut host,
+                world_seed,
+                neighbors,
+                registry,
+                &mut random,
+                &mut mask,
+            )?
+        };
+        report.biome_queries = biomes.into_queries();
+        self.stage = TerrainStage::Carvers;
+        Ok((self, mask, report))
+    }
+
     /// Apply SURFACE using the captured generator and existing density owner.
     /// Failed dependencies leave block image, heights, posts and stage intact;
     /// successful application advances only to `TerrainStage::Surface`.
@@ -807,6 +893,155 @@ impl AquiferContext for MaterialContext<'_> {
             "aquifer pressure sampled outside current NoiseChunk position"
         );
         Ok(self.density.sample(self.graph, self.router.barrier)?)
+    }
+}
+
+/// CARVERS density queries always use the source SinglePointContext, including
+/// the pressure barrier; the NOISE current-owner barrier path remains separate.
+struct CarverAquiferContext<'a>(MaterialContext<'a>);
+impl AquiferContext for CarverAquiferContext<'_> {
+    fn global_fluid(&mut self, p: DensityPoint) -> Result<FluidStatus> {
+        self.0.global_fluid(p)
+    }
+    fn preliminary_surface_level(&mut self, x: i32, z: i32) -> Result<i32> {
+        self.0.preliminary_surface_level(x, z)
+    }
+    fn sample_at(&mut self, noise: AquiferNoise, p: DensityPoint) -> Result<f64> {
+        self.0.sample_at(noise, p)
+    }
+    fn sample_barrier(&mut self, p: DensityPoint) -> Result<f64> {
+        Ok(self
+            .0
+            .density
+            .sample_external(self.0.graph, self.0.router.barrier, p)?)
+    }
+}
+struct RawCarverSurfaceContext<'a, 'g, 'w> {
+    biomes: &'a mut RawBiomeManager<'g, 'w>,
+    temperature: &'a mut BiomeTemperature,
+}
+impl SurfaceContext for RawCarverSurfaceContext<'_, '_, '_> {
+    fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+        let biome = self.biomes.biome(DensityPoint::new(x, y, z))?;
+        Ok(self.temperature.canonical_biome(&biome)?.to_owned())
+    }
+    fn cold_enough_to_snow(&mut self, biome: &str, x: i32, y: i32, z: i32) -> Result<bool> {
+        self.temperature
+            .cold_enough_to_snow(biome, DensityPoint::new(x, y, z))
+    }
+    fn should_melt_frozen_ocean_iceberg_slightly(
+        &mut self,
+        biome: &str,
+        x: i32,
+        y: i32,
+        z: i32,
+    ) -> Result<bool> {
+        self.temperature
+            .should_melt_frozen_ocean_iceberg_slightly(biome, DensityPoint::new(x, y, z))
+    }
+}
+struct TerrainCarverHost<'a, 'g, 'w> {
+    generator: &'g NoiseGenerator,
+    terrain: &'a mut OwnedNoiseTerrain,
+    biomes: &'a mut RawBiomeManager<'g, 'w>,
+    temperature: &'a mut BiomeTemperature,
+    min_gen_y: i32,
+    gen_depth: i32,
+    upgrading: bool,
+}
+impl CarvingTargetHost for TerrainCarverHost<'_, '_, '_> {
+    fn neighbor_biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+        self.biomes.neighbor_biome(x, y, z)
+    }
+}
+impl CarverHost for TerrainCarverHost<'_, '_, '_> {
+    fn chunk_pos(&self) -> (i32, i32) {
+        (self.terrain.chunk_x, self.terrain.chunk_z)
+    }
+    fn min_gen_y(&self) -> i32 {
+        self.min_gen_y
+    }
+    fn gen_depth(&self) -> i32 {
+        self.gen_depth
+    }
+    fn is_upgrading(&self) -> bool {
+        self.upgrading
+    }
+    fn block(&mut self, p: DensityPoint) -> Result<u32> {
+        if p.y < self.terrain.level_min_y
+            || p.y >= self.terrain.level_min_y + self.terrain.level_height
+        {
+            return Ok(self.generator.palette.void_air);
+        }
+        self.terrain.image.block(
+            p.x - self.terrain.chunk_x * 16,
+            p.y,
+            p.z - self.terrain.chunk_z * 16,
+        )
+    }
+    fn set_block(&mut self, p: DensityPoint, state: u32) -> Result<()> {
+        // ProtoChunk ignores out-of-height writes; postprocessing is separate.
+        if p.y < self.terrain.level_min_y
+            || p.y >= self.terrain.level_min_y + self.terrain.level_height
+        {
+            return Ok(());
+        }
+        self.terrain.image.set(
+            p.x - self.terrain.chunk_x * 16,
+            p.y,
+            p.z - self.terrain.chunk_z * 16,
+            state,
+        )
+    }
+    fn has_fluid(&self, state: u32) -> Result<bool> {
+        ensure!(
+            (state as usize) < facts().fluids.len(),
+            "unknown canonical carver block state"
+        );
+        Ok(facts().has_fluid(state))
+    }
+    fn aquifer_substance(&mut self, p: DensityPoint) -> Result<Option<u32>> {
+        let mut context = CarverAquiferContext(MaterialContext {
+            graph: &self.generator.graph,
+            density: &mut self.terrain.density,
+            router: self.generator.router,
+            sea_level: self.generator.sea_level,
+            default_fluid: self.generator.default_fluid,
+        });
+        Ok(self
+            .terrain
+            ._aquifer
+            .compute_substance(p, 0.0, &mut context)?
+            .map(|fluid| self.generator.palette.fluid(fluid)))
+    }
+    fn aquifer_should_schedule_fluid_update(&self) -> bool {
+        self.terrain._aquifer.should_schedule_fluid_update()
+    }
+    fn top_material(&mut self, p: DensityPoint, has_fluid: bool) -> Result<Option<u32>> {
+        let mut context = RawCarverSurfaceContext {
+            biomes: &mut *self.biomes,
+            temperature: &mut *self.temperature,
+        };
+        let mut host = TerrainSurfaceHost {
+            image: &mut self.terrain.image,
+            density: &mut self.terrain.density,
+            graph: &self.generator.graph,
+            context: &mut context,
+            chunk_x: self.terrain.chunk_x,
+            chunk_z: self.terrain.chunk_z,
+            min_gen_y: self.min_gen_y,
+            gen_depth: self.gen_depth,
+            void_air: self.generator.palette.void_air,
+        };
+        self.generator.surface.top_material(&mut host, p, has_fluid)
+    }
+    fn mark_postprocessing(&mut self, p: DensityPoint) -> Result<()> {
+        if p.y >= self.terrain.level_min_y
+            && p.y < self.terrain.level_min_y + self.terrain.level_height
+        {
+            self.terrain.image.postprocessing.push(p);
+        }
+        Ok(())
     }
 }
 
@@ -1128,6 +1363,181 @@ mod tests {
             OwnedNoiseFillOutcome::Generated(terrain) => terrain,
             OwnedNoiseFillOutcome::NoCells { .. } => panic!("expected a positive-cell stage"),
         }
+    }
+
+    struct EmptyEndCarvingRegion {
+        caches: BTreeMap<(i32, i32), carver::CarverBiomeCache>,
+    }
+    impl EmptyEndCarvingRegion {
+        fn new() -> Self {
+            Self {
+                caches: (-8..=8)
+                    .flat_map(|x| {
+                        (-8..=8).map(move |z| ((x, z), carver::CarverBiomeCache::observed_absent()))
+                    })
+                    .collect(),
+            }
+        }
+    }
+    impl carver::CarvingNeighbors for EmptyEndCarvingRegion {
+        fn carver_biome_cache(
+            &mut self,
+            chunk: (i32, i32),
+        ) -> Result<&mut carver::CarverBiomeCache> {
+            self.caches
+                .get_mut(&chunk)
+                .context("missing actual test neighbor")
+        }
+    }
+    struct EndCarvingFacts(Vec<&'static str>);
+    impl carver::CarvingRegionFacts for EndCarvingFacts {
+        fn generation_height(&mut self, target: (i32, i32)) -> Result<(i32, i32)> {
+            ensure!(target == (0, 0));
+            self.0.push("height");
+            Ok((0, 256))
+        }
+        fn is_upgrading(&mut self, target: (i32, i32)) -> Result<bool> {
+            ensure!(target == (0, 0));
+            self.0.push("upgrading");
+            Ok(false)
+        }
+    }
+
+    #[test]
+    fn empty_end_air_invocation_retains_live_owners_and_advances_only_its_native_stage(
+    ) -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(123456789, "end")?);
+        let mut terrain = generator
+            .prepare_chunk(0, 0, 0, 256, observed_empty())?
+            .fill_noise()?;
+        let mut thermal = BiomeTemperature::builtin()?;
+        // This allocation/phase test supplies the actual seeded End source
+        // directly. Natural stored BIOMES/SURFACE sequencing is separately
+        // exercised by the paired original-stage oracle, not inferred here.
+        let mut biomes = RawBiomeManager::new(
+            generator.graph(),
+            carver::CarverBiomeSource::End,
+            super::super::biome_zoom::BiomeZoom::from_world_seed(generator.seed()),
+        );
+        terrain.build_surface(&mut RawCarverSurfaceContext {
+            biomes: &mut biomes,
+            temperature: &mut thermal,
+        })?;
+        terrain
+            .density
+            .preliminary_surface_level(generator.graph(), 0, 0)?;
+        let density = terrain.density.allocation_fingerprint();
+        let aquifer = terrain._aquifer.as_ref() as *const Aquifer;
+        let image_pointer = terrain.states().as_ptr();
+        let posts_pointer = terrain.postprocessing().as_ptr();
+        let before = terrain.image.clone();
+        let mut region = EmptyEndCarvingRegion::new();
+        let mut facts = EndCarvingFacts(Vec::new());
+        let mut mask = CarvingMask::new(256, 0)?;
+        mask.set(1, 255, 2)?;
+        let (mut terrain, mask, report) = terrain.apply_air_carvers(AirCarvingContext {
+            world_seed: generator.seed(),
+            source: carver::CarverBiomeSource::End,
+            zoom: super::super::biome_zoom::BiomeZoom::from_world_seed(generator.seed()),
+            temperature: &mut thermal,
+            neighbors: &mut region,
+            registry: &mut carver::BuiltinCarverRegistry,
+            facts: &mut facts,
+            mask: carver::AirMaskOwner::existing(
+                (0, 0),
+                mask,
+                carver::CarvingMaskFilter::ObservedNoUpdate,
+            ),
+        })?;
+        assert_eq!(facts.0, vec!["height", "upgrading"]);
+        assert_eq!(terrain.stage(), TerrainStage::Carvers);
+        assert_eq!(terrain.density.allocation_fingerprint(), density);
+        assert_eq!(terrain._aquifer.as_ref() as *const Aquifer, aquifer);
+        assert_eq!(terrain.states().as_ptr(), image_pointer);
+        assert_eq!(terrain.postprocessing().as_ptr(), posts_pointer);
+        assert_same_image(&terrain.image, &before);
+        assert!(mask.get(1, 255, 2)?);
+        assert_eq!(report.neighbors.len(), 289);
+        assert_eq!(report.biome_queries.len(), 289);
+        assert!(report.attempts.is_empty());
+        assert_eq!(report.random_count, 0);
+        assert!(report.random_state48 < (1_u64 << 48));
+        let mut unused = NetherBiomeFixture::default();
+        assert!(terrain.build_surface(&mut unused).is_err());
+        assert!(unused.columns.is_empty());
+        // A duplicate invocation is rejected before touching new phase owners.
+        let mut duplicate_facts = EndCarvingFacts(Vec::new());
+        let result = terrain.apply_air_carvers(AirCarvingContext {
+            world_seed: generator.seed(),
+            source: carver::CarverBiomeSource::End,
+            zoom: super::super::biome_zoom::BiomeZoom::from_world_seed(generator.seed()),
+            temperature: &mut thermal,
+            neighbors: &mut region,
+            registry: &mut carver::BuiltinCarverRegistry,
+            facts: &mut duplicate_facts,
+            mask: carver::AirMaskOwner::existing(
+                (0, 0),
+                mask,
+                carver::CarvingMaskFilter::ObservedNoUpdate,
+            ),
+        });
+        assert!(result.is_err());
+        assert!(duplicate_facts.0.is_empty());
+        assert_eq!(
+            Arc::strong_count(&generator),
+            1,
+            "consumed failed stage releases its owner"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn surface_initial_biome_y_uses_the_original_settings_flag() -> Result<()> {
+        struct ObserveFirstBiome(Option<DensityPoint>);
+        impl SurfaceContext for ObserveFirstBiome {
+            fn biome(&mut self, x: i32, y: i32, z: i32) -> Result<String> {
+                self.0 = Some(DensityPoint::new(x, y, z));
+                bail!("observed initial surface biome query")
+            }
+            fn cold_enough_to_snow(&mut self, _: &str, _: i32, _: i32, _: i32) -> Result<bool> {
+                bail!("initial biome failure must precede thermal queries")
+            }
+            fn should_melt_frozen_ocean_iceberg_slightly(
+                &mut self,
+                _: &str,
+                _: i32,
+                _: i32,
+                _: i32,
+            ) -> Result<bool> {
+                bail!("initial biome failure must precede iceberg queries")
+            }
+        }
+        for (settings, min_y, height, legacy) in
+            [("overworld", -64, 384, false), ("nether", 0, 128, true)]
+        {
+            let generator = NoiseGenerator::builtin(123456789, settings)?;
+            let mut terrain = generator.fill_noise(0, 0, min_y, height, observed_empty())?;
+            let first_available = terrain.world_surface_wg()[0];
+            assert_ne!(
+                first_available, 0,
+                "fixture must distinguish zero from the surface height"
+            );
+            let mut context = ObserveFirstBiome(None);
+            let error = generator
+                .build_surface(&mut terrain, &mut context)
+                .unwrap_err();
+            assert_eq!(error.to_string(), "observed initial surface biome query");
+            assert_eq!(
+                context.0,
+                Some(DensityPoint::new(
+                    0,
+                    if legacy { 0 } else { first_available },
+                    0
+                ))
+            );
+            assert_eq!(terrain.stage(), TerrainStage::Noise);
+        }
+        Ok(())
     }
 
     fn assert_same_image(a: &TerrainImage, b: &TerrainImage) {

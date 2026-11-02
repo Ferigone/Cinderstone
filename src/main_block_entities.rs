@@ -93,6 +93,31 @@ fn still_valid(world: &mut WorldBackend, player: &PlayerState, key: &ContainerKe
     Ok(true)
 }
 impl Server {
+    /// Genuine sendAllDataToRemote on the retained current block menu. This
+    /// refreshes remote predictions only; it does not run a click, reinitialize
+    /// local listeners or move this external menu's cursor into InventoryMenu.
+    pub(super) fn resync_native_container_locked(
+        &self,
+        world: &mut WorldBackend,
+        players: &mut LivePlayers,
+        id: i32,
+        _now: i64,
+        _border: CollisionBorder,
+    ) -> Result<()> {
+        let mut open = players.native_containers.menus.get(&id).cloned()
+            .context("resync requires the actual current native container")?;
+        let shared = players.containers.get(&id)
+            .context("native container resync inventory missing")?.clone();
+        let WorldBackend::Fixture(flat) = &*world else {
+            bail!("native container resync requires its actual block-entity owner")
+        };
+        let top = flat.native_block_entities().read_slots(&open.key)?;
+        let packet = shared.read(|menu| open.menu.full_sync(&top, &menu.inventory))??;
+        players.native_containers.menus.insert(id, open);
+        send_private(&self.entity_events, id, vec![packet]);
+        Ok(())
+    }
+
     pub(super) fn close_inventory_menu_locked(
         &self,
         world: &mut WorldBackend,
@@ -123,7 +148,10 @@ impl Server {
             close_context == mc121_rust::container::MenuCloseContext::DeadOrDisconnected
                 || (!players.native_containers.has_open(id)
                     && !players.crafting_tables.has_open(id)
-                    && !players.furnaces.has_open(id)),
+                    && !players.furnaces.has_open(id)
+                    && !players.stonecutters.has_open(id)
+                    && !players.smithing_tables.has_open(id)
+                    && !players.looms.has_open(id)),
             "close actual native menu before InventoryMenu cleanup"
         );
         // Player.remove cleans the retained InventoryMenu before the actual
@@ -231,6 +259,7 @@ impl Server {
         hand: i32,
         target: (i32, i32, i32),
     ) -> Result<bool> {
+        let _operation = self.chat_dispatch.lock().await;
         let now = self
             .clock
             .read()
@@ -292,6 +321,36 @@ impl Server {
         );
         let title = flat.native_block_entities().title(&key)?;
         let top = flat.native_block_entities().read_slots(&key)?;
+        if let Some(window) = players.looms.window_id(id) {
+            self.close_loom_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.stonecutters.window_id(id) {
+            self.close_stonecutter_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.crafting_tables.window_id(id) {
             self.crafting_table_action_locked(
                 &mut world,
@@ -462,9 +521,10 @@ impl Server {
         let Some(open) = players.native_containers.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|w| w != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
+        }
+        if close.is_some_and(|w| w != open.menu.window_id) {
             return Ok(false);
         }
         let player = players

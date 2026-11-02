@@ -1,0 +1,160 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "a4d5b460de69c1380c12323fe5dbedd77581f0d0",
+  "binary_sha256": "d6e1df77a4698c763692c5c282028f55494d2724d89537d1dc96e71949c1df88",
+  "harness_sha256": "d99a714f54a855a4987568cc519573eff17543d22bfa1a0ada36ce695f955d8e",
+  "started_at": "2026-11-01T22:04:21.457509+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "Actual native Main Smithing transform, three canonical inputs, derived result ownership, level event1044, client/disconnect removal and native cold restart conservation. No armor-trim, custom-component, graphical/public or whole-workstation compatibility claim.",
+  "checks": {
+    "real_smithing_block_menu_and_three_input_recipe": {
+      "ok": true,
+      "menu_type": 21,
+      "menu_slots": 40,
+      "window": 1,
+      "input_counts": [
+        2,
+        1,
+        2
+      ],
+      "derived_result": {
+        "item": 843,
+        "count": 1
+      }
+    },
+    "normal_take_consumes_three_inputs_and_emits_level_event1044": {
+      "ok": true,
+      "input_counts_after": [
+        1,
+        0,
+        1
+      ],
+      "owned_cursor_result": 1,
+      "derived_result_empty": true,
+      "level_event": 1044,
+      "event_data": 0,
+      "event_position": [
+        10,
+        64,
+        8
+      ],
+      "global": false
+    },
+    "client_close_returns_only_owned_smithing_stacks": {
+      "ok": true,
+      "player": {
+        "template": 1,
+        "base": 1,
+        "addition": 1,
+        "result": 1
+      },
+      "cursor_empty": true
+    },
+    "actual_smithing_crafted_stat_and_native_save": {
+      "ok": true,
+      "crafted_netherite_swords": 1,
+      "player": {
+        "template": 1,
+        "base": 1,
+        "addition": 1,
+        "result": 1
+      },
+      "world_items": {
+        "template": 0,
+        "base": 0,
+        "addition": 0,
+        "result": 0
+      }
+    },
+    "cold_restart_restores_actual_smithing_output_and_remainders": {
+      "ok": true,
+      "player": {
+        "template": 1,
+        "base": 1,
+        "addition": 1,
+        "result": 1
+      }
+    },
+    "disconnect_drops_three_owned_inputs_without_derived_output_duplication": {
+      "ok": true,
+      "player": {
+        "template": 0,
+        "base": 0,
+        "addition": 0,
+        "result": 1
+      },
+      "world_items": {
+        "template": 1,
+        "base": 1,
+        "addition": 1,
+        "result": 0
+      },
+      "derived_preview_owned": false
+    },
+    "cold_restart_accepts_nonempty_smithing_item_checkpoint": {
+      "ok": true,
+      "player": {
+        "template": 0,
+        "base": 0,
+        "addition": 0,
+        "result": 1
+      },
+      "world_items": {
+        "template": 1,
+        "base": 1,
+        "addition": 1,
+        "result": 0
+      },
+      "play_actors_created": 0
+    }
+  },
+  "pinned_recipe": {
+    "id": "minecraft:netherite_sword_smithing",
+    "items": {
+      "template": 1269,
+      "base": 838,
+      "addition": 816,
+      "result": 843
+    },
+    "result_count": 1
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e"
+  },
+  "disconnect_state": {
+    "input_counts": [
+      1,
+      1,
+      1
+    ],
+    "derived_preview_count": 1,
+    "cursor_empty": true,
+    "preview_taken": false
+  },
+  "conservation": {
+    "initial_template": 2,
+    "initial_base_swords": 2,
+    "initial_addition": 2,
+    "recipes_taken": 1,
+    "owned_output": 1,
+    "remaining_template": 1,
+    "remaining_base_swords": 1,
+    "remaining_addition": 1
+  },
+  "completed_at": "2026-11-01T22:05:07.066206+00:00",
+  "source_tree": "e12ecb9193bc70c68b055551c51afcaba37687a3",
+  "validation_limits": [
+    "Synthetic offline loopback actor in the supported native profile only.",
+    "Only pinned smithing_transform netherite sword recipe, not armor trims or arbitrary custom components.",
+    "The final item-checkpoint restart created no PLAY actor; this proves checkpoint acceptance and retained counts, not restored entity tracking/ticking readiness.",
+    "No broad conformance, graphical client, public network, whole-workstation or performance claim."
+  ],
+  "process_completion": {
+    "all_isolated_server_exits": 0,
+    "shutdown": "actual SIGINT path"
+  }
+}

@@ -10,6 +10,48 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Loom Main
+
+The Loom uses actual configured banner patterns/template tags, canonical inputs,
+source-phased callbacks and the existing item/sound owners. Full Main build and
+[local protocol flow](docs/validation/loom-flow.json) passed: patterned banner
+component49, ingredient consumption, sound1429 and close/disconnect/native restart
+conserved owned items without duplicating the preview. See
+[production scope](docs/reference/loom-production.md). A current-kernel recheck
+also passed: stale window0 clicks do not mutate the inactive menu, and all seven
+fixture stones remain owned. Source phases retain the real inventory-counter
+timeline; internal counter instrumentation is not claimed. This source stage is
+under publication; templates/custom and broader runtime paths remain open.
+
+## Native Smithing Main
+
+The three-input Smithing controller is connected to actual Main owners. A full
+Main build and [local protocol flow](docs/validation/smithing-flow.json) passed:
+netherite-sword transformation, actual level event1044, crafted statistics,
+current-menu close, disconnect and native cold restart preserved owned items.
+[Production scope](docs/reference/smithing-production.md) separates that observed
+path from unexercised trim, custom component, pickup and range contexts. Its
+[PR78](https://github.com/Ferigone/Cinderstone/pull/78) merged as `005e759`.
+Railway deployment `138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS and
+native offline listening at `2026-11-01T22:24:46.700522705Z`, one running replica,
+retained volume and no pending work. Public gameplay remains unverified.
+
+## Native Stonecutter Main
+
+The native Stonecutter now uses the real shared player inventory, recipe book,
+statistics, ItemEntity/drop and per-player menu owners. Normal crafting,
+quick-move, current-menu close, menu replacement, disconnect and native cold
+restart passed a focused local protocol flow. The composed master candidate also
+passed the same flow and the equipped-range retirement regression.
+See [production scope and exact evidence](docs/reference/stonecutter-production.md).
+Custom component reference identity, custom interaction ranges and arbitrary
+reentrant callbacks remain unsupported; this is a bounded workstation delivery.
+Railway deployment `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` for master
+`dddc0e7` reached SUCCESS and native offline listening at
+`2026-11-01T22:05:31.290410832Z`, with one running replica and the existing volume.
+The external status probe still fails DNS resolution; public gameplay remains
+unverified. Smithing Main has separately passed its local flow. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
+
 ## Native connection transport
 
 Published source `87dda91` connects the configured packet-rate owner,
@@ -20,7 +62,7 @@ Actual rate refusal, compression enabled/disabled, keepalive refusal, signed
 long ping echo and incomplete-frame timeout refresh were observed.
 See [production contracts and limits](docs/reference/connection-production.md).
 
-Railway autodeployed master `1e72694` successfully and the native process began
+The earlier connection release autodeployed master `1e72694` successfully and the native process began
 listening in offline mode on 1 November 2026 at **21:19:15 Europe/Warsaw**.
 One replica and the existing `/data` volume are retained. Public gameplay remains
 unverified because this environment cannot resolve the external TCP hostname.

@@ -112,7 +112,10 @@ def compare(args, work):
                      | dict(java_sha256=sha(a["blocks_file"]), native_sha256=sha(b["blocks_file"]), equal=equal))
 
     cases = [("overworld", b) for b in ["plains", "eroded_badlands", "frozen_ocean", "swamp"]]
-    cases += [("nether", "nether_wastes"), ("end", "the_end")]
+    # Each legacy settings record supplies the original initial-biome-height
+    # flag; fixed biome images alone cannot witness that query coordinate.
+    cases += [("nether", "nether_wastes"), ("end", "the_end"),
+              ("caves", "plains"), ("floating_islands", "plains")]
     queries = [dict(seed=123456789, settings="minecraft:" + s, x=0, z=0, biome="minecraft:" + b) for s, b in cases]
     queries.append(dict(seed=0, settings="minecraft:overworld", x=0, z=0, biome="minecraft:eroded_badlands"))
     original = lines([java, "-Xmx1024m", "-cp", cp, "oracle.WorldgenSurfaceOracle", str(work)], queries)
@@ -129,6 +132,9 @@ def compare(args, work):
                 index = z * 16 + x
                 native_heights.extend([b["heights"][index] - 1, b["ocean_floor"][index] - 1])
         if not (equal and heights == native_heights and a["postprocess"] == b["surface_postprocess"]
+                and a["use_legacy_random_source"] == b["use_legacy_random_source"]
+                and a["expected_first_biome_block_query"] == b["first_biome_query"]
+                and a["first_biome_quart_query"] == b["first_biome_quart_query"]
                 and b["failed_context_preserves_noise"] and b["duplicate_stage_rejected"]
                 and b["duplicate_stage_error"] == "surface stage already completed"
                 and b["duplicate_stage_context_callbacks"] == 0
@@ -150,6 +156,10 @@ def compare(args, work):
         surface.append({k: a[k] for k in ["settings", "seed", "x", "z", "biome", "changes"]}
                        | dict(java_sha256=sha(a["output"]), native_sha256=sha(b["output"]), equal=equal,
                               heightmaps_equal=True, surface_postprocessing_count_equal=True,
+                              use_legacy_random_source=a["use_legacy_random_source"],
+                              first_biome_query=b["first_biome_query"],
+                              first_biome_quart_query=a["first_biome_quart_query"],
+                              first_biome_query_witness_equal=True,
                               failed_context_preserves_noise=True, duplicate_stage_rejected=True,
                               duplicate_stage_error=b["duplicate_stage_error"],
                               duplicate_stage_context_callbacks=b["duplicate_stage_context_callbacks"],

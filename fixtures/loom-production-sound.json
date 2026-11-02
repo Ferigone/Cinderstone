@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "evidence": {
+    "method": "Direct JDK 21 javap plus bounded execution of the pinned original bootstrap; not REA MCP or a Main runtime flow.",
+    "server_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "official_mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+    "actual_bootstrap_exit": 0,
+    "source_field_matches_registered_sound": true
+  },
+  "sound": {
+    "source_field": "SoundEvents.UI_LOOM_TAKE_RESULT",
+    "obfuscated_field": "avp.At",
+    "resource_location": "minecraft:ui.loom.take_result",
+    "registry_raw_id": 1429,
+    "fixed_range": null,
+    "range_at_volume_1": 16.0,
+    "source_category": "blocks",
+    "source_category_ordinal": 4,
+    "volume": 1.0,
+    "pitch": 1.0
+  },
+  "take_sound": {
+    "owner": "LoomMenu.lastSoundTime",
+    "initial_value": 0,
+    "actual_time_owner": "captured Level.getGameTime",
+    "guard": "actual game time != lastSoundTime",
+    "time_update": "after playSound returns",
+    "suppressed_event_sound_rng_draws": 0,
+    "emitted_event_sound_rng_owner": "Level.threadSafeRandom",
+    "emitted_event_sound_rng_operation": "nextLong",
+    "emitted_event_sound_rng_draws": 1,
+    "empty_audience_still_draws_seed": true,
+    "extra_pitch_rng_draws": 0
+  },
+  "audience": {
+    "origin": "captured block position plus 0.5 on each axis",
+    "dimension": "actual captured ServerLevel dimension key",
+    "excluded_player": null,
+    "distance_comparison": "squared distance strictly less than radius squared",
+    "radius_at_source_volume": 16.0,
+    "squared_radius_at_source_volume": 256.0
+  },
+  "default_update_listener": {
+    "constructor_field": "LoomMenu.slotUpdateListener",
+    "obfuscated_field": "cra.s",
+    "bootstrap_target": "cra.r()",
+    "body": "return only",
+    "actual_static_invocation": "returned",
+    "input_set_changed_order": [
+      "SimpleContainer.setChanged",
+      "LoomMenu.slotsChanged",
+      "slotUpdateListener.run"
+    ],
+    "output_set_changed_order": [
+      "SimpleContainer.setChanged",
+      "slotUpdateListener.run"
+    ]
+  },
+  "scope": "Sound registry identity, source take-sound guard/RNG/audience and constructor-default listener only. Does not prove Loom Main integration, menu runtime, packet delivery or custom update-listener behavior."
+}

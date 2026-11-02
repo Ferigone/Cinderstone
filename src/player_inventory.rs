@@ -98,6 +98,19 @@ impl SharedContainer {
         transaction: impl FnOnce(&mut PlayerContainer) -> Result<(R, Vec<Packet>)>,
         commit: impl FnOnce(R) -> S,
     ) -> Result<S> {
+        self.transact_with_menu_commit(transaction, |result, _menu| commit(result))
+    }
+    /// Commit with access to the same actual menu while its existing lock is
+    /// held, after preparation/revision advance and before outbox publication.
+    /// Source-ordered callbacks may update that canonical menu's transient
+    /// inventory state; no callback may re-enter this container or retain its
+    /// borrowed menu. Like transact_with_commit, commit must be infallible and
+    /// use only previously validated owners and prepared actions.
+    pub fn transact_with_menu_commit<R, S>(
+        &self,
+        transaction: impl FnOnce(&mut PlayerContainer) -> Result<(R, Vec<Packet>)>,
+        commit: impl FnOnce(R, &mut PlayerContainer) -> S,
+    ) -> Result<S> {
         let mut state = self.lock()?;
         let revision = state
             .revision
@@ -112,7 +125,7 @@ impl SharedContainer {
             }
         };
         state.revision = revision;
-        let result = commit(result);
+        let result = commit(result, &mut state.menu);
         // The state remains valid if its connection has gone away. A later
         // subscriber obtains a full snapshot rather than replaying old batches.
         let update = ContainerUpdate { revision, packets };

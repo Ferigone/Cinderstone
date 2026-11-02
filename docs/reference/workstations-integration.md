@@ -12,6 +12,17 @@ https://github.com/Ferigone/Cinderstone/issues/3; branch
 `teams/workstations/ws-20261101-7c2f/menus`; original base
 `643106e8eb60d970a8df67eb9acf0ab5f107c788`.
 
+PR5 merged as `c1baf5c70f07e53b6b76edaf84be5da57f6bd40b`. The current
+continuation is [PR73](https://github.com/Ferigone/Cinderstone/pull/73), branch
+`teams/workstations/ws-20261101-7c2f/remaining-menus`, based on that merge.
+It adds six native controllers for anvil, grindstone, loom, cartography,
+merchant and brewing, their narrowly additive core hooks/ledgers and six
+mechanical exports. The central-requested additive
+`SmithingMenu::broadcast_full_state(&PlayerInventory)` preserves retained state
+and returns actual phased sync events. Shared MenuSync also rejects unresolved
+component20 reference contexts, preserving proved prototypes; see
+[the component boundary](workstations-component-context.md).
+
 Owned source is the new `src/workstations/**` namespace, five new
 `src/container_workstation_{stonecutter,smithing,storage,enchanting,crafter}.rs`
 adapters, and additive smithing ingredient predicates only in `src/crafting.rs`.
@@ -37,18 +48,19 @@ or automatic cross-chat communication are assumed.
 | --- | --- | --- |
 | Stonecutter | `StonecutterState`, `StonecutterMenu`, prepared actions, seven ordinary click modes | Captured recipe manager/description ordering, enabled features, actual player/block, crafting/recipe/stat/sound callbacks |
 | Smithing | `SmithingState`, `SmithingRecipeOrder`, `SmithingMenu`, seven click modes | Actual input/result recipe orders, registry snapshot, player/world/reward owners; intermediate broadcasts before result recomputation |
-| Anvil | `AnvilState`, result/name/repair/cost plans and `finish_anvil_take` | Actual repair/text/enchantment metadata, player levels, captured block and PLAYER RNG for wear |
-| Grindstone | `GrindstoneState`, prepared result/XP transaction | Actual enchantment/curse/min-cost registry, LEVEL RNG and real XP orbs at captured block |
-| Loom/cartography | `LoomState`, `CartographyState`, explicit registry/map callbacks | Actual banner holders/tag encounter order; actual saved maps/ID allocator and taken-result item callback |
+| Anvil | `AnvilState`, `AnvilMenu`, rename/seven modes/sync/close, phased computation/take | Actual repair/text/enchantment metadata, player levels, captured block and PLAYER RNG for wear; `AnvilMenuHost` stages every owner and publication |
+| Grindstone | `GrindstoneState`, `GrindstoneMenu`, seven modes/sync/close | `GrindstoneMenuHost`: actual enchantment/curse/min-cost registry, canonical inventory, LEVEL RNG, real XP orbs and atomic owner publication |
+| Loom/cartography | `LoomState`, `LoomMenu`, `CartographyState`, `CartographyMenu`, seven modes/sync/close | Actual banner holders/tag encounter order; `LoomMenuContext` and callbacks; `CartographyMenuHost` owns actual saved maps/ID allocator and taken-result postprocessing, including failed-shift prefix |
 | Special recipe context | `RecipeManagerView`, `context_for_map_extension`, `postprocess_crafted_map` | Actual recipe snapshot/order and saved-map storage; previews never allocate map IDs |
 | Enchanting | `EnchantingState`, `EnchantingMenu<S,K>`, seven click modes | `EnchantmentRegistry`/`EnchantingBookshelves`/`EnchantingMenuHost`: actual player/table binding, registry holders/definitions/order, constructor RNG factory, same canonical inventory, XP/stat/criterion/PLAYER-seed/LEVEL-sound callbacks and actual drag order |
-| Merchant | `ItemCost`, `MerchantOffer`, `MerchantState`, `MerchantPlan`, `MerchantStage` | Actual merchant/player binding, stable offer objects, private real stage, synchronous trade/use/stat/XP/sound callbacks and offers/selection packet transport |
+| Merchant | `ItemCost`, `MerchantOffer`, `MerchantState`, `MerchantMenu`, prepared seven modes/selection/sync/close | `MerchantMenuHost`: actual merchant/player binding, stable offer objects, private real stage, synchronous trade/use/stat/XP/sound callbacks and offers packet transport |
 | Crafter | `CrafterState`, keyed `CrafterPlan`, `CrafterMenu<K>`, seven click modes and slot-state packet | `CrafterOwnerIdentity`, `CrafterRecipes`, `CrafterOutputOwner`, `CrafterMenuCallbacks`: actual block key, shared recipe cache/manager, scheduler, loot, hopper destinations, output postprocessing, Item/RNG/IDs, criteria and callback-order certification |
 | Hopper/dispenser/shulker menus | `StorageMenu`, `StorageContainer`, prepared open/actions and phased events, seven click modes | Actual canonical container/key/revision and player inventory, startOpen/stopOpen, source container operations, comparator/dirty and player-counter callbacks, validity and drag certification |
 | Hopper/shulker blocks | Native hopper insert/push/pull/entity kernels; `ShulkerLifecycle` | Actual counterpart containers/sided permissions, world/entity lookup, cooldown/time, Level RNG, block events, collision ordering and `Entity.move(SHULKER_BOX)` |
 | Dispenser/dropper | `scheduled_tick`, `neighbor_changed`, default spawn/velocity/analog helpers | `DispenserHost`/`DispenserTriggerHost`: actual loot, Level RNG, selected behavior registry, facing/state, destination, real Item/entity construction and scheduler |
 | Ender chest | `EnderChestInventory<P,K>`, lifecycle/use/lid APIs | One actual personal owner per player, actual captured chest key, EnderItems persistence, opener/scheduler/world/piglin callbacks; reuse existing three-row GenericContainerMenu |
-| Beacon/brewing/lectern | Payment/live-data, brewing tick/slot/remainder, borrowed book/page/pulse kernels | Actual beacon data/effect/lock/structure owners; actual potion recipe owner/block ticker; actual book/player/scheduler/redstone owner |
+| Brewing | `BrewingState`, `BrewingMenu`, borrowed persistent five-slot owner, seven modes/sync/close | `BrewingMenuOwner`: actual potion recipe/cache/block owner, player/counter/potion criterion callbacks, atomic publication; block tick registration remains separate |
+| Beacon/lectern | Payment/live-data, borrowed book/page/pulse kernels | Actual beacon data/effect/lock/structure owners; actual book/player/scheduler/redstone owner; controllers remain subsequent work |
 
 Per-family `workstations-*.md` source ledgers give exact signatures, slot rules,
 callback arguments and supported boundaries. The host traits have no fabricated
