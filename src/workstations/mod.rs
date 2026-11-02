@@ -26,3 +26,4 @@ pub mod ender_chest;
 pub mod crafter;
 pub mod recipe_context;
 pub mod special_recipe_context;
+pub mod special_item_context;
