@@ -13,7 +13,7 @@ impl NativeBlockTickOwner for super::main_block_ticks::MainBlockRuntime {
         tick: &mc121_rust::placement::PlannedBlockTick,
     ) -> Result<bool> {
         self.require_healthy()?;
-        Ok((super::main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)&&(30..=39).contains(&tick.delay))||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||self.owns_anvil_tick(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5))
+        Ok((super::main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)&&(30..=39).contains(&tick.delay))||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||self.owns_falling_tick(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5))
     }
 }
 

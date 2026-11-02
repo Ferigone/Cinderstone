@@ -388,7 +388,7 @@ impl<'a, W: InteractionWorld> Planner<'a, W> {
         // actual changed write, including a same-Block property change. It
         // precedes Level.setBlock's neighbour/shape propagation. Preserve that
         // phase rather than appending a copied Anvil placement tick at the end.
-        if let Some(delay) = placement::anvil_falling_delay(state)? {
+        if let Some(delay) = crate::falling_block::block::source_delay(state)? {
             self.plan.events.push(InteractionEvent::ScheduleBlockTick(PlannedBlockTick {
                 position: p,
                 state,
@@ -461,7 +461,7 @@ impl<'a, W: InteractionWorld> Planner<'a, W> {
         next: u32,
     ) -> Result<u32> {
         let b = facts(state)?;
-        if let Some(delay) = placement::anvil_falling_delay(state)? {
+        if let Some(delay) = crate::falling_block::block::source_delay(state)? {
             // FallingBlock.updateShape schedules in EVERY direction, even
             // when the inherited superclass returns this unchanged state.
             // A duplicate attempt still consumes the actual shared sub-tick
@@ -615,7 +615,7 @@ pub fn plan_place(
             .map(InteractionEvent::CreateBlockEntity),
     );
     for tick in selected.scheduled_ticks {
-        if let Some(delay) = placement::anvil_falling_delay(tick.state)? {
+        if let Some(delay) = crate::falling_block::block::source_delay(tick.state)? {
             ensure!(tick.delay == delay, "Anvil placement callback delay differs");
             // Planner.write already emitted this actual onPlace obligation at
             // the source write phase. Do not replay a second schedule attempt.

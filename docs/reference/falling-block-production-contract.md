@@ -151,3 +151,48 @@ The integration coordinator performs the focused compiler/runtime validation.
 These concrete source paths do not by themselves establish Anvil PLAY, falling
 or restart success, complete generic FallingBlock behavior, or alter any fixed
 checklist delivery.
+
+## Future ordinary-family and water callback stage
+
+The isolated follow-up based on `a204254` factors the genuine construction path
+into `Server::preflight_native_falling_block_locked` and
+`Server::construct_native_falling_block_locked`. Anvil and the separately
+implemented ordinary sand/red sand/gravel adapter use the same real counter,
+process constructor RNG, origin flags3 edit, UUID admission and canonical Box.
+The common helper never enables Anvil damage; that remains the actual virtual
+Anvil callback after the add attempt. Existing compatibility-named Anvil
+schedule validators also recognize the exact supported ordinary source classes.
+
+The original quiescent callback path is retained. The separate nested
+`main_falling_block_callbacks.rs` profile removes one concrete restriction:
+a single falling solid/air write may execute actual liquid WATER callbacks.
+It borrows the complete existing `MainFluidRuntime`, including its simulation,
+loaded/saved queues, health and the one shared sub-tick counter. The additive
+`observe_change_with_parts` wrapper constructs the same `FluidTickContext` and
+calls the existing `FluidSimulation::on_block_changed_with_flags`; no fluid
+algorithm, queue, random stream or source owner is replaced.
+
+The source phase matters. A new solid FallingBlock onPlace schedules its BLOCK
+tick before neighboring water callbacks. The admitted profile therefore runs
+the real full water callback at the ordered NeighbourNotice after that actual
+FallingBlock schedule. The new-state fluid onPlace is proved literally empty.
+Only exact base Block/AirBlock and LiquidBlock neighbors are admitted, and no
+other block/waterlogged shape schedule may interleave. Consequently the real
+kernel's neighbor and liquid-shape schedule order is preserved, including both
+source/flowing singleton identity and counter increments on queue deduplication.
+This supports a bounded ordinary water pool with base-block walls/floor; snowy,
+plant, custom, neighboring FallingBlock and waterlogged shape contexts require
+further phase-specific delivery.
+
+Preflight checks the actual native source, current lighting, fluid history,
+actual water-only neighborhood and callback declarations, real FULL fluid/BLOCK
+halos, existing runtime health and dimension/rule facts before the write or
+constructor entropy. Lava hardening/ignition, fire, active redstone, block
+entities, loot, extra writes and unknown facts remain errors. The real Level RNG
+is lent to the kernel even though this bounded scheduling-only water path draws
+nothing. The shared fluid and BLOCK schedulers use the same retained counter.
+
+This follow-up is source implementation awaiting the coordinator's focused
+compiler/runtime check. It does not establish an ordinary/water gameplay pass,
+generic concrete-powder/lava behavior, full FallingBlock compatibility or a
+fixed-checklist completion. No Java binary or raw disassembly is published.

@@ -296,21 +296,70 @@ impl LivePlayers {
     }
 }
 
-fn unobstructed_by_players(
-    states: &[PlayerState],
+/// BlockItem uses CollisionGetter.isUnobstructed(state,pos,EMPTY), whose
+/// EntityGetter source argument is genuinely null. There is no source actor
+/// to exclude and no same-vehicle comparison to fabricate for this call.
+/// Evidence: pinned direct javap of CollisionGetter (dcg), mapped31–32, and
+/// EntityGetter (dcn), mapped37–48; the same source-lock applies to this stage.
+fn unobstructed_by_native_entities(
+    players: &mut LivePlayers,
     state: u32,
     at: (i32, i32, i32),
 ) -> Result<bool> {
-    for player in states {
-        if player.gamemode == 3 {
-            continue;
+    use mc121_rust::runtime_entity_index::EntityKind;
+    let boxes = geometry::static_block_collision_boxes(state)
+        .context("dynamic placement collision required")?;
+    let offset = Vec3::new(f64::from(at.0), f64::from(at.1), f64::from(at.2));
+    let mut query_bounds: Option<Aabb> = None;
+    for raw in boxes {
+        let bounds = Aabb::new(raw[0], raw[1], raw[2], raw[3], raw[4], raw[5]).moved(offset);
+        if geometry::VoxelShape::from_aabb(bounds).is_empty() { continue; }
+        query_bounds = Some(match query_bounds {
+            None => bounds,
+            Some(previous) => Aabb::new(
+                previous.min_x.min(bounds.min_x), previous.min_y.min(bounds.min_y),
+                previous.min_z.min(bounds.min_z), previous.max_x.max(bounds.max_x),
+                previous.max_y.max(bounds.max_y), previous.max_z.max(bounds.max_z),
+            ),
+        });
+    }
+    // The original returns before getEntities when the actual shape is empty.
+    let Some(query_bounds) = query_bounds else { return Ok(true); };
+    let LivePlayers { item_runtime, registry, player_motion_runtime, falling_blocks, .. } = players;
+    let actual_bounds = |handle: mc121_rust::runtime_entity_index::EntityHandle,
+                         kind: EntityKind| -> Result<Option<Aabb>> {
+        match kind {
+            EntityKind::Player => {
+                let player = registry.get(handle.id).context("indexed placement player is absent")?;
+                // EntityGetter.getEntities uses NO_SPECTATORS before the
+                // later isRemoved/blocksBuilding/shape tests.
+                if player.gamemode == 3 { return Ok(None); }
+                let body = player_motion_runtime.physical(handle.id)
+                    .context("placement requires the actual current player body")?;
+                ensure!(body.entity_id == handle.id && body.uuid == player.profile.uuid,
+                    "placement player/body identity changed");
+                // LivingEntity's real constructor sets blocksBuilding=true;
+                // Player does not replace that inherited field.
+                Ok((!body.removed).then_some(body.bounds))
+            }
+            EntityKind::FallingBlock => {
+                let actor = falling_blocks.get(handle)
+                    .context("indexed placement falling actor is absent")?;
+                ensure!(actor.state.entity_id == handle.id, "placement falling actor identity changed");
+                Ok((!actor.state.removed && actor.state.blocks_building).then_some(actor.state.bounds))
+            }
+            // These genuine nonliving classes retain Entity's false JVM
+            // blocksBuilding default. No fake Item/XP bounds or body is used.
+            EntityKind::Item | EntityKind::ExperienceOrb => Ok(None),
         }
-        let dimensions = player_physics::player_dimensions(player.metadata.pose, 1.)?;
-        let bounds = Aabb::player(
-            Vec3::new(player.position.x, player.position.y, player.position.z),
-            dimensions.width,
-            dimensions.height,
-        );
+    };
+    // Native IDs are positive. -1 represents the actual null exclusion in
+    // this existing shared-query API; it is not a substitute source entity.
+    let blockers = item_runtime.query_native_entities(query_bounds, -1,
+        |handle, kind| actual_bounds(handle, kind))?;
+    for handle in blockers {
+        let kind = item_runtime.entity_kind(handle).context("placement entity generation changed")?;
+        let Some(bounds) = actual_bounds(handle, kind)? else { continue; };
         if static_block_intersects(state, at, bounds)
             .context("dynamic placement collision required")?
         {
@@ -415,7 +464,6 @@ impl Server {
                     && menu.inventory.selected_stack(1)?.is_empty(),
             ))
         })??;
-        let snapshots = players.registry.snapshot();
         let secondary = player.metadata.flags & 0x02 != 0;
         if (!secondary||both_empty)&&players.use_redstone_block(&mut world,target,id,now,border,&self.entity_events)?{return Ok(MainInteractionResult::Applied);}
         let mut query = RuntimeInteractionWorld::new(
@@ -423,7 +471,7 @@ impl Server {
             world::MIN_Y,
             world::MAX_Y + 1,
             border,
-            |state, at| unobstructed_by_players(&snapshots, state, at),
+            |state, at| unobstructed_by_native_entities(&mut players, state, at),
         )?;
         if !query.inside_world_border(target)? {
             return Ok(MainInteractionResult::Rejected);
@@ -540,13 +588,12 @@ impl Server {
         if !can_reach_block(player.position, player.metadata, at) {
             return Ok(MainInteractionResult::Rejected);
         }
-        let snapshots = players.registry.snapshot();
         let mut query = RuntimeInteractionWorld::new(
             &mut world,
             world::MIN_Y,
             world::MAX_Y + 1,
             border,
-            |state, at| unobstructed_by_players(&snapshots, state, at),
+            |state, at| unobstructed_by_native_entities(&mut players, state, at),
         )?;
         if !query.inside_world_border(at)? {
             return Ok(MainInteractionResult::Rejected);

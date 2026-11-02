@@ -94,6 +94,7 @@ pub mod fire_simulation;
 pub mod fluid_shape_checkpoint;
 pub mod world_interactions;
 pub mod player_data;
+pub mod player_enchanting;
 pub mod player_enchantment_seed;
 pub mod player_nbt;
 pub mod player_body;

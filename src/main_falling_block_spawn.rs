@@ -1,6 +1,6 @@
 //! Actual native Anvil spawning and retained-actor-safe block edits.
-//! This first concrete profile admits only proven quiescent block callbacks.
-//! Active fluid/fire/redstone, block entities and loot remain explicit errors.
+//! The original quiescent path is retained; the separate water callback
+//! profile uses actual fluid owners. Other active callbacks remain explicit.
 use super::*;
 use mc121_rust::{
     block_ticks,
@@ -12,25 +12,27 @@ use mc121_rust::{
     workstations::anvil_block::{self, AnvilBlockAction, AnvilBlockHost, ShapeUpdate},
 };
 use super::main_falling_block_runtime::ConstructedFallingBlock;
+#[path = "main_falling_block_callbacks.rs"]
+mod callbacks;
 
 /// The new onPlace is represented by the following real schedule event. The
 /// old callback is literally inherited or skipped for an unchanged singleton.
 pub(super) fn represented_anvil_change(old: u32, new: u32) -> Result<bool> {
-    if placement::anvil_falling_delay(new)?.is_none() { return Ok(false); }
+    if mc121_rust::falling_block::block::source_delay(new)?.is_none() { return Ok(false); }
     let old = mc121_rust::redstone::block(old)?;
     let new = mc121_rust::redstone::block(new)?;
-    ensure!(new.on_place == "diu", "Anvil onPlace source declaration changed");
+    ensure!(new.on_place == "diu", "FallingBlock onPlace source declaration changed");
     Ok(old.min == new.min || old.on_remove == "dtb")
 }
 
 pub(super) fn validate_anvil_schedule_obligations(plan: &InteractionPlan) -> Result<()> {
     for (index, event) in plan.events.iter().enumerate() {
         if let InteractionEvent::Write { position, state, .. } = event {
-            if let Some(delay) = placement::anvil_falling_delay(*state)? {
+            if let Some(delay) = mc121_rust::falling_block::block::source_delay(*state)? {
                 ensure!(matches!(plan.events.get(index + 1),
                     Some(InteractionEvent::ScheduleBlockTick(tick))
                     if tick.position == *position && tick.state == *state && tick.delay == delay),
-                    "changed Anvil write lacks its actual ordered onPlace schedule");
+                    "changed falling-block write lacks its actual ordered onPlace schedule");
             }
         }
     }
@@ -49,7 +51,7 @@ pub(super) struct ActualFallingBlockEditServices<'a> {
     pub(super) interactions: &'a mut main_world_interactions::WorldInteractionRuntime,
     pub(super) source: &'a mut Option<NativeEntitySource>,
     pub(super) block_runtime: &'a mut main_block_ticks::MainBlockRuntime,
-    pub(super) sub_tick_order: &'a mut i64,
+    pub(super) fluid_runtime: &'a mut main_fluid_simulation::MainFluidRuntime,
     pub(super) random_ticks: &'a mut main_random_block_ticks::MainRandomBlockTicks,
     pub(super) world_revision: &'a mut u64,
     pub(super) context: &'a WorldContext,
@@ -89,8 +91,8 @@ impl ActualFallingBlockEditServices<'_> {
     pub(super) fn preflight_tick(&mut self, actor: &FallingBlockState) -> Result<()> {
         self.require_source()?;
         actor.validate()?;
-        ensure!(placement::in_block_tag(actor.block_state, "minecraft:anvil"),
-            "native falling runtime currently admits actual Anvil actors only");
+        ensure!(mc121_rust::falling_block::block::source_class(actor.block_state)?.is_some(),
+            "falling actor has no actual supported block callback class");
         ensure!(actor.block_data.is_none() && actor.vehicle.is_none(),
             "falling block data/vehicle requires its actual retained owner");
         let chunk = (actor.block_position.0.div_euclid(16), actor.block_position.2.div_euclid(16));
@@ -106,7 +108,7 @@ impl ActualFallingBlockEditServices<'_> {
             world::MAX_Y + 1, self.border,
             |_, _| bail!("falling block edit does not perform entity placement"))?;
         let plan = world_interactions::plan_edit(position, state, 3, &mut query)?;
-        self.validate_quiescent_plan(&plan)?;
+        self.validate_edit_plan(&plan)?;
         // Complete these fallible native capabilities before a caller can
         // acquire irreversible constructor entropy for the same locked edit.
         let token = self.source.as_ref().context("falling source absent")?
@@ -117,6 +119,14 @@ impl ActualFallingBlockEditServices<'_> {
         self.world_revision.checked_add(1).context("world revision exhausted")?;
         self.random_ticks.prepare_plan(self.world,&plan)?;
         Ok(plan)
+    }
+
+    fn validate_edit_plan(&mut self, plan: &InteractionPlan) -> Result<()> {
+        if callbacks::has_water_context(self.world,plan)? {
+            callbacks::preflight_water_plan(self,plan)
+        } else {
+            self.validate_quiescent_plan(plan)
+        }
     }
 
     fn validate_quiescent_plan(&mut self, plan: &InteractionPlan) -> Result<()> {
@@ -152,7 +162,7 @@ impl ActualFallingBlockEditServices<'_> {
                     }
                 }
                 InteractionEvent::ScheduleBlockTick(tick) => {
-                    ensure!(self.block_runtime.owns_anvil_tick(tick.state,tick.delay)?,
+                    ensure!(self.block_runtime.owns_falling_tick(tick.state,tick.delay)?,
                         "falling edit scheduled a foreign actual block callback");
                     self.block_runtime.prepare_halo(self.world, self.chunks,
                         (tick.position.0.div_euclid(16),tick.position.2.div_euclid(16)),self.now)?;
@@ -187,7 +197,7 @@ impl ActualFallingBlockEditServices<'_> {
 
     pub(super) fn commit_plan(&mut self, plan: InteractionPlan) -> Result<bool> {
         self.require_source()?;
-        self.validate_quiescent_plan(&plan)?;
+        self.validate_edit_plan(&plan)?;
         if plan.events.is_empty() { return Ok(false); }
         let token = self.source.as_ref().context("falling source absent")?
             .prepare_owned_edit_with_block_ticks(self.world,&plan,self.block_runtime)?;
@@ -207,14 +217,17 @@ impl ActualFallingBlockEditServices<'_> {
                 self.chunks.invalidate_block_lighting((block.x,block.y,block.z))?;
             }
         }
-        // All callback paths were proved quiescent except actual Anvil
-        // schedule attempts. Retain every attempt, including queue dedup hits.
+        // Preserve the original quiescent path and execute the separately
+        // certified water callback at its real neighbor phase. Both schedulers
+        // consume this SAME fluid runtime's sub-tick counter on every attempt.
+        let water_callbacks = callbacks::has_water_context(self.world,&plan)?;
         for event in &plan.events {
+            if water_callbacks { callbacks::execute_water_event(self,event)?; }
             if let InteractionEvent::ScheduleBlockTick(tick) = event {
                 self.block_runtime.mark_used();
                 self.source.as_mut().expect("validated source").observe_block_scheduler_use();
                 block_ticks::schedule(&mut self.block_runtime.queue,tick.position,tick.state,
-                    self.now,tick.delay,TickPriority::Normal,self.sub_tick_order)?;
+                    self.now,tick.delay,TickPriority::Normal,&mut self.fluid_runtime.sub_tick_order)?;
             }
         }
         let changed = changes.iter().any(|update| matches!(update,WorldUpdate::Block(_)));
@@ -255,7 +268,7 @@ impl NativeAnvilScheduledHost<'_> {
         ActualFallingBlockEditServices {
             world:self.world,items:item_runtime,gameplay,registry,player_motion:player_motion_runtime,
             chunks:chunk_runtime,interactions:world_interactions,source:entity_source,
-            block_runtime,sub_tick_order:&mut fluid_runtime.sub_tick_order,
+            block_runtime,fluid_runtime,
             random_ticks:random_block_ticks,world_revision,context:world_context,
             rain:rain_context.as_mut(),changes:&self.server.changes,
             events:&self.server.entity_events,entities:&self.server.entities,
@@ -297,31 +310,7 @@ impl AnvilBlockHost for NativeAnvilScheduledHost<'_> {
     fn state_can_be_replaced(&mut self,s:&u32)->Result<bool>{main_falling_block_world::state_can_be_replaced(*s)}
     fn minimum_build_height(&mut self)->Result<i32>{Ok(self.players.world_context.dimension.min_y)}
     fn fall_block(&mut self,p:BlockPosition,s:&u32)->Result<ConstructedFallingBlock> {
-        self.preflight_spawn(p,*s)?;
-        let carried = main_falling_block_world::carried_state_for_fall(*s)?;
-        let id = self.server.entities.try_update(Ordering::Relaxed,Ordering::Relaxed,
-            |next| next.checked_add(1)).map_err(|_| anyhow!("shared falling entity ID exhausted"))?;
-        let random = random_seed::create_random()?;
-        let state = FallingBlockState::new(id,random,carried,
-            main_falling_block_world::fall_spawn_position(p))?;
-        let mut object = ConstructedFallingBlock::new(state)?;
-        // Original fluid replacement is queried after constructing the SAME
-        // entity. The Level.setBlock boolean is deliberately ignored.
-        let replacement = main_falling_block_world::original_fluid_replacement(*s)?;
-        let plan = self.services().preflight_block_edit(p,replacement,3)?;
-        let _ = self.services().commit_plan(plan)?;
-        let uuid = self.players.falling_blocks.object_state(&object)?.uuid;
-        let duplicate = self.players.registry.get_by_uuid(&uuid).is_some()
-            || self.players.item_runtime.item_states().any(|s|!s.removed&&s.uuid==uuid)
-            || self.players.experience_runtime.physical_states().any(|s|!s.removed&&s.uuid==uuid)
-            || self.players.falling_blocks.contains_uuid(&uuid);
-        // This is the real source's UUID admission boolean, not a fabricated
-        // successful add. Rejection leaves the same unregistered object alive
-        // in its token and does not refund the replaced origin block.
-        if !duplicate {
-            self.players.falling_blocks.register_constructed(&mut self.players.item_runtime,&mut object)?;
-        }
-        Ok(object)
+        self.server.construct_native_falling_block_locked(self.world,self.players,p,*s,self.now,self.border)
     }
     fn set_hurts_entities(&mut self,e:&mut ConstructedFallingBlock,amount:f32,max:i32)->Result<()> {
         let state=self.players.falling_blocks.object_state_mut(e)?;
@@ -329,6 +318,46 @@ impl AnvilBlockHost for NativeAnvilScheduledHost<'_> {
     }
 }
 impl Server {
+    /// Pure capability preparation for the same actual retained native fall.
+    /// It acquires no constructor RNG and reserves no entity ID.
+    pub(super) fn preflight_native_falling_block_locked(&self,world:&mut WorldBackend,
+        players:&mut LivePlayers,p:BlockPosition,state:u32,now:i64,border:CollisionBorder)->Result<()> {
+        NativeAnvilScheduledHost { server:self,world,players,now,border }.preflight_spawn(p,state)
+    }
+
+    /// Genuine shared FallingBlockEntity.fall capability. The caller supplies
+    /// the actual source block callback; this helper does not apply Anvil's
+    /// later setHurtsEntities override or create a second ID/RNG/store owner.
+    pub(super) fn construct_native_falling_block_locked(&self,world:&mut WorldBackend,
+        players:&mut LivePlayers,p:BlockPosition,original_state:u32,now:i64,border:CollisionBorder)
+        ->Result<ConstructedFallingBlock> {
+        let mut host=NativeAnvilScheduledHost { server:self,world,players,now,border };
+        host.preflight_spawn(p,original_state)?;
+        let carried = main_falling_block_world::carried_state_for_fall(original_state)?;
+        let id = host.server.entities.try_update(Ordering::Relaxed,Ordering::Relaxed,
+            |next| next.checked_add(1)).map_err(|_| anyhow!("shared falling entity ID exhausted"))?;
+        let random = random_seed::create_random()?;
+        let state = FallingBlockState::new(id,random,carried,
+            main_falling_block_world::fall_spawn_position(p))?;
+        let mut object = ConstructedFallingBlock::new(state)?;
+        // Original fluid replacement is queried after constructing the SAME
+        // entity. The Level.setBlock boolean is deliberately ignored.
+        let replacement = main_falling_block_world::original_fluid_replacement(original_state)?;
+        let plan = host.services().preflight_block_edit(p,replacement,3)?;
+        let _ = host.services().commit_plan(plan)?;
+        let uuid = host.players.falling_blocks.object_state(&object)?.uuid;
+        let duplicate = host.players.registry.get_by_uuid(&uuid).is_some()
+            || host.players.item_runtime.item_states().any(|s|!s.removed&&s.uuid==uuid)
+            || host.players.experience_runtime.physical_states().any(|s|!s.removed&&s.uuid==uuid)
+            || host.players.falling_blocks.contains_uuid(&uuid);
+        // This is the real source's UUID admission boolean, not a fabricated
+        // successful add. Rejection leaves the same unregistered object alive
+        // in its token and does not refund the replaced origin block.
+        if !duplicate {
+            host.players.falling_blocks.register_constructed(&mut host.players.item_runtime,&mut object)?;
+        }
+        Ok(object)
+    }
     pub(super) fn tick_native_anvil_block_locked(&self,world:&mut WorldBackend,
         players:&mut LivePlayers,p:BlockPosition,state:u32,now:i64,border:CollisionBorder)->Result<()> {
         let block=placement::placement_block_min_state(state)?;
