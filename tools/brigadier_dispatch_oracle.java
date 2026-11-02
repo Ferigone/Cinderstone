@@ -1,12 +1,15 @@
 package cinderstone.oracle;
 
-// Executed Brigadier dispatcher oracle for WP-E3 stage 2 (docs/reference/commands-brigadier.md).
+// Executed Brigadier dispatcher oracle for WP-E3 stages 2-4 (docs/reference/commands-brigadier.md).
 //
 // Builds command trees from JSON descriptions with the UNCHANGED com.mojang.brigadier 1.2.9
 // builders and CommandDispatcher (the pinned server's bundled library), installs the server's
 // own BuiltInExceptionProvider (obfuscated `en`, net.minecraft.commands.BrigadierExceptions)
 // and records, for each input, the parse result, every executed context and the execution
-// outcome. Build and run it with tools/brigadier_dispatch_generate.py; the oracle directory
+// outcome. Stage 4 adds completion suggestions at chosen cursors (inputs with "cursors"),
+// custom suggestion providers ("sug" on argument nodes) and direct tests of
+// Suggestions/SuggestionsBuilder and of the Java string semantics they use (entries with
+// "direct" instead of "tree"). Inputs without "cursors" produce exactly the stage-2/3 output. Build and run it with tools/brigadier_dispatch_generate.py; the oracle directory
 // must stay OUTSIDE git. The harness lives in its own package because the server jar is signed.
 //
 // Usage: java -cp <server-inner-1.21.jar:libraries/**/*.jar:classes>
@@ -34,7 +37,13 @@ import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.ParsedCommandNode;
 import com.mojang.brigadier.exceptions.BuiltInExceptionProvider;
+import com.mojang.brigadier.context.StringRange;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.IntegerSuggestion;
+import com.mojang.brigadier.suggestion.Suggestion;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.tree.CommandNode;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +52,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -59,7 +69,8 @@ public final class brigadier_dispatch_oracle {
         JsonArray tests = JsonParser.parseString(Files.readString(Path.of(args[0]), StandardCharsets.UTF_8)).getAsJsonArray();
         JsonArray out = new JsonArray();
         for (JsonElement element : tests) {
-            out.add(runTest(element.getAsJsonObject()));
+            JsonObject entry = element.getAsJsonObject();
+            out.add(entry.has("direct") ? runDirect(entry.getAsJsonArray("direct")) : runTest(entry));
         }
         Files.writeString(Path.of(args[1]), asciiOnly(GSON.toJson(out)), StandardCharsets.UTF_8);
     }
@@ -78,7 +89,8 @@ public final class brigadier_dispatch_oracle {
         JsonArray results = new JsonArray();
         for (JsonElement element : test.getAsJsonArray("inputs")) {
             JsonObject in = element.getAsJsonObject();
-            results.add(runInput(dispatcher, in.get("input").getAsString(), in.get("source").getAsInt()));
+            results.add(runInput(dispatcher, in.get("input").getAsString(), in.get("source").getAsInt(),
+                in.has("cursors") ? in.getAsJsonArray("cursors") : null));
         }
         JsonObject out = new JsonObject();
         out.add("results", results);
@@ -141,6 +153,9 @@ public final class brigadier_dispatch_oracle {
         ArgumentBuilder builder = spec.get("t").getAsString().equals("lit")
             ? LiteralArgumentBuilder.literal(name)
             : RequiredArgumentBuilder.argument(name, type(spec.getAsJsonObject("type")));
+        if (spec.has("sug")) {
+            ((RequiredArgumentBuilder) builder).suggests(provider(spec.getAsJsonObject("sug")));
+        }
         if (spec.has("req")) {
             int level = spec.get("req").getAsInt();
             builder.requires(source -> (Integer) source >= level);
@@ -246,7 +261,8 @@ public final class brigadier_dispatch_oracle {
         return sb.toString();
     }
 
-    private static JsonObject runInput(CommandDispatcher<Integer> dispatcher, String input, int source) {
+    private static JsonObject runInput(CommandDispatcher<Integer> dispatcher, String input, int source, JsonArray cursors) {
+        boolean input_has_cursors = cursors != null;
         JsonObject out = new JsonObject();
         events = new ArrayList<>();
         ParseResults<Integer> parse = dispatcher.parse(new StringReader(input), source);
@@ -278,6 +294,196 @@ public final class brigadier_dispatch_oracle {
             log.add(event);
         }
         out.add("events", log);
+        if (input_has_cursors) {
+            JsonArray suggestions = new JsonArray();
+            for (JsonElement cursor : cursors) {
+                suggestions.add(suggestAt(dispatcher, parse, cursor.getAsInt()));
+            }
+            out.add("suggest", suggestions);
+        }
+        return out;
+    }
+
+    // ---- stage 4: completion suggestions -------------------------------------------------
+
+    private static SuggestionProvider<Integer> provider(JsonObject sug) {
+        String kind = sug.get("kind").getAsString();
+        List<String> words = new ArrayList<>();
+        if (sug.has("words")) {
+            for (JsonElement word : sug.getAsJsonArray("words")) {
+                words.add(word.getAsString());
+            }
+        }
+        return (context, builder) -> {
+            switch (kind) {
+                case "words":
+                    for (String word : words) {
+                        builder.suggest(word);
+                    }
+                    break;
+                case "filter":
+                    // the usual SharedSuggestionProvider.suggest(Iterable, builder) shape
+                    for (String word : words) {
+                        if (word.toLowerCase(Locale.ROOT).startsWith(builder.getRemainingLowerCase())) {
+                            builder.suggest(word);
+                        }
+                    }
+                    break;
+                case "ctx":
+                    builder.suggest("in=" + context.getInput() + "|nodes=" + context.getNodes().size()
+                        + "|rng=" + context.getRange().getStart() + "-" + context.getRange().getEnd()
+                        + "|src=" + context.getSource() + "|start=" + builder.getStart()
+                        + "|rem=" + builder.getRemaining());
+                    break;
+                case "throw":
+                    throw CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownArgument().create();
+                default:
+                    throw new IllegalArgumentException(kind);
+            }
+            return builder.buildFuture();
+        };
+    }
+
+    private static JsonObject suggestAt(CommandDispatcher<Integer> dispatcher, ParseResults<Integer> parse, int cursor) {
+        JsonObject o = new JsonObject();
+        o.addProperty("cursor", cursor);
+        try {
+            o.add("result", describe(dispatcher.getCompletionSuggestions(parse, cursor).join(), null));
+        } catch (IllegalStateException | IndexOutOfBoundsException e) {
+            o.addProperty("throws", e.getClass().getSimpleName());
+        }
+        return o;
+    }
+
+    private static JsonArray pair(int a, int b) {
+        JsonArray array = new JsonArray();
+        array.add(a);
+        array.add(b);
+        return array;
+    }
+
+    private static JsonObject describe(Suggestion suggestion, String command) {
+        JsonObject o = new JsonObject();
+        o.add("r", pair(suggestion.getRange().getStart(), suggestion.getRange().getEnd()));
+        o.addProperty("t", suggestion.getText());
+        if (suggestion instanceof IntegerSuggestion) {
+            o.addProperty("i", ((IntegerSuggestion) suggestion).getValue());
+        }
+        if (command != null) {
+            // hash code and apply() are recorded for the direct tests only
+            o.addProperty("h", suggestion.hashCode());
+            o.addProperty("a", suggestion.apply(command));
+        }
+        return o;
+    }
+
+    private static JsonObject describe(Suggestions suggestions, String command) {
+        JsonObject o = new JsonObject();
+        o.add("range", pair(suggestions.getRange().getStart(), suggestions.getRange().getEnd()));
+        JsonArray list = new JsonArray();
+        for (Suggestion suggestion : suggestions.getList()) {
+            list.add(describe(suggestion, command));
+        }
+        o.add("list", list);
+        return o;
+    }
+
+    private static Suggestion suggestion(JsonObject spec) {
+        StringRange range = new StringRange(spec.getAsJsonArray("r").get(0).getAsInt(), spec.getAsJsonArray("r").get(1).getAsInt());
+        return spec.has("i") ? new IntegerSuggestion(range, spec.get("i").getAsInt()) : new Suggestion(range, spec.get("t").getAsString());
+    }
+
+    private static List<Suggestion> suggestionList(JsonArray specs) {
+        List<Suggestion> list = new ArrayList<>();
+        for (JsonElement spec : specs) {
+            list.add(suggestion(spec.getAsJsonObject()));
+        }
+        return list;
+    }
+
+    // Direct tests of the suggestion classes and the Java string semantics they depend on.
+    private static JsonObject runDirect(JsonArray ops) {
+        JsonArray results = new JsonArray();
+        for (JsonElement element : ops) {
+            JsonObject op = element.getAsJsonObject();
+            JsonObject result = new JsonObject();
+            try {
+                switch (op.get("op").getAsString()) {
+                    case "create": {
+                        String command = op.get("command").getAsString();
+                        result.add("ok", describe(Suggestions.create(command, suggestionList(op.getAsJsonArray("list"))), command));
+                        break;
+                    }
+                    case "merge": {
+                        String command = op.get("command").getAsString();
+                        List<Suggestions> groups = new ArrayList<>();
+                        for (JsonElement group : op.getAsJsonArray("groups")) {
+                            groups.add(Suggestions.create(command, suggestionList(group.getAsJsonArray())));
+                        }
+                        result.add("ok", describe(Suggestions.merge(command, groups), command));
+                        break;
+                    }
+                    case "builder": {
+                        String input = op.get("input").getAsString();
+                        SuggestionsBuilder builder = new SuggestionsBuilder(input, op.get("start").getAsInt());
+                        for (JsonElement stepElement : op.getAsJsonArray("steps")) {
+                            JsonObject step = stepElement.getAsJsonObject();
+                            if (step.has("s")) {
+                                builder.suggest(step.get("s").getAsString());
+                            } else if (step.has("i")) {
+                                builder.suggest(step.get("i").getAsInt());
+                            } else if (step.has("off")) {
+                                builder = builder.createOffset(step.get("off").getAsInt());
+                            } else {
+                                builder = builder.restart();
+                            }
+                        }
+                        JsonObject state = describe(builder.build(), input);
+                        state.addProperty("start", builder.getStart());
+                        state.addProperty("remaining", builder.getRemaining());
+                        state.addProperty("remainingLower", builder.getRemainingLowerCase());
+                        result.add("ok", state);
+                        break;
+                    }
+                    case "string": {
+                        String a = op.get("a").getAsString();
+                        String b = op.get("b").getAsString();
+                        JsonObject o = new JsonObject();
+                        o.addProperty("cmp", a.compareToIgnoreCase(b));
+                        o.addProperty("cmpCase", a.compareTo(b));
+                        o.addProperty("hash", a.hashCode());
+                        o.addProperty("lower", a.toLowerCase(Locale.ROOT));
+                        result.add("ok", o);
+                        break;
+                    }
+                    case "charCase": {
+                        // Character.toUpperCase(int) / toLowerCase(int) for every code point that changes
+                        JsonArray table = new JsonArray();
+                        for (int cp = 0; cp <= 0x10FFFF; cp++) {
+                            if (cp >= 0xD800 && cp <= 0xDFFF) {
+                                continue;
+                            }
+                            if (Character.toUpperCase(cp) != cp || Character.toLowerCase(cp) != cp) {
+                                JsonArray row = new JsonArray();
+                                row.add(cp);
+                                row.add(Character.toUpperCase(cp));
+                                row.add(Character.toLowerCase(cp));
+                                table.add(row);
+                            }
+                        }
+                        result.add("ok", table);
+                        break;
+                    }
+                    default:
+                        throw new IllegalArgumentException(op.get("op").getAsString());
+                }
+            } catch (IllegalStateException | IndexOutOfBoundsException e) {
+                result.addProperty("throws", e.getClass().getSimpleName());
+            }
+            results.add(result);
+        }
+        JsonObject out = new JsonObject();
+        out.add("results", results);
         return out;
     }
 

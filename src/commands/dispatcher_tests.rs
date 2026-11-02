@@ -18,7 +18,7 @@ use serde_json::Value;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-type Events = Rc<RefCell<Vec<String>>>;
+pub(super) type Events = Rc<RefCell<Vec<String>>>;
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!(
@@ -35,7 +35,7 @@ fn hex64(value: &Value) -> f64 {
     f64::from_bits(u64::from_str_radix(value.as_str().unwrap(), 16).unwrap())
 }
 
-fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType> {
+pub(super) fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType<i32>> {
     match spec["k"].as_str().unwrap() {
         "bool" => Rc::new(BoolArgumentType),
         "int" => Rc::new(IntegerArgumentType::new(
@@ -111,7 +111,7 @@ fn unknown_argument() -> CommandSyntaxException {
     CommandSyntaxException::without_context(CommandMessage::new("command.unknown.argument", vec![]))
 }
 
-fn build(
+pub(super) fn build(
     spec: &Value,
     dispatcher: &CommandDispatcher<i32>,
     events: &Events,
@@ -123,6 +123,9 @@ fn build(
     } else {
         ArgumentBuilder::argument(name, argument_type(&spec["type"]))
     };
+    if let Some(sug) = spec.get("sug") {
+        builder = builder.suggests(super::suggestion_tests::suggestion_provider(sug));
+    }
     if let Some(level) = spec["req"].as_i64() {
         builder = builder.requires(Rc::new(move |source: &i32| i64::from(*source) >= level));
     }
