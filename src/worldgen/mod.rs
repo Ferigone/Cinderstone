@@ -4,6 +4,7 @@
 //! The integration coordinator must supply the actual world identity, biome
 //! owner and generation-status dependencies before publishing their output.
 pub mod aquifer;
+pub mod beardifier;
 pub mod biome_context;
 pub mod biome_source;
 pub mod biomes;

@@ -58,7 +58,10 @@ bounds even with no selected structures, and its fill visits the active
 provider. The current chunk owner applies those metadata and fill hooks;
 Blender wrappers likewise supply their visited metadata. Direct raw graph
 evaluation retains the marker's zero bounds and zero fill without provider
-visits. Nonempty structure contributions remain unsupported.
+visits. The [captured Beardifier owner](world-generation-beardifier-integration.md)
+now also evaluates actual ordered rigid-piece and junction contributions.
+This data ingress does not implement structure generation or establish real
+StructureManager collection and dependency ownership.
 
 Resource locations with an empty namespace, such as `:overworld`, use the
 original `minecraft` default namespace when loading density settings or names.

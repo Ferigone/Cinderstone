@@ -1,0 +1,20 @@
+{
+  "evidence_kind": "Actual original dyl static kernel export through Java 21 source launcher",
+  "exit_code": 0,
+  "timed_out": false,
+  "process_reaped": true,
+  "max_wall_seconds": 55,
+  "heap_mib": 512,
+  "active_processor_count": 2,
+  "elapsed_seconds_observed": false,
+  "original_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "source_sha256": "234a344a4bd17d2c55418cd7d7e00b3c1cf2adc7c4fa92cef944df86ec1511ff",
+  "export_sha256": "44b10fc96f9eab7faa1bfbcdcd1db4674f052ad6bdbd82a41f64c9e75fe9ca58",
+  "stdout_sha256": "ef939badf990f4c34ddd67d00832daccfcd907642aa7c3343cc224f1174fd498",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "kernel_entries": 13824,
+  "runtime_scope": "Registry bootstrap and actual class-initialized dyl.g float array; no server world, bytecode modification or RNG sampling",
+  "export_helper_path": "src/worldgen/validation/BeardifierKernelExport.java",
+  "export_fixture_path": "fixtures/world-generation-beardifier-kernel.json",
+  "execution_record_sha256": "504d4723b0ef203454ea8674817282124e6caa565a0578bcbe50f580fa5372a6"
+}

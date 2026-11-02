@@ -7,6 +7,7 @@ use crate::{
     density::{ChunkDensity, ClimateTargetPoint, DensityPoint},
     worldgen::{
         aquifer::Aquifer,
+        beardifier::Beardifier,
         biome_source::{ClimateSampler, ErosionSampler},
         biome_temperature::BiomeTemperature,
         biome_zoom::{BiomeZoom, QuartBiomeProvider},
@@ -62,6 +63,30 @@ struct TargetNoiseOwners {
     build: HeightRange,
 }
 
+#[derive(Clone)]
+enum BeardifierInput {
+    Observation(GenerationInfluence),
+    Actual(Option<Arc<Beardifier>>),
+}
+impl BeardifierInput {
+    /// Resolve only when a real NoiseChunk factory is entered. Unavailable
+    /// input and an observed-empty actual owner remain distinct.
+    fn owner(self) -> Result<Arc<Beardifier>> {
+        match self {
+            Self::Observation(GenerationInfluence::ObservedEmpty) => Ok(Beardifier::empty()),
+            Self::Observation(GenerationInfluence::Present) => {
+                anyhow::bail!("present structure influence requires an actual beardifier owner")
+            }
+            Self::Observation(GenerationInfluence::Unavailable) => {
+                anyhow::bail!("actual structure beardifier owner is unavailable")
+            }
+            Self::Actual(owner) => {
+                owner.context("actual structure beardifier owner is unavailable")
+            }
+        }
+    }
+}
+
 /// A short-lived view of the same wrapped chunk functions. It implements the
 /// existing source-selector contracts without constructing a PreparedGeneration,
 /// random source, density graph or second cache owner.
@@ -94,7 +119,7 @@ pub struct TargetGeneration<T: GenerationTargetHost + ?Sized> {
     target: Box<T>,
     generator: Arc<NoiseGenerator>,
     initial_blender: Option<Arc<Blender>>,
-    structure_beardifier: GenerationInfluence,
+    structure_beardifier: BeardifierInput,
     owners: Option<TargetNoiseOwners>,
     phase: TargetGenerationPhase,
 }
@@ -121,7 +146,26 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
             target,
             generator,
             initial_blender: blender,
-            structure_beardifier,
+            structure_beardifier: BeardifierInput::Observation(structure_beardifier),
+            owners: None,
+            phase: TargetGenerationPhase::Prepared,
+        }
+    }
+
+    /// Capture actual already-selected influences without querying them or the
+    /// target. None preserves an unavailable owner; it never becomes EMPTY.
+    /// Selection and public phase dependency reads remain caller-owned work.
+    pub fn new_with_influences(
+        generator: Arc<NoiseGenerator>,
+        target: Box<T>,
+        blender: Option<Arc<Blender>>,
+        beardifier: Option<Arc<Beardifier>>,
+    ) -> Self {
+        Self {
+            target,
+            generator,
+            initial_blender: blender,
+            structure_beardifier: BeardifierInput::Actual(beardifier),
             owners: None,
             phase: TargetGenerationPhase::Prepared,
         }
@@ -135,6 +179,15 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
     }
     pub fn has_cached_noise_chunk(&self) -> bool {
         self.owners.is_some()
+    }
+
+    /// Read the immutable owner actually captured by the graph-bound cache.
+    /// None means no cache exists; no constructor argument is substituted.
+    pub fn captured_beardifier(&self) -> Result<Option<Arc<Beardifier>>> {
+        self.owners
+            .as_ref()
+            .map(|owners| owners.noise.beardifier_for(self.generator.graph()))
+            .transpose()
     }
 
     fn active(&self) -> Result<()> {
@@ -156,7 +209,11 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
         Ok(())
     }
 
-    fn ensure_owners(&mut self, blender: Option<Arc<Blender>>) -> Result<()> {
+    fn ensure_owners(
+        &mut self,
+        blender: Option<Arc<Blender>>,
+        beardifier: BeardifierInput,
+    ) -> Result<()> {
         let chunk = self.target.chunk_pos();
         let build = self.target.build_height();
         if let Some(owners) = &self.owners {
@@ -167,13 +224,10 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
             return Ok(());
         }
         let blender = blender.context("actual Blender owner is unavailable")?;
-        ensure!(
-            self.structure_beardifier == GenerationInfluence::ObservedEmpty,
-            "nonempty or unavailable structure beardifier is unsupported"
-        );
+        let beardifier = beardifier.owner()?;
         let (noise, aquifer) = self
             .generator
-            .create_target_noise_owners(chunk, build, blender)?;
+            .create_target_noise_owners_with_influences(chunk, build, blender, beardifier)?;
         self.owners = Some(TargetNoiseOwners {
             noise: noise.into_retained(),
             aquifer,
@@ -191,7 +245,10 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
     ) -> Result<R> {
         self.active()?;
         let result = (|| {
-            self.ensure_owners(self.initial_blender.clone())?;
+            self.ensure_owners(
+                self.initial_blender.clone(),
+                self.structure_beardifier.clone(),
+            )?;
             let density = self
                 .owners
                 .as_mut()
@@ -222,7 +279,10 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
             "target BIOMES already attempted"
         );
         self.phase = TargetGenerationPhase::Poisoned;
-        self.ensure_owners(self.initial_blender.clone())?;
+        self.ensure_owners(
+            self.initial_blender.clone(),
+            self.structure_beardifier.clone(),
+        )?;
         let owners = self.owners.as_mut().expect("created owners");
         let blender = owners.noise.blender_for(self.generator.graph())?;
         let density = owners.noise.density_mut_for(self.generator.graph())?;
@@ -263,7 +323,10 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
         // NoiseChunk. The owned guard releases every acquired section on error.
         let (top, bottom) = plan.section_lock_span().expect("positive cell count");
         let lease = self.target.acquire_noise_sections(top, bottom)?;
-        self.ensure_owners(self.initial_blender.clone())?;
+        self.ensure_owners(
+            self.initial_blender.clone(),
+            self.structure_beardifier.clone(),
+        )?;
         self.target
             .get_or_create_wg_heightmap(NoiseHeightmap::OceanFloorWg)?;
         self.target
@@ -345,6 +408,53 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
     where
         N::Error: Into<anyhow::Error>,
     {
+        self.build_surface_with_input(
+            phase_blender,
+            self.structure_beardifier.clone(),
+            region_height,
+            zoom,
+            neighbors,
+            temperature,
+        )
+    }
+
+    /// The recollected phase influences are used only if the actual target has
+    /// no cached NoiseChunk. A cache hit retains its initial structure owner
+    /// even when the later argument is different or unavailable.
+    pub fn build_surface_with_influences<N: QuartBiomeProvider<Biome = String> + ?Sized>(
+        &mut self,
+        phase_blender: Arc<Blender>,
+        phase_beardifier: Option<Arc<Beardifier>>,
+        region_height: HeightRange,
+        zoom: BiomeZoom,
+        neighbors: &mut N,
+        temperature: &mut BiomeTemperature,
+    ) -> Result<TargetSurfaceOutcome>
+    where
+        N::Error: Into<anyhow::Error>,
+    {
+        self.build_surface_with_input(
+            phase_blender,
+            BeardifierInput::Actual(phase_beardifier),
+            region_height,
+            zoom,
+            neighbors,
+            temperature,
+        )
+    }
+
+    fn build_surface_with_input<N: QuartBiomeProvider<Biome = String> + ?Sized>(
+        &mut self,
+        phase_blender: Arc<Blender>,
+        phase_beardifier: BeardifierInput,
+        region_height: HeightRange,
+        zoom: BiomeZoom,
+        neighbors: &mut N,
+        temperature: &mut BiomeTemperature,
+    ) -> Result<TargetSurfaceOutcome>
+    where
+        N::Error: Into<anyhow::Error>,
+    {
         self.active()?;
         ensure!(
             self.phase == TargetGenerationPhase::NoiseTaskFinished,
@@ -355,7 +465,7 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
             self.phase = TargetGenerationPhase::SurfaceSkipped;
             return Ok(TargetSurfaceOutcome::DebugVoidSkipped);
         }
-        self.ensure_owners(Some(phase_blender))?;
+        self.ensure_owners(Some(phase_blender), phase_beardifier)?;
         let density = self
             .owners
             .as_mut()
@@ -373,5 +483,175 @@ impl<T: GenerationTargetHost + ?Sized> TargetGeneration<T> {
         )?;
         self.phase = TargetGenerationPhase::Surface;
         Ok(TargetSurfaceOutcome::Built(report))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        chunk_readiness::ChunkStatus,
+        worldgen::{
+            beardifier::{BlockBox, Rigid, TerrainAdjustment},
+            retrogen::RetrogenSlot,
+            target::{
+                BuiltinStateFacts, NativeProtoTarget, NativeSection, NativeTargetParts,
+                SourceStateFacts,
+            },
+        },
+    };
+
+    /// Declared existing palettes and owners, not generated terrain or runtime
+    /// status. No required world/storage callback is replaced by a fallback.
+    fn target(build: HeightRange) -> Result<Box<NativeProtoTarget>> {
+        let facts: Arc<dyn SourceStateFacts> = Arc::new(BuiltinStateFacts::new()?);
+        let mut sections = Vec::new();
+        for _ in 0..build.section_count()? {
+            sections.push(NativeSection::from_palettes(
+                Box::new([facts.defaults().deepslate; 4096]),
+                Box::new(std::array::from_fn(|_| "minecraft:plains".to_owned())),
+                facts.as_ref(),
+            )?);
+        }
+        NativeProtoTarget::from_parts(
+            NativeTargetParts {
+                chunk: (0, 0),
+                build,
+                sections: sections.into_boxed_slice(),
+                persisted_status: ChunkStatus::EMPTY,
+                unsaved: false,
+                retrogen: RetrogenSlot::ObservedAbsent,
+                ocean_floor_wg: None,
+                world_surface_wg: None,
+                postprocessing: (0..build.section_count()?)
+                    .map(|_| None)
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+                debug_void_terrain: false,
+                unrelated: (),
+            },
+            facts,
+        )
+    }
+
+    fn nonempty_owner() -> Arc<Beardifier> {
+        Beardifier::from_ordered_parts(
+            vec![Rigid {
+                bounds: BlockBox {
+                    min_x: 0,
+                    min_y: 320,
+                    min_z: 0,
+                    max_x: 15,
+                    max_y: 328,
+                    max_z: 15,
+                },
+                terrain_adjustment: TerrainAdjustment::Bury,
+                ground_level_delta: 0,
+            }],
+            Vec::new(),
+        )
+    }
+
+    #[test]
+    fn actual_owner_is_captured_once_and_survives_skipped_fill() -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(123456789, "overworld")?);
+        let initial = nonempty_owner();
+        let mut job = TargetGeneration::new_with_influences(
+            generator,
+            target(HeightRange::new(320, 64)?)?,
+            Some(Blender::empty()),
+            Some(Arc::clone(&initial)),
+        );
+        assert!(job.captured_beardifier()?.is_none());
+        job.with_sampler(|_| Ok(()))?;
+        assert!(Arc::ptr_eq(&job.captured_beardifier()?.unwrap(), &initial));
+        let allocations = job
+            .owners
+            .as_ref()
+            .unwrap()
+            .noise
+            .density_for(job.generator.graph())?
+            .allocation_fingerprint();
+        job.ensure_owners(
+            Some(Blender::empty()),
+            BeardifierInput::Actual(Some(Beardifier::empty())),
+        )?;
+        job.ensure_owners(None, BeardifierInput::Actual(None))?;
+        assert!(Arc::ptr_eq(&job.captured_beardifier()?.unwrap(), &initial));
+        assert!(matches!(
+            job.fill_from_noise()?,
+            TargetNoiseOutcome::NoCells {
+                cell_count_y: 0,
+                ..
+            }
+        ));
+        assert_eq!(
+            job.owners
+                .as_ref()
+                .unwrap()
+                .noise
+                .density_for(job.generator.graph())?
+                .allocation_fingerprint(),
+            allocations
+        );
+        job.finish_noise_task()?;
+        assert!(Arc::ptr_eq(&job.captured_beardifier()?.unwrap(), &initial));
+        Ok(())
+    }
+
+    #[test]
+    fn unavailable_actual_owner_is_lazy_and_failed_positive_fill_releases_sections() -> Result<()> {
+        let generator = Arc::new(NoiseGenerator::builtin(123456789, "overworld")?);
+        let mut skipped = TargetGeneration::new_with_influences(
+            Arc::clone(&generator),
+            target(HeightRange::new(320, 64)?)?,
+            None,
+            None,
+        );
+        assert!(matches!(
+            skipped.fill_from_noise()?,
+            TargetNoiseOutcome::NoCells { .. }
+        ));
+        assert!(skipped.captured_beardifier()?.is_none());
+        assert!(!skipped.has_cached_noise_chunk());
+
+        let mut positive = TargetGeneration::new_with_influences(
+            Arc::clone(&generator),
+            target(HeightRange::new(0, 16)?)?,
+            Some(Blender::empty()),
+            None,
+        );
+        let error = positive.fill_from_noise().unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("beardifier owner is unavailable"));
+        assert_eq!(positive.phase(), TargetGenerationPhase::Poisoned);
+        assert!(positive
+            .target()
+            .sections()
+            .iter()
+            .all(|section| !section.is_acquired()));
+        assert!(!positive.has_cached_noise_chunk());
+        assert!(positive
+            .target()
+            .heightmap(NoiseHeightmap::OceanFloorWg)
+            .is_none());
+        assert!(positive
+            .target()
+            .heightmap(NoiseHeightmap::WorldSurfaceWg)
+            .is_none());
+
+        let mut observed_present = TargetGeneration::new(
+            generator,
+            target(HeightRange::new(0, 16)?)?,
+            Blender::empty(),
+            GenerationInfluence::Present,
+        );
+        assert!(observed_present
+            .fill_from_noise()
+            .unwrap_err()
+            .to_string()
+            .contains("requires an actual beardifier owner"));
+        Ok(())
     }
 }

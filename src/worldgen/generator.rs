@@ -2,10 +2,13 @@
 //!
 //! The initial supported boundary is an actually empty new ProtoChunk with
 //! observed-empty or actual retained Blender and empty structure beardifier.
+//! TargetGeneration additionally accepts actual ordered structure influences
+//! while retaining the same full-build NoiseChunk, density and aquifer owners.
 //! Those are caller-owned facts, not defaults. Paired staged adapters retain actual BIOMES and AIR carver data;
 //! feature placement, scheduling and FULL publication remain external.
 use super::{
     aquifer::{Aquifer, AquiferBlock, AquiferContext, AquiferNoise, FluidStatus},
+    beardifier::Beardifier,
     biome_temperature::BiomeTemperature,
     blending::Blender,
     carver::{
@@ -545,15 +548,29 @@ impl NoiseGenerator {
         build: super::target::HeightRange,
         blender: Arc<Blender>,
     ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
+        self.create_target_noise_owners_with_influences(chunk, build, blender, Beardifier::empty())
+    }
+
+    /// Capture the actual structure owner before wrapping the router. Its
+    /// selection/registry/region provenance belongs to the caller, separately
+    /// from the actual Blender and target build accessor.
+    fn create_target_noise_owners_with_influences(
+        &self,
+        chunk: (i32, i32),
+        build: super::target::HeightRange,
+        blender: Arc<Blender>,
+        beardifier: Arc<Beardifier>,
+    ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
         validate_level_height(build.min_y, build.height)?;
         self.validate_target_position(chunk)?;
-        let noise = NoiseChunk::new_with_blender(
+        let noise = NoiseChunk::new_with_influences(
             &self.graph,
             chunk.0,
             chunk.1,
             build.min_y,
             build.height,
             blender,
+            beardifier,
         )?;
         let grid = noise.grid();
         let aquifer = if self.aquifers_enabled {
