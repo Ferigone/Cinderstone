@@ -111,6 +111,7 @@ pub struct Registries {
     pub trim_pattern: Vec<String>,
     pub damage_type: Vec<String>,
     pub biome: Vec<String>,
+    pub map_decoration_type: Vec<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]

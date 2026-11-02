@@ -80,7 +80,9 @@ pub trait LootLevel {
             .map_err(|error| super::LootError::Host(error.to_string()))?;
         Ok(recipe.map(|recipe| recipe.result.clone()))
     }
-    /// `ExplorationMapFunction.run` tail: structure search plus map allocation.
+    /// `ExplorationMapFunction.run` tail: `findNearestMapStructure` plus map
+    /// allocation. When no structure is found the owner must return `stack`
+    /// unchanged (the map item that was passed in).
     #[allow(clippy::too_many_arguments)]
     fn exploration_map(
         &self,

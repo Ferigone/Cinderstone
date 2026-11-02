@@ -455,6 +455,7 @@ public class loot_oracle {
     regs.add("trim_pattern", registryOrder(access.registryOrThrow(Registries.TRIM_PATTERN)));
     regs.add("damage_type", registryOrder(access.registryOrThrow(Registries.DAMAGE_TYPE)));
     regs.add("biome", registryOrder(access.registryOrThrow(Registries.BIOME)));
+    regs.add("map_decoration_type", registryOrder(BuiltInRegistries.MAP_DECORATION_TYPE));
     root.add("registries", regs);
     JsonObject tags = new JsonObject();
     tags.add("item", tagsOf(BuiltInRegistries.ITEM));
@@ -488,6 +489,26 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("scenarios=" + in.size() + " failed=" + failed);
+        break;
+      }
+      case "parse": {
+        // Codec accept/reject parity: parse each table JSON with LootTable.DIRECT_CODEC.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject r = new JsonObject();
+          try {
+            DataResult<LootTable> result = LootTable.DIRECT_CODEC.parse(jsonOps, e);
+            r.addProperty("ok", result.result().isPresent());
+            if (result.error().isPresent()) r.addProperty("error", result.error().get().message());
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("parsed=" + in.size());
         break;
       }
       case "export-facts": {

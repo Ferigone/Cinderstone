@@ -58,6 +58,11 @@ fn stack_from_json(value: &Value) -> ItemStack {
             enchant(&mut stack, name, level.as_i64().unwrap() as i32).unwrap();
         }
     }
+    if let Some(levels) = value["components"]["minecraft:stored_enchantments"]["levels"].as_object() {
+        for (name, level) in levels {
+            enchant(&mut stack, name, level.as_i64().unwrap() as i32).unwrap();
+        }
+    }
     if let Some(damage) = value["components"]["minecraft:damage"].as_i64() {
         let mut writer = crate::protocol::Writer::new();
         writer.varint(damage as i32);
@@ -67,6 +72,7 @@ fn stack_from_json(value: &Value) -> ItemStack {
 }
 
 struct TestLevel {
+    blocks: Vec<([i32; 3], u32)>,
     biome: String,
     game_time: i64,
     day_time: i64,
@@ -93,8 +99,12 @@ impl LootLevel for TestLevel {
     fn is_loaded(&self, _pos: [i32; 3]) -> Result<bool> {
         Ok(true)
     }
-    fn block_state(&self, _pos: [i32; 3]) -> Result<u32> {
-        Ok(0)
+    fn block_state(&self, pos: [i32; 3]) -> Result<u32> {
+        Ok(self
+            .blocks
+            .iter()
+            .find(|(at, _)| *at == pos)
+            .map_or(0, |(_, state)| *state))
     }
     fn biome(&self, _pos: [i32; 3]) -> Result<String> {
         Ok(self.biome.clone())
@@ -251,6 +261,25 @@ fn run_case(case: &Value, header: &Value) -> std::result::Result<String, LootErr
         .and_then(Value::as_u64)
         .map_or(&Value::Null, |index| &header["levels"][index as usize]);
     let level = TestLevel {
+        blocks: level_json["blocks"]
+            .as_array()
+            .map(|blocks| {
+                blocks
+                    .iter()
+                    .map(|entry| {
+                        let pos = &entry["pos"];
+                        (
+                            [
+                                pos[0].as_i64().unwrap() as i32,
+                                pos[1].as_i64().unwrap() as i32,
+                                pos[2].as_i64().unwrap() as i32,
+                            ],
+                            block_state_from_json(&entry["state"]),
+                        )
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
         biome: level_json["biome"].as_str().unwrap_or("minecraft:plains").to_owned(),
         game_time: level_json["game_time"].as_i64().unwrap_or(0),
         day_time: level_json["day_time"].as_i64().unwrap_or(0),
@@ -487,6 +516,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     )
     .unwrap();
     let level = TestLevel {
+        blocks: Vec::new(),
         biome: "minecraft:plains".to_owned(),
         game_time: 0,
         day_time: 0,
@@ -517,6 +547,7 @@ fn unsupported_predicate_clauses_error_only_when_reached() {
     )
     .unwrap();
     let level = TestLevel {
+        blocks: Vec::new(),
         biome: String::new(),
         game_time: 0,
         day_time: 0,
@@ -588,6 +619,7 @@ fn explicit_seed_beats_sequence_beats_level_random() {
 fn empty_vanilla_tables_roll_nothing_and_every_condition_type_decodes() {
     // `entities/wither` and `entities/player` are tables without pools.
     let level = TestLevel {
+        blocks: Vec::new(),
         biome: String::new(),
         game_time: 0,
         day_time: 0,
@@ -631,5 +663,74 @@ fn empty_vanilla_tables_roll_nothing_and_every_condition_type_decodes() {
     ] {
         super::parse::condition(&serde_json::from_str::<Value>(body).unwrap())
             .unwrap_or_else(|error| panic!("{body}: {error}"));
+    }
+}
+
+#[test]
+fn level_based_value_has_no_typed_constant() {
+    // The original registers clamped/fraction/levels_squared/linear/lookup only;
+    // a constant is the bare number. The oracle rejected {"type":"minecraft:constant"}.
+    use super::parse::level_based_value;
+    assert!(level_based_value(&serde_json::json!(0.5)).is_ok());
+    assert!(matches!(
+        level_based_value(&serde_json::json!({"type": "minecraft:constant", "value": 0.5})),
+        Err(LootError::Codec(_))
+    ));
+}
+
+/// Accept/reject parity of the JSON parser with the original codec over mutated tables.
+fn parity_disagreements(cases: &[Value]) -> Vec<String> {
+    let mut disagreements = Vec::new();
+    for case in cases {
+        let table = &case[0];
+        let java_accepts = case[1].as_bool().unwrap();
+        let rust = super::parse::table(table);
+        if rust.is_ok() != java_accepts {
+            disagreements.push(format!(
+                "java {} rust {}: {}",
+                if java_accepts { "accepts" } else { "rejects" },
+                match &rust {
+                    Ok(_) => "accepts".to_owned(),
+                    Err(error) => format!("rejects ({error})"),
+                },
+                table
+            ));
+        }
+    }
+    disagreements
+}
+
+#[test]
+fn parser_accepts_and_rejects_like_the_original_codec() {
+    let fixture: Value =
+        serde_json::from_str(include_str!("../../fixtures/loot-parse-parity.json")).unwrap();
+    let cases = fixture["cases"].as_array().unwrap();
+    let disagreements = parity_disagreements(cases);
+    assert!(
+        disagreements.is_empty(),
+        "{} of {} mutants disagree; first: {:#?}",
+        disagreements.len(),
+        cases.len(),
+        &disagreements[..disagreements.len().min(8)]
+    );
+}
+
+#[test]
+#[ignore = "exploratory: LOOT_PARITY_FILE=<generated parity json>"]
+fn explore_parser_parity() {
+    let path = std::env::var("LOOT_PARITY_FILE").unwrap();
+    let fixture: Value = serde_json::from_str(&std::fs::read_to_string(path).unwrap()).unwrap();
+    let cases = fixture["cases"].as_array().unwrap();
+    let disagreements = parity_disagreements(cases);
+    eprintln!("PARITY total {} disagreements {}", cases.len(), disagreements.len());
+    let mut by_kind: BTreeMap<String, Vec<&String>> = BTreeMap::new();
+    for line in &disagreements {
+        let key: String = line.chars().take(60).collect();
+        by_kind.entry(key).or_default().push(line);
+    }
+    let java_rejects = disagreements.iter().filter(|l| l.starts_with("java rejects")).count();
+    eprintln!("PARITY java-rejects/rust-accepts {java_rejects}");
+    for (key, lines) in by_kind.iter().take(40) {
+        eprintln!("{} x{}\n   {}", key, lines.len(), lines[0].chars().take(420).collect::<String>());
     }
 }

@@ -52,6 +52,10 @@ TOOLS = [
     stack("stick"),                                                # 10
     stack("fishing_rod"),                                          # 11
     stack("fishing_rod", enchantments={"luck_of_the_sea": 3}),     # 12
+    stack("diamond_pickaxe", damage=100),                          # 13
+    {"id": "minecraft:enchanted_book", "count": 1,
+     "components": {"minecraft:stored_enchantments": {"levels": {"minecraft:fortune": 2}}}},  # 14
+    stack("iron_pickaxe", count=3),                                # 15
 ]
 
 ENTITIES = []
@@ -441,6 +445,52 @@ def synthetic_cases():
                 item("rotten_flesh", conditions=[{"condition": "minecraft:damage_source_properties", "predicate": {"is_direct": True}}]),
                 item("iron_nugget", conditions=[{"condition": "minecraft:damage_source_properties", "predicate": {"tags": [{"id": "minecraft:is_projectile", "expected": False}]}}]),
                 item("gold_nugget", conditions=[{"condition": "minecraft:killed_by_player"}])]}]}, 6, **fields)
+    # LevelBasedValue variants through the looting bonus chance
+    attackers = [entity(type="minecraft:zombie", mainhand=stack("diamond_sword", enchantments={"looting": n}))
+                 for n in (1, 2, 3, 5)]
+    for chance in (
+        0.4,
+        0.6,
+        {"type": "minecraft:linear", "base": 0.2, "per_level_above_first": 0.15},
+        {"type": "minecraft:levels_squared", "added": -3.0},
+        {"type": "minecraft:clamped", "value": {"type": "minecraft:linear", "base": 0.0, "per_level_above_first": 0.3}, "min": 0.1, "max": 0.7},
+        {"type": "minecraft:fraction", "numerator": {"type": "minecraft:linear", "base": 1.0, "per_level_above_first": 1.0}, "denominator": 8.0},
+        {"type": "minecraft:lookup", "values": [0.1, 0.9], "fallback": {"type": "minecraft:linear", "base": 0.5, "per_level_above_first": 0.0}},
+    ):
+        for attacker in attackers:
+            add({"type": "minecraft:entity", "pools": [{"rolls": 6, "entries": [
+                item("bone", conditions=[{"condition": "minecraft:random_chance_with_enchanted_bonus", "unenchanted_chance": 0.25,
+                                          "enchanted_chance": chance, "enchantment": "minecraft:looting"}])]}]}, 2,
+                te=zombie, ae=attacker, ds=player_hit)
+    # item predicates: damage, count, id lists, stored enchantments
+    for tool in (0, 1, 13, 14, 15, 5):
+        add({"type": "minecraft:block", "pools": [{"rolls": 1, "entries": [
+            item("stone", conditions=[{"condition": "minecraft:match_tool", "predicate": {"predicates": {"minecraft:damage": {"damage": {"min": 10}}}}}]),
+            item("dirt", conditions=[{"condition": "minecraft:match_tool", "predicate": {"count": {"min": 2}}}]),
+            item("sand", conditions=[{"condition": "minecraft:match_tool", "predicate": {"items": ["minecraft:diamond_pickaxe", "minecraft:iron_pickaxe"]}}]),
+            item("gravel", conditions=[{"condition": "minecraft:match_tool", "predicate": {"predicates": {"minecraft:stored_enchantments": [{"enchantments": "minecraft:fortune", "levels": {"min": 1}}]}}}]),
+            item("clay", conditions=[{"condition": "minecraft:match_tool", "predicate": {"predicates": {"minecraft:damage": {"durability": {"max": 1000}}}}}]),
+            item("flint", conditions=[{"condition": "minecraft:match_tool"}]),
+            item("coal", conditions=[{"condition": "minecraft:table_bonus", "enchantment": "minecraft:fortune", "chances": [0.1, 0.5, 0.9]}])]}]}, 3,
+            k=tool, b=block_state("minecraft:stone"))
+    # location checks that match: block predicate with states at an offset
+    tall = {"blocks": [{"pos": [0, 64, 0], "state": {"name": "minecraft:tall_grass", "properties": {"half": "lower"}}},
+                       {"pos": [0, 65, 0], "state": {"name": "minecraft:tall_grass", "properties": {"half": "upper"}}}]}
+    for lv in (level(**tall), level(blocks=[{"pos": [0, 64, 0], "state": {"name": "minecraft:stone"}}]), level()):
+        add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+            item("short_grass", conditions=[{"condition": "minecraft:location_check", "predicate": {"block": {"blocks": "minecraft:tall_grass", "state": {"half": "lower"}}}, "offsetY": -1 + 1}]),
+            item("tall_grass", conditions=[{"condition": "minecraft:location_check", "predicate": {"block": {"blocks": "minecraft:tall_grass", "state": {"half": "upper"}}}, "offsetY": 1}]),
+            item("stone", conditions=[{"condition": "minecraft:location_check", "predicate": {"block": {"blocks": "#minecraft:base_stone_overworld"}}}]),
+            item("apple", conditions=[{"condition": "minecraft:inverted", "term": {"condition": "minecraft:location_check", "predicate": {"block": {"state": {"half": "lower"}}}}}])]}]}, 2, lv=lv)
+    # copy_state keeps only the properties the function's own block defines
+    for state in (block_state("minecraft:wheat", {"age": "5"}),
+                  block_state("minecraft:oak_stairs", {"facing": "north", "half": "top"}),
+                  block_state("minecraft:farmland", {"moisture": "3"})):
+        add({"type": "minecraft:block", "pools": [{"rolls": 1, "entries": [
+            item("wheat", functions=[{"function": "minecraft:copy_state", "block": "minecraft:wheat",
+                                      "properties": ["age", "facing", "no_such_property"]}]),
+            item("oak_stairs", functions=[{"function": "minecraft:copy_state", "block": "minecraft:oak_stairs",
+                                           "properties": ["facing", "half", "age"]}])]}]}, 3, k=1, b=state)
     # fill: the container path used by chests
     return cases
 

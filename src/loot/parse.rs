@@ -44,8 +44,14 @@ fn object<'a>(value: &'a Value, what: &str) -> Result<&'a Map<String, Value>> {
         .ok_or_else(|| LootError::Codec(format!("{what}: expected an object")))
 }
 
+/// `JsonOps.JsonMapLike.get` reports a JSON `null` member as absent, so every
+/// optional member treats `null` as missing and every required member rejects it.
+fn member<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
+    map.get(key).filter(|value| !value.is_null())
+}
+
 fn required<'a>(map: &'a Map<String, Value>, key: &str, what: &str) -> Result<&'a Value> {
-    map.get(key)
+    member(map, key)
         .ok_or_else(|| LootError::Codec(format!("{what}: missing required field \"{key}\"")))
 }
 
@@ -86,7 +92,13 @@ fn string<'a>(value: &'a Value, what: &str) -> Result<&'a str> {
 }
 
 fn optional<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a Value> {
-    map.get(key)
+    member(map, key)
+}
+
+/// `Codec.BOOL.fieldOf(key).orElse(default)`: a missing, null or wrong-typed
+/// member is the default (`MapCodec.orElse` turns every decode error into it).
+fn bool_or_else(map: &Map<String, Value>, key: &str, default: bool) -> bool {
+    member(map, key).and_then(Value::as_bool).unwrap_or(default)
 }
 
 /// `ResourceLocation.CODEC`: validate and canonicalise.
@@ -137,7 +149,15 @@ fn registered(value: &Value, kind: Kind, what: &str) -> Result<String> {
 fn holder_set(value: &Value, kind: Kind, what: &str) -> Result<HolderSet> {
     match value {
         Value::String(text) => match text.strip_prefix('#') {
-            Some(tag) => Ok(HolderSet::Tag(resource_location(tag, what)?)),
+            Some(tag) => {
+                // `HolderSetCodec` resolves the tag through the registry lookup, which
+                // fails with "Missing tag" for a tag the data pack does not define.
+                let tag = resource_location(tag, what)?;
+                if facts().tag(kind, &tag).is_none() {
+                    return codec(format!("{what}: missing tag {tag}"));
+                }
+                Ok(HolderSet::Tag(tag))
+            }
             None => Ok(HolderSet::Direct(vec![registered(value, kind, what)?])),
         },
         Value::Array(items) => items
@@ -202,10 +222,9 @@ fn typed_number_provider(map: &Map<String, Value>) -> Result<NumberProvider> {
         "minecraft:score" => Ok(NumberProvider::Score {
             target: scoreboard_name(required(map, "target", "score provider")?)?,
             score: string(required(map, "score", "score provider")?, "score")?.to_owned(),
-            scale: match optional(map, "scale") {
-                Some(scale) => float(scale, "scale")?,
-                None => 1.0,
-            },
+            scale: member(map, "scale")
+                .and_then(Value::as_f64)
+                .map_or(1.0, |scale| scale as f32),
         }),
         "minecraft:storage" => Ok(NumberProvider::Storage {
             storage: id(required(map, "storage", "storage provider")?, "storage")?,
@@ -233,7 +252,7 @@ pub fn number_provider(value: &Value) -> Result<NumberProvider> {
         Value::Object(map) => match typed_number_provider(map) {
             Ok(provider) => Ok(provider),
             Err(typed_error) => {
-                if map.contains_key("min") && map.contains_key("max") {
+                if member(map, "min").is_some() && member(map, "max").is_some() {
                     uniform_provider(map).or(Err(typed_error))
                 } else {
                     Err(typed_error)
@@ -250,10 +269,9 @@ pub fn level_based_value(value: &Value) -> Result<LevelBasedValue> {
     }
     let map = object(value, "level based value")?;
     match type_name(map, "type", "level based value")?.as_str() {
-        "minecraft:constant" => Ok(LevelBasedValue::Constant(float(
-            required(map, "value", "constant")?,
-            "value",
-        )?)),
+        // `LevelBasedValue.bootstrap` registers no "constant" type: a constant is
+        // only the bare-number form handled above, and the original rejects
+        // {"type":"minecraft:constant"} (differential case custom24).
         "minecraft:linear" => Ok(LevelBasedValue::Linear {
             base: float(required(map, "base", "linear")?, "base")?,
             per_level_above_first: float(
@@ -682,10 +700,20 @@ pub fn condition(value: &Value) -> Result<Condition> {
                 scores,
             }
         }
-        "block_state_property" => Condition::BlockStateProperty {
-            block: registered(required(map, "block", "block_state_property")?, Kind::Block, "block")?,
-            properties: optional(map, "properties").map(state_properties).transpose()?,
-        },
+        "block_state_property" => {
+            let block = registered(required(map, "block", "block_state_property")?, Kind::Block, "block")?;
+            let properties = optional(map, "properties").map(state_properties).transpose()?;
+            // `LootItemBlockStatePropertyCondition.validate`: every named property
+            // must exist on the block ("Block X has no property Y").
+            if let Some(properties) = &properties {
+                let defined = super::predicate::block_property_names(&block)
+                    .ok_or_else(|| LootError::Codec(format!("unknown block {block}")))?;
+                if let Some((missing, _)) = properties.properties.iter().find(|(name, _)| !defined.contains(name)) {
+                    return codec(format!("Block {block} has no property {missing}"));
+                }
+            }
+            Condition::BlockStateProperty { block, properties }
+        }
         "match_tool" => Condition::MatchTool(optional(map, "predicate").map(item_predicate).transpose()?),
         "table_bonus" => {
             let values = required(map, "chances", "table_bonus")?
@@ -727,6 +755,7 @@ pub fn condition(value: &Value) -> Result<Condition> {
             period: optional(map, "period")
                 .map(|v| {
                     v.as_i64()
+                        .or_else(|| v.as_f64().map(|number| number as i64))
                         .ok_or_else(|| LootError::Codec("period: expected a long".to_owned()))
                 })
                 .transpose()?,
@@ -799,7 +828,7 @@ pub fn function(value: &Value) -> Result<Function> {
     let kind = match short {
         "set_count" => FunctionKind::SetCount {
             count: number_provider(required(map, "count", "set_count")?)?,
-            add: optional(map, "add").map(|v| boolean(v, "add")).transpose()?.unwrap_or(false),
+            add: bool_or_else(map, "add", false),
         },
         "explosion_decay" => FunctionKind::ExplosionDecay,
         "limit_count" => FunctionKind::LimitCount(int_range(required(map, "limit", "limit_count")?)?),
@@ -841,7 +870,7 @@ pub fn function(value: &Value) -> Result<Function> {
         }
         "set_damage" => FunctionKind::SetDamage {
             damage: number_provider(required(map, "damage", "set_damage")?)?,
-            add: optional(map, "add").map(|v| boolean(v, "add")).transpose()?.unwrap_or(false),
+            add: bool_or_else(map, "add", false),
         },
         "furnace_smelt" => FunctionKind::FurnaceSmelt,
         "enchant_randomly" => FunctionKind::EnchantRandomly {
@@ -865,7 +894,7 @@ pub fn function(value: &Value) -> Result<Function> {
             }
             FunctionKind::SetEnchantments {
                 enchantments,
-                add: optional(map, "add").map(|v| boolean(v, "add")).transpose()?.unwrap_or(false),
+                add: bool_or_else(map, "add", false),
             }
         }
         "copy_components" => {
@@ -908,6 +937,14 @@ pub fn function(value: &Value) -> Result<Function> {
         }
         "set_components" => {
             let components = object(required(map, "components", "set_components")?, "components")?;
+            // `DataComponentPatch.CODEC`: every key (optionally `!`-prefixed for a
+            // removal) must be a registered component type.
+            for name in components.keys() {
+                let bare = name.strip_prefix('!').unwrap_or(name);
+                if component_id(&resource_location(bare, "component type")?).is_none() {
+                    return codec(format!("unknown component type {name}"));
+                }
+            }
             let mut trim = None;
             let mut other = Vec::new();
             for (name, body) in components {
@@ -974,7 +1011,7 @@ pub fn function(value: &Value) -> Result<Function> {
                 None => "minecraft:on_treasure_maps".to_owned(),
             },
             decoration: match optional(map, "decoration") {
-                Some(v) => id(v, "decoration")?,
+                Some(v) => registered_in(v, &facts().registries.map_decoration_type, "decoration")?,
                 None => "minecraft:mansion".to_owned(),
             },
             zoom: optional(map, "zoom").map(|v| int(v, "zoom")).transpose()?.unwrap_or(2),
@@ -1080,10 +1117,10 @@ fn pool(value: &Value) -> Result<LootPool> {
         conditions: conditions_field(map)?,
         functions: functions_field(map)?,
         rolls: number_provider(required(map, "rolls", "loot pool")?)?,
-        bonus_rolls: match optional(map, "bonus_rolls") {
-            Some(v) => number_provider(v)?,
-            None => NumberProvider::Constant(0.0),
-        },
+        // `NumberProviders.CODEC.fieldOf("bonus_rolls").orElse(0)` swallows decode errors.
+        bonus_rolls: optional(map, "bonus_rolls")
+            .and_then(|value| number_provider(value).ok())
+            .unwrap_or(NumberProvider::Constant(0.0)),
     })
 }
 

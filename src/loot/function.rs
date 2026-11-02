@@ -363,8 +363,11 @@ impl Function {
                     Some(bytes) => decode_block_state_properties(bytes)?,
                     None => Default::default(),
                 };
-                let _ = block;
-                for name in properties {
+                // The constructor keeps only properties the function's own block defines.
+                let defined = super::predicate::block_property_names(block).ok_or_else(|| {
+                    LootError::Host(format!("unknown block {block}"))
+                })?;
+                for name in properties.iter().filter(|name| defined.contains(name)) {
                     if let Some(value) = actual.get(name) {
                         merged.insert(name.clone(), value.clone());
                     }

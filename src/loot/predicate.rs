@@ -525,6 +525,32 @@ pub fn block_state_block_id(state: u32) -> Result<String> {
         .ok_or_else(|| super::LootError::Host(format!("unknown block state {state}")))
 }
 
+/// Property names of a block definition (`StateDefinition.getProperty`), taken
+/// from the catalog's first state of that block. `None` for an unknown block.
+pub fn block_property_names(block: &str) -> Option<&'static Vec<String>> {
+    use std::sync::OnceLock;
+    static NAMES: OnceLock<BTreeMap<String, Vec<String>>> = OnceLock::new();
+    NAMES
+        .get_or_init(|| {
+            let mut map = BTreeMap::new();
+            let mut last = String::new();
+            for state in 0..u32::MAX {
+                let Some(name) = inventory::block_state_name(state) else {
+                    break;
+                };
+                if name != last {
+                    last = name.to_owned();
+                    let properties = inventory::block_state_properties(state)
+                        .map(|properties| properties.into_keys().collect())
+                        .unwrap_or_default();
+                    map.insert(canonical(name), properties);
+                }
+            }
+            map
+        })
+        .get(block)
+}
+
 /// `BlockPredicate`.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct BlockPredicate {
