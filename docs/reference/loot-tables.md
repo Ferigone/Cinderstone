@@ -23,7 +23,7 @@ It claims **no** checklist point and **no** Main integration; see
 | `LootItemConditions` (all 19) | `loot::condition::Condition` | `entity_scores`, `reference` and `time_check`/`weather_check` use the level/resolver traits |
 | `LootItemFunctions` (22 of 40) | `loot::function::FunctionKind` | see the table below |
 | `LootContext`, `LootParams`, `LootContextParamSets` (23 sets) | `loot::context` | builder validation (`allowed`/`required`) is `LootParams::validate` |
-| `RandomSequences`, `RandomSequence` | `loot::sequences` | persistent Xoroshiro streams, dirty marking, NBT save/load |
+| `RandomSequences`, `RandomSequence` | `loot::sequences` | persistent Xoroshiro streams, dirty marking (draws only), NBT save/load checked against the original's file loading by [saved-data.md](saved-data.md) (numeric `salt`, id canonicalization, `LONG_STREAM` sources) |
 | `EnchantmentHelper` (levels, `updateEnchantments`, `selectEnchantment`, `enchantItem`) | `loot::enchant` | enchantment definitions come from `fixtures/loot-registry-facts-1.21.json` |
 | `critereon` predicates used by loot | `loot::predicate` | see "Predicates" |
 | Vanilla data pack | `loot::vanilla`, `fixtures/loot-tables-1.21.json` | all 1178 tables parse |

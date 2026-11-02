@@ -45,13 +45,19 @@ impl RandomSequences {
         self.include_sequence_id = include_sequence_id;
     }
 
-    /// `SavedData.isDirty()`: set by any draw from, or reset of, a sequence.
+    /// `SavedData.isDirty()`: set by any draw from a sequence. `reset` and `clear` do not set it
+    /// (the original leaves marking to its callers).
     pub fn is_dirty(&self) -> bool {
         self.dirty
     }
 
     pub fn clear_dirty(&mut self) {
         self.dirty = false;
+    }
+
+    /// `SavedData.setDirty(boolean)`.
+    pub fn set_dirty(&mut self, dirty: bool) {
+        self.dirty = dirty;
     }
 
     fn create(&self, id: &str, salt: i32, include_world_seed: bool, include_sequence_id: bool) -> XoroshiroRandomSource {
@@ -79,21 +85,18 @@ impl RandomSequences {
     pub fn reset(&mut self, id: &str) {
         let created = self.create(id, self.salt, self.include_world_seed, self.include_sequence_id);
         self.sequences.insert(id.to_owned(), created);
-        self.dirty = true;
     }
 
     /// `reset(id, salt, includeWorldSeed, includeSequenceId)`.
     pub fn reset_with(&mut self, id: &str, salt: i32, include_world_seed: bool, include_sequence_id: bool) {
         let created = self.create(id, salt, include_world_seed, include_sequence_id);
         self.sequences.insert(id.to_owned(), created);
-        self.dirty = true;
     }
 
     /// `clear()`: forget every sequence, returning how many there were.
     pub fn clear(&mut self) -> usize {
         let count = self.sequences.len();
         self.sequences.clear();
-        self.dirty = true;
         count
     }
 
@@ -124,33 +127,60 @@ impl RandomSequences {
         ])
     }
 
-    /// `RandomSequences.load`. A sequence that fails to decode is skipped, as in
-    /// Java (which only logs it); the other fields default as Java's do.
+    /// `RandomSequences.load(worldSeed, data)`. Every field defaults and every malformed
+    /// sequence is skipped exactly as Java's `try`/`catch` does: `salt` is read with `getInt`
+    /// (any numeric tag), the flags only when they are bytes, a sequence needs a `source` that
+    /// `Codec.LONG_STREAM` reads as exactly two numbers and an id `ResourceLocation.parse`
+    /// accepts (a bare `a` becomes `minecraft:a`). Members are visited in `HashMap` key order,
+    /// so when two keys name the same id the later one wins as in Java.
     pub fn load(world_seed: i64, root: &Tag) -> Result<Self> {
+        use crate::components::java::{hashmap_iteration_order, numeric_as_int, numeric_as_long, resource_location};
         let mut loaded = Self::new(world_seed);
         let flag = |name: &str, default: bool| match root.get(name) {
             Some(Tag::Byte(value)) => *value != 0,
             _ => default,
         };
-        loaded.salt = match root.get("salt") {
-            Some(Tag::Int(value)) => *value,
-            _ => 0,
-        };
+        loaded.salt = root.get("salt").and_then(numeric_as_int).unwrap_or(0);
         loaded.include_world_seed = flag("include_world_seed", true);
         loaded.include_sequence_id = flag("include_sequence_id", true);
-        if let Some(Tag::Compound(entries)) = root.get("sequences") {
-            for (name, record) in entries {
-                let Some(name) = name.as_str() else {
-                    return Err(LootError::Host("random sequence id is not valid UTF-8".to_owned()));
-                };
-                if let Some(Tag::LongArray(state)) = record.get("source") {
-                    if let [lo, hi] = state.as_slice() {
-                        loaded
-                            .sequences
-                            .insert(name.to_owned(), XoroshiroRandomSource::from_state(*lo as u64, *hi as u64));
-                    }
+        let Some(Tag::Compound(entries)) = root.get("sequences") else { return Ok(loaded) };
+        // `NbtOps.getStream` of a list of compounds unwraps `{"": element}` wrappers.
+        fn stream(tag: &Tag) -> Option<Vec<Tag>> {
+            match tag {
+                Tag::LongArray(values) => Some(values.iter().map(|n| Tag::Long(*n)).collect()),
+                Tag::IntArray(values) => Some(values.iter().map(|n| Tag::Int(*n)).collect()),
+                Tag::ByteArray(values) => Some(values.iter().map(|n| Tag::Byte(*n)).collect()),
+                Tag::List { element_type, values } => Some(
+                    values
+                        .iter()
+                        .map(|element| match element {
+                            Tag::Compound(inner) if *element_type == 10 && inner.len() == 1 && inner[0].0 == "" => {
+                                inner[0].1.clone()
+                            }
+                            other => other.clone(),
+                        })
+                        .collect(),
+                ),
+                _ => None,
+            }
+        }
+        // Distinct keys in `getAllKeys()` order; the compound keeps its last value per key.
+        let mut names: Vec<&str> = Vec::new();
+        for (name, _) in entries {
+            if let Some(name) = name.as_str() {
+                if !names.contains(&name) {
+                    names.push(name);
                 }
             }
+        }
+        for index in hashmap_iteration_order(&names) {
+            let name = names[index];
+            let Some(record) = root.get("sequences").and_then(|sequences| sequences.get(name)) else { continue };
+            let Some(source) = record.get("source").and_then(stream) else { continue };
+            let numbers: Option<Vec<i64>> = source.iter().map(numeric_as_long).collect();
+            let Some([lo, hi]) = numbers.as_deref() else { continue };
+            let Some(id) = resource_location(name) else { continue };
+            loaded.sequences.insert(id, XoroshiroRandomSource::from_state(*lo as u64, *hi as u64));
         }
         Ok(loaded)
     }

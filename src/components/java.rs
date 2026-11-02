@@ -44,6 +44,68 @@ pub fn hashmap_iteration_order(keys: &[&str]) -> Vec<usize> {
     buckets.into_iter().flatten().collect()
 }
 
+/// `NumericTag.getAsInt` (`CompoundTag.getInt`, `contains(key, 99)`): any numeric tag, with Java's
+/// narrowing (`long` truncates, `float`/`double` use `Mth.floor`).
+pub fn numeric_as_int(tag: &crate::nbt::Tag) -> Option<i32> {
+    use crate::nbt::Tag;
+    Some(match tag {
+        Tag::Byte(n) => i32::from(*n),
+        Tag::Short(n) => i32::from(*n),
+        Tag::Int(n) => *n,
+        Tag::Long(n) => *n as i32,
+        Tag::Float(n) => {
+            let truncated = *n as i32;
+            if *n < truncated as f32 {
+                truncated.wrapping_sub(1)
+            } else {
+                truncated
+            }
+        }
+        Tag::Double(n) => {
+            let truncated = *n as i32;
+            if *n < f64::from(truncated) {
+                truncated.wrapping_sub(1)
+            } else {
+                truncated
+            }
+        }
+        _ => return None,
+    })
+}
+
+/// `Number.longValue()` of a numeric tag as `DynamicOps.getLongStream` reads it (`float` and
+/// `double` truncate toward zero, saturating).
+pub fn numeric_as_long(tag: &crate::nbt::Tag) -> Option<i64> {
+    use crate::nbt::Tag;
+    Some(match tag {
+        Tag::Byte(n) => i64::from(*n),
+        Tag::Short(n) => i64::from(*n),
+        Tag::Int(n) => i64::from(*n),
+        Tag::Long(n) => *n,
+        Tag::Float(n) => *n as i64,
+        Tag::Double(n) => *n as i64,
+        _ => return None,
+    })
+}
+
+/// `ResourceLocation.parse` / `ResourceLocation.CODEC` (`bySeparator(text, ':')`): the first `:`
+/// splits namespace and path, an empty or missing namespace means `minecraft`, an empty path is
+/// legal. Returns the canonical `namespace:path`, or `None` where Java throws or rejects.
+pub fn resource_location(text: &str) -> Option<String> {
+    let (namespace, path) = match text.split_once(':') {
+        Some(("", path)) => ("minecraft", path),
+        Some((namespace, path)) => (namespace, path),
+        None => ("minecraft", text),
+    };
+    let namespace_ok = namespace
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.'));
+    let path_ok = path
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.' | '/'));
+    (namespace_ok && path_ok).then(|| format!("{namespace}:{path}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

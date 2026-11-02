@@ -367,6 +367,12 @@ public class loot_oracle {
     }
   }
 
+  static byte[] unhex(String text) {
+    byte[] out = new byte[text.length() / 2];
+    for (int i = 0; i < out.length; i++) out[i] = (byte) Integer.parseInt(text.substring(2 * i, 2 * i + 2), 16);
+    return out;
+  }
+
   static String hex(byte[] b) {
     StringBuilder sb = new StringBuilder();
     for (byte x : b) sb.append(String.format("%02x", x));
@@ -689,6 +695,204 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("component-nbt=" + inputs.size());
+        break;
+      }
+      case "saved-data": {
+        // The original DimensionDataStorage / SavedData / RandomSequences / MapIndex over a real
+        // temporary directory. Input: JSON array of scenarios {world_seed, steps:[{op, ...}]};
+        // output: per scenario, one result object per step. Ops: put_snbt, put_hex, delete, get,
+        // compute, free_map_id, draw, reset, clear, set_dirty, save, read_tag.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject scenario = e.getAsJsonObject();
+          long worldSeed = scenario.get("world_seed").getAsLong();
+          Path dir = Files.createTempDirectory("saved-data-oracle");
+          Map<String, byte[]> put = new HashMap<>();
+          try {
+            net.minecraft.world.level.storage.DimensionDataStorage storage =
+                new net.minecraft.world.level.storage.DimensionDataStorage(dir.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), access);
+            JsonArray results = new JsonArray();
+            for (JsonElement stepElement : scenario.getAsJsonArray("steps")) {
+              JsonObject step = stepElement.getAsJsonObject();
+              JsonObject r = new JsonObject();
+              try {
+                String op = step.get("op").getAsString();
+                switch (op) {
+                  case "put_snbt": {
+                    String name = step.get("name").getAsString();
+                    CompoundTag root = new CompoundTag();
+                    root.put("data", renameWrap(new TagParser(new com.mojang.brigadier.StringReader(step.get("snbt").getAsString())).readValue()));
+                    if (!step.has("data_version")) { NbtUtils.addCurrentDataVersion(root); }
+                    else if (!step.get("data_version").isJsonNull()) { root.putInt("DataVersion", step.get("data_version").getAsInt()); }
+                    byte[] bytes;
+                    ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                    if (step.has("gzip") && !step.get("gzip").getAsBoolean()) {
+                      NbtIo.write(root, new DataOutputStream(buffer));
+                    } else {
+                      NbtIo.writeCompressed(root, buffer);
+                    }
+                    bytes = buffer.toByteArray();
+                    Files.write(dir.resolve(name + ".dat"), bytes);
+                    put.put(name, bytes);
+                    r.addProperty("hex", hex(bytes));
+                    break;
+                  }
+                  case "put_hex": {
+                    String name = step.get("name").getAsString();
+                    byte[] bytes = unhex(step.get("hex").getAsString());
+                    Files.write(dir.resolve(name + ".dat"), bytes);
+                    put.put(name, bytes);
+                    break;
+                  }
+                  case "delete":
+                    Files.deleteIfExists(dir.resolve(step.get("name").getAsString() + ".dat"));
+                    break;
+                  case "get":
+                  case "compute":
+                  case "set_dirty": {
+                    String name = step.get("name").getAsString();
+                    net.minecraft.world.level.saveddata.SavedData data;
+                    if (name.equals("random_sequences")) {
+                      var factory = net.minecraft.world.RandomSequences.factory(worldSeed);
+                      data = op.equals("get") ? storage.get(factory, name) : storage.computeIfAbsent(factory, name);
+                    } else {
+                      var factory = net.minecraft.world.level.saveddata.maps.MapIndex.factory();
+                      data = op.equals("get") ? storage.get(factory, name) : storage.computeIfAbsent(factory, name);
+                    }
+                    r.addProperty("present", data != null);
+                    if (data != null) {
+                      if (op.equals("set_dirty")) data.setDirty();
+                      r.addProperty("dirty", data.isDirty());
+                      r.addProperty("data", tagHex(data.save(new CompoundTag(), access)));
+                    }
+                    break;
+                  }
+                  case "free_map_id": {
+                    var index = storage.computeIfAbsent(net.minecraft.world.level.saveddata.maps.MapIndex.factory(), "idcounts");
+                    r.addProperty("id", index.getFreeAuxValueForMap().id());
+                    r.addProperty("dirty", index.isDirty());
+                    break;
+                  }
+                  case "draw": {
+                    var sequences = storage.computeIfAbsent(net.minecraft.world.RandomSequences.factory(worldSeed), "random_sequences");
+                    RandomSource random = sequences.get(ResourceLocation.parse(step.get("id").getAsString()));
+                    JsonArray draws = new JsonArray();
+                    for (int i = 0; i < step.get("n").getAsInt(); i++) draws.add(random.nextLong());
+                    r.add("draws", draws);
+                    r.addProperty("dirty", sequences.isDirty());
+                    break;
+                  }
+                  case "reset": {
+                    var sequences = storage.computeIfAbsent(net.minecraft.world.RandomSequences.factory(worldSeed), "random_sequences");
+                    ResourceLocation id = ResourceLocation.parse(step.get("id").getAsString());
+                    if (step.has("salt")) sequences.reset(id, step.get("salt").getAsInt(), step.get("include_world_seed").getAsBoolean(), step.get("include_sequence_id").getAsBoolean());
+                    else sequences.reset(id);
+                    r.addProperty("dirty", sequences.isDirty());
+                    break;
+                  }
+                  case "clear": {
+                    var sequences = storage.computeIfAbsent(net.minecraft.world.RandomSequences.factory(worldSeed), "random_sequences");
+                    r.addProperty("cleared", sequences.clear());
+                    break;
+                  }
+                  case "defaults": {
+                    var sequences = storage.computeIfAbsent(net.minecraft.world.RandomSequences.factory(worldSeed), "random_sequences");
+                    sequences.setSeedDefaults(step.get("salt").getAsInt(), step.get("include_world_seed").getAsBoolean(), step.get("include_sequence_id").getAsBoolean());
+                    break;
+                  }
+                  case "save": {
+                    storage.save();
+                    JsonArray files = new JsonArray();
+                    List<Path> listed;
+                    try (var stream = Files.list(dir)) { listed = stream.sorted().toList(); }
+                    for (Path file : listed) {
+                      byte[] bytes = Files.readAllBytes(file);
+                      String name = file.getFileName().toString();
+                      name = name.substring(0, name.length() - 4);
+                      JsonObject f = new JsonObject();
+                      f.addProperty("name", name);
+                      f.addProperty("rewritten", !Arrays.equals(bytes, put.get(name)));
+                      f.addProperty("gzip", bytes.length >= 2 && (bytes[0] & 255) == 0x1f && (bytes[1] & 255) == 0x8b);
+                      try {
+                        CompoundTag tag;
+                        if (f.get("gzip").getAsBoolean()) tag = NbtIo.readCompressed(new ByteArrayInputStream(bytes), NbtAccounter.unlimitedHeap());
+                        else tag = NbtIo.read(new DataInputStream(new ByteArrayInputStream(bytes)));
+                        f.addProperty("nbt", tagHex(tag));
+                      } catch (Exception bad) {
+                        f.addProperty("unreadable", true);
+                      }
+                      files.add(f);
+                    }
+                    r.add("files", files);
+                    break;
+                  }
+                  case "read_tag": {
+                    String name = step.get("name").getAsString();
+                    var type = name.equals("random_sequences") ? net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_RANDOM_SEQUENCES : net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_MAP_INDEX;
+                    int version = step.has("version") ? step.get("version").getAsInt() : SharedConstants.getCurrentVersion().getDataVersion().getVersion();
+                    r.addProperty("nbt", tagHex(storage.readTagFromDisk(name, type, version)));
+                    break;
+                  }
+                  default: throw new IllegalArgumentException(op);
+                }
+              } catch (Throwable t) {
+                r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+              }
+              results.add(r);
+            }
+            outArr.add(results);
+          } finally {
+            try (var walk = Files.walk(dir)) { walk.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete()); }
+          }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("saved-data=" + in.size());
+        break;
+      }
+      case "saved-data-mutants": {
+        // One-step mutants of saved-data payloads, loaded by the original factory through a real
+        // DimensionDataStorage. Input: [{name, world_seed, bases:[snbt]}]. Output rows:
+        // {name, world_seed, payload (hex of the `data` compound), present, data (hex of save())}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        Path dir = Files.createTempDirectory("saved-data-mutants");
+        try {
+          for (JsonElement e : in) {
+            JsonObject spec = e.getAsJsonObject();
+            String name = spec.get("name").getAsString();
+            long worldSeed = spec.get("world_seed").getAsLong();
+            LinkedHashMap<String, Tag> payloads = new LinkedHashMap<>();
+            for (JsonElement base : spec.getAsJsonArray("bases")) {
+              Tag tag = renameWrap(new TagParser(new com.mojang.brigadier.StringReader(base.getAsString())).readValue());
+              payloads.putIfAbsent(tagHex(tag), tag);
+              for (Tag mutant : nbtMutants(tag)) payloads.putIfAbsent(tagHex(mutant), mutant);
+            }
+            for (Map.Entry<String, Tag> payload : payloads.entrySet()) {
+              JsonObject r = new JsonObject();
+              r.addProperty("name", name);
+              r.addProperty("world_seed", worldSeed);
+              r.addProperty("payload", payload.getKey());
+              CompoundTag root = new CompoundTag();
+              root.put("data", payload.getValue());
+              NbtUtils.addCurrentDataVersion(root);
+              Files.deleteIfExists(dir.resolve(name + ".dat"));
+              NbtIo.writeCompressed(root, dir.resolve(name + ".dat"));
+              net.minecraft.world.level.storage.DimensionDataStorage storage =
+                  new net.minecraft.world.level.storage.DimensionDataStorage(dir.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), access);
+              net.minecraft.world.level.saveddata.SavedData data;
+              if (name.equals("random_sequences")) data = storage.get(net.minecraft.world.RandomSequences.factory(worldSeed), name);
+              else data = storage.get(net.minecraft.world.level.saveddata.maps.MapIndex.factory(), name);
+              r.addProperty("present", data != null);
+              if (data != null) r.addProperty("data", tagHex(data.save(new CompoundTag(), access)));
+              outArr.add(r);
+            }
+          }
+        } finally {
+          try (var walk = Files.walk(dir)) { walk.sorted(Comparator.reverseOrder()).forEach(p -> p.toFile().delete()); }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("saved-data-mutants=" + outArr.size());
         break;
       }
       case "export-facts": {
