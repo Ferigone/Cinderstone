@@ -88,6 +88,80 @@ pub fn numeric_as_long(tag: &crate::nbt::Tag) -> Option<i64> {
     })
 }
 
+/// `Double.toString` (JDK 19+, shortest round-trip digits): decimal notation for magnitudes in
+/// `[1e-3, 1e7)` with at least one digit after the point, otherwise `d.dddE±n`.
+pub fn double_to_string(value: f64) -> String {
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value.is_infinite() {
+        return if value > 0.0 { "Infinity" } else { "-Infinity" }.to_owned();
+    }
+    if value == 0.0 {
+        return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_owned();
+    }
+    let mut digits = format!("{value:e}");
+    // A one-digit shortest form is widened to the closest two-digit decimal that still reads back
+    // as the same value (`Double.MIN_VALUE` prints as 4.9E-324, not 5E-324).
+    if !digits.split('e').next().unwrap_or("").contains('.') {
+        let two = format!("{value:.1e}");
+        if two.parse::<f64>() == Ok(value) {
+            digits = two;
+        }
+    }
+    java_decimal(&digits, value.abs() >= 1e-3 && value.abs() < 1e7)
+}
+
+/// `Float.toString`: as [`double_to_string`] over the shortest `f32` digits.
+pub fn float_to_string(value: f32) -> String {
+    if value.is_nan() {
+        return "NaN".to_owned();
+    }
+    if value.is_infinite() {
+        return if value > 0.0 { "Infinity" } else { "-Infinity" }.to_owned();
+    }
+    if value == 0.0 {
+        return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_owned();
+    }
+    let mut digits = format!("{value:e}");
+    if !digits.split('e').next().unwrap_or("").contains('.') {
+        let two = format!("{value:.1e}");
+        if two.parse::<f32>() == Ok(value) {
+            digits = two;
+        }
+    }
+    java_decimal(&digits, value.abs() >= 1e-3 && value.abs() < 1e7)
+}
+
+/// Re-formats Rust's `d.ddde±n` shortest representation the way `Double.toString` prints it.
+fn java_decimal(scientific: &str, plain: bool) -> String {
+    let (mantissa, exponent) = scientific.split_once('e').expect("exponent");
+    let exponent: i32 = exponent.parse().expect("exponent digits");
+    let (sign, mantissa) = match mantissa.strip_prefix('-') {
+        Some(rest) => ("-", rest),
+        None => ("", mantissa),
+    };
+    let digits: String = mantissa.chars().filter(|c| *c != '.').collect();
+    let digits = match digits.trim_end_matches('0') {
+        "" => "0".to_owned(),
+        trimmed => trimmed.to_owned(),
+    };
+    if !plain {
+        let fraction = if digits.len() > 1 { &digits[1..] } else { "0" };
+        return format!("{sign}{}.{fraction}E{exponent}", &digits[..1]);
+    }
+    if exponent >= 0 {
+        let integer_len = exponent as usize + 1;
+        if digits.len() <= integer_len {
+            format!("{sign}{digits}{}.0", "0".repeat(integer_len - digits.len()))
+        } else {
+            format!("{sign}{}.{}", &digits[..integer_len], &digits[integer_len..])
+        }
+    } else {
+        format!("{sign}0.{}{digits}", "0".repeat((-exponent - 1) as usize))
+    }
+}
+
 /// `ResourceLocation.parse` / `ResourceLocation.CODEC` (`bySeparator(text, ':')`): the first `:`
 /// splits namespace and path, an empty or missing namespace means `minecraft`, an empty path is
 /// legal. Returns the canonical `namespace:path`, or `None` where Java throws or rejects.
@@ -137,5 +211,22 @@ mod tests {
         }
         assert_eq!(string_hash("hello"), 99_162_322);
         assert_eq!(string_hash("é𝄞"), 233 * 31 * 31 + 0xD834 * 31 + 0xDD1E);
+    }
+
+    #[test]
+    fn float_and_double_text_follows_java() {
+        for (value, expected) in [
+            (1.0f32, "1.0"), (0.1, "0.1"), (100.0, "100.0"), (1.5e7, "1.5E7"), (9_999_999.0, "9999999.0"), (1e7, "1.0E7"),
+            (0.001, "0.001"), (0.0009, "9.0E-4"), (1.0e-5, "1.0E-5"), (123_456_789.0, "1.2345679E8"), (f32::MAX, "3.4028235E38"),
+            (f32::from_bits(1), "1.4E-45"), (-2.5, "-2.5"), (0.0, "0.0"), (-0.0, "-0.0"), (f32::NAN, "NaN"), (f32::INFINITY, "Infinity"),
+        ] {
+            assert_eq!(float_to_string(value), expected, "{value:e}");
+        }
+        for (value, expected) in [
+            (1.0f64, "1.0"), (0.1, "0.1"), (1e7, "1.0E7"), (1.0e-5, "1.0E-5"), (4.9e-324, "4.9E-324"), (f64::MAX, "1.7976931348623157E308"),
+            (123_456.789, "123456.789"), (3.14159, "3.14159"), (1.0 / 3.0, "0.3333333333333333"),
+        ] {
+            assert_eq!(double_to_string(value), expected, "{value:e}");
+        }
     }
 }

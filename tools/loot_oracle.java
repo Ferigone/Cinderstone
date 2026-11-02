@@ -639,6 +639,7 @@ public class loot_oracle {
               JsonElement json = net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(jsonOps, c).getOrThrow(m -> new IllegalStateException(m));
               r.addProperty("json", net.minecraft.util.GsonHelper.toStableString(json));
               r.addProperty("string", c.getString());
+              r.addProperty("json_gson", net.minecraft.network.chat.Component.Serializer.toJson(c, access));
             }
           } catch (Throwable t) {
             r.addProperty("ok", false);

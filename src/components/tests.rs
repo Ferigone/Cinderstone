@@ -49,6 +49,9 @@ fn oracle_vectors_match() {
                 if nbt != case["nbt"].as_str().unwrap() {
                     failures.push(format!("NBT {input}\n  rust {nbt}\n  java {}", case["nbt"].as_str().unwrap()));
                 }
+                if component.to_json_string() != case["gson"].as_str().unwrap() {
+                    failures.push(format!("GSON {input}\n  rust {}\n  java {}", component.to_json_string(), case["gson"].as_str().unwrap()));
+                }
                 let expected: Value = serde_json::from_str(case["json"].as_str().unwrap()).unwrap();
                 if !same_json(&component.to_json(), &expected) {
                     failures.push(format!("JSON {input}\n  rust {}\n  java {expected}", component.to_json()));
@@ -90,6 +93,11 @@ fn check_parity(text: &str) {
                     let nbt = hex(&component.to_network_nbt().unwrap());
                     if nbt != expected {
                         failures.push(format!("NBT differs for {input}\n  rust {nbt}\n  java {expected}"));
+                    }
+                    if let Some(gson) = pair.get(3).and_then(Value::as_str) {
+                        if component.to_json_string() != gson {
+                            failures.push(format!("GSON differs for {input}\n  rust {}\n  java {gson}", component.to_json_string()));
+                        }
                     }
                 }
             }
