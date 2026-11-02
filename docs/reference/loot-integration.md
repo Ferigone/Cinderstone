@@ -54,7 +54,7 @@ before it runs respectively; they are Main's ordering to preserve.
 | `LootEntity` | entity runtime: type ID, fire state, equipment, slime size, variants | entity facts exist per module; no unified view |
 | `LootDamageSource` | damage pipeline | `src/living_damage.rs` / team-4 `src/combat` (source type + entities) |
 | `LootBlockEntity::collect_components` | native block entities (`BlockEntity.collectComponents`) | chest/barrel/furnace owners exist; components not exported |
-| `RandomSequences` persistence | `data/random_sequences.dat` saved-data lifecycle (`world_storage.4`) | type provided here, file I/O is the owner's |
+| `RandomSequences` persistence | `data/random_sequences.dat` saved-data lifecycle (`world_storage.4`) | type provided here; the file lifecycle is [`saved_data`](saved-data.md) (`random_sequences_factory(seed)` on a `DimensionDataStorage`), its Main call site is the coordinator's |
 
 ## Compatibility notes for the other teams
 
@@ -74,6 +74,6 @@ before it runs respectively; they are Main's ordering to preserve.
 
 1. A production `LootLevel`/`LootEntity` adapter when block survival breaking or mob
    death is scheduled (`block_interactions.4`, `survival_combat.3/.5`).
-2. Decide the owner of `random_sequences.dat` (`world_storage.4`); `RandomSequences::{save,load}` are ready.
+2. Call `saved_data::DimensionDataStorage` for `random_sequences.dat` (`world_storage.4`, library delivered; see [saved-data.md](saved-data.md)): `compute_if_absent(&random_sequences_factory(seed), "random_sequences")` per level, `save()` in the vanilla save sequence.
 3. Review `src/lib.rs`: one `pub mod loot;` line was added under the standing
    mechanical-export exception.

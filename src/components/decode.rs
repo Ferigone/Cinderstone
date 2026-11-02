@@ -156,25 +156,8 @@ fn optional_bool(map: &Val, key: &str) -> Result<Option<bool>> {
     }
 }
 
-/// `ResourceLocation.CODEC` (`bySeparator(text, ':')`): the first `:` splits namespace
-/// and path, an empty namespace means `minecraft`, an empty path is legal.
 fn resource_location(text: &str) -> Result<String> {
-    let (namespace, path) = match text.split_once(':') {
-        Some(("", path)) => ("minecraft", path),
-        Some((namespace, path)) => (namespace, path),
-        None => ("minecraft", text),
-    };
-    let namespace_ok = namespace
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.'));
-    let path_ok = path
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.' | '/'));
-    if namespace_ok && path_ok {
-        Ok(format!("{namespace}:{path}"))
-    } else {
-        reject(format!("Not a valid resource location: {text}"))
-    }
+    super::java::resource_location(text).ok_or_else(|| ComponentError::Codec(format!("Not a valid resource location: {text}")))
 }
 
 /// `JsonOps.convertTo(JavaOps)` of a JSON number: `BigDecimal.longValueExact` narrowed to
