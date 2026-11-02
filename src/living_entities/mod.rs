@@ -15,3 +15,4 @@ pub mod death;
 pub mod tick;
 pub mod ai_step;
 pub mod travel;
+pub mod state;
