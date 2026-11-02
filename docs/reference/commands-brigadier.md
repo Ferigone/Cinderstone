@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core and usage (WP-E3 stages 1-3)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage and completion (WP-E3 stages 1-4)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-3
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-4
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -14,7 +14,8 @@ existing bounded administration commands keep their own parser
 - Brigadier 1.2.9 (`com.mojang.brigadier`) is bundled unobfuscated in the server's
   `META-INF/libraries`. The classes ported are `StringReader`, `CommandSyntaxException`,
   `BoolArgumentType`, `IntegerArgumentType`, `LongArgumentType`, `FloatArgumentType`,
-  `DoubleArgumentType` and `StringArgumentType`.
+  `DoubleArgumentType` and `StringArgumentType`; stage 4 adds `Suggestion`,
+  `IntegerSuggestion`, `Suggestions`, `SuggestionsBuilder` and `SuggestionContext`.
 - The vanilla server replaces Brigadier's English literals with
   `net.minecraft.commands.BrigadierExceptions` (obfuscated `en`, found in the official
   mappings), which builds translatable components. Message keys and argument order were
@@ -61,9 +62,35 @@ Stage 3 (usage strings): `CommandDispatcher::all_usage(node, source, restricted)
 `-> target` for redirects, `[optional]` / `(a|b)` groups), following `getAllUsage` /
 `getSmartUsage`. Children are visited in the original's insertion order.
 
+Stage 4 (completion suggestions, `src/commands/suggestion.rs`, `java_text.rs`):
+- `Suggestion` / `IntegerSuggestion` / `Suggestions` / `SuggestionsBuilder` over UTF-16 offsets:
+  `suggest(String)` ignores text equal to the typed remainder, `Suggestions.create` expands every
+  suggestion to the union range, de-duplicates and sorts with `compareToIgnoreCase`, and
+  `Suggestions.merge` handles zero or one input specially. Because both steps pass through
+  `java.util.HashSet`, suggestions that compare equal while being different (`Foo` and `foo`)
+  appear in hash-bucket order; `JavaHashSet` reproduces `String.hashCode`, `Objects.hash`,
+  `HashMap.hash` spreading, the load-factor resize and the resize that replaces treeification
+  of a nine-entry chain in a table below 64 slots. `IntegerSuggestion` keeps the original's
+  oddities (numeric order against another integer suggestion, `expand` returns a plain
+  `Suggestion`, asymmetric `equals`).
+- `CommandContextBuilder::find_suggestion_context`, node `listSuggestions` (a literal offers
+  itself when its lower-cased text starts with the lower-cased typed remainder, whether or not the
+  source may use it, as in the original; `BoolArgumentType` offers `true` and `false`; an
+  argument node asks its custom `SuggestionProvider`, else its type) and
+  `CommandDispatcher::completion_suggestions(parse, cursor)` / `completion_suggestions_at_end`.
+  A provider that fails with a `CommandSyntaxException` contributes nothing. The two unchecked
+  exceptions are `SuggestionError::NoNodeBeforeCursor` and `StringIndexOutOfBounds` (a cursor past
+  the end of the input).
+- `ErasedArgumentType<S>` is now generic over the source so that an argument type can read the
+  command context while listing suggestions.
+- `java_text`: `Character.toUpperCase/toLowerCase(int)` for every Unicode scalar, `String.hashCode`,
+  `String.compareTo`, `String.compareToIgnoreCase` (including the JDK 21 rule that two UTF-16
+  strings compare by code point while a Latin-1 operand makes it compare by UTF-16 unit) and
+  `toLowerCase(Locale.ROOT)`.
+
 ## Not implemented (later WP-E3 stages)
 
-Completion suggestions, `ContextChain`'s
+`ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
 Minecraft argument types and their serialization (`ArgumentTypeInfos`), selectors,
@@ -99,12 +126,31 @@ final result or exception. Stage 3 adds, for every node of every tree (root incl
 sources 0, 2 and 4, the restricted and unrestricted `getAllUsage` lines and the `getSmartUsage`
 map.
 
+Stage 4. `fixtures/commands-brigadier-suggest-vectors.json` (1.2 MB) is produced by the same
+oracle class (`tools/brigadier_suggest_generate.py`, seed 20261104) with two kinds of evidence:
+
+- 70 seeded random trees (240 argument nodes carry custom providers: fixed words, the usual
+  prefix-filtered `suggest(Iterable)` shape, a context-reading provider and a throwing one) and 2,100
+  inputs (valid paths, truncations, trailing spaces, upper- and lower-cased text) completed at
+  4,252 cursors, 2,224 of them with suggestions and 88 past the end of the input.
+  `cargo test --locked --lib commands::suggestion_tests` compares the result range and every
+  suggestion's range, text and integer value, or the exception.
+- 1,811 direct cases: `Suggestions.create` (488) and `merge` (264) with random ranges (1,074 adjacent case-variant
+  ties in the results), chains of up to twelve colliding hash buckets and sets of up to 55 entries that cross the 12/24/48
+  resize thresholds; `SuggestionsBuilder` (350: `suggest`, `suggest(int)`, `createOffset`, `restart`,
+  start past the end); 708 string pairs for `compareToIgnoreCase`, `compareTo`, `hashCode` and
+  `toLowerCase(Locale.ROOT)`; and the full table of 2,879 code points with a case mapping, which the
+  test compares with the Rust derivation for all 1,112,064 Unicode scalars. Every suggestion's
+  `hashCode()` and `apply(command)` are compared too. Deliberately breaking the hash spreading, the
+  load-factor resize or the chain resize makes the suite fail.
+
 Reproduce (the oracle directory must stay outside git):
 
 ```text
 python3 tools/bootstrap_oracle.py --oracle-dir /path/outside/git
 python3 tools/brigadier_generate.py --oracle-dir /path/outside/git
 python3 tools/brigadier_dispatch_generate.py --oracle-dir /path/outside/git
+python3 tools/brigadier_suggest_generate.py --oracle-dir /path/outside/git
 cargo test --locked --lib commands::
 ```
 
@@ -122,6 +168,18 @@ occupies the default package. No jar, mapping or decompiler output is committed.
 - `Float.parseFloat`/`Double.parseDouble` are checked only on the strings the reader can
   produce (`[0-9.-]*`), using Rust's correctly rounded parser. Agreement on the 1,920 float and
   double reads in the fixture is not a proof for other inputs.
+- Suggestions are computed synchronously: the original's `CompletableFuture` plumbing (a provider
+  returning a failed future would leave the result incomplete) is not modelled, and neither are
+  tooltips (`Message`s hash by identity in the original, so tie order with tooltips is not
+  reproducible) or `HashSet` buckets treeified at nine collisions in a table of 64 slots or more.
+  `IntegerSuggestion`s mixed with text suggestions can make the original's comparator inconsistent;
+  the fixture never mixes them in one list.
+- `toLowerCase(Locale.ROOT)` uses Rust's Unicode data and its Final_Sigma rule. Java decides a final
+  sigma with its legacy word `BreakIterator`, which treats `-` between letters as part of a word
+  (`AΣ-É` keeps a medial sigma in Java and gets a final one in Rust). The random alphabet of the
+  fixture excludes capital sigma for that reason. Case mappings of characters added after Unicode 15.0
+  are handled by the `JAVA_UNMAPPED` table of `java_text.rs`; a newer toolchain that adds more makes
+  `case_mapping_matches_every_unicode_scalar` fail with the code points to add.
 - Brigadier is MIT-licensed (Copyright (c) Microsoft Corporation); the upstream text is kept in
   `licenses/brigadier-MIT.txt` and referenced from each source file. `THIRD_PARTY_NOTICES.md` is
   coordinator-owned and still needs an entry for it.

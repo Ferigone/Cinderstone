@@ -5,13 +5,24 @@
 //! resets the cursor to the start of the argument before raising the bound exception.
 //! Minecraft's own argument types (coordinates, selectors, ...) are later stages.
 
+use super::dispatcher::CommandContext;
 use super::exception::{built_in, CommandArg, CommandSyntaxException};
 use super::string_reader::StringReader;
+use super::suggestion::{Suggestions, SuggestionsBuilder};
 
-/// `com.mojang.brigadier.arguments.ArgumentType<T>`, parse half only.
+/// `com.mojang.brigadier.arguments.ArgumentType<T>`: `parse` and `listSuggestions`.
 pub trait ArgumentType {
     type Value;
     fn parse(&self, reader: &mut StringReader) -> Result<Self::Value, CommandSyntaxException>;
+
+    /// `listSuggestions(context, builder)`: the original's default offers nothing.
+    fn list_suggestions<S>(
+        &self,
+        _context: &CommandContext<S>,
+        _builder: &mut SuggestionsBuilder,
+    ) -> Result<Suggestions, CommandSyntaxException> {
+        Ok(Suggestions::empty())
+    }
 }
 
 /// `BoolArgumentType.bool()`.
@@ -22,6 +33,20 @@ impl ArgumentType for BoolArgumentType {
     type Value = bool;
     fn parse(&self, reader: &mut StringReader) -> Result<bool, CommandSyntaxException> {
         reader.read_boolean()
+    }
+
+    /// Offers `true` and `false` (in that order) when they start with the typed text.
+    fn list_suggestions<S>(
+        &self,
+        _context: &CommandContext<S>,
+        builder: &mut SuggestionsBuilder,
+    ) -> Result<Suggestions, CommandSyntaxException> {
+        for word in ["true", "false"] {
+            if word.encode_utf16().collect::<Vec<_>>().starts_with(builder.remaining_lower_case_units()) {
+                builder.suggest(word);
+            }
+        }
+        Ok(builder.build())
     }
 }
 
@@ -159,18 +184,32 @@ macro_rules! argument_value_from {
 
 argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String);
 
-/// Object-safe `ArgumentType<?>`: what a tree node holds so that nodes of different
-/// argument types can live in one command tree.
-pub trait ErasedArgumentType {
+/// Object-safe `ArgumentType<?>` for command sources of type `S`: what a tree node holds so
+/// that nodes of different argument types can live in one command tree.
+pub trait ErasedArgumentType<S> {
     fn parse_value(&self, reader: &mut StringReader) -> Result<ArgumentValue, CommandSyntaxException>;
+
+    fn list_suggestions(
+        &self,
+        context: &CommandContext<S>,
+        builder: &mut SuggestionsBuilder,
+    ) -> Result<Suggestions, CommandSyntaxException>;
 }
 
-impl<T> ErasedArgumentType for T
+impl<S, T> ErasedArgumentType<S> for T
 where
     T: ArgumentType,
     T::Value: Into<ArgumentValue>,
 {
     fn parse_value(&self, reader: &mut StringReader) -> Result<ArgumentValue, CommandSyntaxException> {
         self.parse(reader).map(Into::into)
+    }
+
+    fn list_suggestions(
+        &self,
+        context: &CommandContext<S>,
+        builder: &mut SuggestionsBuilder,
+    ) -> Result<Suggestions, CommandSyntaxException> {
+        ArgumentType::list_suggestions(self, context, builder)
     }
 }

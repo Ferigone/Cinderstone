@@ -7,6 +7,7 @@
 
 use super::tree::{Command, CommandTree, NodeId, RedirectModifier};
 use crate::commands::arguments::ArgumentValue;
+use crate::commands::suggestion::SuggestionError;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct StringRange {
@@ -62,6 +63,14 @@ fn put(map: &mut Vec<(String, ParsedArgument)>, name: String, argument: ParsedAr
         Some(entry) => entry.1 = argument,
         None => map.push((name, argument)),
     }
+}
+
+/// `SuggestionContext`: the node whose children are completed and where the replaced text
+/// starts.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct SuggestionContext {
+    pub parent: NodeId,
+    pub start_pos: usize,
 }
 
 pub struct CommandContextBuilder<S> {
@@ -154,6 +163,42 @@ impl<S: Clone> CommandContextBuilder<S> {
     pub fn with_child(&mut self, child: Self) -> &mut Self {
         self.child = Some(Box::new(child));
         self
+    }
+
+    /// `findSuggestionContext(cursor)`: which node's children are offered at `cursor`.
+    pub fn find_suggestion_context(&self, cursor: usize) -> Result<SuggestionContext, SuggestionError> {
+        if self.range.start() > cursor {
+            return Err(SuggestionError::NoNodeBeforeCursor);
+        }
+        if self.range.end() < cursor {
+            if let Some(child) = &self.child {
+                return child.find_suggestion_context(cursor);
+            }
+            return Ok(match self.nodes.last() {
+                Some(last) => SuggestionContext {
+                    parent: last.node,
+                    start_pos: last.range.end() + 1,
+                },
+                None => SuggestionContext {
+                    parent: self.root,
+                    start_pos: self.range.start(),
+                },
+            });
+        }
+        let mut previous = self.root;
+        for node in &self.nodes {
+            if node.range.start() <= cursor && cursor <= node.range.end() {
+                return Ok(SuggestionContext {
+                    parent: previous,
+                    start_pos: node.range.start(),
+                });
+            }
+            previous = node.node;
+        }
+        Ok(SuggestionContext {
+            parent: previous,
+            start_pos: self.range.start(),
+        })
     }
 
     pub fn build(&self, input: &str) -> CommandContext<S> {

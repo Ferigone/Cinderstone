@@ -11,7 +11,9 @@
 use super::context::{CommandContext, CommandContextBuilder, ParsedArgument, StringRange};
 use crate::commands::arguments::ErasedArgumentType;
 use crate::commands::exception::{built_in, CommandSyntaxException};
+use crate::commands::java_text::java_to_lower_case_root;
 use crate::commands::string_reader::StringReader;
+use crate::commands::suggestion::{SuggestionProvider, Suggestions, SuggestionsBuilder};
 use std::rc::Rc;
 
 pub type NodeId = usize;
@@ -19,14 +21,16 @@ pub type Command<S> = Rc<dyn Fn(&CommandContext<S>) -> Result<i32, CommandSyntax
 pub type Requirement<S> = Rc<dyn Fn(&S) -> bool>;
 pub type RedirectModifier<S> = Rc<dyn Fn(&CommandContext<S>) -> Result<Vec<S>, CommandSyntaxException>>;
 
-pub enum NodeKind {
+pub enum NodeKind<S> {
     Root,
-    Literal { literal: String, units: Vec<u16> },
-    Argument { name: String, argument_type: Rc<dyn ErasedArgumentType> },
+    /// `units` and `lower_case_units` are the UTF-16 forms of the literal and of
+    /// `literal.toLowerCase(Locale.ROOT)`.
+    Literal { literal: String, units: Vec<u16>, lower_case_units: Vec<u16> },
+    Argument { name: String, argument_type: Rc<dyn ErasedArgumentType<S>> },
 }
 
 pub struct CommandNode<S> {
-    kind: NodeKind,
+    kind: NodeKind<S>,
     children: Vec<(String, NodeId)>,
     literals: Vec<(String, NodeId)>,
     arguments: Vec<(String, NodeId)>,
@@ -35,10 +39,11 @@ pub struct CommandNode<S> {
     modifier: Option<RedirectModifier<S>>,
     forks: bool,
     command: Option<Command<S>>,
+    suggestions: Option<SuggestionProvider<S>>,
 }
 
 impl<S> CommandNode<S> {
-    fn new(kind: NodeKind) -> Self {
+    fn new(kind: NodeKind<S>) -> Self {
         Self {
             kind,
             children: Vec::new(),
@@ -49,6 +54,7 @@ impl<S> CommandNode<S> {
             modifier: None,
             forks: false,
             command: None,
+            suggestions: None,
         }
     }
 }
@@ -92,7 +98,7 @@ impl<S: Clone> CommandTree<S> {
         }
     }
 
-    pub fn kind(&self, id: NodeId) -> &NodeKind {
+    pub fn kind(&self, id: NodeId) -> &NodeKind<S> {
         &self.nodes[id].kind
     }
 
@@ -176,7 +182,7 @@ impl<S: Clone> CommandTree<S> {
     ) -> Result<(), CommandSyntaxException> {
         match &self.nodes[id].kind {
             NodeKind::Root => Ok(()),
-            NodeKind::Literal { literal, units } => {
+            NodeKind::Literal { literal, units, .. } => {
                 let start = reader.cursor();
                 if reader.can_read_n(units.len()) {
                     let end = start + units.len();
@@ -211,6 +217,32 @@ impl<S: Clone> CommandTree<S> {
         }
     }
 
+    /// `listSuggestions(context, builder)` for each node kind: a literal offers itself when it
+    /// starts with the typed text (case-insensitively), an argument asks its custom provider
+    /// or else its type, and the root offers nothing.
+    pub fn list_suggestions(
+        &self,
+        id: NodeId,
+        context: &CommandContext<S>,
+        builder: &mut SuggestionsBuilder,
+    ) -> Result<Suggestions, CommandSyntaxException> {
+        match &self.nodes[id].kind {
+            NodeKind::Root => Ok(Suggestions::empty()),
+            NodeKind::Literal { literal, lower_case_units, .. } => {
+                if lower_case_units.starts_with(builder.remaining_lower_case_units()) {
+                    builder.suggest(literal);
+                    Ok(builder.build())
+                } else {
+                    Ok(Suggestions::empty())
+                }
+            }
+            NodeKind::Argument { argument_type, .. } => match &self.nodes[id].suggestions {
+                Some(provider) => provider(context, builder),
+                None => argument_type.list_suggestions(context, builder),
+            },
+        }
+    }
+
     /// Build a detached subtree from a builder and return its node. Children go through a
     /// temporary root so duplicate names merge exactly as `ArgumentBuilder.then` does.
     pub fn build(&mut self, builder: &ArgumentBuilder<S>) -> NodeId {
@@ -223,6 +255,7 @@ impl<S: Clone> CommandTree<S> {
             BuilderKind::Literal(literal) => NodeKind::Literal {
                 literal: literal.clone(),
                 units: literal.encode_utf16().collect(),
+                lower_case_units: java_to_lower_case_root(literal).encode_utf16().collect(),
             },
             BuilderKind::Argument(name, argument_type) => NodeKind::Argument {
                 name: name.clone(),
@@ -235,6 +268,7 @@ impl<S: Clone> CommandTree<S> {
         node.redirect = builder.target;
         node.modifier = builder.modifier.clone();
         node.forks = builder.forks;
+        node.suggestions = builder.suggestions.clone();
         let id = self.push(node);
         for child in self.children(temporary_root) {
             self.add_child(id, child);
@@ -243,24 +277,25 @@ impl<S: Clone> CommandTree<S> {
     }
 }
 
-enum BuilderKind {
+enum BuilderKind<S> {
     Literal(String),
-    Argument(String, Rc<dyn ErasedArgumentType>),
+    Argument(String, Rc<dyn ErasedArgumentType<S>>),
 }
 
 /// `LiteralArgumentBuilder` / `RequiredArgumentBuilder` in one type.
 pub struct ArgumentBuilder<S> {
-    kind: BuilderKind,
+    kind: BuilderKind<S>,
     children: Vec<ArgumentBuilder<S>>,
     command: Option<Command<S>>,
     requirement: Requirement<S>,
     target: Option<NodeId>,
     modifier: Option<RedirectModifier<S>>,
     forks: bool,
+    suggestions: Option<SuggestionProvider<S>>,
 }
 
 impl<S: Clone + 'static> ArgumentBuilder<S> {
-    fn with_kind(kind: BuilderKind) -> Self {
+    fn with_kind(kind: BuilderKind<S>) -> Self {
         Self {
             kind,
             children: Vec::new(),
@@ -269,6 +304,7 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
             target: None,
             modifier: None,
             forks: false,
+            suggestions: None,
         }
     }
 
@@ -278,7 +314,7 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
     }
 
     /// `RequiredArgumentBuilder.argument(name, type)`.
-    pub fn argument(name: &str, argument_type: Rc<dyn ErasedArgumentType>) -> Self {
+    pub fn argument(name: &str, argument_type: Rc<dyn ErasedArgumentType<S>>) -> Self {
         Self::with_kind(BuilderKind::Argument(name.to_string(), argument_type))
     }
 
@@ -298,6 +334,15 @@ impl<S: Clone + 'static> ArgumentBuilder<S> {
 
     pub fn requires(mut self, requirement: Requirement<S>) -> Self {
         self.requirement = requirement;
+        self
+    }
+
+    /// `RequiredArgumentBuilder.suggests(provider)`; literal nodes have no such method.
+    pub fn suggests(mut self, provider: SuggestionProvider<S>) -> Self {
+        if matches!(self.kind, BuilderKind::Literal(_)) {
+            panic!("Only argument nodes take a suggestion provider");
+        }
+        self.suggestions = Some(provider);
         self
     }
 

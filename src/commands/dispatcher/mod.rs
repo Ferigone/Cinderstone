@@ -1,19 +1,24 @@
-//! `CommandDispatcher` core (Brigadier 1.2.9): registration, `parse` and `execute`.
+//! `CommandDispatcher` core (Brigadier 1.2.9): registration, `parse`, `execute`, usage
+//! strings and completion suggestions.
 //!
-//! Stage 2 of WP-E3 (issue #24). Usage strings, completion suggestions, custom
-//! `LiteralMessage` exception types, Minecraft argument types and the command catalog are
-//! later stages. Derived from Mojang's Brigadier (MIT, see `licenses/brigadier-MIT.txt`).
+//! Stages 2-4 of WP-E3 (issue #24). Custom `LiteralMessage` exception types, Minecraft
+//! argument types and the command catalog are later stages. Derived from Mojang's Brigadier
+//! (MIT, see `licenses/brigadier-MIT.txt`).
 
 pub mod chain;
 pub mod context;
 pub mod tree;
 
 pub use chain::ContextChain;
-pub use context::{CommandContext, CommandContextBuilder, ParsedArgument, ParsedCommandNode, StringRange};
+pub use context::{
+    CommandContext, CommandContextBuilder, ParsedArgument, ParsedCommandNode, StringRange, SuggestionContext,
+};
 pub use tree::{ArgumentBuilder, Command, CommandNode, CommandTree, NodeId, NodeKind, RedirectModifier, Requirement};
 
 use super::exception::{built_in, CommandSyntaxException};
+use super::java_text::java_to_lower_case_root;
 use super::string_reader::StringReader;
+use super::suggestion::{SuggestionError, Suggestions, SuggestionsBuilder};
 use std::cmp::Ordering;
 use std::rc::Rc;
 
@@ -276,6 +281,37 @@ impl<S: Clone + 'static> CommandDispatcher<S> {
             }
         }
         Some(this)
+    }
+
+    /// `getCompletionSuggestions(parse)`: complete at the end of the input.
+    pub fn completion_suggestions_at_end(&self, parse: &ParseResults<S>) -> Result<Suggestions, SuggestionError> {
+        self.completion_suggestions(parse, parse.reader.total_length())
+    }
+
+    /// `getCompletionSuggestions(parse, cursor)`: the children of the node before `cursor`
+    /// each list their suggestions for the text up to `cursor`, and the lists are merged.
+    /// A child whose provider fails with a `CommandSyntaxException` contributes nothing.
+    pub fn completion_suggestions(&self, parse: &ParseResults<S>, cursor: usize) -> Result<Suggestions, SuggestionError> {
+        let found = parse.context.find_suggestion_context(cursor)?;
+        let start = found.start_pos.min(cursor);
+        let full_input = parse.reader.string();
+        let units = parse.reader.units();
+        if cursor > units.len() {
+            return Err(SuggestionError::StringIndexOutOfBounds);
+        }
+        let truncated = String::from_utf16_lossy(&units[..cursor]);
+        let truncated_lower_case = java_to_lower_case_root(&truncated);
+        let context = parse.context.build(&truncated);
+        let mut collected = Vec::new();
+        for child in self.tree.children(found.parent) {
+            let mut builder = SuggestionsBuilder::with_lower_case(&truncated, &truncated_lower_case, start)?;
+            collected.push(
+                self.tree
+                    .list_suggestions(child, &context, &mut builder)
+                    .unwrap_or_else(|_| Suggestions::empty()),
+            );
+        }
+        Suggestions::merge(&full_input, &collected)
     }
 
     fn complete(&self, context: &CommandContext<S>, success: bool, result: i32) {
