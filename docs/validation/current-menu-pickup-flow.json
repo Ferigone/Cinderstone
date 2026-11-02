@@ -1,0 +1,110 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "c136c78b7f55098f7e93eb1cb57caab1046ca152",
+  "binary_sha256": "af50dfb4c7f378dc4101770efcbf352f915a815a6ccf29e2d1912c97d616d06e",
+  "harness_sha256": "18bab156f5c6475d4579cb664cda2e65c652080b929a300709c9e2e6cf5b07cf",
+  "started_at": "2026-11-02T00:46:22.136807+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One real Generic barrel and CraftingTable current-menu ItemEntity pickup flow; Collect precedes actual current-menu slots, no inactive window0/direct inventory packets, actual preview/count ownership conserved. No broader matrix.",
+  "checks": {
+    "generic_barrel_collect_precedes_actual_current_menu_sync": {
+      "ok": true,
+      "actual_window": 1,
+      "actual_item_entity": 2,
+      "collect": {
+        "ordinal": 120,
+        "item_entity": 2,
+        "player_entity": 1,
+        "count": 7
+      },
+      "first_current_menu_update": {
+        "ordinal": 121,
+        "packet_id": 21,
+        "window": 1,
+        "actual_current_window": 1,
+        "player_stone": 7
+      },
+      "canonical_stone_before": 0,
+      "canonical_stone_after": 7,
+      "inactive_window0_or_direct_inventory_packets": [],
+      "cursor_empty": true,
+      "pickup_used_real_movement_to_observed_item": true,
+      "menu_type": 2,
+      "menu_slots": 63,
+      "storage_remains_empty": true
+    },
+    "crafting_collect_precedes_current_sync_without_preview_ownership": {
+      "ok": true,
+      "actual_window": 2,
+      "actual_item_entity": 3,
+      "collect": {
+        "ordinal": 151,
+        "item_entity": 3,
+        "player_entity": 1,
+        "count": 7
+      },
+      "first_current_menu_update": {
+        "ordinal": 152,
+        "packet_id": 21,
+        "window": 2,
+        "actual_current_window": 2,
+        "player_stone": 14
+      },
+      "canonical_stone_before": 7,
+      "canonical_stone_after": 14,
+      "inactive_window0_or_direct_inventory_packets": [],
+      "cursor_empty": true,
+      "pickup_used_real_movement_to_observed_item": true,
+      "menu_type": 12,
+      "menu_slots": 46,
+      "owned_grid_log": 1,
+      "derived_preview_planks": 4,
+      "owned_planks": 0
+    },
+    "close_returns_only_canonical_inputs_and_keeps_pickup_totals": {
+      "ok": true,
+      "player": {
+        "stone": 14,
+        "oak_log": 1,
+        "oak_planks": 0
+      },
+      "cursor_empty": true
+    },
+    "actual_native_save_conserves_items_without_duplicate_preview": {
+      "ok": true,
+      "player": {
+        "stone": 14,
+        "oak_log": 1,
+        "oak_planks": 0
+      },
+      "world_items": {
+        "stone": 0,
+        "oak_log": 0,
+        "oak_planks": 0
+      },
+      "container_items": {
+        "stone": 0,
+        "oak_log": 0,
+        "oak_planks": 0
+      },
+      "cursor_empty": true,
+      "crafted_stats_empty": true
+    }
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e",
+    "fixtures/item_pairing.json": "c18b174cfd45c6063b1907f9d97228e8e6fd7376ed342fd7ee12e0c0054a40eb"
+  },
+  "actual_items": {
+    "stone": 1,
+    "barrel": 1205,
+    "crafting_table": 300,
+    "oak_log": 132,
+    "oak_planks": 36
+  },
+  "internal_inventory_counter_or_callback_instrumentation": false,
+  "completed_at": "2026-11-02T00:46:52.481095+00:00"
+}
