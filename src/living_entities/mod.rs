@@ -18,3 +18,5 @@ pub mod travel;
 pub mod state;
 pub mod brain;
 pub mod metadata;
+pub mod retained_base;
+pub mod retained_move;
