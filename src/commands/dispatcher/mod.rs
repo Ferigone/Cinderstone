@@ -184,6 +184,100 @@ impl<S: Clone + 'static> CommandDispatcher<S> {
         chain.execute_all(original.source().clone(), self.consumer.as_ref())
     }
 
+    fn redirect_usage(&self, redirect: NodeId) -> String {
+        if redirect == self.root {
+            "...".to_string()
+        } else {
+            format!("-> {}", self.tree.usage_text(redirect))
+        }
+    }
+
+    /// `getAllUsage(node, source, restricted)`: one line per executable path below `node`.
+    pub fn all_usage(&self, node: NodeId, source: &S, restricted: bool) -> Vec<String> {
+        let mut result = Vec::new();
+        self.collect_all_usage(node, source, &mut result, "", restricted);
+        result
+    }
+
+    fn collect_all_usage(&self, node: NodeId, source: &S, result: &mut Vec<String>, prefix: &str, restricted: bool) {
+        if restricted && !self.tree.can_use(node, source) {
+            return;
+        }
+        if self.tree.command(node).is_some() {
+            result.push(prefix.to_string());
+        }
+        if let Some(redirect) = self.tree.redirect(node) {
+            let redirect = self.redirect_usage(redirect);
+            result.push(if prefix.is_empty() {
+                format!("{} {redirect}", self.tree.usage_text(node))
+            } else {
+                format!("{prefix} {redirect}")
+            });
+        } else {
+            for child in self.tree.children(node) {
+                let usage = self.tree.usage_text(child);
+                let next = if prefix.is_empty() { usage } else { format!("{prefix} {usage}") };
+                self.collect_all_usage(child, source, result, &next, restricted);
+            }
+        }
+    }
+
+    /// `getSmartUsage(node, source)`: a compact usage per usable child of `node`.
+    pub fn smart_usage(&self, node: NodeId, source: &S) -> Vec<(NodeId, String)> {
+        let optional = self.tree.command(node).is_some();
+        let mut result = Vec::new();
+        for child in self.tree.children(node) {
+            if let Some(usage) = self.smart_usage_of(child, source, optional, false) {
+                result.push((child, usage));
+            }
+        }
+        result
+    }
+
+    fn smart_usage_of(&self, node: NodeId, source: &S, optional: bool, deep: bool) -> Option<String> {
+        if !self.tree.can_use(node, source) {
+            return None;
+        }
+        let text = self.tree.usage_text(node);
+        let this = if optional { format!("[{text}]") } else { text };
+        let child_optional = self.tree.command(node).is_some();
+        let (open, close) = if child_optional { ("[", "]") } else { ("(", ")") };
+        if !deep {
+            if let Some(redirect) = self.tree.redirect(node) {
+                return Some(format!("{this} {}", self.redirect_usage(redirect)));
+            }
+            let children: Vec<NodeId> = self
+                .tree
+                .children(node)
+                .into_iter()
+                .filter(|child| self.tree.can_use(*child, source))
+                .collect();
+            if children.len() == 1 {
+                if let Some(usage) = self.smart_usage_of(children[0], source, child_optional, child_optional) {
+                    return Some(format!("{this} {usage}"));
+                }
+            } else if children.len() > 1 {
+                let mut child_usage: Vec<String> = Vec::new();
+                for child in &children {
+                    if let Some(usage) = self.smart_usage_of(*child, source, child_optional, true) {
+                        if !child_usage.contains(&usage) {
+                            child_usage.push(usage);
+                        }
+                    }
+                }
+                if child_usage.len() == 1 {
+                    let usage = &child_usage[0];
+                    let usage = if child_optional { format!("[{usage}]") } else { usage.clone() };
+                    return Some(format!("{this} {usage}"));
+                } else if child_usage.len() > 1 {
+                    let names: Vec<String> = children.iter().map(|child| self.tree.usage_text(*child)).collect();
+                    return Some(format!("{this} {open}{}{close}", names.join("|")));
+                }
+            }
+        }
+        Some(this)
+    }
+
     fn complete(&self, context: &CommandContext<S>, success: bool, result: i32) {
         if let Some(consumer) = &self.consumer {
             consumer(context, success, result);

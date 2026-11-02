@@ -209,9 +209,10 @@ def main():
             cases.append(case)
             total += 1
             failures += 1 if "err" in result else 0
-        kept_tests.append({"tree": test["tree"], "cases": cases})
+        assert not lone(output["usage"])
+        kept_tests.append({"tree": test["tree"], "cases": cases, "usage": output["usage"]})
     document = {
-        "format": "brigadier-1.2.9-dispatch-vectors-v1",
+        "format": "brigadier-1.2.9-dispatch-vectors-v2",
         "source": "unchanged com.mojang.brigadier 1.2.9 from the pinned 1.21 server, with net.minecraft.commands.BrigadierExceptions installed",
         "seed": SEED,
         "skipped_cases_with_lone_surrogate_output": skipped,

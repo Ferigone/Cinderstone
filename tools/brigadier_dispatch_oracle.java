@@ -82,7 +82,47 @@ public final class brigadier_dispatch_oracle {
         }
         JsonObject out = new JsonObject();
         out.add("results", results);
+        JsonArray usage = new JsonArray();
+        collectUsage(dispatcher, dispatcher.getRoot(), new ArrayList<>(), usage);
+        out.add("usage", usage);
         return out;
+    }
+
+    // getAllUsage / getSmartUsage for every node (root included) and several sources.
+    private static void collectUsage(CommandDispatcher<Integer> dispatcher, CommandNode<Integer> node, List<String> path, JsonArray out) {
+        for (int source : new int[] {0, 2, 4}) {
+            JsonObject entry = new JsonObject();
+            JsonArray names = new JsonArray();
+            for (String name : path) {
+                names.add(name);
+            }
+            entry.add("path", names);
+            entry.addProperty("source", source);
+            JsonArray restricted = new JsonArray();
+            for (String line : dispatcher.getAllUsage(node, source, true)) {
+                restricted.add(line);
+            }
+            entry.add("allRestricted", restricted);
+            JsonArray unrestricted = new JsonArray();
+            for (String line : dispatcher.getAllUsage(node, source, false)) {
+                unrestricted.add(line);
+            }
+            entry.add("allUnrestricted", unrestricted);
+            JsonArray smart = new JsonArray();
+            for (Map.Entry<CommandNode<Integer>, String> item : dispatcher.getSmartUsage(node, source).entrySet()) {
+                JsonArray pair = new JsonArray();
+                pair.add(item.getKey().getName());
+                pair.add(item.getValue());
+                smart.add(pair);
+            }
+            entry.add("smart", smart);
+            out.add(entry);
+        }
+        for (CommandNode<Integer> child : node.getChildren()) {
+            List<String> next = new ArrayList<>(path);
+            next.add(child.getName());
+            collectUsage(dispatcher, child, next, out);
+        }
     }
 
     private static void collectNames(JsonObject spec, TreeSet<String> names) {
