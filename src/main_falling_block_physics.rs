@@ -6,7 +6,7 @@ use mc121_rust::{
     entity_move::{self, EntityMoveWorld, EntityMoveContext, MoverType, MovementEmission, ProfileEvent},
     entity_state::{java_floor, EntityPhysicalState},
     falling_block::{FallingBlockState, damage::{self, FallingBlockDamageActor}},
-    fluid_physics::{FluidKind, FluidShapeCache, FluidWorld, RuntimeFluidWorld},
+    fluid_physics::{FluidKind, FluidWorld, RuntimeFluidWorld},
     geometry::{self, EntityCollisionContext, VoxelShape},
     item_host::RuntimeGameplayHooks,
     player_physics::{CollisionQuery, WorldCollision},
@@ -15,22 +15,6 @@ use mc121_rust::{
     runtime_item_world::{ItemWorldFacts, RainAvailability},
     runtime_entity_index::EntityKind,
 };
-
-pub(super) struct MainFallingMoveServices<'a> {
-    pub(super) world: &'a mut WorldBackend,
-    pub(super) items: &'a mut RuntimeEntities,
-    pub(super) publication: &'a mut FallingBlockPublication,
-    pub(super) registry: &'a EntityRegistry,
-    pub(super) player_motion: &'a main_player_motion_hooks::MainPlayerMotionRuntime,
-    pub(super) gameplay: &'a mut MainItemGameplay,
-    pub(super) manager: &'a mc121_rust::runtime_chunk_manager::RuntimeChunkManager,
-    pub(super) query_region: main_chunk_runtime::CurrentChunkQueryRegion,
-    pub(super) fluid_shapes: &'a mut FluidShapeCache,
-    pub(super) rain: Option<&'a mut dyn RainExposure>,
-    pub(super) facts: ItemWorldFacts,
-    pub(super) damage_types: &'a NativeFallingDamageTypes,
-    pub(super) events: &'a broadcast::Sender<PlayerEvent>,
-}
 
 /// Only references to the genuine nonphysical actor fields used by damage.
 /// The physical reference supplied during Entity.move remains the SAME field.
@@ -58,20 +42,24 @@ impl FallingBlockDamageActor for FallingDamageBorrow<'_, '_> {
     fn set_cancel_drop(&mut self, value: bool) { *self.fields.cancel_drop = value; }
 }
 
-struct FallingMoveWorld<'a, 'fields> {
-    services: MainFallingMoveServices<'a>,
+struct FallingMoveWorld<'a, 'level, 'fields> {
+    services: &'a mut ActualFallingBlockEditServices<'level>,
+    publication: &'a mut FallingBlockPublication,
+    damage_types: &'a NativeFallingDamageTypes,
     fields: FallingDamageFields<'fields>,
     actor: CollisionActor,
     colliders: Vec<CollisionEntity>,
+    facts: ItemWorldFacts,
+    query_region: main_chunk_runtime::CurrentChunkQueryRegion,
 }
-impl FallingMoveWorld<'_, '_> {
+impl FallingMoveWorld<'_, '_, '_> {
     fn context(state: &EntityPhysicalState) -> EntityCollisionContext {
         EntityCollisionContext { bottom_y: state.position.y,
             descending: state.shared_flags & 2 != 0, fall_distance: state.fall_distance,
             is_falling_block: true, can_walk_on_powder_snow: false }
     }
     fn collision(&mut self) -> RuntimeCollision<'_> {
-        RuntimeCollision::new(self.services.world, self.actor, &self.colliders, self.services.facts.border)
+        RuntimeCollision::new(self.services.world, self.actor, &self.colliders, self.facts.border)
     }
     fn cells(bounds: Aabb, inward: f64) -> Result<((i32,i32,i32),(i32,i32,i32))> {
         ensure!([bounds.min_x,bounds.min_y,bounds.min_z,bounds.max_x,bounds.max_y,bounds.max_z]
@@ -88,23 +76,23 @@ impl FallingMoveWorld<'_, '_> {
         ensure!(class==expected,"unported falling {name} callback {class} for state{block}");Ok(())
     }
 }
-impl WorldCollision for FallingMoveWorld<'_, '_> {
+impl WorldCollision for FallingMoveWorld<'_, '_, '_> {
     fn block_collisions(&mut self,q:CollisionQuery)->Result<Vec<VoxelShape>>{self.collision().block_collisions(q)}
     fn entity_collisions(&mut self,q:CollisionQuery)->Result<Vec<VoxelShape>>{self.collision().entity_collisions(q)}
     fn border_collision(&mut self,q:CollisionQuery)->Result<Option<VoxelShape>>{self.collision().border_collision(q)}
     fn all_blocks_air(&mut self,b:Aabb)->Result<bool>{self.collision().all_blocks_air(b)}
 }
-impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
+impl EntityMoveWorld for FallingMoveWorld<'_, '_, '_> {
     fn profile(&mut self,event:ProfileEvent){
-        let mut frame=self.services.gameplay.frame_current(self.services.registry,self.services.manager,true,self.services.query_region);
+        let mut frame=self.services.gameplay.frame_current(self.services.registry,&self.services.chunks.manager,true,self.query_region);
         RuntimeGameplayHooks::profile(&mut frame,event);
     }
-    fn game_time(&mut self)->Result<i64>{Ok(self.services.facts.game_time)}
+    fn game_time(&mut self)->Result<i64>{Ok(self.facts.game_time)}
     fn set_position(&mut self,s:&mut EntityPhysicalState,p:Vec3)->Result<()>{entity_move::set_base_position(s,p,self)}
     fn position_changed(&mut self,s:&mut EntityPhysicalState)->Result<()>{
         ensure!(s.entity_id==self.actor.entity_id,"falling move actor changed");
         self.actor.position=s.position_vec();
-        self.services.publication.position_changed(s,self.services.items)
+        self.publication.position_changed(s,self.services.items)
     }
     fn reset_fall_distance(&mut self,s:&mut EntityPhysicalState)->Result<()>{s.fall_distance=0.;Ok(())}
     fn set_on_ground_with_movement(&mut self,s:&mut EntityPhysicalState,on:bool,m:Vec3)->Result<()>{
@@ -123,7 +111,7 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
                 let block_hit=entity_move::block_facts(block)?.fall_damage_resetting()
                     &&VoxelShape::from_aabb(Aabb::new(0.,0.,0.,1.,1.,1.)).clip(from,to,p).is_some();
                 let fluid_hit=if fluid.kind==FluidKind::Water{
-                    self.services.fluid_shapes.shape(&mut RuntimeFluidWorld{world:self.services.world},p,fluid)?
+                    self.services.interactions.fluid_shapes.shape(&mut RuntimeFluidWorld{world:self.services.world},p,fluid)?
                         .clip(from,to,p).is_some()
                 }else{false};
                 Ok(block_hit||fluid_hit)
@@ -143,15 +131,15 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
             if s.fall_distance>0.{
                 let hooks=entity_move::block_facts(block)?.callback_classes()?;
                 Self::inherited(block,"fallOn",&hooks.fall_on,"dfy")?;
-                ensure!(!self.services.facts.has_passengers,"actual falling passengers require their causeFallDamage owner");
+                ensure!(!self.facts.has_passengers,"actual falling passengers require their causeFallDamage owner");
                 let distance=s.fall_distance;
                 let mut actor=FallingDamageBorrow{physical:s,fields:&mut self.fields};
                 let mut host=MainFallingDamageHost{items:self.services.items,registry:self.services.registry,
-                    player_motion:self.services.player_motion,actor:self.services.publication.handle,
-                    damage_types:self.services.damage_types};
+                    player_motion:self.services.player_motion,actor:self.publication.handle,
+                    damage_types:self.damage_types};
                 damage::cause_fall_damage(&mut actor,distance,&mut host)?;
                 let affected=if let Some(p)=s.supporting_block{self.services.world.block(p.0,p.1,p.2)?}else{block};
-                let mut frame=self.services.gameplay.frame_current(self.services.registry,self.services.manager,true,self.services.query_region);
+                let mut frame=self.services.gameplay.frame_current(self.services.registry,&self.services.chunks.manager,true,self.query_region);
                 frame.hit_ground(s,affected)?;
             }
             self.reset_fall_distance(s)?;
@@ -170,18 +158,23 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
     fn try_check_inside_blocks(&mut self,s:&mut EntityPhysicalState)->Result<()>{
         let(min,max)=Self::cells(s.bounds,1e-7)?;
-        if max.1<self.services.facts.minimum_build_height||min.1>mc121_rust::world::MAX_Y{return Ok(())}
+        if max.1<self.facts.minimum_build_height||min.1>mc121_rust::world::MAX_Y{return Ok(())}
         if !(RuntimeFluidWorld{world:self.services.world}).has_chunks_at(min.0,min.2,max.0,max.2)?{return Ok(())}
         // The native dimension's actual existing FULL futures certify access;
         // this is not an invented successful hasChunksAt for arbitrary worlds.
-        self.services.manager.certify_full_region((min.0.div_euclid(16),min.2.div_euclid(16)),
+        self.services.chunks.manager.certify_full_region((min.0.div_euclid(16),min.2.div_euclid(16)),
             (max.0.div_euclid(16),max.2.div_euclid(16)))?;
         for x in min.0..=max.0{for y in min.1..=max.1{for z in min.2..=max.2{
             if s.removed{return Ok(())}
             let block=self.services.world.block(x,y,z)?;
-            Self::inherited(block,"entityInside",&entity_move::block_facts(block)?.callback_classes()?.entity_inside,"dtb")?;
-            // Verified inherited BlockBehaviour.entityInside and
-            // FallingBlockEntity's inherited Entity.onInsideBlock are empty.
+            let callbacks=entity_move::block_facts(block)?.callback_classes()?;
+            if callbacks.entity_inside=="dfm" {
+                main_falling_block_redstone::entity_inside(self.services,self.publication,s,(x,y,z))?;
+            } else {
+                Self::inherited(block,"entityInside",&callbacks.entity_inside,"dtb")?;
+            }
+            // FallingBlockEntity inherits Entity.onInsideBlock's literal
+            // empty body after the actual Block.entityInside callback.
         }}}
         Ok(())
     }
@@ -194,11 +187,14 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
     fn water_rain_or_bubble(&mut self,s:&EntityPhysicalState)->Result<bool>{
         if s.was_touching_water{return Ok(true)}
-        match self.services.facts.rain{
+        match self.facts.rain{
             RainAvailability::NotRaining=>{},
             RainAvailability::ExposureUnavailable=>{
-                if self.services.rain.as_deref_mut().context("actual falling rain exposure owner unavailable")?
-                    .is_in_rain(self.services.world,s)?{return Ok(true)}
+                let (lighting,manager)=self.services.chunks.native_lighting_parts()?;
+                let owner=self.services.rain.as_deref_mut()
+                    .context("actual falling rain exposure owner unavailable")?;
+                let mut exposure=mc121_rust::native_rain::NativeFlatPlainsRainFrame::new(owner,lighting,manager);
+                if exposure.is_in_rain(self.services.world,s)?{return Ok(true)}
             }
         }
         let p=s.block_position;
@@ -224,13 +220,16 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
 }
 
-pub(super) fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
-    mut services:MainFallingMoveServices<'_>)->Result<()>{
+fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
+    services:&mut ActualFallingBlockEditServices<'_>, publication:&mut FallingBlockPublication,
+    damage_types:&NativeFallingDamageTypes)->Result<()>{
     actor.validate()?;
-    ensure!(services.items.entity_kind(services.publication.handle)==Some(EntityKind::FallingBlock)
-        &&actor.entity_id==services.publication.handle.id,"falling motion actual handle mismatch");
+    ensure!(services.items.entity_kind(publication.handle)==Some(EntityKind::FallingBlock)
+        &&actor.entity_id==publication.handle.id,"falling motion actual handle mismatch");
     ensure!(matches!(services.world,WorldBackend::Fixture(_)),"native falling imported-world motion unavailable");
     services.gameplay.require_supported_floor()?;
+    let facts=services.context.item_facts(services.now,services.border,false)?;
+    let query_region=services.query_region.context("falling motion has no actual current query region")?;
     ensure!(actor.width==0.98_f32&&actor.height==0.98_f32,"actual falling dimensions mismatch");
     // All current native indexed classes inherit canBeCollidedWith=false.
     // Actually walk that same index; a future new class must update this match.
@@ -241,7 +240,7 @@ pub(super) fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
         cancel_drop:&mut actor.cancel_drop,hurt_entities:&mut actor.hurt_entities,
         amount:&mut actor.fall_damage_per_distance,maximum:&mut actor.fall_damage_max};
     let mut world=FallingMoveWorld{actor:CollisionActor{entity_id:physical.entity_id,position:physical.position_vec()},
-        services,fields,colliders:Vec::new()};
+        services,publication,damage_types,fields,colliders:Vec::new(),facts,query_region};
     entity_move::move_entity(physical,MoverType::SelfMove,movement,
         EntityMoveContext{step_height:0.,descending:physical.shared_flags&2!=0,is_falling_block:true,
             can_walk_on_powder_snow:false,movement_emission:MovementEmission::None},&mut world)?;
@@ -331,20 +330,7 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         placement::placement_block_min_state(state)
     }
     fn move_self(&mut self, actor: &mut FallingBlockState, movement: Vec3) -> Result<()> {
-        let facts = self.services.context.item_facts(self.services.now, self.services.border, false)?;
-        let region = self.services.query_region
-            .context("falling motion has no actual current query region")?;
-        let (lighting, manager) = self.services.chunks.native_lighting_parts()?;
-        let mut exposure = self.services.rain.as_deref_mut().map(|owner|
-            mc121_rust::native_rain::NativeFlatPlainsRainFrame::new(owner, lighting, manager));
-        let rain = exposure.as_mut().map(|owner| owner as &mut dyn RainExposure);
-        move_falling_block(actor, movement, MainFallingMoveServices {
-            world: self.services.world, items: self.services.items,
-            publication: self.publication, registry: self.services.registry,
-            player_motion: self.services.player_motion, gameplay: self.services.gameplay,
-            manager, query_region: region, fluid_shapes: &mut self.services.interactions.fluid_shapes,
-            rain, facts, damage_types: self.damage_types, events: self.services.events,
-        })
+        move_falling_block(actor,movement,&mut self.services,self.publication,self.damage_types)
     }
     fn handle_portal(&mut self, actor: &mut FallingBlockState) -> Result<()> {
         // Entity.handlePortal in a real ServerLevel calls processPortalCooldown

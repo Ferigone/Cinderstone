@@ -5,6 +5,12 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native pressure callbacks — local Main stage; one Item flow passed
+
+Source `49643deaea532a38ae01327213c4b821cb643215`, tree `1d76c8da562b9b01954e2f54b444188c7465b452`, passed all-target check21.82s and full executable build37.78s. Actual binary `3cd05a5f8de8e29c8bc3e0ca3ec719638e761a0638867c8d1c2c5895ef3b15ed` then passed one [real Item/wooden-plate flow](reference/pressure-item-runtime.md): same Item activation, pickup and scheduled release conserved one stone. Exact source/binary/packet evidence stays separate from later source composition. One real overload event is retained, not hidden or turned into a performance assertion.
+
+The production path borrows actual Item TickParts query/sound state or full XP/Falling owners synchronously at the original entityInside phase, keeps fluid/rain/cache borrows local, and supplies the original world-update publisher. Actual scheduled release uses the Server host, same shared query and scheduler, with no legacy item-count fallback. New base/Enchanting BlockEntity library source is exported as a separate prerequisite; no working table/map/menu is claimed. Active controller neighborhoods, arbitrary imports and wider pressure runtime coverage remain open. This stage is being published for review; fixed scope1 indicators stay56/51.
+
 ## Native Anvil/FallingBlock — Main connected; bounded runtime passed
 
 Published [PR97](https://github.com/Ferigone/Cinderstone/pull/97) has the exact Git tree of composed source `a8cc5a766a0ad7ba6217fa56d73ef0760e3f5b5c`, tree `e2e398445e35b958a713c24588a5691a96d9e770`. Required all-target compiler passed23.94s and full executable build37.04s; binary `e2c7950bf85c556e0f0a23004561fe038e894a87fbac6346088c29897f3da10e`.
@@ -15,7 +21,7 @@ A later [genuine mid-flight native resume](reference/falling-midflight-local-key
 
 ## Latest hosted Main release
 
-Falling PR97 merged as `68fba409b757eae8287b301228303ae2510a205d`; its own automatic deployment reached SUCCESS/native offline listening at `2026-11-02T02:01:28.193071393Z` and was superseded by later master releases. Directly observed descendant `9825ca9`/deployment `f554ef7b-883c-43b5-8af0-35f7963efde7` is SUCCESS, with native1.21/767/offline listening at `2026-11-02T02:42:07.736987421Z`. Fresh master `4594a3e` was BUILDING in deployment `b752898e-e182-4a92-9918-f6fe5f49ecf9` at this observation; the environment retained its volume and reported zero recent failures. No settled latest-release replica or public PLAY result is inferred during rollout. PR100 is a separate follow-up awaiting final review/CI/merge.
+PR100 merged as `40d161505e946fd69c2c098c894acc7a0fda4767` after exact-head required CI and source review. Its Railway deployment `2b91af86-dfa3-4c15-abdf-3faa8f049154` reached SUCCESS and native1.21/767/offline listening at `2026-11-02T03:22:23.820868584Z`. The directly observed environment had one running/zero crashed replica, retained volume and no pending work. Default Official service keys remained selected and two actual profile keys loaded. This is startup evidence; public/graphical PLAY remains unverified. Earlier Root97 and other releases were superseded after successful startups.
 
 ## Native Grindstone — Main connected; bounded runtime passed
 

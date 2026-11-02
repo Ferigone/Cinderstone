@@ -10,6 +10,17 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native entity pressure callbacks
+
+Player, Item, XP and Falling callbacks now share the actual pressure kernel,
+entity index, sound RNG and BLOCK scheduler. An isolated full build and
+[one real Item activation/pickup/release flow](docs/reference/pressure-item-runtime.md)
+passed; the actual report retains a tick-overload observation and makes no timing
+or performance claim. Source and bounded callback ownership are documented in
+[the pressure ledger](docs/reference/falling-block-pressure-plates.md). XP/Falling,
+weighted/stone plate behavior and active networks have not been runtime-certified
+by that single Item flow. This feature stage does not complete a checklist row.
+
 ## Native Anvil falling runtime
 
 The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. [PR97](https://github.com/Ferigone/Cinderstone/pull/97) merged as `68fba409`; automatic native offline startup was observed.

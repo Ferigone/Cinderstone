@@ -10,11 +10,12 @@ use crate::{
     entity_state::EntityPhysicalState,
     entity_tick::EntityTickList,
     entity_tracking_order::TrackingEntityMap,
-    fluid_physics::FluidShapeCache,
-    geometry::{Aabb, Vec3},
+    fluid_physics::{FluidShapeCache, FluidState},
+    geometry::{Aabb, Vec3, VoxelShape},
     inventory::ItemStack,
     item_entity::{self, ItemPickupHost, ItemState, Pickup},
     item_replication::ItemReplication,
+    placement::BlockPosition,
     protocol::Packet,
     rain_physics::RainExposure,
     random::LegacyRandomSource,
@@ -53,6 +54,25 @@ pub struct EffectDelivery {
     /// Audience captured synchronously at the original world callback.
     pub recipients: Vec<i32>,
     pub packet: Packet,
+}
+
+/// The actual shared entity-query and Level.threadSafeRandom capabilities.
+/// The split Item tick can lend these same owners without reconstructing a
+/// RuntimeEntities or exposing arbitrary index/store mutation to callbacks.
+pub trait RuntimeEntityQuerySound {
+    fn entity_handle(&self, id: i32) -> Option<EntityHandle>;
+    fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind>;
+    /// Count actual indexed Items, including a current body loaned to its tick.
+    fn item_count(&self) -> usize;
+    fn sound_random_state48(&self) -> Option<u64>;
+    fn next_sound_seed(&mut self) -> Result<i64>;
+    fn query_native_entities_with_actor(
+        &mut self,
+        bounds: Aabb,
+        kind: Option<EntityKind>,
+        current: Option<(EntityHandle, &EntityPhysicalState)>,
+        external: &mut dyn FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>>;
 }
 
 /// Native-only checkpoint cohort. Historical sender hash layout and chunk
@@ -94,6 +114,30 @@ pub trait RuntimeEntityHost {
     /// External entities retain their actual Level.tickNonPassenger callback.
     fn level_player_tick(&mut self, player: EntityHandle) -> Result<()>;
     fn profile(&mut self, event: ProfileEvent);
+    /// Literal pressure-plate entityInside, with the genuine current actor
+    /// and a synchronous loan of the actual shared query/sound owners.
+    fn pressure_plate_inside(
+        &mut self,
+        _world: &mut RuntimeWorld,
+        _physical: &mut EntityPhysicalState,
+        _handle: EntityHandle,
+        _position: BlockPosition,
+        _block_state: u32,
+        _access: &mut dyn RuntimeEntityQuerySound,
+    ) -> Result<()> {
+        anyhow::bail!("actual pressure-plate entityInside owner is unavailable")
+    }
+    /// Used only when RuntimeItemWorld has no attached explicit cache owner.
+    /// Absence remains an error, never a fabricated empty fluid shape.
+    fn fluid_shape(&mut self, _world: &mut RuntimeWorld, _position: BlockPosition,
+        _fluid: FluidState) -> Result<VoxelShape> {
+        anyhow::bail!("actual Item fluid-shape owner is unavailable")
+    }
+    /// Used only when no explicit rain provider is attached to the body host.
+    fn rain_exposure(&mut self, _world: &mut RuntimeWorld,
+        _physical: &EntityPhysicalState) -> Result<bool> {
+        anyhow::bail!("actual Item rain-exposure owner is unavailable")
+    }
     /// Sound has already consumed one nextLong from the separately owned
     /// Level.threadSafeRandom; Level.random is unchanged. Other effects
     /// carry no invented seed. Gameplay listeners execute synchronously here.
@@ -148,6 +192,71 @@ struct RuntimeItem {
     handle: EntityHandle,
     state: ItemState,
     random: LegacyRandomSource,
+}
+
+/// Created only by the runtime over its actual split tick fields. Private
+/// fields prevent a caller from substituting a new index, item map or RNG.
+pub struct RuntimeEntityCallbackLoan<'a> {
+    index: &'a mut RuntimeEntityIndex,
+    items: &'a BTreeMap<i32, RuntimeItem>,
+    sound_random: &'a mut Option<LegacyRandomSource>,
+}
+
+fn query_native_entity_parts(
+    index: &mut RuntimeEntityIndex,
+    items: &BTreeMap<i32, RuntimeItem>,
+    bounds: Aabb,
+    kind: Option<EntityKind>,
+    current: Option<(EntityHandle, &EntityPhysicalState)>,
+    mut external: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+) -> Result<Vec<EntityHandle>> {
+    let current = current.map(|(handle, physical)| {
+        let indexed = index.get(handle)
+            .context("current query actor generation is not registered")?;
+        ensure!(physical.entity_id == handle.id, "current query actor physical identity changed");
+        Ok::<_, anyhow::Error>((handle, indexed.kind, physical))
+    }).transpose()?;
+    index.query_with_kind(bounds, kind, |handle, kind| {
+        if let Some((current_handle, current_kind, physical)) = current {
+            if current_handle == handle {
+                ensure!(current_kind == kind, "current query actor class changed");
+                return Ok((!physical.removed).then_some(physical.bounds));
+            }
+        }
+        if kind == EntityKind::Item {
+            let item = items.get(&handle.id).context("indexed query Item body is unavailable")?;
+            ensure!(item.handle == handle, "indexed query Item generation changed");
+            Ok((!item.state.removed).then_some(item.state.bounds))
+        } else {
+            external(handle, kind)
+        }
+    })
+}
+
+impl RuntimeEntityQuerySound for RuntimeEntityCallbackLoan<'_> {
+    fn entity_handle(&self, id: i32) -> Option<EntityHandle> {
+        self.index.by_id(id).map(|entry| entry.handle)
+    }
+    fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind> {
+        self.index.get(handle).map(|entry| entry.kind)
+    }
+    fn item_count(&self) -> usize {
+        self.index.entries().filter(|entry| entry.kind == EntityKind::Item).count()
+    }
+    fn sound_random_state48(&self) -> Option<u64> {
+        self.sound_random.as_ref().map(LegacyRandomSource::state48)
+    }
+    fn next_sound_seed(&mut self) -> Result<i64> {
+        Ok(self.sound_random.as_mut()
+            .context("actual Level.threadSafeRandom sound owner unavailable")?.next_i64())
+    }
+    fn query_native_entities_with_actor(
+        &mut self, bounds: Aabb, kind: Option<EntityKind>,
+        current: Option<(EntityHandle, &EntityPhysicalState)>,
+        external: &mut dyn FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        query_native_entity_parts(self.index, self.items, bounds, kind, current, external)
+    }
 }
 struct TrackedItem {
     handle: EntityHandle,
@@ -738,18 +847,23 @@ impl RuntimeEntities {
         &mut self,
         bounds: Aabb,
         kind: Option<EntityKind>,
-        mut external: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+        external: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
     ) -> Result<Vec<EntityHandle>> {
-        let items = &self.items;
-        self.index.query_with_kind(bounds, kind, |handle, kind| {
-            if kind == EntityKind::Item {
-                let item = items.get(&handle.id).context("indexed query Item body is unavailable")?;
-                ensure!(item.handle == handle, "indexed query Item generation changed");
-                Ok((!item.state.removed).then_some(item.state.bounds))
-            } else {
-                external(handle, kind)
-            }
-        })
+        self.query_native_entities_with_actor(bounds, kind, None, external)
+    }
+    /// A real body may be borrowed by its literal tick callback while its
+    /// ordinary store cannot lend that same object again. The current lease
+    /// supplies only that SAME physical reference, never a copied actor or an
+    /// entry inserted into the Item store. It is included, not excluded, when
+    /// the actual section/class query reaches its generation-qualified handle.
+    pub fn query_native_entities_with_actor(
+        &mut self,
+        bounds: Aabb,
+        kind: Option<EntityKind>,
+        current: Option<(EntityHandle, &EntityPhysicalState)>,
+        external: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        query_native_entity_parts(&mut self.index, &self.items, bounds, kind, current, external)
     }
     /// The current level tick list, including stale-but-still-scheduled items.
     /// Tracking visibility and published snapshots are not a simulation gate.
@@ -1359,6 +1473,34 @@ impl RuntimeEntities {
         Ok(())
     }
 }
+
+impl RuntimeEntityQuerySound for RuntimeEntities {
+    fn entity_handle(&self, id: i32) -> Option<EntityHandle> {
+        RuntimeEntities::entity_handle(self, id)
+    }
+    fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind> {
+        RuntimeEntities::entity_kind(self, handle)
+    }
+    fn item_count(&self) -> usize {
+        self.index.entries().filter(|entry| entry.kind == EntityKind::Item).count()
+    }
+    fn sound_random_state48(&self) -> Option<u64> {
+        RuntimeEntities::sound_random_state48(self)
+    }
+    fn next_sound_seed(&mut self) -> Result<i64> {
+        RuntimeEntities::next_sound_seed(self)
+    }
+    fn query_native_entities_with_actor(
+        &mut self,
+        bounds: Aabb,
+        kind: Option<EntityKind>,
+        current: Option<(EntityHandle, &EntityPhysicalState)>,
+        external: &mut dyn FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        RuntimeEntities::query_native_entities_with_actor(self, bounds, kind, current, external)
+    }
+}
+
 fn pickup_search_bounds(player: PickupPlayer) -> Aabb {
     if let Some(vehicle) = player.vehicle_bounds {
         player
@@ -1679,6 +1821,43 @@ impl<H: RuntimeEntityHost> RuntimeItemHost for ItemCallbacks<'_, '_, H> {
     }
     fn profile(&mut self, event: ProfileEvent) {
         self.parts.borrow_mut().host.profile(event);
+    }
+    fn pressure_plate_inside(
+        &mut self,
+        world: &mut RuntimeWorld,
+        physical: &mut EntityPhysicalState,
+        position: BlockPosition,
+        block_state: u32,
+    ) -> Result<()> {
+        let mut parts = self.parts.borrow_mut();
+        ensure!(physical.entity_id == self.handle.id,
+            "current pressure-plate Item physical identity changed");
+        ensure!(parts.index.get(self.handle).map(|entry| entry.kind) == Some(EntityKind::Item),
+            "current pressure-plate Item generation is not registered");
+        let TickParts { index, items, sound_random, host, .. } = &mut *parts;
+        let mut access = RuntimeEntityCallbackLoan {
+            index: &mut **index,
+            items: &**items,
+            sound_random: &mut **sound_random,
+        };
+        // The current body stays loaned to its literal tick. The query uses
+        // this same reference when its real indexed handle is encountered.
+        host.pressure_plate_inside(world, physical, self.handle, position, block_state, &mut access)
+    }
+    fn fluid_shape(
+        &mut self,
+        world: &mut RuntimeWorld,
+        position: BlockPosition,
+        fluid: FluidState,
+    ) -> Result<VoxelShape> {
+        self.parts.borrow_mut().host.fluid_shape(world, position, fluid)
+    }
+    fn rain_exposure(
+        &mut self,
+        world: &mut RuntimeWorld,
+        physical: &EntityPhysicalState,
+    ) -> Result<bool> {
+        self.parts.borrow_mut().host.rain_exposure(world, physical)
     }
     fn effect(&mut self, state: &EntityPhysicalState, effect: RuntimeItemEffect) -> Result<()> {
         let mut parts = self.parts.borrow_mut();

@@ -62,6 +62,8 @@ this is not a full behavioral-compatibility or performance claim.
 - [x] Native flat-world edits, scheduled water/lava and supported fire callbacks.
 - [x] Live lighting after edits, heightmaps and chunk readiness ownership.
 - [x] Shared BLOCK scheduling, including fire and supported container/redstone ticks.
+- [x] Bounded native pressure callbacks share actual Player/Item/XP/Falling query and sound owners, synchronous entityInside and scheduled Server release; [one Item runtime witness](reference/pressure-item-runtime.md) passed.
+- [ ] Complete active pressure/redstone networks, unsupported callback owners, and broader entity-family/weighted/stone runtime contexts.
 - [x] Supported random ticks for grass/mycelium, farmland moisture and crop growth.
 - [x] Native world/player/item checkpoint and restart owners.
 - [x] Bounded native Anvil and ordinary sand/red_sand/gravel falling through actual constructor, scheduler, physics and tracker owners; actual ordinary falls and WATER landing are recorded in [source/runtime evidence](reference/ordinary-falling-runtime.md).

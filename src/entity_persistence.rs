@@ -135,6 +135,10 @@ impl WorldImage {
             .chain(self.changes.iter().map(|change| change.state))
             .collect::<BTreeSet<_>>();
         for state in states {
+            // Source classification is distinct from callback capability.
+            // Pressure states are admitted only by their literal dfm/dlw/dpp
+            // dispatch; a runtime lacking the actual host still fails at the
+            // synchronous move callback, never receiving a successful default.
             ensure!(
                 crate::runtime_item_world::supports_block_callbacks(state)?,
                 "native item source contains an unsupported movement callback at state {state}"

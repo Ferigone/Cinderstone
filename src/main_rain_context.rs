@@ -1,8 +1,8 @@
 //! Main's native shared Item/Player/XP/Falling level tick and rain owner.
 //! No imported lighting, cache history or chunk availability is inferred here.
 use super::*;
-use mc121_rust::native_rain::NativeFlatPlainsRainFrame;
-use mc121_rust::rain_physics::{RainChunkAvailability, RainExposure};
+use mc121_rust::rain_physics::RainChunkAvailability;
+use super::main_pressure_plate_entities::MainPressurePlateEntities;
 use mc121_rust::runtime_entity_index::EntityKind;
 use std::panic::{catch_unwind, resume_unwind, AssertUnwindSafe};
 
@@ -50,7 +50,7 @@ impl LivePlayers {
         menu_tick: impl FnMut(&mut LivePlayers, &mut WorldBackend, i32) -> Result<()>,
     ) -> Result<()> {
         self.simulate_native_entities_with_player_menus(
-            world, game_time, border, events, menu_tick,
+            world, game_time, border, events, None, menu_tick,
             |_, _, _| bail!("falling level entry requires its actual world/edit owner"),
         )
     }
@@ -63,6 +63,7 @@ impl LivePlayers {
         game_time: i64,
         border: CollisionBorder,
         events: &broadcast::Sender<PlayerEvent>,
+        changes: Option<&broadcast::Sender<WorldUpdate>>,
         mut menu_tick: impl FnMut(&mut LivePlayers, &mut WorldBackend, i32) -> Result<()>,
         mut falling_tick: impl FnMut(
             &mut LivePlayers, &mut WorldBackend,
@@ -149,34 +150,40 @@ impl LivePlayers {
                 let Some(kind) = self.item_runtime.entity_kind(handle) else {
                     continue;
                 };
+                // Capture external identities from their genuine current
+                // owners before the Item/XP body is loaned. The current actor's
+                // mutable physical reference overrides its earlier bounds.
+                let external = if matches!(kind, EntityKind::Item | EntityKind::ExperienceOrb) {
+                    main_redstone::capture_external_trigger_bodies(&self.item_runtime,
+                        self.experience_runtime.physical_states(),
+                        self.falling_blocks.registered().map(|(_, actor)| actor))?
+                } else { Vec::new() };
+                let query_region = if matches!(kind, EntityKind::Item | EntityKind::ExperienceOrb) {
+                    let physical = if kind == EntityKind::Item {
+                        &self.item_runtime.item(handle.id).context("actual Item body is absent")?.physical
+                    } else {
+                        self.experience_runtime.physical(handle).context("actual XP body is absent")?
+                    };
+                    let (min, max) = item_query_chunk_range(physical)?;
+                    Some(self.chunk_runtime.certify_current_query_region(world,
+                        &mut self.chunk_transports, events, game_time, min, max)?)
+                } else { None };
                 if kind == EntityKind::FallingBlock {
                     falling_tick(self, world, handle)?;
                 } else if kind == EntityKind::ExperienceOrb {
-                    let Self {
-                        experience_runtime,
-                        item_runtime,
-                        gameplay,
-                        registry,
-                        chunk_runtime,
-                        world_interactions,
-                        rain_context,
-                        world_context,
-                        ..
-                    } = self;
-                    experience_runtime.tick_one(
-                        handle,
-                        world,
-                        item_runtime,
-                        gameplay,
-                        registry,
-                        chunk_runtime,
-                        &mut world_interactions.fluid_shapes,
-                        rain_context.as_mut(),
-                        world_context,
-                        game_time,
-                        border,
-                        events,
-                    )?;
+                    let Self { experience_runtime, item_runtime, gameplay, registry,
+                        player_motion_runtime, chunk_runtime, world_interactions,
+                        entity_source, block_runtime, fluid_runtime, redstone_runtime,
+                        random_block_ticks, world_revision, world_context, rain_context, .. } = self;
+                    let hooks = MainPressurePlateEntities {
+                        gameplay, registry, player_motion: player_motion_runtime,
+                        chunks: chunk_runtime, interactions: world_interactions,
+                        source: entity_source, block_runtime, fluid_runtime,
+                        redstone_runtime, random_ticks: random_block_ticks,
+                        world_revision, context: world_context, rain: rain_context.as_mut(),
+                        changes, events, external, query_region, now: game_time, border,
+                    };
+                    experience_runtime.tick_one(handle, world, item_runtime, hooks)?;
                 } else {
                     ensure!(matches!(kind, EntityKind::Item | EntityKind::Player),
                         "shared level entry has no actual native body dispatcher");
@@ -203,36 +210,26 @@ impl LivePlayers {
                         // the shared native level tick iteration.
                         menu_tick(self, world, handle.id)?;
                     }
-                    // Release these item-host borrows before the next XP body
-                    // mutates the same section index or actual world owners.
-                    let Self {
-                        item_runtime,
-                        chunk_runtime,
-                        registry,
-                        containers,
-                        gameplay,
-                        rain_context,
-                        world_interactions,
-                        ..
-                    } = self;
-                    let (light, manager) = chunk_runtime.native_lighting_parts()?;
-                    let mut exposure = rain_context
-                        .as_mut()
-                        .map(|owner| NativeFlatPlainsRainFrame::new(owner, light, manager));
-                    let rain = exposure
-                        .as_mut()
-                        .map(|frame| frame as &mut dyn RainExposure);
-                    let mut frame = gameplay.frame(registry, manager, true);
-                    let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
+                    // One real world owner creates its gameplay/rain/cache
+                    // views only for each method, so pressure callbacks may
+                    // synchronously mutate the actual source/light/BLOCK owners.
+                    let Self { item_runtime, containers, gameplay, registry,
+                        player_motion_runtime, chunk_runtime, world_interactions,
+                        entity_source, block_runtime, fluid_runtime, redstone_runtime,
+                        random_block_ticks, world_revision, world_context, rain_context, .. } = self;
+                    let mut hooks = MainPressurePlateEntities {
+                        gameplay, registry, player_motion: player_motion_runtime,
+                        chunks: chunk_runtime, interactions: world_interactions,
+                        source: entity_source, block_runtime, fluid_runtime,
+                        redstone_runtime, random_ticks: random_block_ticks,
+                        world_revision, context: world_context, rain: rain_context.as_mut(),
+                        changes, events, external, query_region, now: game_time, border,
+                    };
+                    let mut host = RuntimeInventoryHost::new(registry, containers, &mut hooks)
+                        .with_world_callbacks(main_pressure_plate_entities::world_callbacks());
                     if external_menu { host = host.with_external_player_menu(handle.id); }
                     item_runtime.simulate_level_entry_with_context(
-                        handle,
-                        world,
-                        facts,
-                        &colliders,
-                        Some(&mut world_interactions.fluid_shapes),
-                        rain,
-                        &mut host,
+                        handle, world, facts, &colliders, None, None, &mut host,
                     )?;
                 }
             }

@@ -70,9 +70,18 @@ pub fn scheduled_tick(runtime:&mut RedstoneRuntime,w:&mut impl RedstoneWorld,p:P
 "dmg"=>{if !diode_locked(w,p,s)?{let on=yes(s,"powered")?;let input=diode_input(w,p,s)?;if on&&!input{w.set_block(p,set(s,"powered",false)?,2)?;}else if !on{w.set_block(p,set(s,"powered",true)?,2)?;if !input{w.schedule(p,s,2*prop(s,"delay")?.parse::<i32>()?,TickPriority::VeryHigh)?;}}}},
 "dmd"|"dme"=>{let input=torch_input(w,p,s)?;let _=runtime.recent(p,now,false);if yes(s,"lit")?&&input{w.set_block(p,set(s,"lit",false)?,3)?;if runtime.recent(p,now,true){w.level_event(p,1502,0)?;w.schedule(p,s,160,TickPriority::Normal)?;}}else if !yes(s,"lit")?&&!input&&!runtime.recent(p,now,false){w.set_block(p,set(s,"lit",true)?,3)?;}},
 "dgi"=>{if yes(s,"powered")?{check_button(w,p,s)?;}},
-"dlw"|"dpp"=>{if plate_power(s)?>0{check_plate(w,p,s)?;}},
+"dlw"|"dpp"=>{pressure_plate_tick_state(w,p,s)?;},
 _=>bail!("unported scheduled redstone block {}",b.name)}Ok(())}
 fn check_button(w:&mut impl RedstoneWorld,p:Position,s:u32)->Result<()>{let b=block(s)?;let arrow=b.arrows&&w.arrow_on_button(p,s)?;let on=yes(s,"powered")?;if on!=arrow{let next=set(s,"powered",arrow)?;w.set_block(p,next,3)?;switch_neighbors(w,p,next)?;w.sound(p,if arrow{b.on_sound}else{b.off_sound},1.,1.)?;w.game_event(p,if arrow{"minecraft:block_activate"}else{"minecraft:block_deactivate"})?;}if arrow{w.schedule(p,s,b.pressed_time,TickPriority::Normal)?;}Ok(())}
+/// The actual pressure tick branch needs no torch-burnout engine owner.
+/// Both scheduled dispatch and retained-actor parts use this one source body.
+fn pressure_plate_tick_state(w:&mut impl RedstoneWorld,p:Position,s:u32)->Result<()> {
+ if plate_power(s)?>0 {check_plate(w,p,s)?;}Ok(())
+}
+pub fn pressure_plate_tick(w:&mut impl RedstoneWorld,p:Position)->Result<bool> {
+ let state=w.block(p)?;if !matches!(block(state)?.class.as_str(),"dlw"|"dpp"){return Ok(false)}
+ pressure_plate_tick_state(w,p,state)?;Ok(true)
+}
 fn check_plate(w:&mut impl RedstoneWorld,p:Position,s:u32)->Result<()>{let b=block(s)?;let old=plate_power(s)?;let n=w.entities_on_plate(p,b.mobs_only&&b.max_weight==0)?;let power=if b.max_weight>0{let n=n.min(b.max_weight as usize);if n==0{0}else{((n as f32/b.max_weight as f32)*15.).ceil() as i32}}else if n>0{15}else{0};if old!=power{let next=if b.max_weight>0{set(s,"power",power)?}else{set(s,"powered",power>0)?};w.set_block(p,next,2)?;w.update_neighbors(p,s,None)?;w.update_neighbors(step(p,Direction::Down),s,None)?;if old>0&&power==0{w.sound(p,b.off_sound,1.,1.)?;w.game_event(p,"minecraft:block_deactivate")?;}else if old==0&&power>0{w.sound(p,b.on_sound,1.,1.)?;w.game_event(p,"minecraft:block_activate")?;}}if power>0{w.schedule(p,s,b.pressed_time,TickPriority::Normal)?;}Ok(())}
 pub fn entity_inside(w:&mut impl RedstoneWorld,p:Position)->Result<bool>{let s=w.block(p)?;let b=block(s)?;match b.class.as_str(){"dlw"|"dpp"=>{if plate_power(s)?==0{check_plate(w,p,s)?;}Ok(true)},"dgi"=>{if b.arrows&&!yes(s,"powered")?{check_button(w,p,s)?;}Ok(true)},_=>Ok(false)}}
 pub fn use_block(w:&mut impl RedstoneWorld,p:Position,may_build:bool)->Result<bool>{let s=w.block(p)?;let b=block(s)?;match b.class.as_str(){
