@@ -4,7 +4,7 @@
   "protocol": 767,
   "inner_jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
   "mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
-  "placement_catalog_sha256": "e044d4bdf90cfcae62043b630b1c673bb3582025b684a7fbe5878fe6747e8a50",
+  "placement_catalog_sha256": "97d799588bbb62449d74b12addcc4722358be7e5fcbce10082e81b058e1df412",
   "state_count": 26684,
   "liquid_true_ranges": [
     [
@@ -79,7 +79,16 @@
     "actual_bootstrap_exit": 0,
     "state_lookup": "Original Block.BLOCK_STATE_REGISTRY.byId(id), each ID0..size-1, requiring nonnull values.",
     "liquid_query": "Original BlockStateBase.liquid(), obfuscated k(), official line971.",
-    "can_be_replaced_query": "Original BlockStateBase.canBeReplaced(), obfuscated r(), official line1205."
+    "can_be_replaced_query": "Original BlockStateBase.canBeReplaced(), obfuscated r(), official line1205.",
+    "capture_input_sha256": "a8b574fd38d2876ee660db39bc08e71c29008b31375bc8ea184aaa517adc93bf",
+    "recapture": {
+      "method": "Fresh unchanged original bootstrap and every-state predicate query after fluids-only placement catalogue correction; values independently observed again, not copied from the previous certificate.",
+      "generator_source_unchanged": true,
+      "previous_certificate_sha256": "356ba23cf0838f5554ce40eb64ebbc4b51843f3ed503c4429863a5a2b9953dec",
+      "previous_placement_catalog_sha256": "e044d4bdf90cfcae62043b630b1c673bb3582025b684a7fbe5878fe6747e8a50",
+      "predicate_values_unchanged": true,
+      "stderr_bytes": 0
+    }
   },
   "verification": {
     "queried_nonnull_state_count": 26684,
