@@ -14,8 +14,13 @@
 //! fabricated criterion, or substitute a world/player/sound RNG. A callback
 //! error propagates to that outer stage; merely returning Result cannot undo
 //! a callback that incorrectly escaped into live owners.
+//!
+//! `_live` helpers instead borrow the actual retained BE and actor owners.
+//! They preserve every completed mutation, RNG draw and callback on an error or
+//! reentry. They never clone, stage, restore, retry or republish those owners.
+//! Restricted staging is not a general substitute for live living-effect maps.
 
-use super::beacon_block_entity::{BeaconAction, BeaconFields};
+use super::beacon_block_entity::{BeaconAction, BeaconFields, BeaconLiveOwner};
 use crate::{
     geometry::{Aabb, Vec3},
     placement::BlockPosition,
@@ -45,7 +50,9 @@ pub trait BeaconSoundHost: BeaconFields {
     /// a future binding may borrow that real owner directly. A fake Item batch
     /// or second sound stream is unnecessary. Actual BE binding, source phase,
     /// sound range/dimension audience and ordered publication still belong to
-    /// the caller's real transaction owner. Missing capability is an error.
+    /// the actual live owner or a certified restricted stage. Missing capability
+    /// is an error. In a live call, a completed seed draw/output prefix persists
+    /// if a later callback fails; do not rewind, redraw or replay that sound.
     fn play_sound(&mut self, sound: BeaconSound) -> Result<()>;
 }
 
@@ -62,11 +69,18 @@ pub struct BeaconEffectApplication<'a, E> {
 
 /// Actual ordered spatial queries and living-effect/advancement callbacks.
 ///
-/// Implement on the same staged BE/Level/player/registry/criterion/sound owners
-/// as the tick driver. Opaque handles retain the actual queried objects across
-/// callbacks; they must never silently redirect to a replacement player with a
-/// reused ID. No permissive defaults certify unavailable context as an empty
-/// player list, ignored effect or absent advancement listener.
+/// Implement on the same actual retained BE/Level/player/registry/criterion/
+/// sound owners as the tick driver, or its proven restricted stage. Opaque
+/// handles retain the actual queried objects through removal, replacement and
+/// callback reentry; they must never silently redirect to a replacement player
+/// with a reused ID. Also retain the original source-call Level and BlockPos
+/// argument leases: reattaching/removing the BE must not redirect later world,
+/// position, sound or query operations to its newly attached/current index.
+/// Live callbacks operate on those canonical actor objects
+/// and their actual effect maps, source cause=None, packets and criteria. A
+/// later error preserves the completed source prefix; no clone/restore/retry
+/// protocol is implied. No permissive defaults certify unavailable context as
+/// an empty player list, ignored effect or absent advancement listener.
 pub trait BeaconEffectsHost: BeaconFields + BeaconSoundHost {
     type Player;
     type ServerPlayer;
@@ -142,6 +156,8 @@ pub fn activation_query_box(position: BlockPosition) -> Aabb {
 /// owner, including the second source comparison AFTER all primary callbacks.
 /// The mandatory stage certificate is checked before any source observation;
 /// a caller flag or shallow clone is not an admitted actual-owner capability.
+/// This API remains restricted to domains whose real owner proves detached
+/// staging; arbitrary live actor/effect graphs are not that domain.
 pub fn apply_effects_staged<H: BeaconEffectsHost>(
     host: &mut H,
     levels: i32,
@@ -149,6 +165,35 @@ pub fn apply_effects_staged<H: BeaconEffectsHost>(
     secondary: Option<&H::Effect>,
 ) -> Result<()> {
     host.require_actual_stage(BeaconAction::Tick)?;
+    apply_effects_source_core(host, levels, primary, secondary)
+}
+
+/// Source applyEffects on actual canonical retained BE/actor/registry/world
+/// owners. The live capability is checked FIRST. It must admit retained source
+/// objects even if a legitimate callback removes/replaces their current index
+/// entries; neither reused-ID lookup nor a mutable-version comparison may
+/// redirect or abort the remaining source calls after such a callback.
+///
+/// Captured level/power arguments and the queried object list keep the same
+/// source semantics as the staged API. Completed live effects/callbacks and
+/// source RNG/output prefixes persist if this function returns Err. There is
+/// no begin/publish stage, clone, rollback, retry or automatic callback replay.
+pub fn apply_effects_live<H: BeaconEffectsHost + BeaconLiveOwner>(
+    host: &mut H,
+    levels: i32,
+    primary: Option<&H::Effect>,
+    secondary: Option<&H::Effect>,
+) -> Result<()> {
+    host.require_actual_live(BeaconAction::Tick)?;
+    apply_effects_source_core(host, levels, primary, secondary)
+}
+
+fn apply_effects_source_core<H: BeaconEffectsHost>(
+    host: &mut H,
+    levels: i32,
+    primary: Option<&H::Effect>,
+    secondary: Option<&H::Effect>,
+) -> Result<()> {
     if host.is_client_side() {
         return Ok(());
     }
@@ -214,6 +259,21 @@ pub fn apply_effects_staged<H: BeaconEffectsHost>(
 /// criterion observes BE.levels anew; an earlier callback may change that field.
 pub fn activate_staged<H: BeaconEffectsHost>(host: &mut H) -> Result<()> {
     host.require_actual_stage(BeaconAction::Tick)?;
+    activate_source_core(host)
+}
+
+/// Source activation on the same actual live retained BE/actor/world domains.
+/// Check the live capability before sound, queries or field observations. Its
+/// retained BE/actor leases survive legitimate removal/replacement/reentry;
+/// subsequent criterion calls still read that source BE's current levels.
+/// On Err, preserve activation sound/seed and prior criterion award/output
+/// prefixes. Do not restore, repeat the sound, re-query, or retry the trigger.
+pub fn activate_live<H: BeaconEffectsHost + BeaconLiveOwner>(host: &mut H) -> Result<()> {
+    host.require_actual_live(BeaconAction::Tick)?;
+    activate_source_core(host)
+}
+
+fn activate_source_core<H: BeaconEffectsHost>(host: &mut H) -> Result<()> {
     let position = host.position();
     host.play_sound(BeaconSound::Activate)?;
     let players = host.server_players_in_activation_box(activation_query_box(position))?;
