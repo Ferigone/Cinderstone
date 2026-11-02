@@ -18,6 +18,7 @@
 !tools/storage_blockentity_factories.json
 !tools/player_physics_facts.json
 !tools/item_entity_physics_facts.json
+!tools/block_state_owner_facts.java
 !deploy/
 !deploy/start.sh
 
@@ -28,7 +29,8 @@
 **/*.class
 **/*.log
 **/*.zip
-**/target/**
+# Exclude root Cargo output while preserving nested source modules.
+/target/**
 **/runtime/**
 
 !LICENSE
