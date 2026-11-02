@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion and the command-tree packet (WP-E3 stages 1-5)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and position arguments (WP-E3 stages 1-6)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-5
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-6
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -108,13 +108,28 @@ root)` writes the body of `ClientboundCommandsPacket` (no packet id) for a Briga
   for an unregistered one. The packet carries no permission information: the original builds the tree sent
   to a player from the nodes that player may use, which stays the caller's job.
 
+Stage 6 (`src/commands/coordinates.rs`, position arguments): `Vec3Argument` (centred and raw),
+`BlockPosArgument`, `Vec2Argument` (centred and raw) and `ColumnPosArgument` with `WorldCoordinate(s)`,
+`LocalCoordinates` and `Coordinates`.
+- Parsing follows the originals: `~` relative and `^` local prefixes, `+ 0.5` centring of absolute
+  whole numbers (never for the middle coordinate), `readDouble` for relative block offsets, the
+  `argument.pos.mixed` / `.missing.double` / `.missing.int` / `.pos3d.incomplete` / `.pos2d.incomplete`
+  exceptions with the original's cursor resets (a mixed `^` reports at the start of the argument).
+- `Coordinates::position`, `rotation` and `block_pos` resolve them for a `CoordinateSource`
+  (position, the anchored position and the rotation as pitch, yaw). Local coordinates use Minecraft's
+  float sine table (`geometry::vanilla_sin` / `vanilla_cos`) and the original's operation order;
+  `BlockPos.containing` is `Mth.floor` with Java's saturating `(int)` cast.
+- Network forms: `block_pos` 8, `column_pos` 9, `vec3` 10, `vec2` 11, no template. The registry ids and
+  the empty templates are compared with the original's `ClientboundCommandsPacket` in the stage 5 fixture.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
-Minecraft argument types (entity, game profile, message, coordinates, ... and their `ArgumentTypeInfos`
-templates), selectors,
+the remaining Minecraft argument types (entity, game profile, message, component, NBT, resource and
+registry arguments, scoreboard arguments, ... and their `ArgumentTypeInfos` templates), selectors,
+coordinate suggestions and the loaded / out-of-world checks of `BlockPosArgument.getLoadedBlockPos`,
 `CommandSourceStack`, the command catalog and the migration of the administration commands.
 The wrapping of unchecked exceptions thrown by an argument parser into `command.exception`
 cannot occur in this port (a panic is a bug here, not an input error).
@@ -178,6 +193,19 @@ instance in node equality or the custom-suggestion flag makes the test fail. Red
 order cannot be told apart by these trees (a node with both a redirect and children does not arise from the
 builders), so that detail rests on the bytecode reading.
 
+Stage 6. `fixtures/commands-mc-arguments-vectors.json` (2 MB, `tools/mc_arguments_generate.py`,
+`tools/mc_arguments_oracle.java`, seed 20261106) holds 4,200 runs of the original argument classes (700 per
+type) on seeded inputs built from absolute, relative and local tokens, malformed, mixed and truncated ones,
+with and without a start cursor: 2,549 parse (293 of them local) and 1,651 fail with all five position
+exceptions. For each success the harness resolves the coordinates for two command sources (position and
+rotation drawn from awkward values such as 3e9, -30000000.5, 720 degrees) and records the position,
+rotation and block position. `cargo test --locked --lib commands::mc_arguments_tests` compares the cursor
+afterwards, the exception (key, typed arguments, `getMessage()`, context, cursor) or the relative flags and
+the resolved values bit for bit. The sources are built with the unchanged `CommandSourceStack` constructor
+without a level, server or entity, so the anchor leaves the position unchanged; the anchored position is the
+caller's input to `CoordinateSource`. Dropping the centring, negating the local `left` axis or not resetting
+the cursor on a mixed local coordinate makes the test fail.
+
 Reproduce (the oracle directory must stay outside git):
 
 ```text
@@ -187,6 +215,7 @@ python3 tools/brigadier_dispatch_generate.py --oracle-dir /path/outside/git
 python3 tools/brigadier_suggest_generate.py --oracle-dir /path/outside/git
 python3 tools/loot_oracle_setup.py --oracle-dir /path/outside/git    # server-named.jar for stage 5
 python3 tools/brigadier_tree_packet_generate.py --oracle-dir /path/outside/git
+python3 tools/mc_arguments_generate.py --oracle-dir /path/outside/git
 cargo test --locked --lib commands::
 ```
 

@@ -42,6 +42,10 @@ import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
+import net.minecraft.commands.arguments.coordinates.ColumnPosArgument;
+import net.minecraft.commands.arguments.coordinates.Vec2Argument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.synchronization.SuggestionProviders;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -135,6 +139,11 @@ public final class brigadier_tree_packet_oracle {
             case "word": return StringArgumentType.word();
             case "string": return StringArgumentType.string();
             case "greedy": return StringArgumentType.greedyString();
+            // Minecraft position arguments (stage 6): registry ids 8-11, no template
+            case "blockpos": return BlockPosArgument.blockPos();
+            case "columnpos": return ColumnPosArgument.columnPos();
+            case "vec3": return Vec3Argument.vec3();
+            case "vec2": return Vec2Argument.vec2();
             default: throw new IllegalArgumentException(t.get("k").getAsString());
         }
     }

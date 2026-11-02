@@ -7,7 +7,8 @@
 WP-E3 stage 5. Seeded random command trees (the generator of tools/brigadier_dispatch_generate.py:
 literals, typed Brigadier arguments, executable nodes, redirects, merged duplicate registrations) are
 built with the unchanged com.mojang.brigadier 1.2.9 builders and wrapped in the dedicated server's own
-ClientboundCommandsPacket; the bytes its StreamCodec writes are recorded. Extra decoration for this
+ClientboundCommandsPacket; the bytes its StreamCodec writes are recorded (stage 6 appends one fixed tree per
+Minecraft position argument type). Extra decoration for this
 stage: custom suggestion providers (registered names and an unregistered provider), and copies of whole
 subtrees planted under other nodes so that structurally equal nodes exist (the original numbers nodes
 with CommandNode.equals, so those must share one index).
@@ -71,6 +72,10 @@ def build_tests(rng):
             decorate(rng, node)
         plant_duplicates(rng, tree)
         tests.append({"tree": tree})
+    # Fixed trees appended after the random ones (the random stream is unchanged): one position
+    # argument each, so the registry ids and empty templates of stage 6 are compared too.
+    for kind in ["blockpos", "columnpos", "vec3", "vec2"]:
+        tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": {"k": kind}, "cmd": 1}]}]})
     return tests
 
 

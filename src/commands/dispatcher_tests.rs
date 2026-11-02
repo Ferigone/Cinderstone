@@ -51,6 +51,10 @@ pub(super) fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType<i32>> {
         "word" => Rc::new(StringArgumentType::word()),
         "string" => Rc::new(StringArgumentType::string()),
         "greedy" => Rc::new(StringArgumentType::greedy_string()),
+        "blockpos" => Rc::new(super::coordinates::BlockPosArgumentType),
+        "columnpos" => Rc::new(super::coordinates::ColumnPosArgumentType),
+        "vec3" => Rc::new(super::coordinates::Vec3ArgumentType::new()),
+        "vec2" => Rc::new(super::coordinates::Vec2ArgumentType::new()),
         other => panic!("unknown type {other}"),
     }
 }
@@ -63,6 +67,7 @@ fn value_text(value: &ArgumentValue) -> String {
         ArgumentValue::Integer(v) => format!("I{v}"),
         ArgumentValue::Long(v) => format!("L{v}"),
         ArgumentValue::String(v) => format!("S{v}"),
+        ArgumentValue::Coordinates(v) => format!("C{v:?}"),
     }
 }
 

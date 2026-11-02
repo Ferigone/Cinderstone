@@ -5,6 +5,7 @@
 //! resets the cursor to the start of the argument before raising the bound exception.
 //! Minecraft's own argument types (coordinates, selectors, ...) are later stages.
 
+use super::coordinates::Coordinates;
 use super::dispatcher::CommandContext;
 use super::exception::{built_in, CommandArg, CommandSyntaxException};
 use super::string_reader::StringReader;
@@ -269,6 +270,8 @@ pub enum ArgumentValue {
     Float(f32),
     Double(f64),
     String(String),
+    /// `Coordinates` of a position argument (stage 6).
+    Coordinates(Coordinates),
 }
 
 macro_rules! argument_value_from {
@@ -281,7 +284,7 @@ macro_rules! argument_value_from {
     };
 }
 
-argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String);
+argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String, Coordinates => Coordinates);
 
 /// Object-safe `ArgumentType<?>` for command sources of type `S`: what a tree node holds so
 /// that nodes of different argument types can live in one command tree.
