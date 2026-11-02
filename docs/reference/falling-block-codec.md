@@ -3,9 +3,11 @@
 `falling_block/block_state_codec.rs` implements the concrete Java 1.21
 `NbtUtils.readBlockState`, property parsing and `writeBlockState` algorithm for
 the pinned block/state domain. It implements the existing
-`FallingBlockStateCodec` interface. Module declaration, compiler validation and
-an actual Main/import caller remain integration work; this file is not a claim
-of working Java entity import or complete FallingBlock gameplay.
+`FallingBlockStateCodec` interface and is exported through
+`falling_block::block_state_codec`. The actual composed lib/Main all-target
+compiler check passed in 26.34 seconds. A real Main registry/map/logger provider
+and import caller remain missing; this file is not a claim of working Java
+entity import or complete FallingBlock gameplay.
 
 ## Source identity and inspection
 
@@ -97,7 +99,7 @@ Callable APIs are `PinnedBlockStateCodec::capture` and the five implemented
 `FallingBlockStateCodec` operations. Required owner interfaces are
 `ActualBlockRegistry` and `BlockStateNbtContext`; registry property definitions,
 actual per-state write order and typed resource parse errors are public types.
-No actual Main registry/map/logger provider, Java entity importer, module export,
-new manifest dependency, source archive or progress metric is added here.
-Focused compilation belongs to the integration coordinator after module wiring;
-comprehensive conformance work remains later.
+The module is exported and the composed all-target compiler check passed in
+26.34 seconds. No actual Main registry/map/logger provider or Java entity
+importer is supplied by that export or compiler result. Comprehensive
+conformance work remains later; no progress metric changes follow.

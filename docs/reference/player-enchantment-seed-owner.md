@@ -141,12 +141,19 @@ snapshot. The existing cleanup owner still handles real InventoryMenu and
 external-menu removal and saving. No second capture or separate inventory owner
 is introduced by seed handling.
 
-The inherited native cleanup currently removes InventoryMenu/current-menu state
-before saving. Original `PlayerList.remove` saves first, then
-`ServerLevel.removePlayerImmediately` reaches `Player.remove`,
-`InventoryMenu.removed` and the current menu's removal. Correcting that existing
-callback/save ordering is a separate integration task; the seed change does not
-establish equivalence of those removal callbacks or their persistence phases.
+The native disconnect/reconfiguration path now performs its source save before
+closing menus, as documented in [Player removal: source save before menu
+cleanup](player-removal-save-order.md). It records the actual supported
+`leave_game` award once, captures the persistent inventory, statistics and
+lifecycle fields, then removes InventoryMenu temporaries before the actual
+external menu. The save excludes carried/grid/result state and retains the same
+immutable proposal across cleanup retries and autosave. This follows the pinned
+`PlayerList.remove` award at bytecode5–9 and save at12–14, before world removal
+reaches `Player.remove`. Unknown/imported callback coverage remains explicitly
+unsupported; full inherited removal, mounted/sleeping contexts and advancement
+persistence are outside this bounded slice. Ordinary native resume/shutdown
+policy remains separate. Reconfiguration still loads saved data into a new
+Player; it does not invoke `restoreFrom`.
 
 A genuine `ServerPlayer.restoreFrom` call, such as the distinct respawn path,
 copies the seed unconditionally after the keep-state branches converge and
