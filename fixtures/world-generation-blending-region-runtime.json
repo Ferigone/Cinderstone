@@ -6,7 +6,11 @@
   "base_commit": "e7acdd0561f6ad0eee6c88a098127d19f8183f00",
   "source_sha256": {
     "src/worldgen/validation/RealGameTestServer121.java": "32ec3d049de352805a613e68a79e72e4293029dfa477481c727826059a00735c",
-    "src/worldgen/validation/check_blending_region.py": "43a0a12f2d5bc21d01b24da0f6b35f02fe183ad2e2d5863d10e0240490d4ad2f"
+    "src/worldgen/validation/check_blending_region.py": "43a0a12f2d5bc21d01b24da0f6b35f02fe183ad2e2d5863d10e0240490d4ad2f",
+    "src/worldgen/validation/Legacy117Bootstrap.java": "67b6ff6424985692ff079db97daf9dacfbe50b070ac07d74e22daf9583ab13a8",
+    "src/worldgen/validation/Legacy117World.java": "17ca3125c64364639ff7124fadf1a7c8849cbe75dc680eaa0cf310ddfc4cc1b9",
+    "src/worldgen/validation/build_legacy117_compile_api.py": "3ba84df6a41f27677f376971592593cca1f0dcbbf76351769ba7cb48a362cd0e",
+    "src/worldgen/validation/check_blending_region_upgrade.py": "3ed8045bb56d1b098b15b97907dd792dc260db77ebd2bb74d86357fc72a7c1c8"
   },
   "source_lock_sha256": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
   "oracle_artifact_sha256": {
@@ -148,5 +152,946 @@
   },
   "raw_runtime_sha256": "172bd8c38fa1724205e7519ae0a145877f4c025d1446d8e0251ea0f85a38799e",
   "stdout_sha256": "3acdd94984f208d4519e3f00d1a8746a3d91ffd760ede252ea33055af4230bc3",
-  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "legacy_reference": {
+    "historical_source_version": "1.17.1",
+    "historical_protocol": 756,
+    "port_target_unchanged": "Minecraft Java1.21/protocol767",
+    "source_sha256": {
+      "src/worldgen/validation/Legacy117Bootstrap.java": "67b6ff6424985692ff079db97daf9dacfbe50b070ac07d74e22daf9583ab13a8",
+      "src/worldgen/validation/Legacy117World.java": "17ca3125c64364639ff7124fadf1a7c8849cbe75dc680eaa0cf310ddfc4cc1b9",
+      "src/worldgen/validation/build_legacy117_compile_api.py": "3ba84df6a41f27677f376971592593cca1f0dcbbf76351769ba7cb48a362cd0e"
+    },
+    "actual_saved_generation": {
+      "official_version": "1.17.1",
+      "official_server_sha256": "e8c211b41317a9f5a780c98a89592ecb72eb39a6e475d4ac9657e5bc9ffaf55f",
+      "runtime_original_superclass_sha256": "4846a20513148027eaf124a51427df69b34560924e6471c8913613648e741f71",
+      "seed": "123456789",
+      "profile": "original normal NoiseBasedChunkGenerator and original registry settings",
+      "entry": "embedded original MinecraftServer.createLevels, then real ServerChunkCache FULL request",
+      "dedicated_spawn_warmup": false,
+      "base_stop_server_returned_before_observation": true,
+      "requested": {
+        "chunk": [
+          0,
+          0
+        ],
+        "requested_status": "minecraft:full",
+        "returned_status": "minecraft:full",
+        "requested_serialized_status": "full",
+        "returned_serialized_status": "full",
+        "returned_class": "cmx",
+        "generator_class": "cpu",
+        "network_listeners_before_request": 0,
+        "network_listeners_after_request": 0
+      },
+      "level_dat_sha256": "f79ef9607a9c20161e0751aa7a140234504c44d7437cf6d02efa83b95366a358",
+      "saved_DataVersion": 2730,
+      "saved_generator_type": "minecraft:noise",
+      "regions": [
+        {
+          "file": "region/r.-1.-1.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "region/r.-1.0.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "region/r.0.-1.mca",
+          "size": 16384,
+          "sha256": "37e5834566a63bcbab232d1460f80447b9fe3d2e1e1162f61628fe8c09474f65"
+        },
+        {
+          "file": "region/r.0.0.mca",
+          "size": 16384,
+          "sha256": "63c85a5fb8791ef63c3813931353a4409f0f9d34eba6439cf990ead31382b1f4"
+        }
+      ],
+      "observed_saved_chunks": [
+        {
+          "region": "region/r.0.-1.mca",
+          "compressed_sha256": "1030d247b75df2499c0c73375acd6a99623045493d2e8e5c5317109cca88175c",
+          "status": "full",
+          "chunk": [
+            0,
+            -1
+          ],
+          "DataVersion": 2730,
+          "nbt_sha256": "e82ace88684c406d89048852293b263d3c3e9d3a9ed4231263a32505b66cf9a3"
+        },
+        {
+          "region": "region/r.0.0.mca",
+          "compressed_sha256": "9e5689b315c4bb4b6068262892f3ff02f68ed58aad240d55f04cf7bd505259a1",
+          "status": "full",
+          "chunk": [
+            0,
+            0
+          ],
+          "DataVersion": 2730,
+          "nbt_sha256": "2e62c1fba36d5b5769fe75f9a8e23119607a5fefdf29f81c7b6d8012032feab6"
+        }
+      ],
+      "observed_status_counts": {
+        "full": 2
+      },
+      "raw_world_files_before_harness_metadata": [
+        {
+          "file": "DIM-1/data/raids.dat",
+          "size": 87,
+          "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+        },
+        {
+          "file": "DIM1/data/raids_end.dat",
+          "size": 87,
+          "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+        },
+        {
+          "file": "data/raids.dat",
+          "size": 87,
+          "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+        },
+        {
+          "file": "entities/r.0.-1.mca",
+          "size": 16384,
+          "sha256": "5fee4ebaac2778ece3ec5dbe5e3759c2c3ab46d029acd87e5167331ecac13448"
+        },
+        {
+          "file": "entities/r.0.0.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "level.dat",
+          "size": 1288,
+          "sha256": "f79ef9607a9c20161e0751aa7a140234504c44d7437cf6d02efa83b95366a358"
+        },
+        {
+          "file": "region/r.-1.-1.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "region/r.-1.0.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "region/r.0.-1.mca",
+          "size": 16384,
+          "sha256": "37e5834566a63bcbab232d1460f80447b9fe3d2e1e1162f61628fe8c09474f65"
+        },
+        {
+          "file": "region/r.0.0.mca",
+          "size": 16384,
+          "sha256": "63c85a5fb8791ef63c3813931353a4409f0f9d34eba6439cf990ead31382b1f4"
+        },
+        {
+          "file": "session.lock",
+          "size": 3,
+          "sha256": "51643361c79ecaef25a8de802de24f570ba25d9c2df1d22d94fade11b4f466cc"
+        }
+      ],
+      "network_listeners_after_stop": 0,
+      "eula_file_absent_before": true,
+      "eula_file_absent_after": true,
+      "eula_observation_scope": "process working directory and actual new world root; read only"
+    },
+    "actual_execution": {
+      "attempt": "legacy-normal-1173",
+      "exit_code": 0,
+      "process_reaped": true,
+      "bounds": {
+        "xmx_mib": 1536,
+        "term_seconds": 110,
+        "kill_after_seconds": 5,
+        "active_processor_count": 2
+      },
+      "actual_original_generation_and_postclose_provenance_completed": true,
+      "provenance_sha256": "3dc1c2f7fa2deb3f94ff809d4b7254b76e1f9420ca72b758d50344e1e074a801",
+      "stdout_sha256": "fe93daa3a5c854f25bad118e8817fdfc4c20710f63473d6542eb8e4335f8af99",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "build_audit_sha256": "8123272cfe54f1214143e7388c800a2aa777c99320021e1df6bd532c475a6fdb",
+      "original_archive_sha256": "e8c211b41317a9f5a780c98a89592ecb72eb39a6e475d4ac9657e5bc9ffaf55f",
+      "source_version": "1.17.1",
+      "actual_saved_DataVersion": 2730,
+      "actual_generator": "minecraft:noise",
+      "seed": "123456789",
+      "requested": {
+        "chunk": [
+          0,
+          0
+        ],
+        "requested_status": "minecraft:full",
+        "returned_status": "minecraft:full",
+        "requested_serialized_status": "full",
+        "returned_serialized_status": "full",
+        "returned_class": "cmx",
+        "generator_class": "cpu",
+        "network_listeners_before_request": 0,
+        "network_listeners_after_request": 0
+      },
+      "observed_saved_chunks": [
+        {
+          "region": "region/r.0.-1.mca",
+          "compressed_sha256": "1030d247b75df2499c0c73375acd6a99623045493d2e8e5c5317109cca88175c",
+          "status": "full",
+          "chunk": [
+            0,
+            -1
+          ],
+          "DataVersion": 2730,
+          "nbt_sha256": "e82ace88684c406d89048852293b263d3c3e9d3a9ed4231263a32505b66cf9a3"
+        },
+        {
+          "region": "region/r.0.0.mca",
+          "compressed_sha256": "9e5689b315c4bb4b6068262892f3ff02f68ed58aad240d55f04cf7bd505259a1",
+          "status": "full",
+          "chunk": [
+            0,
+            0
+          ],
+          "DataVersion": 2730,
+          "nbt_sha256": "2e62c1fba36d5b5769fe75f9a8e23119607a5fefdf29f81c7b6d8012032feab6"
+        }
+      ],
+      "raw_world_inventory_entries": 11,
+      "raw_world_inventory_rechecked": true,
+      "close_error_lines": [],
+      "network_listeners_after_stop": 0,
+      "eula_absent_before_after": true,
+      "historical_failed_attempts": [
+        "legacy-run-result-1171.json",
+        "legacy-run-result-1172.json"
+      ],
+      "scope": "Original createLevels embedding with actual normal settings and source FULL scheduling/save/close; no outer loadLevel spawn preparation, dedicated/GameTest startup parity or native Cinderstone runtime parity claimed"
+    },
+    "marker_sha256": "3dc1c2f7fa2deb3f94ff809d4b7254b76e1f9420ca72b758d50344e1e074a801",
+    "run_result_sha256": "ef18808ee923dbf0dff377760e3a77993808714754109b5d332191949da2630a",
+    "compile_audit_sha256": "8123272cfe54f1214143e7388c800a2aa777c99320021e1df6bd532c475a6fdb",
+    "original_class_sha256": "4846a20513148027eaf124a51427df69b34560924e6471c8913613648e741f71",
+    "compile_only_header_sha256": "ac5cc639d36123d608aa38a6d22c40f27fbe0f90f341b2039b2399b5b00a8834",
+    "compile_only_scope": "Verified public/protected descriptors and raw inheritance; class generic Signature omitted, concrete Code bodies throw. Header is excluded from runtime; original runtime JAR/classes remain unchanged.",
+    "compile_only_declaration_counts": {
+      "fields": 14,
+      "methods": 163,
+      "throwing_bodies": 150,
+      "abstract_methods": 13
+    },
+    "failed_historical_attempts": [
+      {
+        "attempt": "legacy-normal-1171",
+        "exit_code": 1,
+        "process_reaped": true,
+        "result": "Original normal generation and all-dimensions save logs observed; post-close metadata scanner failed on source-created zero-byte region placeholder",
+        "success_marker_written": false,
+        "actual_marker_exists": false,
+        "stdout_sha256": "c26dc6994aa2e0f09cac0ed7b913e395a1bf97c282745e4f5b139504233f7072",
+        "stderr_sha256": "64b70a4e06476769253585457734f6e77e01af4f5a9f434e35b61963f1de18fd",
+        "result_sha256": "86f045b3b78f92a48a481496fa1ea13a7ac4e1283eb990b68f7b546b4fd09abd"
+      },
+      {
+        "attempt": "legacy-normal-1172",
+        "exit_code": 1,
+        "process_reaped": true,
+        "result": "Original normal generation and all-dimensions save logs observed; post-close guard compared raw serialized Status full to qualified registry toString minecraft:full",
+        "success_marker_written": false,
+        "actual_marker_exists": false,
+        "stdout_sha256": "c6ebe3dacd3750459df80f6d687196b82e6b8109123a322931cf27a6fe38efaf",
+        "stderr_sha256": "64b70a4e06476769253585457734f6e77e01af4f5a9f434e35b61963f1de18fd",
+        "result_sha256": "7c32c7ccfaafefe0e82ca483d760e246681a32540493adde2f949bc0ea32575a"
+      }
+    ],
+    "native_parity_or_main_claim": false
+  },
+  "upgrade_reference": {
+    "actual_runner": {
+      "success": true,
+      "minecraft": "1.21",
+      "protocol": 767,
+      "source_sha256": "32ec3d049de352805a613e68a79e72e4293029dfa477481c727826059a00735c",
+      "runner_sha256": "43a0a12f2d5bc21d01b24da0f6b35f02fe183ad2e2d5863d10e0240490d4ad2f",
+      "source_lock_sha256": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
+      "artifact_sha256": {
+        "server-1.21.jar": "c96394da86f9d9f9ef7ca2d2ee1f2f0980c29b7aa5c94b43c02c50435dbcf53f",
+        "server-1.21-mappings.txt": "c9d9fda3143c100fa0566099074fc5d912b8b7ef3cb5b84c87eab411bd5bfb51",
+        "server-inner-1.21.jar": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+        "libraries/com/github/oshi/oshi-core/6.4.10/oshi-core-6.4.10.jar": "fef001a7a13515c273f30915915580782afbc45273cc07aa15994e51563ef310",
+        "libraries/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar": "4241c14a7727c34feea6507ec801318a3d4a90f070e4525681079fb94ee4c593",
+        "libraries/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar": "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26",
+        "libraries/com/google/guava/guava/32.1.2-jre/guava-32.1.2-jre.jar": "bc65dea7cfd9e4dacf8419d8af0e741655857d27885bb35d943d7187fc3a8fce",
+        "libraries/com/mojang/authlib/6.0.54/authlib-6.0.54.jar": "319ea7b53b5e52f62ad3e2b81e9db7f0751240edac548bd74f5f19e35dc21a3b",
+        "libraries/com/mojang/brigadier/1.2.9/brigadier-1.2.9.jar": "1f46f6c679ad59ad5d6228e7b91962217a588f25bd259e0691bc9c5a54b68bcd",
+        "libraries/com/mojang/datafixerupper/8.0.16/datafixerupper-8.0.16.jar": "ffc138bc2596c291781b0d5e211ccac51f0f2345f27fc2742f335cedf7e2870d",
+        "libraries/com/mojang/logging/1.2.7/logging-1.2.7.jar": "3dc3190204bac5f4184d8405bfe1f724f73a6a15a0d3f36ec7f69e6872c1a76c",
+        "libraries/commons-io/commons-io/2.15.1/commons-io-2.15.1.jar": "a58af12ee1b68cfd2ebb0c27caef164f084381a00ec81a48cc275fd7ea54e154",
+        "libraries/io/netty/netty-buffer/4.1.97.Final/netty-buffer-4.1.97.Final.jar": "a4393f5b395486cc74d0325c9b41311abb9513ba0fd7ef8cf46e9345c3bffbea",
+        "libraries/io/netty/netty-codec/4.1.97.Final/netty-codec-4.1.97.Final.jar": "bcc96737a0f912fcf031cf8c45ebda352a90a40437db0832caad3d5a63618b38",
+        "libraries/io/netty/netty-common/4.1.97.Final/netty-common-4.1.97.Final.jar": "a8aca0c8e9347acc75c885ecc749195d9775369aa520b9276f2d1128210a6c17",
+        "libraries/io/netty/netty-handler/4.1.97.Final/netty-handler-4.1.97.Final.jar": "bd4771d19149cbc9c7464ed2d58035d79cdfed7adb59d38718b0d8e7a3dcc2de",
+        "libraries/io/netty/netty-resolver/4.1.97.Final/netty-resolver-4.1.97.Final.jar": "38a018c6d9fb2cb11b72881354782b45080bbd20b9a0ad6cde28b80d431ed0b1",
+        "libraries/io/netty/netty-transport/4.1.97.Final/netty-transport-4.1.97.Final.jar": "197fd2d6c6b4afe677d9e95bf2e36b49a0bcabdfce0583683fb73f29a3f5a407",
+        "libraries/io/netty/netty-transport-classes-epoll/4.1.97.Final/netty-transport-classes-epoll-4.1.97.Final.jar": "ee65fa17fe65f18fd22269f92bddad85bfb3a263cf65eba01e116a2f30b86ff5",
+        "libraries/io/netty/netty-transport-native-epoll/4.1.97.Final/netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar": "1e83fc9f82e5415cdbb688c6a5c6bbbd7d198e9fdd6fdf64b3dc5d54dd1acfd0",
+        "libraries/io/netty/netty-transport-native-epoll/4.1.97.Final/netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar": "93b5fe8f3829dcb5e033d8d40d59159366ff4cf8266c903bbd6a4aeed9e59bac",
+        "libraries/io/netty/netty-transport-native-unix-common/4.1.97.Final/netty-transport-native-unix-common-4.1.97.Final.jar": "412fe140257c2dda5a5e15bee911298bd61928d03ee6be4db588e82c196c5dc6",
+        "libraries/it/unimi/dsi/fastutil/8.5.12/fastutil-8.5.12.jar": "b5543ee08d062d551cf0a5c9bc0fb70588b0382079029ba48941fa9c9be8a5d4",
+        "libraries/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar": "34ed1e1f27fa896bca50dbc4e99cf3732967cec387a7a0d5e3486c09673fe8c6",
+        "libraries/net/java/dev/jna/jna-platform/5.14.0/jna-platform-5.14.0.jar": "ae4caceb3840730c2537f9b7fb55a01baba580286b4122951488bcee558c2449",
+        "libraries/net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28",
+        "libraries/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar": "7b96bf3ee68949abb5bc465559ac270e0551596fa34523fddf890ec418dde13c",
+        "libraries/org/apache/logging/log4j/log4j-api/2.22.1/log4j-api-2.22.1.jar": "5d7beae7ff15d8516d6517121d7f12a79a6ac180df64b5fcec55d5be21056e53",
+        "libraries/org/apache/logging/log4j/log4j-core/2.22.1/log4j-core-2.22.1.jar": "46dccecac556623d8e2ce8648496824a82951d139062a4e61148aff1a25ed18d",
+        "libraries/org/apache/logging/log4j/log4j-slf4j2-impl/2.22.1/log4j-slf4j2-impl-2.22.1.jar": "1920cd69d8682c7ef249bb407a3d0685723aa1785867cf4c53258da6bf14da97",
+        "libraries/org/joml/joml/1.10.5/joml-1.10.5.jar": "cac9f22f83a7aa33eebda73c16ff5261e3cb4911b6bafcf4c79ea486099d0c9a",
+        "libraries/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar": "d74a3334fb35195009b338a951f918203d6bbca3d1d359033dc33edd1cadc9ef",
+        "libraries/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar": "0818930dc8d7debb403204611691da58e49d42c50b6ffcfdce02dadb7c3c2b6c"
+      },
+      "build": {
+        "minecraft": "1.21",
+        "protocol": 767,
+        "inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+        "source_sha256": "32ec3d049de352805a613e68a79e72e4293029dfa477481c727826059a00735c",
+        "passive_audit_sha256": "d27306fdeca32bcc129c9da756e9ddfd6e001535b8bd346bb8e81bece4a5da59",
+        "compiled_class_sha256": {
+          "oracle/PassiveApiAudit121.class": "be7fb7b4f09fa87c840459daa2e212ddaac846f928c3bd40af896b5127cce812",
+          "oracle/RealGameTestServer121.class": "0f3fe11f3cffc0941ffc727c9e2dc74f23edd64b153e683b4b7f4eb0045130fd"
+        },
+        "compiled_only": true,
+        "server_executed": false
+      },
+      "java_versions": {
+        "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-deb13u1-Debian)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-deb13u1-Debian, mixed mode, sharing)",
+        "javac": "javac 21.0.12.1"
+      },
+      "compile": {
+        "exit_code": 0,
+        "timed_out": false,
+        "elapsed_seconds": 1.172,
+        "reaped": true,
+        "max_wall_seconds": 60
+      },
+      "passive_api_audit": {
+        "exit_code": 0,
+        "timed_out": false,
+        "elapsed_seconds": 0.466,
+        "reaped": true,
+        "max_wall_seconds": 30
+      },
+      "build_record_sha256": "592e46a31f4435a998d29a50623adf40a0cb1c82122d201fb88283bbb5fcfeeb",
+      "compile_stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "compile_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "passive_audit_stdout_sha256": "98379951232a32deecfd78d3626399b151de8293e2e0711020269f9189525ee8",
+      "passive_audit_stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "server_executed": true,
+      "controlled_root_scope": "Exact Java source retains its fixed external CONTROLLED_ROOT; arbitrary storage roots are unsupported.",
+      "prior_failure_scope": "The earlier GameTest-callback attempt timed out and is separate failure history; only an actual server.execute observation can pass this runner.",
+      "upgrade_runner_sha256": "3ed8045bb56d1b098b15b97907dd792dc260db77ebd2bb74d86357fc72a7c1c8",
+      "legacy_provenance": {
+        "result_sha256": "ef18808ee923dbf0dff377760e3a77993808714754109b5d332191949da2630a",
+        "marker_sha256": "3dc1c2f7fa2deb3f94ff809d4b7254b76e1f9420ca72b758d50344e1e074a801",
+        "build_audit_sha256": "8123272cfe54f1214143e7388c800a2aa777c99320021e1df6bd532c475a6fdb",
+        "official_jar_sha256": "e8c211b41317a9f5a780c98a89592ecb72eb39a6e475d4ac9657e5bc9ffaf55f",
+        "original_superclass_sha256": "4846a20513148027eaf124a51427df69b34560924e6471c8913613648e741f71",
+        "saved_DataVersion": 2730,
+        "seed": "123456789",
+        "saved_generator_type": "minecraft:noise",
+        "saved_chunks": [
+          {
+            "region": "region/r.0.-1.mca",
+            "compressed_sha256": "1030d247b75df2499c0c73375acd6a99623045493d2e8e5c5317109cca88175c",
+            "status": "full",
+            "chunk": [
+              0,
+              -1
+            ],
+            "DataVersion": 2730,
+            "nbt_sha256": "e82ace88684c406d89048852293b263d3c3e9d3a9ed4231263a32505b66cf9a3"
+          },
+          {
+            "region": "region/r.0.0.mca",
+            "compressed_sha256": "9e5689b315c4bb4b6068262892f3ff02f68ed58aad240d55f04cf7bd505259a1",
+            "status": "full",
+            "chunk": [
+              0,
+              0
+            ],
+            "DataVersion": 2730,
+            "nbt_sha256": "2e62c1fba36d5b5769fe75f9a8e23119607a5fefdf29f81c7b6d8012032feab6"
+          }
+        ],
+        "raw_files": [
+          {
+            "file": "DIM-1/data/raids.dat",
+            "size": 87,
+            "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+          },
+          {
+            "file": "DIM1/data/raids_end.dat",
+            "size": 87,
+            "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+          },
+          {
+            "file": "data/raids.dat",
+            "size": 87,
+            "sha256": "6c1f6fc6313201c50fdc894ac0636328162c1a8dfa1d24d380b82fc67152ba15"
+          },
+          {
+            "file": "entities/r.0.-1.mca",
+            "size": 16384,
+            "sha256": "5fee4ebaac2778ece3ec5dbe5e3759c2c3ab46d029acd87e5167331ecac13448"
+          },
+          {
+            "file": "entities/r.0.0.mca",
+            "size": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "file": "level.dat",
+            "size": 1288,
+            "sha256": "f79ef9607a9c20161e0751aa7a140234504c44d7437cf6d02efa83b95366a358"
+          },
+          {
+            "file": "region/r.-1.-1.mca",
+            "size": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "file": "region/r.-1.0.mca",
+            "size": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "file": "region/r.0.-1.mca",
+            "size": 16384,
+            "sha256": "37e5834566a63bcbab232d1460f80447b9fe3d2e1e1162f61628fe8c09474f65"
+          },
+          {
+            "file": "region/r.0.0.mca",
+            "size": 16384,
+            "sha256": "63c85a5fb8791ef63c3813931353a4409f0f9d34eba6439cf990ead31382b1f4"
+          },
+          {
+            "file": "session.lock",
+            "size": 3,
+            "sha256": "51643361c79ecaef25a8de802de24f570ba25d9c2df1d22d94fade11b4f466cc"
+          }
+        ],
+        "marker_file": {
+          "file": "original-generation-provenance.json",
+          "size": 3569,
+          "sha256": "3dc1c2f7fa2deb3f94ff809d4b7254b76e1f9420ca72b758d50344e1e074a801"
+        },
+        "source_regular_file_count": 12,
+        "semantic_scope": "Original post-close marker supplies NBT observations; this runner verifies its pinned digest and every raw byte, without rewriting or reinterpreting tags."
+      },
+      "input_world_opened_by_121": false,
+      "copied_world": true,
+      "complete_preupgrade_copy_equal": true,
+      "original_closed_world_unchanged": true,
+      "execution": {
+        "exit_code": 0,
+        "timed_out": false,
+        "elapsed_seconds": 22.242,
+        "reaped": true,
+        "max_wall_seconds": 120
+      },
+      "original": {
+        "minecraft": "1.21",
+        "task_dispatch": "MinecraftServer.execute after original public isReady",
+        "real_server_executor_task_executed": true,
+        "game_test_callback_executed": false,
+        "executor_task_count": 1,
+        "game_test_callback_count": 0,
+        "original_development_flag": false,
+        "same_original_server_thread": true,
+        "protocol": 767,
+        "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+        "bootstrap": "original WorldLoader + normal WorldStem + original GameTestServer constructor + MinecraftServer.spin",
+        "world_data_mode": "upgrade",
+        "actual_level_class": "aqu",
+        "actual_cache_class": "aqs",
+        "actual_random_state_class": "dzm",
+        "actual_generator_class": "dzb",
+        "world_seed": 123456789,
+        "chunk": [
+          6,
+          0
+        ],
+        "requested_status": "noise",
+        "persisted_status": "minecraft:noise",
+        "highest_generated_status": "minecraft:noise",
+        "retained_noise_chunk_class": "dzc",
+        "retained_blender_empty_singleton": false,
+        "actual_network_listener_count": 0,
+        "explicit_region_collection": {
+          "actual_region_class": "arb",
+          "actual_generation_holders_acquired": 289,
+          "public_blender_of_executed": true,
+          "public_blender_empty_singleton": false,
+          "public_get_or_update_executed": true,
+          "old_data_absent": false,
+          "old_data_calculated": true
+        },
+        "public_blender_call_counter_observed": false,
+        "source_backed_original_chunkstep_path": true,
+        "eula_file_written": false
+      },
+      "config_sha256": "fd7bde79e6b42075dbe2e95e7ce2341331a65bdabeae224808b8f37b6d7ddc6d",
+      "semantic_config": {
+        "mode": "upgrade",
+        "seed": 123456789,
+        "chunk_x": 6,
+        "chunk_z": 0,
+        "target_status": "noise",
+        "public_region_collection": true,
+        "expect_nonempty": true,
+        "old_chunk": [
+          0,
+          0
+        ]
+      },
+      "runtime_report_sha256": "64fd14efbe122bed2545bbdaa59f7f4f710bfb9f5b05543448d901859eae3868",
+      "stdout_sha256": "fc5bd3c235d5adb0aa9d0aec636533258d116ecbf2fba3e9ba542193416eec45",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "launch_marker_sha256": "0133961a85364bb696ffaad83d81c8e120591a67d1d9fc97e3a945b61c9a208e",
+      "postupgrade_files": [
+        {
+          "file": "DIM-1/data/raids.dat",
+          "size": 88,
+          "sha256": "fb4c14e166a5dea44a1c907714259c9c70d4bd50590452ee99bba57a63c13c73"
+        },
+        {
+          "file": "DIM1/data/raids_end.dat",
+          "size": 88,
+          "sha256": "fb4c14e166a5dea44a1c907714259c9c70d4bd50590452ee99bba57a63c13c73"
+        },
+        {
+          "file": "data/chunks.dat",
+          "size": 73,
+          "sha256": "3992ef4dbdffd3d8d8ebea6fa1b14e3c8118b7bf12e134f230846d2e3da868a1"
+        },
+        {
+          "file": "data/raids.dat",
+          "size": 88,
+          "sha256": "fb4c14e166a5dea44a1c907714259c9c70d4bd50590452ee99bba57a63c13c73"
+        },
+        {
+          "file": "entities/r.-1.-1.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "entities/r.-1.0.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "entities/r.-9170.29121.mca",
+          "size": 12288,
+          "sha256": "73923a74f9dd43360bf7682dff801c2262cf42a658a9d753b7340da186f2dd40"
+        },
+        {
+          "file": "entities/r.0.-1.mca",
+          "size": 16384,
+          "sha256": "a0a47b00a297c40586f38922fc70c09d86eca9dc653def80b2fd3a86fee2c561"
+        },
+        {
+          "file": "entities/r.0.0.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "level.dat",
+          "size": 1502,
+          "sha256": "876cb05b58a43bd9b862a4a4b18e1b7f69ec058f9743f7d815957db008d75298"
+        },
+        {
+          "file": "level.dat_old",
+          "size": 1288,
+          "sha256": "f79ef9607a9c20161e0751aa7a140234504c44d7437cf6d02efa83b95366a358"
+        },
+        {
+          "file": "original-generation-provenance.json",
+          "size": 3569,
+          "sha256": "3dc1c2f7fa2deb3f94ff809d4b7254b76e1f9420ca72b758d50344e1e074a801"
+        },
+        {
+          "file": "poi/r.0.-1.mca",
+          "size": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "file": "poi/r.0.0.mca",
+          "size": 12288,
+          "sha256": "43dee83d4c70640a187e955974d704e31be8c0658eae7e1c530d5ff655c2f504"
+        },
+        {
+          "file": "region/r.-1.-1.mca",
+          "size": 1007616,
+          "sha256": "16522a05f3bc140ae9d26f5502b90ac313a0d63d30b50a9565a017c353ef15ec"
+        },
+        {
+          "file": "region/r.-1.0.mca",
+          "size": 970752,
+          "sha256": "54d4ec58a8b516a2e781eff2ef4588f05937183ad867394bcf80083271d980c8"
+        },
+        {
+          "file": "region/r.-9170.29120.mca",
+          "size": 77824,
+          "sha256": "f3a6fd21e10542c012b67d1a37787dd9da1f9cb24228119c58940bc091119b7d"
+        },
+        {
+          "file": "region/r.-9170.29121.mca",
+          "size": 2174976,
+          "sha256": "5dc8f62a9f2b1fb540a22bf840ee62b68c9df66f12529495977be148aaa666bf"
+        },
+        {
+          "file": "region/r.-9171.29120.mca",
+          "size": 53248,
+          "sha256": "bee267c57f04577f04b0f3acbbec0db120984d4149cc0ab137b04c63e9be0c58"
+        },
+        {
+          "file": "region/r.-9171.29121.mca",
+          "size": 1232896,
+          "sha256": "f18c9c1943a6bc1170c8a65f03ea526b99caef66edc815050cf11135f258674d"
+        },
+        {
+          "file": "region/r.0.-1.mca",
+          "size": 1118208,
+          "sha256": "7deed67f19f6679ebcf7bf09a92998f96bcab3fda33e813a4549f335ec713674"
+        },
+        {
+          "file": "region/r.0.0.mca",
+          "size": 1101824,
+          "sha256": "b42cdfd25eee419df271ca382455d9fbf61483a06ed83299802cfbbc389fc22b"
+        },
+        {
+          "file": "session.lock",
+          "size": 3,
+          "sha256": "51643361c79ecaef25a8de802de24f570ba25d9c2df1d22d94fade11b4f466cc"
+        }
+      ],
+      "eula_files_absent": true,
+      "original_save_close_log_observed": true,
+      "scope": "Actual DFU/load of a complete genuine closed legacy copy, scheduler NOISE and separate public nonempty Blender/getOrUpdate observations. No pre-request status, numeric/native/Main/FULL parity or public call counter is observed.",
+      "old_map_scope": "At this target the height/biome map may be nonempty while density-map owners are absent; no map keys, old bounds, retrogen state or numeric blend effect are reported by this Java source.",
+      "source_profile_scope": "Original GameTestServer spawn/weather initialization and any template preparation remain original profile behavior, not harness metadata/rule/status patches."
+    },
+    "external_result_sha256": "2a20be8642cac6b0fd7469d04aa3be13e1da42da4edab8c4759e9af43db43459",
+    "runtime_report_sha256": "64fd14efbe122bed2545bbdaa59f7f4f710bfb9f5b05543448d901859eae3868",
+    "identity_scope": "Retained NoiseChunk Blender and separately invoked public Blender result are independently nonempty; their object identities/maps are not compared. Old data calculated flag is observed after getOrUpdate, not a first-calculation witness.",
+    "passive_saved_nbt": {
+      "evidence_kind": "passive post-close serialized NBT inspection, separate from Java runtime report",
+      "external_raw_facts_sha256": "a72a23911a59651d8b6aad6c5160e7d74cd5b7c42152e4697a745f0a06384530",
+      "reader_scope": "Separate external Python stdlib NBT inspection; these fields are not assertions performed by the Java report or published upgrade runner.",
+      "parser": "Python stdlib big-endian NBT types1..12 with duplicate-key/truncation/trailing-byte guards; GZIP/ZLIB/uncompressed Anvil payloads; no Java or server execution",
+      "chunks": [
+        {
+          "chunk": [
+            0,
+            0
+          ],
+          "input": {
+            "present": true,
+            "serialized": {
+              "DataVersion": 2730,
+              "Status": "full",
+              "below_zero_retrogen_present": false,
+              "blending_data_present": false,
+              "body_path": "/Level",
+              "chunk": [
+                0,
+                0
+              ]
+            },
+            "nbt_sha256": "2e62c1fba36d5b5769fe75f9a8e23119607a5fefdf29f81c7b6d8012032feab6",
+            "compressed_sha256": "9e5689b315c4bb4b6068262892f3ff02f68ed58aad240d55f04cf7bd505259a1",
+            "compression_id": 2,
+            "region_sha256": "63c85a5fb8791ef63c3813931353a4409f0f9d34eba6439cf990ead31382b1f4",
+            "region_size": 16384
+          },
+          "output": {
+            "present": true,
+            "serialized": {
+              "DataVersion": 3953,
+              "Status": "minecraft:full",
+              "below_zero_retrogen_present": false,
+              "blending_data": {
+                "heights_count": 16,
+                "heights_double_bits_hex": [
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "4054c00000000000",
+                  "4054800000000000",
+                  "4054400000000000",
+                  "4053800000000000",
+                  "4053800000000000",
+                  "4053800000000000",
+                  "4052c00000000000",
+                  "4051c00000000000",
+                  "4051c00000000000",
+                  "4052800000000000",
+                  "4053800000000000",
+                  "4054400000000000",
+                  "4054800000000000"
+                ],
+                "heights_present": true,
+                "max_section": 16,
+                "min_section": 0,
+                "serialized_keys": [
+                  "heights",
+                  "max_section",
+                  "min_section"
+                ]
+              },
+              "blending_data_present": true,
+              "body_path": "/",
+              "chunk": [
+                0,
+                0
+              ]
+            },
+            "nbt_sha256": "2bb9286f44023150629e34b998fc9e81acf4b688f0be557107b4a8a8d2628e32",
+            "compressed_sha256": "5301152d75c4c57a879dc4dd75f471ee435ccc964c2d561e5f2607205e5c34d8",
+            "compression_id": 2,
+            "region_sha256": "b42cdfd25eee419df271ca382455d9fbf61483a06ed83299802cfbbc389fc22b",
+            "region_size": 1101824
+          }
+        },
+        {
+          "chunk": [
+            0,
+            -1
+          ],
+          "input": {
+            "present": true,
+            "serialized": {
+              "DataVersion": 2730,
+              "Status": "full",
+              "below_zero_retrogen_present": false,
+              "blending_data_present": false,
+              "body_path": "/Level",
+              "chunk": [
+                0,
+                -1
+              ]
+            },
+            "nbt_sha256": "e82ace88684c406d89048852293b263d3c3e9d3a9ed4231263a32505b66cf9a3",
+            "compressed_sha256": "1030d247b75df2499c0c73375acd6a99623045493d2e8e5c5317109cca88175c",
+            "compression_id": 2,
+            "region_sha256": "37e5834566a63bcbab232d1460f80447b9fe3d2e1e1162f61628fe8c09474f65",
+            "region_size": 16384
+          },
+          "output": {
+            "present": true,
+            "serialized": {
+              "DataVersion": 3953,
+              "Status": "minecraft:full",
+              "below_zero_retrogen_present": false,
+              "blending_data": {
+                "heights_count": 16,
+                "heights_double_bits_hex": [
+                  "4051c00000000000",
+                  "4051c00000000000",
+                  "4052800000000000",
+                  "4055c00000000000",
+                  "4055400000000000",
+                  "4055400000000000",
+                  "4055000000000000",
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "7fefffffffffffff",
+                  "4055000000000000",
+                  "4053800000000000",
+                  "4051c00000000000",
+                  "4051c00000000000"
+                ],
+                "heights_present": true,
+                "max_section": 16,
+                "min_section": 0,
+                "serialized_keys": [
+                  "heights",
+                  "max_section",
+                  "min_section"
+                ]
+              },
+              "blending_data_present": true,
+              "body_path": "/",
+              "chunk": [
+                0,
+                -1
+              ]
+            },
+            "nbt_sha256": "d16c5e55b13f83f7a1109d78a6d1ebcee87b32e128635e7bcd39fcefe52bdd7e",
+            "compressed_sha256": "061b3f414f253e5b49ce0ee7a6a106f96c9c3872c8884eee9b695b74d7495f6d",
+            "compression_id": 2,
+            "region_sha256": "7deed67f19f6679ebcf7bf09a92998f96bcab3fda33e813a4549f335ec713674",
+            "region_size": 1118208
+          }
+        },
+        {
+          "chunk": [
+            6,
+            0
+          ],
+          "input": {
+            "present": false,
+            "absence": "zero Anvil location entry",
+            "region_sha256": "63c85a5fb8791ef63c3813931353a4409f0f9d34eba6439cf990ead31382b1f4",
+            "region_size": 16384
+          },
+          "output": {
+            "present": true,
+            "serialized": {
+              "DataVersion": 3953,
+              "Status": "minecraft:noise",
+              "below_zero_retrogen_present": false,
+              "blending_data_present": false,
+              "body_path": "/",
+              "chunk": [
+                6,
+                0
+              ]
+            },
+            "nbt_sha256": "c5fab25d9a808f7d790ac216e8c9bb22b5656bc43c9e5fe4bf86840af46a4575",
+            "compressed_sha256": "999a0cd57a62f447816c0807085070dc8a9be7d4ebe21f7b77dd14dc727d6ac6",
+            "compression_id": 2,
+            "region_sha256": "b42cdfd25eee419df271ca382455d9fbf61483a06ed83299802cfbbc389fc22b",
+            "region_size": 1101824
+          }
+        }
+      ],
+      "level": {
+        "input": {
+          "DataVersion": 2730,
+          "dimensions": {
+            "minecraft:overworld": {
+              "generator": {
+                "biome_source": {
+                  "large_biomes": 0,
+                  "seed": 123456789,
+                  "type": "minecraft:vanilla_layered"
+                },
+                "seed": 123456789,
+                "settings": "minecraft:overworld",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:overworld"
+            },
+            "minecraft:the_end": {
+              "generator": {
+                "biome_source": {
+                  "seed": 123456789,
+                  "type": "minecraft:the_end"
+                },
+                "seed": 123456789,
+                "settings": "minecraft:end",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:the_end"
+            },
+            "minecraft:the_nether": {
+              "generator": {
+                "biome_source": {
+                  "preset": "minecraft:nether",
+                  "seed": 123456789,
+                  "type": "minecraft:multi_noise"
+                },
+                "seed": 123456789,
+                "settings": "minecraft:nether",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:the_nether"
+            }
+          },
+          "seed": "123456789",
+          "spawn": {
+            "SpawnAngle": 0.0,
+            "SpawnX": 0,
+            "SpawnY": 88,
+            "SpawnZ": -16
+          },
+          "spawnChunkRadius_serialized": null,
+          "worldgen_settings": {
+            "bonus_chest": 0,
+            "generate_features": 1,
+            "seed": 123456789
+          },
+          "file_sha256": "f79ef9607a9c20161e0751aa7a140234504c44d7437cf6d02efa83b95366a358",
+          "file_size": 1288
+        },
+        "output": {
+          "DataVersion": 3953,
+          "dimensions": {
+            "minecraft:overworld": {
+              "generator": {
+                "biome_source": {
+                  "preset": "minecraft:overworld",
+                  "type": "minecraft:multi_noise"
+                },
+                "settings": "minecraft:overworld",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:overworld"
+            },
+            "minecraft:the_end": {
+              "generator": {
+                "biome_source": {
+                  "type": "minecraft:the_end"
+                },
+                "settings": "minecraft:end",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:the_end"
+            },
+            "minecraft:the_nether": {
+              "generator": {
+                "biome_source": {
+                  "preset": "minecraft:nether",
+                  "type": "minecraft:multi_noise"
+                },
+                "settings": "minecraft:nether",
+                "type": "minecraft:noise"
+              },
+              "type": "minecraft:the_nether"
+            }
+          },
+          "seed": "123456789",
+          "spawn": {
+            "SpawnAngle": 0.0,
+            "SpawnX": 0,
+            "SpawnY": 80,
+            "SpawnZ": 0
+          },
+          "spawnChunkRadius_serialized": "2",
+          "worldgen_settings": {
+            "bonus_chest": 0,
+            "generate_features": 1,
+            "seed": 123456789
+          },
+          "file_sha256": "876cb05b58a43bd9b862a4a4b18e1b7f69ec058f9743f7d815957db008d75298",
+          "file_size": 1502
+        }
+      },
+      "scope": {
+        "not_observed": [
+          "runtime hasCalculatedData flag",
+          "runtime density columns",
+          "runtime biome columns",
+          "Blender map memberships or iteration order",
+          "pre-request chunk status or exact public-call counts"
+        ],
+        "observed": "Only actual closed-world serialized fields and byte hashes. Input source opened read-only by this Python process; no world file modifications.",
+        "serialization_note": "BlendingData codec persists min_section/max_section and optional heights only. No serialized calculated flag or density/biome caches; absence of below_zero_retrogen after close is a final observation, not a recorded transition."
+      },
+      "original_files_unchanged": true,
+      "selected_output_files_match_upgrade_report": true
+    }
+  }
 }
