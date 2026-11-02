@@ -12,9 +12,11 @@ showing a performance advantage over a Java server running equivalent gameplay.
 
 ## Native Anvil falling runtime
 
-The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. Source is published in [PR97](https://github.com/Ferigone/Cinderstone/pull/97); release review is pending.
+The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. [PR97](https://github.com/Ferigone/Cinderstone/pull/97) merged as `68fba409`; automatic native offline startup was observed.
 
-The primary path supports the native Anvil/flat/creative profile. Active fluid/fire/redstone/BE callbacks, generic falling types, passenger graphs and survival damage remain open here. A separate mid-flight restore attempt was interrupted by automatic execution review and has no persistence result. Future sand/gravel/WATER/placement/codec source has a compiler check, not primary runtime evidence.
+The [PR100 follow-up](https://github.com/Ferigone/Cinderstone/pull/100) adds ordinary sand/red_sand/gravel, bounded actual WATER callbacks, placement obstruction and source save-before-menu-removal. [Actual local observations](docs/reference/ordinary-falling-runtime.md) include all three ordinary falls and a real-bucket water landing. The removal witness conserves persistent inventory and real temporary-item drops; its grouped harness stopped on a private copy error, so it is not a complete removal/reconfiguration result.
+
+A separate [genuine mid-flight save and resume](docs/reference/falling-midflight-local-keys.md) passed with the same actor body, UUID and RNG across a hidden restart, followed by chunk publication, resumed motion and one landing. It used an explicit offline-loopback local public-key file; production's default key source is unchanged. Earlier incomplete attempts remain separate. Active fire/redstone/BE contexts, special falling classes, passenger graphs, survival damage and Java-save import remain open. These bounded paths do not complete an aggregate checklist row.
 
 ## Native Grindstone and Anvil integration
 

@@ -10,6 +10,7 @@ use mc121_rust::{
 struct DamageTypes {
     values: Vec<(String, Tag)>,
     falling_anvil: usize,
+    falling_block: usize,
 }
 
 /// Retained ONCE from the actual admitted configuration, not rebuilt per tick.
@@ -61,11 +62,17 @@ impl NativeFallingDamageTypes {
         let values = values.context("actual configured damage_type registry is absent")?;
         let falling_anvil = values.iter().position(|(key, _)| key == "minecraft:falling_anvil")
             .context("actual falling_anvil damage holder is absent")?;
-        Ok(Self(Arc::new(DamageTypes { values, falling_anvil })))
+        let falling_block = values.iter().position(|(key, _)| key == "minecraft:falling_block")
+            .context("actual falling_block damage holder is absent")?;
+        Ok(Self(Arc::new(DamageTypes { values, falling_anvil, falling_block })))
     }
 
     fn anvil_source(&self, actor: EntityHandle) -> NativeFallingDamageSource {
         NativeFallingDamageSource { registry: self.0.clone(), type_index: self.0.falling_anvil,
+            direct_entity: actor, causing_entity: actor }
+    }
+    fn block_source(&self, actor: EntityHandle) -> NativeFallingDamageSource {
+        NativeFallingDamageSource { registry: self.0.clone(), type_index: self.0.falling_block,
             direct_entity: actor, causing_entity: actor }
     }
 }
@@ -107,16 +114,20 @@ impl<A: FallingBlockDamageActor> FallingBlockDamageHost<A> for MainFallingDamage
         ensure!(actor.physical().entity_id == self.actor.id
             && self.items.entity_kind(self.actor) == Some(EntityKind::FallingBlock),
             "falling damage actor/generation is not the actual indexed owner");
-        ensure!(mc121_rust::placement::in_block_tag(actor.block_state(), "minecraft:anvil"),
-            "native falling damage currently requires an actual Anvil");
+        ensure!(mc121_rust::falling_block::block::source_class(actor.block_state())?.is_some(),
+            "falling damage subclass has no actual native source owner");
         Ok(())
     }
     fn fall_damage_source(&mut self, actor: &A) -> Result<Self::DamageSource> {
-        // Actual AnvilBlock.getFallDamageSource selects falling_anvil before
-        // Level.getEntities, even if the eventual victim list is empty.
-        ensure!(mc121_rust::placement::in_block_tag(actor.block_state(), "minecraft:anvil"),
-            "actual non-Anvil Fallable damage-source override is unavailable");
-        Ok(self.damage_types.anvil_source(self.actor))
+        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
+        // Actual AnvilBlock override selects falling_anvil. The ordinary
+        // family inherits Fallable's falling_block holder. Resolve either
+        // before Level.getEntities, even if the eventual victim list is empty.
+        match source_class(actor.block_state())? {
+            Some(NativeFallingClass::Anvil) => Ok(self.damage_types.anvil_source(self.actor)),
+            Some(NativeFallingClass::Ordinary) => Ok(self.damage_types.block_source(self.actor)),
+            None => bail!("falling damage-source override is unavailable"),
+        }
     }
     fn damage_targets(&mut self, actor: &A, bounds: Aabb) -> Result<Vec<Self::Target>> {
         // Player is the only current indexed LivingEntity class. Item, XP and

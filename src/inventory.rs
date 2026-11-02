@@ -500,6 +500,20 @@ impl PlayerInventory {
         snapshot.set_carried_authoritative(carried.clone());
         snapshot
     }
+    /// Player's persistent Inventory serialization view. InventoryMenu result,
+    /// crafting grid and carried stack belong to menus, not Inventory.save.
+    /// This detached view changes no live stack, counter, callback or owner.
+    pub fn snapshot_for_player_save(&self) -> Self {
+        Self {
+            slots: self.slots.iter().enumerate().map(|(slot, stack)| {
+                if slot < 5 { ItemStack::empty() } else { stack.clone() }
+            }).collect(),
+            selected_hotbar: self.selected_hotbar,
+            carried: ItemStack::empty(),
+            state_id: self.state_id,
+            times_changed: self.times_changed,
+        }
+    }
     pub(crate) fn set_carried_authoritative(&mut self, stack: ItemStack) {
         self.carried = if stack.is_empty() {
             ItemStack::empty()

@@ -1,0 +1,399 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "a2b020f934cfbe00abca260f1a33593c31873518",
+  "source_tree": "64f645097fb0e287e33e65cb6e3cabe4c7ae227e",
+  "binary_sha256": "39adbead1c345ee5b9870a7adbef5c1cc58c47f60bdda9b1e4421edb66796395",
+  "harness_sha256": "902a52e5747ff5245823e657161cd845c5df2acad894018c1326ea23b1d26384",
+  "midflight_helper_sha256": "cf74fb22ac5ebb4c4beb9839ec1dee408d20109b1f6f611d44b1bd961e80846a",
+  "keyfile_adapter_sha256": "15478b75055d041a6091c969ac77181f91a3a25db04735fb0cc3f30420548ae7",
+  "started_at": "2026-11-02T02:34:09.601879+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One authorized still-unrun real PLAY continuation from actual unedited hidden native Falling pair; cites original failed generation-equality assertion separately. No scene recapture, generation-identity fiction, edited checkpoint or broader conformance claim.",
+  "checks": {
+    "genuine_capture_and_hidden_pairs_obey_fresh_handle_rebind_contract": {
+      "ok": true,
+      "actual_actor": {
+        "entity_id": 2,
+        "position": {
+          "x": 11.5,
+          "y": 66.92369774182143,
+          "z": 8.5,
+          "yaw": 0.0,
+          "pitch": 0.0,
+          "on_ground": false
+        },
+        "velocity": {
+          "x": 0.0,
+          "y": -0.25847395483642877,
+          "z": 0.0
+        },
+        "tick_count": 7,
+        "fall_distance": 1.0763023,
+        "time": 7,
+        "block_state": 9109,
+        "start_position": [
+          11,
+          68,
+          8
+        ],
+        "removed": false,
+        "random_state48_sha256": "ffed9882c95248dcc6c4ceaa6520dbee33be8b2fc957e0cf1be1f98c41159aea",
+        "actual_full_snapshot_sha256": "c092da4e9b6975cf65b64410d67761100dc0f473ec3ac461a2812381c13fcc7d"
+      },
+      "full_body_uuid_rng_time_start_position_equal": true,
+      "persistent_id_kind_section_and_relative_orders_equal": true,
+      "original_actual_order": {
+        "index": {
+          "registrations": [
+            {
+              "handle": {
+                "id": 2,
+                "generation": 2
+              },
+              "kind": "FallingBlock",
+              "section": 4
+            }
+          ],
+          "sections": [
+            {
+              "section": 4,
+              "entities": [
+                {
+                  "id": 2,
+                  "generation": 2
+                }
+              ]
+            }
+          ]
+        },
+        "ticking": [
+          {
+            "id": 2,
+            "generation": 2
+          }
+        ]
+      },
+      "hidden_actual_order": {
+        "index": {
+          "registrations": [
+            {
+              "handle": {
+                "id": 2,
+                "generation": 1
+              },
+              "kind": "FallingBlock",
+              "section": 4
+            }
+          ],
+          "sections": [
+            {
+              "section": 4,
+              "entities": [
+                {
+                  "id": 2,
+                  "generation": 1
+                }
+              ]
+            }
+          ]
+        },
+        "ticking": []
+      },
+      "fresh_handles_internally_consistent": true,
+      "hidden_tick_order_empty": true,
+      "world_game_time_before": 48,
+      "world_game_time_after": 111,
+      "next_entity_id_before_and_after": 3,
+      "no_saved_bytes_or_integrity_values_edited": true
+    },
+    "actual_new_chunk_play_resumes_same_actor_to_one_valid_landing": {
+      "ok": true,
+      "actual_chunk_publication": {
+        "ordinal": 21,
+        "chunk": [
+          0,
+          0
+        ]
+      },
+      "actual_restored_spawn": {
+        "ordinal": 31,
+        "entity_id": 2,
+        "type": 40,
+        "position": [
+          11.5,
+          66.92369774182143,
+          8.5
+        ],
+        "carried_state": 9109,
+        "spawn_motion_raw": [
+          0,
+          -2067,
+          0
+        ]
+      },
+      "saved_position_and_quantized_velocity_restored": true,
+      "actual_wire_uuid_equals_saved_uuid": true,
+      "actual_start_position_metadata": {
+        "ordinal": 32,
+        "entity_id": 2,
+        "index": 8,
+        "serializer": 10,
+        "start_position": [
+          11,
+          68,
+          8
+        ]
+      },
+      "actual_landing_block": {
+        "ordinal": 76,
+        "position": [
+          11,
+          64,
+          8
+        ],
+        "state": 9109
+      },
+      "actual_actor_removal": {
+        "ordinal": 78,
+        "entity_id": 2
+      },
+      "landing_event": 1031,
+      "source_valid_wear_and_facing_states": [
+        9109,
+        9113
+      ],
+      "actual_landing_state": 9109,
+      "wear_sample_or_full_rng_sequence_reconstructed": false
+    },
+    "final_checkpoint_conserves_one_anvil_and_shared_id_progression": {
+      "ok": true,
+      "actual_anvil_blocks": [
+        {
+          "x": 11,
+          "y": 64,
+          "z": 8,
+          "state": 9109
+        }
+      ],
+      "falling_owners": 0,
+      "item_owners": 0,
+      "xp_owners": 0,
+      "actual_next_entity_id": 4,
+      "only_one_actual_new_player_id_allocated": true,
+      "files": {
+        "world_sha256": "686714b4cf71f56cdee9400236b75c3ae0101c9ff40d9e5f475a3706151f3727",
+        "entity_checkpoint_sha256": "501536e06ac99f440d356de9c376dc805c79009f678073ade5d87e1d898be413"
+      }
+    }
+  },
+  "local_public_services_key_source": {
+    "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+    "server_sources": [
+      {
+        "stage": "midflight-continuation-play",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      }
+    ],
+    "empty_trust_set_only": true,
+    "signed_certificate_validation_claim": false
+  },
+  "earlier_actual_phases": {
+    "original_report_sha256": "c3e2babf162e3234390cf919ba9593e3b2bf9ebb9905bd519c1a6fdefe5b5214",
+    "original_report_ok": false,
+    "original_harness_sha256": "cf74fb22ac5ebb4c4beb9839ec1dee408d20109b1f6f611d44b1bd961e80846a",
+    "original_started_at": "2026-11-02T02:28:18.839263+00:00",
+    "original_completed_at": "2026-11-02T02:28:50.955520+00:00",
+    "original_assertion_failure": "Incorrectly required runtime generations to be equal across processes.",
+    "real_capture_and_hidden_processes_completed": true,
+    "captured_files": {
+      "world_sha256": "9294ba287b3245d9fba2b5e1c789a3be902959843e0893beac075897c10758bb",
+      "entity_checkpoint_sha256": "f94655f62a657ef2c72c8b9b415ebce01de86f029ce5fb35009d7afdc01a17f9"
+    },
+    "hidden_files": {
+      "world_sha256": "87fb65766e925c91df039d61e62750215861c2b6a5ed9eb069416f6547e77a1a",
+      "entity_checkpoint_sha256": "257706f2e49fc6f0cdc8d52d415acaa599c21784fbe7753015b590128afa01f6"
+    },
+    "original_checks": {
+      "real_stable_raised_anvil_before_support_removal": {
+        "ok": true,
+        "origin": [
+          11,
+          68,
+          8
+        ],
+        "support": [
+          11,
+          67,
+          8
+        ],
+        "placed_state": 9109,
+        "time_publications": [
+          {
+            "ordinal": 106,
+            "game_time": 19
+          },
+          {
+            "ordinal": 107,
+            "game_time": 39
+          }
+        ],
+        "flight_height_blocks": 4
+      },
+      "normal_shutdown_requested_after_real_airborne_spawn": {
+        "ok": true,
+        "actual_spawn": {
+          "ordinal": 112,
+          "entity_id": 2,
+          "type": 40,
+          "position": [
+            11.5,
+            68.0,
+            8.5
+          ],
+          "carried_state": 9109,
+          "spawn_motion_raw": [
+            0,
+            0,
+            0
+          ]
+        },
+        "actual_remove_seen_before_request": false,
+        "shutdown_signal": "SIGINT"
+      },
+      "genuine_midflight_checkpoint_retains_actor_rng_and_order": {
+        "ok": true,
+        "actor": {
+          "entity_id": 2,
+          "position": {
+            "x": 11.5,
+            "y": 66.92369774182143,
+            "z": 8.5,
+            "yaw": 0.0,
+            "pitch": 0.0,
+            "on_ground": false
+          },
+          "velocity": {
+            "x": 0.0,
+            "y": -0.25847395483642877,
+            "z": 0.0
+          },
+          "tick_count": 7,
+          "fall_distance": 1.0763023,
+          "time": 7,
+          "block_state": 9109,
+          "start_position": [
+            11,
+            68,
+            8
+          ],
+          "removed": false,
+          "random_state48_sha256": "ffed9882c95248dcc6c4ceaa6520dbee33be8b2fc957e0cf1be1f98c41159aea",
+          "actual_full_snapshot_sha256": "c092da4e9b6975cf65b64410d67761100dc0f473ec3ac461a2812381c13fcc7d"
+        },
+        "file_digests": {
+          "world_sha256": "9294ba287b3245d9fba2b5e1c789a3be902959843e0893beac075897c10758bb",
+          "entity_checkpoint_sha256": "f94655f62a657ef2c72c8b9b415ebce01de86f029ce5fb35009d7afdc01a17f9"
+        },
+        "cohort_order": {
+          "index": {
+            "registrations": [
+              {
+                "handle": {
+                  "id": 2,
+                  "generation": 2
+                },
+                "kind": "FallingBlock",
+                "section": 4
+              }
+            ],
+            "sections": [
+              {
+                "section": 4,
+                "entities": [
+                  {
+                    "id": 2,
+                    "generation": 2
+                  }
+                ]
+              }
+            ]
+          },
+          "ticking": [
+            {
+              "id": 2,
+              "generation": 2
+            }
+          ]
+        },
+        "next_entity_id": 3,
+        "genuine_snapshot_unedited": true
+      }
+    },
+    "original_local_key_sources": {
+      "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+      "server_sources": [
+        {
+          "stage": "midflight-capture",
+          "explicit_offline_loopback": true,
+          "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+          "selected_local_source_event_observed": true,
+          "actual_key_source_events": [
+            {
+              "event": "chat_service_key_source",
+              "network_refresh": false,
+              "source": "loopback-file"
+            },
+            {
+              "event": "chat_service_keys_attempt_complete",
+              "next_refresh_seconds": 86400,
+              "profile_keys": 0,
+              "source": "loopback-file"
+            }
+          ],
+          "official_source_event_observed": false
+        },
+        {
+          "stage": "midflight-hidden-no-play",
+          "explicit_offline_loopback": true,
+          "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+          "selected_local_source_event_observed": true,
+          "actual_key_source_events": [
+            {
+              "event": "chat_service_key_source",
+              "network_refresh": false,
+              "source": "loopback-file"
+            },
+            {
+              "event": "chat_service_keys_attempt_complete",
+              "next_refresh_seconds": 86400,
+              "profile_keys": 0,
+              "source": "loopback-file"
+            }
+          ],
+          "official_source_event_observed": false
+        }
+      ],
+      "empty_trust_set_only": true,
+      "signed_certificate_validation_claim": false
+    }
+  },
+  "completed_at": "2026-11-02T02:34:31.757457+00:00"
+}

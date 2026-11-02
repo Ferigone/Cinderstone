@@ -41,6 +41,35 @@ impl MainFluidCheckpoint {
     }
 }
 impl MainFluidRuntime {
+    /// The same real change callback used by Main's Level phase, exposed over
+    /// disjoint owners so a canonical falling actor can remain borrowed. This
+    /// wrapper owns no replacement queue, RNG, counter or world certificate.
+    pub(super) fn observe_change_with_parts(
+        &mut self,
+        world: &mut WorldBackend,
+        random: &mut LegacyRandomSource,
+        host: &mut MainFluidHost<'_>,
+        facts: FluidWorldFacts,
+        game_time: i64,
+        position: (i32,i32,i32),
+        old: u32,
+        new: u32,
+        flags: u8,
+    ) -> Result<()> {
+        self.healthy()?;
+        self.sync_chunks(&host.chunks.manager,game_time)?;
+        self.prepare_halo(world,host.chunks,
+            (position.0.div_euclid(16),position.2.div_euclid(16)),game_time)?;
+        host.gameplay.require_supported_floor()?;
+        host.entity_source.as_ref().context("actual fluid callback source absent")?
+            .require_owned_callback_world(world)?;
+        let mut context=FluidTickContext { world,random,
+            sub_tick_order:&mut self.sub_tick_order,host,facts,game_time };
+        let result=self.simulation.on_block_changed_with_flags(
+            &mut context,position,old,new,u32::from(flags));
+        if let Err(error)=&result { self.stopped=Some(format!("{error:#}")); }
+        result
+    }
     pub(super) fn require_healthy(&self) -> Result<()> {
         self.healthy()
     }

@@ -55,7 +55,7 @@ impl Server {
                 world, items: item_runtime, gameplay, registry,
                 player_motion: player_motion_runtime, chunks: chunk_runtime,
                 interactions: world_interactions, source: entity_source,
-                block_runtime, sub_tick_order: &mut fluid_runtime.sub_tick_order,
+                block_runtime, fluid_runtime,
                 random_ticks: random_block_ticks, world_revision,
                 context: world_context, rain: rain_context.as_mut(),
                 changes: &self.changes, events: &self.entity_events,

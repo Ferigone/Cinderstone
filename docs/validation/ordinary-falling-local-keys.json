@@ -1,0 +1,496 @@
+{
+  "schema_version": 1,
+  "ok": false,
+  "status": "PARTIAL_WITH_PRIVATE_HARNESS_FAILURE",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "a2b020f934cfbe00abca260f1a33593c31873518",
+  "source_tree": "64f645097fb0e287e33e65cb6e3cabe4c7ae227e",
+  "binary_sha256": "39adbead1c345ee5b9870a7adbef5c1cc58c47f60bdda9b1e4421edb66796395",
+  "scope": "Actual ordinary sand/red_sand/gravel and real bucket-water landing witnesses; first source-removal save and read-only re-entry facts. Original grouped harness remains failed, and complete removal/reconfiguration is unproven.",
+  "ordinary_and_first_removal_attempt": {
+    "original_raw_report_sha256": "815ae50f353ccb071f5678da28f1247716447c35979eb0a702960ac0ca7a44d2",
+    "original_report_ok": false,
+    "report": {
+      "ok": false,
+      "minecraft": "1.21",
+      "protocol": 767,
+      "source_commit": "a2b020f934cfbe00abca260f1a33593c31873518",
+      "source_tree": "64f645097fb0e287e33e65cb6e3cabe4c7ae227e",
+      "binary_sha256": "39adbead1c345ee5b9870a7adbef5c1cc58c47f60bdda9b1e4421edb66796395",
+      "harness_sha256": "dc2806f9c89b2967d5a2c8211f72107fbc2205945e9cb102d9ff881571c36b39",
+      "helper_sha256": "cf74fb22ac5ebb4c4beb9839ec1dee408d20109b1f6f611d44b1bd961e80846a",
+      "adapter_sha256": "15478b75055d041a6091c969ac77181f91a3a25db04735fb0cc3f30420548ae7",
+      "started_at": "2026-11-02T02:49:35.222712+00:00",
+      "synthetic_offline_profile_only": true,
+      "scope": "One grouped3ordinary falls, genuine removal/reentry save projection and leave_game, and real bucket-water landing. Explicit local-file offline loopback only; no edited history/positive checkpoint or broad matrix.",
+      "checks": {
+        "three_real_ordinary_blocks_stable_on_support": {
+          "ok": true,
+          "time_publications": [
+            {
+              "ordinal": 108,
+              "game_time": 39
+            },
+            {
+              "ordinal": 109,
+              "game_time": 59
+            }
+          ],
+          "states": {
+            "sand": 112,
+            "red_sand": 117,
+            "gravel": 118
+          }
+        },
+        "sand_ordinary_fall": {
+          "ok": true,
+          "actual_spawn": {
+            "ordinal": 115,
+            "entity_id": 2,
+            "type": 40,
+            "position": [
+              10.5,
+              65.0,
+              8.5
+            ],
+            "carried_state": 112,
+            "spawn_motion_raw": [
+              0,
+              0,
+              0
+            ]
+          },
+          "start_position_metadata": {
+            "ordinal": 116,
+            "entity_id": 2,
+            "index": 8,
+            "serializer": 10,
+            "start_position": [
+              10,
+              65,
+              8
+            ]
+          },
+          "landing_block": {
+            "ordinal": 120,
+            "position": [
+              10,
+              64,
+              8
+            ],
+            "state": 112
+          },
+          "actor_removal": {
+            "ordinal": 123,
+            "entity_id": 2
+          },
+          "anvil_level_events_observed": [],
+          "hurt_entities_false_is_source_contract_not_runtime_instrumentation": true
+        },
+        "red_sand_ordinary_fall": {
+          "ok": true,
+          "actual_spawn": {
+            "ordinal": 129,
+            "entity_id": 3,
+            "type": 40,
+            "position": [
+              10.5,
+              65.0,
+              10.5
+            ],
+            "carried_state": 117,
+            "spawn_motion_raw": [
+              0,
+              0,
+              0
+            ]
+          },
+          "start_position_metadata": {
+            "ordinal": 130,
+            "entity_id": 3,
+            "index": 8,
+            "serializer": 10,
+            "start_position": [
+              10,
+              65,
+              10
+            ]
+          },
+          "landing_block": {
+            "ordinal": 134,
+            "position": [
+              10,
+              64,
+              10
+            ],
+            "state": 117
+          },
+          "actor_removal": {
+            "ordinal": 137,
+            "entity_id": 3
+          },
+          "anvil_level_events_observed": [],
+          "hurt_entities_false_is_source_contract_not_runtime_instrumentation": true
+        },
+        "gravel_ordinary_fall": {
+          "ok": true,
+          "actual_spawn": {
+            "ordinal": 144,
+            "entity_id": 4,
+            "type": 40,
+            "position": [
+              8.5,
+              65.0,
+              10.5
+            ],
+            "carried_state": 118,
+            "spawn_motion_raw": [
+              0,
+              0,
+              0
+            ]
+          },
+          "start_position_metadata": {
+            "ordinal": 145,
+            "entity_id": 4,
+            "index": 8,
+            "serializer": 10,
+            "start_position": [
+              8,
+              65,
+              10
+            ]
+          },
+          "landing_block": {
+            "ordinal": 149,
+            "position": [
+              8,
+              64,
+              10
+            ],
+            "state": 118
+          },
+          "actor_removal": {
+            "ordinal": 152,
+            "entity_id": 4
+          },
+          "anvil_level_events_observed": [],
+          "hurt_entities_false_is_source_contract_not_runtime_instrumentation": true
+        },
+        "real_removal_prefix_has_separate_temporary_owners": {
+          "ok": true,
+          "window0_grid_cobblestone": 2,
+          "external_grid_logs": 3,
+          "external_cursor_dirt": 4,
+          "derived_preview_planks": 4,
+          "persistent_canonical_stone": 7,
+          "preview_taken": false
+        },
+        "source_removal_saves_only_persistent_inventory_and_drops_temporary_stacks_once": {
+          "ok": true,
+          "player": {
+            "stone": 7,
+            "cobblestone": 0,
+            "oak_log": 0,
+            "dirt": 0,
+            "oak_planks": 0
+          },
+          "world_items": {
+            "stone": 0,
+            "cobblestone": 2,
+            "oak_log": 3,
+            "dirt": 4,
+            "oak_planks": 0
+          },
+          "cursor_empty": true,
+          "saved_leave_game": 1,
+          "total_owned": {
+            "stone": 7,
+            "cobblestone": 2,
+            "oak_log": 3,
+            "dirt": 4,
+            "oak_planks": 0
+          },
+          "no_owned_preview": true
+        }
+      },
+      "local_public_services_key_source": {
+        "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "server_sources": [
+          {
+            "stage": "ordinary-and-first-removal",
+            "explicit_offline_loopback": true,
+            "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+            "selected_local_source_event_observed": true,
+            "actual_key_source_events": [
+              {
+                "event": "chat_service_key_source",
+                "network_refresh": false,
+                "source": "loopback-file"
+              },
+              {
+                "event": "chat_service_keys_attempt_complete",
+                "next_refresh_seconds": 86400,
+                "profile_keys": 0,
+                "source": "loopback-file"
+              }
+            ],
+            "official_source_event_observed": false
+          },
+          {
+            "stage": "ordinary-reentry-second-removal",
+            "explicit_offline_loopback": true,
+            "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+            "selected_local_source_event_observed": true,
+            "actual_key_source_events": [
+              {
+                "event": "chat_service_key_source",
+                "network_refresh": false,
+                "source": "loopback-file"
+              },
+              {
+                "event": "chat_service_keys_attempt_complete",
+                "next_refresh_seconds": 86400,
+                "profile_keys": 0,
+                "source": "loopback-file"
+              }
+            ],
+            "official_source_event_observed": false
+          }
+        ],
+        "empty_trust_set_only": true,
+        "signed_certificate_validation_claim": false
+      },
+      "actual_items": {
+        "sand": 57,
+        "red_sand": 60,
+        "gravel": 61,
+        "stone": 1,
+        "water_bucket": 909,
+        "cobblestone": 35,
+        "oak_log": 132,
+        "dirt": 28,
+        "oak_planks": 36,
+        "crafting_table": 300
+      },
+      "fixture_sha256": {
+        "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+        "fixtures/player-stats-registry.json": "25a8f7d5380b0f1157cb252d57eaba1137a1d755da938d28d8afe0ffba11d3dc",
+        "fixtures/bucket-interactions-1.21.json": "79831262bca377563e33a5ffb41b77321808b99f916bc6f3f370e97e26b47017"
+      },
+      "failure": "TypeError(\"Stack.__new__() missing 1 required positional argument: 'count'\")",
+      "completed_at": "2026-11-02T02:50:14.446747+00:00",
+      "sanitized_failure_location": "ordinary-falling-local-keyfile-flow.py:26, copy.deepcopy of nonempty Stack tuple subclass during actual re-entry initial inventory observation"
+    }
+  },
+  "read_only_reentry_and_final_save_facts": {
+    "new_execution_performed": false,
+    "actual_client_trace_sha256": "4bf8a6c760742a32cda34f3701cee1d86f625f43f4cae7e0e58729318930ad2b",
+    "actual_initial_window0_payload_hex": "00012e0000000000000000000000000701000000000000000000000000000000000000000000000000000000000000000000000000",
+    "actual_state_id": 1,
+    "actual_slot_count": 46,
+    "actual_nonempty_slots": [
+      {
+        "slot": 12,
+        "item_id": 1,
+        "count": 7
+      }
+    ],
+    "actual_window0_grid_and_cursor_empty": true,
+    "actual_final_saved_player": {
+      "stone": 7,
+      "cobblestone": 0,
+      "oak_log": 0,
+      "dirt": 0,
+      "oak_planks": 0
+    },
+    "actual_final_world_items": {
+      "stone": 0,
+      "cobblestone": 2,
+      "oak_log": 3,
+      "dirt": 4,
+      "oak_planks": 0
+    },
+    "actual_final_carried_empty": true,
+    "actual_final_leave_game": 2,
+    "actual_first_saved_leave_game": 1,
+    "live_award_stats_request_executed": false,
+    "complete_removal_or_reconfiguration_validation_claim": false
+  },
+  "separate_previously_unrun_water_attempt": {
+    "original_raw_report_sha256": "e32332d2b5fe3383898260738dacb04c2f3fec3e27d29a0ae06730579c8ccade",
+    "report": {
+      "ok": true,
+      "minecraft": "1.21",
+      "protocol": 767,
+      "source_commit": "a2b020f934cfbe00abca260f1a33593c31873518",
+      "source_tree": "64f645097fb0e287e33e65cb6e3cabe4c7ae227e",
+      "binary_sha256": "39adbead1c345ee5b9870a7adbef5c1cc58c47f60bdda9b1e4421edb66796395",
+      "harness_sha256": "c29ea3fe3cf47a7ab5c95830bafbd8de08ae3dba9cbd522e12df02a3d343d301",
+      "ordinary_helper_sha256": "dc2806f9c89b2967d5a2c8211f72107fbc2205945e9cb102d9ff881571c36b39",
+      "adapter_sha256": "15478b75055d041a6091c969ac77181f91a3a25db04735fb0cc3f30420548ae7",
+      "started_at": "2026-11-02T02:53:30.697004+00:00",
+      "synthetic_offline_profile_only": true,
+      "scope": "One authorized previously-unrun real bucket/stone-basin/ordinary sand-water landing path only. No ordinary/removal setup replay, edited world/checkpoint, external HTTP or broader matrix.",
+      "checks": {
+        "water_setup_uses_actual_bucket_and_source_water": {
+          "ok": true,
+          "packet_id": 57,
+          "target": [
+            10,
+            65,
+            8
+          ],
+          "actual_water_state": 80,
+          "actual_yaw": -90.0,
+          "actual_pitch": 39.00747255212112,
+          "creative_bucket_retained": true
+        },
+        "ordinary_sand_actual_water_landing": {
+          "ok": true,
+          "actual_spawn": {
+            "ordinal": 148,
+            "entity_id": 2,
+            "type": 40,
+            "position": [
+              10.5,
+              68.0,
+              8.5
+            ],
+            "carried_state": 112,
+            "spawn_motion_raw": [
+              0,
+              0,
+              0
+            ]
+          },
+          "start_position_metadata": {
+            "ordinal": 149,
+            "entity_id": 2,
+            "index": 8,
+            "serializer": 10,
+            "start_position": [
+              10,
+              68,
+              8
+            ]
+          },
+          "landing_block": {
+            "ordinal": 153,
+            "position": [
+              10,
+              65,
+              8
+            ],
+            "state": 112
+          },
+          "actor_removal": {
+            "ordinal": 156,
+            "entity_id": 2
+          },
+          "anvil_level_events_observed": [],
+          "hurt_entities_false_is_source_contract_not_runtime_instrumentation": true
+        },
+        "water_landing_native_save_has_one_sand_block_and_no_duplicate_actor": {
+          "ok": true,
+          "actual_sand_blocks": [
+            {
+              "x": 10,
+              "y": 65,
+              "z": 8,
+              "state": 112
+            }
+          ],
+          "falling_owners": 0,
+          "item_owners": 0
+        }
+      },
+      "local_public_services_key_source": {
+        "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "server_sources": [
+          {
+            "stage": "ordinary-water-bucket-landing",
+            "explicit_offline_loopback": true,
+            "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+            "selected_local_source_event_observed": true,
+            "actual_key_source_events": [
+              {
+                "event": "chat_service_key_source",
+                "network_refresh": false,
+                "source": "loopback-file"
+              },
+              {
+                "event": "chat_service_keys_attempt_complete",
+                "next_refresh_seconds": 86400,
+                "profile_keys": 0,
+                "source": "loopback-file"
+              }
+            ],
+            "official_source_event_observed": false
+          }
+        ],
+        "empty_trust_set_only": true,
+        "signed_certificate_validation_claim": false
+      },
+      "fixture_sha256": {
+        "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+        "fixtures/bucket-interactions-1.21.json": "79831262bca377563e33a5ffb41b77321808b99f916bc6f3f370e97e26b47017"
+      },
+      "completed_at": "2026-11-02T02:54:10.672642+00:00"
+    }
+  },
+  "packet_id_preflight": {
+    "method": "direct pinned original GameProtocols bootstrap visitor, not REA MCP",
+    "original_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "official_mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+    "actual_capture_sha256": "4b7b21bbf02c8b70fb7662e4414a1acf0ee5fad5e0fa7c7351d00a6357d48783",
+    "facts": [
+      {
+        "direction": "serverbound",
+        "key": "minecraft:client_command",
+        "id": 9
+      },
+      {
+        "direction": "serverbound",
+        "key": "minecraft:container_click",
+        "id": 14
+      },
+      {
+        "direction": "serverbound",
+        "key": "minecraft:container_close",
+        "id": 15
+      },
+      {
+        "direction": "serverbound",
+        "key": "minecraft:player_action",
+        "id": 36
+      },
+      {
+        "direction": "serverbound",
+        "key": "minecraft:set_creative_mode_slot",
+        "id": 50
+      },
+      {
+        "direction": "serverbound",
+        "key": "minecraft:use_item",
+        "id": 57
+      },
+      {
+        "direction": "clientbound",
+        "key": "minecraft:award_stats",
+        "id": 4
+      },
+      {
+        "direction": "clientbound",
+        "key": "minecraft:container_close",
+        "id": 18
+      }
+    ]
+  },
+  "limits": [
+    "No full row, functional compatibility percentage or performance claim.",
+    "Ordinary hurtEntities=false is proven by source ownership, not runtime damage instrumentation.",
+    "No complete removal, reconfiguration, signed-chat or public/graphical-client claim."
+  ]
+}

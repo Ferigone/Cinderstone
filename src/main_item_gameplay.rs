@@ -155,6 +155,18 @@ impl MainItemGameplay {
             .get_mut(&uuid)
             .context("gameplay statistics UUID not registered")
     }
+    /// ServerPlayer.awardStat for an actually admitted actor. The real native
+    /// floor owns the empty objective/criterion maps; native save provenance
+    /// alone does not authorize omitting these callbacks.
+    pub fn award_player_stat(&mut self, id: i32, uuid: Uuid, key: StatKey, amount: i32) -> Result<()> {
+        self.require_supported_floor()?;
+        ensure!(self.active_players.get(&id) == Some(&uuid), "statistic actor identity changed");
+        key.validate()?;
+        self.stats.get_mut(&uuid).context("statistic counter owner is absent")?
+            .increment(key, amount)?;
+        self.observe(GameplayObservation::EmptyScoreboard { player: uuid, key });
+        Ok(())
+    }
     /// Install a verified native player-store counter after admission, or an
     /// explicit fresh native counter after that store reports no file. Native
     /// statistics provenance is independent of imported-world capabilities.

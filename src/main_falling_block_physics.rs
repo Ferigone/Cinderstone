@@ -359,10 +359,10 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         Ok(false)
     }
     fn is_concrete_powder(&mut self, state: u32) -> Result<bool> {
-        ensure!(placement::in_block_tag(state, "minecraft:anvil"),
-            "non-Anvil falling class requires its actual concrete-powder owner");
-        // All three actual Anvil Block singletons inherit FallingBlock and are
-        // distinct from ConcretePowderBlock. This is a certified class result.
+        ensure!(mc121_rust::falling_block::block::source_class(state)?.is_some(),
+            "falling subclass requires its actual concrete-powder owner");
+        // Actual AnvilBlock and ColoredFallingBlock classes are distinct from
+        // ConcretePowderBlock. Foreign/special subclasses are not guessed.
         Ok(false)
     }
     fn fluid_is_water(&mut self, position: BlockPosition) -> Result<bool> {
@@ -426,17 +426,29 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
     }
     fn on_land_if_fallable(&mut self, original: &u32, actor: &mut FallingBlockState,
         position: BlockPosition, _carried: u32, _replaced: u32) -> Result<()> {
-        ensure!(placement::in_block_tag(*original, "minecraft:anvil"),
-            "falling onLand requires its actual Fallable implementation");
-        if !actor.silent { self.level_event(1031, position)?; }
-        Ok(())
+        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
+        match source_class(*original)? {
+            Some(NativeFallingClass::Anvil) => {
+                if !actor.silent { self.level_event(1031, position)?; }
+                Ok(())
+            }
+            // dhg inherits the literal return-only Fallable.onLand body.
+            Some(NativeFallingClass::Ordinary) => Ok(()),
+            None => bail!("falling onLand requires its actual Fallable implementation"),
+        }
     }
     fn on_broken_after_fall_if_fallable(&mut self, original: &u32,
         actor: &mut FallingBlockState, position: BlockPosition) -> Result<()> {
-        ensure!(placement::in_block_tag(*original, "minecraft:anvil"),
-            "falling onBrokenAfterFall requires its actual Fallable implementation");
-        if !actor.silent { self.level_event(1029, position)?; }
-        Ok(())
+        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
+        match source_class(*original)? {
+            Some(NativeFallingClass::Anvil) => {
+                if !actor.silent { self.level_event(1029, position)?; }
+                Ok(())
+            }
+            // dhg inherits the literal return-only Fallable broken callback.
+            Some(NativeFallingClass::Ordinary) => Ok(()),
+            None => bail!("falling broken callback requires its actual Fallable implementation"),
+        }
     }
     fn entity_drops_enabled(&mut self) -> Result<bool> {
         self.services.context.rules.boolean("doEntityDrops")

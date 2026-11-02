@@ -94,6 +94,8 @@ mod main_furnace_notifications;
 mod main_server_timing;
 mod main_experience;
 mod main_falling_block;
+mod main_falling_block_generic;
+mod main_native_enchantments;
 mod main_falling_block_world;
 mod main_falling_block_runtime;
 mod main_falling_block_persistence;
@@ -180,6 +182,7 @@ struct Options {
     secure_profile_override: Option<bool>,
     rate_limit: Option<i32>,
     compression_threshold: Option<i32>,
+    loopback_service_keys: Option<PathBuf>,
 }
 
 impl Options {
@@ -206,6 +209,7 @@ impl Options {
             secure_profile_override: None,
             rate_limit: None,
             compression_threshold: None,
+            loopback_service_keys: None,
         };
         let mut pack_url = String::new();
         let mut pack_hash = String::new();
@@ -234,7 +238,7 @@ impl Options {
                 continue;
             }
             if argument == "--help" {
-                println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6]");
+                println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6] [--loopback-service-keys PATH (offline loopback only)]");
                 std::process::exit(0);
             }
             let value = args
@@ -251,6 +255,7 @@ impl Options {
                 "--enforce-secure-profile" => options.secure_profile_override = Some(value.parse().context("enforce-secure-profile must be true or false")?),
                 "--rate-limit" => options.rate_limit = Some(value.parse().context("invalid packet rate limit")?),
                 "--compression-threshold" => options.compression_threshold = Some(value.parse().context("invalid compression threshold")?),
+                "--loopback-service-keys" => options.loopback_service_keys = Some(value.into()),
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
                 "--resource-pack-url" => pack_url = value,
@@ -276,6 +281,7 @@ impl Options {
         if options.allow_offline && !options.bind.is_loopback() && !options.allow_public_offline {
             bail!("public offline access requires explicit --allow-public-offline");
         }
+        main_chat_keys::validate_source_options(&options)?;
         if !(2..=6).contains(&options.view_distance) {
             bail!("view distance must be 2..=6");
         }
@@ -553,6 +559,7 @@ struct LivePlayers {
     recipe_books: BTreeMap<[u8; 16], ServerRecipeBook>,
     player_lifecycle: BTreeMap<[u8; 16], PlayerLifecycle>,
     pending_player_saves: BTreeMap<[u8; 16], PlayerData>,
+    player_removal_progress: BTreeMap<i32, PlayerRemovalProgress>,
     entity_source: Option<NativeEntitySource>,
     world_interactions: main_world_interactions::WorldInteractionRuntime,
     fluid_runtime: main_fluid_simulation::MainFluidRuntime,
@@ -829,6 +836,7 @@ impl LivePlayers {
             recipe_books: BTreeMap::new(),
             player_lifecycle: BTreeMap::new(),
             pending_player_saves: BTreeMap::new(),
+            player_removal_progress: BTreeMap::new(),
             entity_source: None,
             world_interactions: main_world_interactions::WorldInteractionRuntime::new(fresh_unedited),
             fluid_runtime: main_fluid_simulation::MainFluidRuntime::default(),
@@ -1052,11 +1060,46 @@ async fn finish_menu_action(
     }
 }
 
+#[derive(Clone, Copy)]
+enum PlayerInventorySaveView {
+    NativeResume,
+    SourcePlayerInventory,
+}
+
+#[derive(Clone, Copy)]
+enum RemovalLeaveGameOutcome { Awarded, LegacyUnsupported }
+
+/// One actual removal operation, retained across the existing error retries.
+/// The save proposal is immutable serialization data, not another live menu.
+struct PlayerRemovalProgress {
+    uuid: [u8; 16],
+    handle: Option<mc121_rust::runtime_entity_index::EntityHandle>,
+    leave_game: Option<RemovalLeaveGameOutcome>,
+    source_save: Option<PlayerData>,
+    inventory_removed: bool,
+    external_removed: bool,
+    retirement_started: bool,
+}
+
 impl Server {
     fn capture_player_locked(
         &self,
         players: &mut LivePlayers,
         id: i32,
+    ) -> Result<Option<PlayerData>> {
+        if let Some(removal) = players.player_removal_progress.get(&id) {
+            let player = players.registry.get(id).context("removal save actor is absent")?;
+            ensure!(player.profile.uuid == removal.uuid, "removal save actor UUID changed");
+            return Ok(Some(removal.source_save.clone()
+                .context("actual player removal has no completed source-save proposal")?));
+        }
+        self.capture_player_with_view_locked(players, id, PlayerInventorySaveView::NativeResume)
+    }
+    fn capture_player_with_view_locked(
+        &self,
+        players: &mut LivePlayers,
+        id: i32,
+        view: PlayerInventorySaveView,
     ) -> Result<Option<PlayerData>> {
         let Some(player) = players.registry.get(id).cloned() else {
             return Ok(None);
@@ -1066,15 +1109,23 @@ impl Server {
             .containers
             .get(&id)
             .context("saving player has no container")?
-            .read(|menu| menu.inventory.clone())?;
-        let inventory=players.native_containers.inventory_snapshot(id,&inventory);
-        let inventory=players.crafting_tables.inventory_snapshot(id,&inventory);
-        let inventory=players.furnaces.inventory_snapshot(id,&inventory);
-        let inventory=players.stonecutters.inventory_snapshot(id,&inventory);
-        let inventory=players.smithing_tables.inventory_snapshot(id,&inventory);
-        let inventory=players.looms.inventory_snapshot(id,&inventory);
-        let inventory=players.grindstones.inventory_snapshot(id,&inventory);
-        let inventory=players.anvils.inventory_snapshot(id,&inventory);
+            .read(|menu| match view {
+                PlayerInventorySaveView::NativeResume => menu.inventory.clone(),
+                PlayerInventorySaveView::SourcePlayerInventory => menu.inventory.snapshot_for_player_save(),
+            })?;
+        let inventory = match view {
+            PlayerInventorySaveView::NativeResume => {
+                let inventory=players.native_containers.inventory_snapshot(id,&inventory);
+                let inventory=players.crafting_tables.inventory_snapshot(id,&inventory);
+                let inventory=players.furnaces.inventory_snapshot(id,&inventory);
+                let inventory=players.stonecutters.inventory_snapshot(id,&inventory);
+                let inventory=players.smithing_tables.inventory_snapshot(id,&inventory);
+                let inventory=players.looms.inventory_snapshot(id,&inventory);
+                let inventory=players.grindstones.inventory_snapshot(id,&inventory);
+                players.anvils.inventory_snapshot(id,&inventory)
+            }
+            PlayerInventorySaveView::SourcePlayerInventory => inventory,
+        };
         let stats = players.gameplay.snapshot_player_stats(uuid)?;
         let mut lifecycle = players
             .player_lifecycle
@@ -1107,6 +1158,9 @@ impl Server {
         let Some(data) = self.capture_player_locked(players, id)? else {
             return Ok(());
         };
+        self.persist_player_proposal_locked(players, data)
+    }
+    fn persist_player_proposal_locked(&self, players: &mut LivePlayers, data: PlayerData) -> Result<()> {
         let uuid = data.uuid;
         // Retain the newest authoritative snapshot if disk I/O fails. A later
         // autosave or rejoin retries this owner rather than reading stale disk.
@@ -1114,6 +1168,63 @@ impl Server {
         self.persist_player_data(players.pending_player_saves.get(&uuid).unwrap())?;
         players.pending_player_saves.remove(&uuid);
         Ok(())
+    }
+
+    fn player_runtime_handle(players: &LivePlayers, id: i32)
+        -> Option<mc121_rust::runtime_entity_index::EntityHandle> {
+        // Registration and generation survive hidden/non-ticking readiness.
+        // A tick-list scan must not turn the same real Player into None here.
+        players.item_runtime.entity_handle(id).filter(|handle|
+            players.item_runtime.entity_kind(*handle)
+                == Some(mc121_rust::runtime_entity_index::EntityKind::Player))
+    }
+
+    /// PlayerList.remove awards leave_game and saves BEFORE Player.remove.
+    /// Store each completed source phase so I/O/removal retries cannot repeat
+    /// the award or replace this snapshot with a post-drop menu capture.
+    fn save_player_before_removal_locked(&self, players: &mut LivePlayers, id: i32) -> Result<()> {
+        let uuid = players.registry.get(id).context("removal player is absent")?.profile.uuid;
+        let handle = Self::player_runtime_handle(players, id);
+        if let Some(removal) = players.player_removal_progress.get(&id) {
+            ensure!(removal.uuid == uuid, "removal actor UUID changed");
+            ensure!(removal.handle == handle || (removal.retirement_started && handle.is_none()),
+                "removal actor generation changed");
+        } else {
+            // This marks the actual leaving actor before save/removal. The
+            // close calls below carry its disconnected source context even
+            // for EOF and same-TCP reconfiguration without a reason packet.
+            players.player_removal_progress.insert(id, PlayerRemovalProgress {
+                uuid, handle, leave_game: None, source_save: None,
+                inventory_removed: false, external_removed: false, retirement_started: false,
+            });
+        }
+        if players.player_removal_progress.get(&id).expect("actual removal marker").leave_game.is_none() {
+            let outcome = match players.gameplay.require_supported_floor() {
+                Ok(()) => {
+                    let key = mc121_rust::player_stats::stat_key("minecraft:custom", "minecraft:leave_game")
+                        .context("source leave_game statistic is unavailable")?;
+                    players.gameplay.award_player_stat(id, uuid, key, 1)?;
+                    RemovalLeaveGameOutcome::Awarded
+                }
+                Err(error) => {
+                    // Preserve the existing transport-only cleanup when the
+                    // actual imported/legacy callback owner is unavailable.
+                    // This is not a successful vanilla statistic callback.
+                    eprintln!("{}", json!({"event":"native_player_removal_stat_unsupported",
+                        "entity_id":id,"reason":format!("{error:#}"),"award_completed":false}));
+                    RemovalLeaveGameOutcome::LegacyUnsupported
+                }
+            };
+            players.player_removal_progress.get_mut(&id).expect("actual removal marker").leave_game = Some(outcome);
+        }
+        if players.player_removal_progress.get(&id).expect("actual removal marker").source_save.is_none() {
+            let data = self.capture_player_with_view_locked(players, id, PlayerInventorySaveView::SourcePlayerInventory)?
+                .context("actual removal player disappeared before source save")?;
+            players.player_removal_progress.get_mut(&id).expect("actual removal marker").source_save = Some(data);
+        }
+        let data = players.player_removal_progress.get(&id).expect("actual removal marker")
+            .source_save.as_ref().expect("captured source-removal save").clone();
+        self.persist_player_proposal_locked(players, data)
     }
     fn allocate_player_entity(&self) -> Result<(i32, LegacyRandomSource)> {
         // Drop ID ranges are staged and committed under this same lock.
@@ -2522,6 +2633,11 @@ impl Server {
             ensure!(!players.looms.has_open(id), "orphan loom menu retained");
             ensure!(!players.grindstones.has_open(id), "orphan grindstone menu retained");
             ensure!(!players.anvils.has_open(id), "orphan anvil menu retained");
+            if let Some(removal) = players.player_removal_progress.get(&id) {
+                ensure!(removal.retirement_started && Self::player_runtime_handle(&players, id).is_none(),
+                    "orphan player removal marker retained");
+                players.player_removal_progress.remove(&id);
+            }
             return Ok(());
         }
         if let Some(reason)=reason {
@@ -2536,40 +2652,51 @@ impl Server {
             + usize::from(players.grindstones.has_open(id))
             + usize::from(players.anvils.has_open(id));
         ensure!(external_owners <= 1, "multiple current external menus during player cleanup");
+        // PlayerList.remove saves persistent inventory/stats BEFORE Player.remove.
+        // The source view excludes menu temporaries; saving the native resume
+        // view here would duplicate the real drops that follow.
+        self.save_player_before_removal_locked(&mut players, id)?;
         // Player.remove first invokes InventoryMenu.removed, then removes the
         // actual external menu. Keep that order for carried/grid drop RNG and
         // shared entity allocation even when a block menu remains current.
-        self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        if let Some(window)=players.anvils.window_id(id) {
-            ensure!(self.close_anvil_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
-                "actual anvil owner changed during player cleanup");
+        if !players.player_removal_progress.get(&id).expect("actual removal marker").inventory_removed {
+            self.close_inventory_menu_with_context_locked(&mut world,&mut players,id,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            players.player_removal_progress.get_mut(&id).expect("actual removal marker").inventory_removed = true;
         }
-        if let Some(window)=players.grindstones.window_id(id) {
-            ensure!(self.close_grindstone_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
-                "actual grindstone owner changed during player cleanup");
+        if !players.player_removal_progress.get(&id).expect("actual removal marker").external_removed {
+            if let Some(window)=players.anvils.window_id(id) {
+                ensure!(self.close_anvil_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
+                    "actual anvil owner changed during player cleanup");
+            }
+            if let Some(window)=players.grindstones.window_id(id) {
+                ensure!(self.close_grindstone_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?,
+                    "actual grindstone owner changed during player cleanup");
+            }
+            if let Some(window)=players.looms.window_id(id) {
+                self.close_loom_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            }
+            if let Some(window)=players.smithing_tables.window_id(id) {
+                self.close_smithing_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            }
+            if let Some(window)=players.stonecutters.window_id(id) {
+                self.close_stonecutter_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            }
+            if let Some(window)=players.furnaces.window_id(id) {
+                // This actor is leaving after EOF, disconnect, or duplicate-login
+                // replacement. Its carried stack follows Player.drop(stack,false),
+                // after the source save and before actor removal, instead of return.
+                self.furnace_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container_furnace::FurnaceMenuCloseContext::DeadOrDisconnected)?;
+            }
+            if let Some(window)=players.crafting_tables.window_id(id) {
+                self.crafting_table_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            }
+            if let Some(window)=players.native_containers.window_id(id) {
+                self.native_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
+            }
+            players.player_removal_progress.get_mut(&id).expect("actual removal marker").external_removed = true;
         }
-        if let Some(window)=players.looms.window_id(id) {
-            self.close_loom_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        }
-        if let Some(window)=players.smithing_tables.window_id(id) {
-            self.close_smithing_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        }
-        if let Some(window)=players.stonecutters.window_id(id) {
-            self.close_stonecutter_with_context_locked(&mut world,&mut players,id,window,false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        }
-        if let Some(window)=players.furnaces.window_id(id) {
-            // This actor is leaving after EOF, disconnect, or duplicate-login
-            // replacement. Its carried stack follows Player.drop(stack,false),
-            // before persistence and actor removal, instead of inventory return.
-            self.furnace_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container_furnace::FurnaceMenuCloseContext::DeadOrDisconnected)?;
-        }
-        if let Some(window)=players.crafting_tables.window_id(id) {
-            self.crafting_table_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        }
-        if let Some(window)=players.native_containers.window_id(id) {
-            self.native_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
-        }
-        self.save_player_locked(&mut players,id)?;
+        players.player_removal_progress.get_mut(&id).context("actual removal marker is absent")?
+            .retirement_started = true;
         players.remove_runtime_player(id)?;
         if let Some(event)=players.registry.remove(id) {
             players.motion.remove(&id);
@@ -2584,6 +2711,9 @@ impl Server {
             players.unavailable_pose.remove(&id);
             players.publish(event,&self.entity_events);
         }
+        ensure!(players.registry.get(id).is_none() && Self::player_runtime_handle(&players, id).is_none(),
+            "player retirement did not release its actual owners");
+        players.player_removal_progress.remove(&id);
         Ok(())
     }
 }
@@ -2852,6 +2982,9 @@ async fn main() -> Result<()> {
     if let Some(value) = options.compression_threshold { connection_settings.network_compression_threshold = value; }
     if let Some(value) = options.secure_profile_override { connection_settings.enforce_secure_profile = value; }
     options.enforce_secure_profile = connection_settings.enforce_secure_profile;
+    // Resolve the explicit local source after effective settings, before any
+    // listener or auth/key network owner can start. Local failure is terminal.
+    let service_key_source = main_chat_keys::prepare_key_source(&options).await?;
     let mut administration = main_administration::Administration::load(
         administration_directory,
         main_administration::AdminSettings {
@@ -2868,6 +3001,7 @@ async fn main() -> Result<()> {
         }
     }
     let listener = TcpListener::bind(SocketAddr::new(options.bind, options.port)).await?;
+    service_key_source.require_bound_address(listener.local_addr()?)?;
     let (changes, _) = broadcast::channel(4096);
     let (entity_events, _) = broadcast::channel(512);
     let (tick_events, _) = watch::channel(0);
@@ -2964,7 +3098,7 @@ async fn main() -> Result<()> {
         entity_store,
         shutting_down: AtomicBool::new(false),
     });
-    main_chat_keys::start_key_refresh(Arc::clone(&server));
+    main_chat_keys::start_key_refresh(Arc::clone(&server), service_key_source);
     let permits = Arc::new(Semaphore::new(64));
     println!(
         "{}",
@@ -3856,11 +3990,10 @@ async fn play(
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
-                        // switchToConfig removes/saves the old ServerPlayer.
-                        // Configuration completion constructs a new Player and
-                        // uses normal saved-data loading, not restoreFrom.
-                        server.cleanup_player(entity_id, None).await?;
+                        // Set waiting-for-configuration before source save/removal.
+                        // Re-entry constructs and loads a NEW Player; no restoreFrom.
                         let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
+                        server.cleanup_player(entity_id, None).await?;
                         send(&codec, &mut writer, terminal.id, terminal.payload).await?;
                         return Ok(PlayExit::Reconfigure(current_information));
                     }

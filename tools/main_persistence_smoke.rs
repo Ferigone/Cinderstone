@@ -46,6 +46,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         secure_profile_override: None,
         rate_limit: None,
         compression_threshold: None,
+        loopback_service_keys: None,
     };
     // Reuse the production constructors so this fixture follows future fields.
     let connection_settings = mc121_rust::connection_settings::DedicatedConnectionSettings {

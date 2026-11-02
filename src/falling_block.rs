@@ -6,6 +6,8 @@
 
 pub mod persistence;
 pub mod state;
+pub mod block;
+pub mod block_state_codec;
 pub mod tick;
 pub mod damage;
 
