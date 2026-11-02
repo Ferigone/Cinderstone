@@ -111,6 +111,11 @@ fn english_template(key: &str) -> &'static str {
         "parsing.double.expected" => "Expected double",
         "parsing.float.expected" => "Expected float",
         "parsing.bool.expected" => "Expected boolean",
+        "argument.pos.missing.double" => "Expected a coordinate",
+        "argument.pos.missing.int" => "Expected a block position",
+        "argument.pos.mixed" => "Cannot mix world & local coordinates (everything must either use ^ or not)",
+        "argument.pos3d.incomplete" => "Incomplete (expected 3 coordinates)",
+        "argument.pos2d.incomplete" => "Incomplete (expected 2 coordinates)",
         "command.unknown.command" => "Unknown or incomplete command, see below for error",
         "command.unknown.argument" => "Incorrect argument for command",
         "command.expected.separator" => {

@@ -10,6 +10,7 @@
 //! `docs/reference/commands-brigadier.md` for the source identity and evidence.
 
 pub mod arguments;
+pub mod coordinates;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
@@ -21,6 +22,10 @@ pub use arguments::{
     ArgumentType, ArgumentValue, ErasedArgumentType, BoolArgumentType, DoubleArgumentType, FloatArgumentType, IntegerArgumentType,
     LongArgumentType, StringArgumentType, StringType,
 };
+pub use coordinates::{
+    BlockPosArgumentType, ColumnPosArgumentType, CoordinateSource, Coordinates, LocalCoordinates, Vec2ArgumentType,
+    Vec3ArgumentType, WorldCoordinate, WorldCoordinates,
+};
 pub use dispatcher::{ArgumentBuilder, CommandContext, CommandDispatcher, ParseResults};
 pub use exception::{CommandArg, CommandMessage, CommandSyntaxException};
 pub use string_reader::StringReader;
@@ -29,6 +34,8 @@ pub use tree_packet::{encode_commands_packet, CommandTreePacketError};
 
 #[cfg(test)]
 mod dispatcher_tests;
+#[cfg(test)]
+mod mc_arguments_tests;
 #[cfg(test)]
 mod suggestion_tests;
 #[cfg(test)]
