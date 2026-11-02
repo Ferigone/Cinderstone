@@ -65,5 +65,8 @@ source-derived lookup trace, map-key/start adjustment distinction, duplicate
 start retention, both inclusive piece edges, strict junction edges and
 terrain-matching junctions without a vertical filter. A missing STARTS owner
 errors before any piece traversal; an observed null start is skipped. These
-assertions are distinct from executing the original StructureManager. No
-original selection runtime or compiler result is asserted by this note.
+focused native order/boundary and missing-STARTS regressions were run and
+passed. They use controlled host owners; the ordered-parts phase replay does
+not verify collector execution. Original StructureManager/WorldGenRegion
+runtime selection remains unexecuted, and the central live adapter is still
+required.

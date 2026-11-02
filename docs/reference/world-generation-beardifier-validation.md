@@ -82,7 +82,39 @@ child has a 55-second timeout plus five seconds of TERM grace before KILL/reap.
 Raw inputs, outputs and process records remain external. Final JSON is written
 only after all selected comparisons and positive guards pass.
 
-At this initial handoff, the new paired runner has not executed. The source
-profile is controlled ordered-data ingress, not historical structure saves,
-Main generation, scheduler behavior, persistence or FULL publication. A zero
-SURFACE-only postprocessing delta would not prove a positive insertion branch.
+## Accepted original/native execution
+
+The accepted run used native source **1457a89**. Original Java completed in
+**6.739 seconds** and native execution in **2.070 seconds**; both exited zero,
+stayed within their bounds and were reaped. Exact source, artifact, bootstrap,
+compiled probe and raw transcript hashes are retained in the runtime and
+validation records.
+
+All selected scalar and min/max raw bits matched for NONE, BURY, BEARD_THIN,
+BEARD_BOX, ENCAPSULATE, junction-only and ordered mixed inputs, including the
+boundary and repeated-point observations. Each of the four complete pipelines
+matched physical blocks, biome palettes, WG values, counters, statuses/accessors,
+ordered post lists and allocation flags at all five snapshots. Original
+NoiseChunk, aquifer, Blender, marker-cache and sampler identities were retained.
+The actual original Beardifier and the separately observed native captured Arc
+were retained after BIOMES, NOISE and SURFACE; native section leases were
+released. These observations do not expose native private NoiseChunk/aquifer
+pointer identity or original acquisition order.
+
+| Declared ordered profile | NOISE mutations | Subsequent SURFACE mutations | NOISE differences against empty owner | Final SURFACE differences against empty owner |
+| --- | --- | --- | --- | --- |
+| Actual empty control | 28,627 | 15,749 | 0 | 0 |
+| Rigid-only | 31,759 | 15,749 | 5,145 | 6,425 |
+| Junction-only | 28,698 | 15,820 | 71 | 71 |
+| Combined | 31,677 | 15,749 | 5,063 | 6,343 |
+
+These are actual full-image differences, not inferred scalar effects. All
+profiles also made actual foreign stored-biome queries during SURFACE. Every
+selected SURFACE-only postprocessing delta was **zero**, with the earlier
+complete queues and allocation states preserved. This does not prove a positive
+SURFACE-only insertion branch.
+
+The accepted profile remains controlled ordered-data ingress. It does not
+execute source-manager selection, generate historical structures, establish
+Main generation or scheduler behavior, persist chunks, or publish FULL data.
+The separate selection and complete STRUCTURES limitations above are unchanged.

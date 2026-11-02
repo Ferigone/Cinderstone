@@ -100,7 +100,32 @@ Focused native checks exercise actual nonempty owner capture, unchanged
 cache allocations through a skipped fill, cached acceptance of different or
 unavailable later inputs, lazy unavailable-owner NoCells, and failed positive
 owner construction with released section leases. Original/native point and
-full-phase validation are pending the coordinator's bounded paired run.
+full-phase validation passed on native source `1457a89`. The bounded original
+process completed in 6.739 seconds and native in 2.070 seconds; both exited
+zero and were reaped. Selected raw scalar bits and bounds agree for all five
+adjustments, isolated junctions and ordered mixed contributions.
+
+The empty control, rigid-only, junction-only and combined profiles agree at
+every selected BIOMES/NOISE/task-continuation/SURFACE snapshot, including
+complete physical blocks and biome palettes, both WG first-available heights,
+section counters, queues/allocation and actual status/accessor metadata.
+Nonempty profiles have actual material and surface image effects against the
+empty control. Original retained Beardifier identity and the native captured
+Arc identity match through each phase; the cached SURFACE path supplies no
+new structure selection. These observations do not expose native private
+aquifer allocation identity or original runtime lock order. Exact source,
+probe, original artifact and execution records are published in the
+[runtime fixture](../../fixtures/world-generation-beardifier-runtime.json)
+and [validation fixture](../../fixtures/world-generation-beardifier-validation.json).
+
+The full-phase original BIOMES body runs synchronously on one controlled
+worker; its public asynchronous wrapper and actual scheduler are outside the
+comparison. Original targets remain persisted EMPTY, with the declared
+base-ChunkAccess palette view and explicit stored neighbors for SURFACE.
+Neither those palettes nor direct ordered structure parts establish real
+StructureManager selection, natural structure generation or dependency
+readiness. The accepted pair validates this declared owner ingress and its
+retained numeric pipeline.
 
 This path does not advance persisted ChunkStatus or clear retrogen through a
 fabricated completion. The central status-event/shared-live-owner adapter is

@@ -74,10 +74,16 @@ the SHA256 of those bits as contiguous little-endian u32 values is
 
 The native regression
 `native_kernel_rounds_to_every_actual_original_float` compares every generated
-table entry's raw bits with that original export. Execution of this native
-check and the composed scalar oracle is coordinated separately. A Python
-libm-to-f32 comparison matched the complete exported array; that observation
-does not stand in for the native regression.
+table entry's raw bits with that original export. It passed for the complete
+13,824-entry array. On native source commit
+`1457a89`, the composed original/native scalar comparison also matched every
+selected raw double sample and declared bound, covering all five terrain
+adjustments, junctions, ordered mixtures, boundary points and repeated points.
+The [paired validation note](world-generation-beardifier-validation.md) records
+the controlled inputs and retained phase comparison. Its whole profile
+completed with original/native exit 0 in 6.739/2.070 seconds, respectively;
+both processes were reaped. These are bounded execution observations, not a
+performance comparison.
 
 The temporary original exporter source SHA256 was
 `234a344a4bd17d2c55418cd7d7e00b3c1cf2adc7c4fa92cef944df86ec1511ff`.
@@ -86,3 +92,6 @@ original JAR, class, source archive, raw disassembly or private save is
 published. Scalar evaluation does not establish actual StructureManager
 selection, structure generation, chunk readiness, Main integration or FULL
 publication; those require their real caller owners and separate evidence.
+No runtime RNG stream or draw-counter telemetry was collected. The RNG-free
+statement concerns the inspected scalar and kernel initializer methods;
+registry bootstrap is not a measured global RNG-stream witness.
