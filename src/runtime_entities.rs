@@ -418,6 +418,11 @@ impl RuntimeEntities {
     pub fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind> {
         self.index.get(handle).map(|entry| entry.kind)
     }
+    /// Resolve the actual current generation; callers must not manufacture a
+    /// handle from an entity ID or a persisted generation.
+    pub fn entity_handle(&self, id: i32) -> Option<EntityHandle> {
+        self.index.by_id(id).map(|entry| entry.handle)
+    }
     pub fn capture_persistent_entity_order(&self) -> Result<PersistentEntityOrder> {
         let index = self.index.capture_persistent_order()?;
         let ticking = self.ticks.ordered_entries().filter_map(|(_, handle)|
@@ -723,6 +728,27 @@ impl RuntimeEntities {
     ) -> Result<Vec<EntityHandle>> {
         self.index.query_with_kind(bounds, None, |handle, kind| {
             if handle.id == except { Ok(None) } else { inspect(handle, kind) }
+        })
+    }
+    /// Query the same section/class owner without an excluded-entity sentinel.
+    /// Item bounds come from their real internal body and matching generation;
+    /// external classes retain their actual host-owned body lookup. Trigger,
+    /// spectator, health or other gameplay predicates belong to the caller.
+    pub fn query_native_entities_with_items(
+        &mut self,
+        bounds: Aabb,
+        kind: Option<EntityKind>,
+        mut external: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        let items = &self.items;
+        self.index.query_with_kind(bounds, kind, |handle, kind| {
+            if kind == EntityKind::Item {
+                let item = items.get(&handle.id).context("indexed query Item body is unavailable")?;
+                ensure!(item.handle == handle, "indexed query Item generation changed");
+                Ok((!item.state.removed).then_some(item.state.bounds))
+            } else {
+                external(handle, kind)
+            }
         })
     }
     /// The current level tick list, including stale-but-still-scheduled items.

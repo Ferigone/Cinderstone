@@ -182,6 +182,7 @@ struct Options {
     secure_profile_override: Option<bool>,
     rate_limit: Option<i32>,
     compression_threshold: Option<i32>,
+    loopback_service_keys: Option<PathBuf>,
 }
 
 impl Options {
@@ -208,6 +209,7 @@ impl Options {
             secure_profile_override: None,
             rate_limit: None,
             compression_threshold: None,
+            loopback_service_keys: None,
         };
         let mut pack_url = String::new();
         let mut pack_hash = String::new();
@@ -236,7 +238,7 @@ impl Options {
                 continue;
             }
             if argument == "--help" {
-                println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6]");
+                println!("mc121-rust (--online-mode | --allow-offline [--allow-public-offline]) [--bind 127.0.0.1] [--port 25565] [--fixtures fixtures/configuration.json] [--world runtime/world.json | --anvil-world /path/to/world] [--view-distance 2..6] [--loopback-service-keys PATH (offline loopback only)]");
                 std::process::exit(0);
             }
             let value = args
@@ -253,6 +255,7 @@ impl Options {
                 "--enforce-secure-profile" => options.secure_profile_override = Some(value.parse().context("enforce-secure-profile must be true or false")?),
                 "--rate-limit" => options.rate_limit = Some(value.parse().context("invalid packet rate limit")?),
                 "--compression-threshold" => options.compression_threshold = Some(value.parse().context("invalid compression threshold")?),
+                "--loopback-service-keys" => options.loopback_service_keys = Some(value.into()),
                 "--max-chained-neighbor-updates" => options.max_chained_neighbor_updates = value.parse().context("invalid neighbor update limit")?,
                 "--anvil-world" => options.anvil_world = Some(value.into()),
                 "--resource-pack-url" => pack_url = value,
@@ -278,6 +281,7 @@ impl Options {
         if options.allow_offline && !options.bind.is_loopback() && !options.allow_public_offline {
             bail!("public offline access requires explicit --allow-public-offline");
         }
+        main_chat_keys::validate_source_options(&options)?;
         if !(2..=6).contains(&options.view_distance) {
             bail!("view distance must be 2..=6");
         }
@@ -1168,10 +1172,11 @@ impl Server {
 
     fn player_runtime_handle(players: &LivePlayers, id: i32)
         -> Option<mc121_rust::runtime_entity_index::EntityHandle> {
-        players.item_runtime.level_tick_entries().find_map(|(handle, kind)| {
-            (handle.id == id && kind == mc121_rust::runtime_entity_index::EntityKind::Player)
-                .then_some(handle)
-        })
+        // Registration and generation survive hidden/non-ticking readiness.
+        // A tick-list scan must not turn the same real Player into None here.
+        players.item_runtime.entity_handle(id).filter(|handle|
+            players.item_runtime.entity_kind(*handle)
+                == Some(mc121_rust::runtime_entity_index::EntityKind::Player))
     }
 
     /// PlayerList.remove awards leave_game and saves BEFORE Player.remove.
@@ -2977,6 +2982,9 @@ async fn main() -> Result<()> {
     if let Some(value) = options.compression_threshold { connection_settings.network_compression_threshold = value; }
     if let Some(value) = options.secure_profile_override { connection_settings.enforce_secure_profile = value; }
     options.enforce_secure_profile = connection_settings.enforce_secure_profile;
+    // Resolve the explicit local source after effective settings, before any
+    // listener or auth/key network owner can start. Local failure is terminal.
+    let service_key_source = main_chat_keys::prepare_key_source(&options).await?;
     let mut administration = main_administration::Administration::load(
         administration_directory,
         main_administration::AdminSettings {
@@ -2993,6 +3001,7 @@ async fn main() -> Result<()> {
         }
     }
     let listener = TcpListener::bind(SocketAddr::new(options.bind, options.port)).await?;
+    service_key_source.require_bound_address(listener.local_addr()?)?;
     let (changes, _) = broadcast::channel(4096);
     let (entity_events, _) = broadcast::channel(512);
     let (tick_events, _) = watch::channel(0);
@@ -3089,7 +3098,7 @@ async fn main() -> Result<()> {
         entity_store,
         shutting_down: AtomicBool::new(false),
     });
-    main_chat_keys::start_key_refresh(Arc::clone(&server));
+    main_chat_keys::start_key_refresh(Arc::clone(&server), service_key_source);
     let permits = Arc::new(Semaphore::new(64));
     println!(
         "{}",
