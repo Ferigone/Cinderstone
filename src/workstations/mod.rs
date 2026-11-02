@@ -15,6 +15,8 @@ pub mod beacon_block_entity;
 pub mod beacon_data;
 pub mod beacon_effects;
 pub mod brewing;
+pub mod potion_brewing;
+pub mod potion_brewing_vanilla;
 pub mod merchant;
 pub mod dispenser;
 pub mod enchanting;
