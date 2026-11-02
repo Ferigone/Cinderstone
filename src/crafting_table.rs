@@ -48,6 +48,22 @@ impl CraftingTableMenu {
     }
     pub fn carried(&self) -> &ItemStack { &self.carried }
     pub fn inputs(&self) -> &[ItemStack] { &self.inputs }
+    /// Pure admission of actual result/grid/player slots and retained sync
+    /// history. This neither recomputes a recipe nor advances either baseline.
+    pub fn preflight_broadcast_context(
+        &self,
+        inventory: &PlayerInventory,
+        mut require_stack: impl FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        for stack in std::iter::once(&self.result).chain(&self.inputs)
+            .chain((9..45).map(|slot| inventory.slot(slot).expect("canonical inventory slot")))
+            .chain(&self.last).chain(&self.remote)
+            .chain(std::iter::once(&self.carried))
+            .chain(std::iter::once(&self.remote_carried)) {
+            require_stack(stack)?;
+        }
+        Ok(())
+    }
     pub fn inventory_snapshot(&self, inventory: &PlayerInventory) -> PlayerInventory {
         let mut value = inventory.clone();
         value.set_carried_authoritative(self.carried.clone());
@@ -68,6 +84,20 @@ impl CraftingTableMenu {
         let mut work = Engine::new(self, inventory);
         let mut packets = vec![];
         work.synchronize(&mut packets)?;
+        work.commit_menu(self);
+        Ok(packets)
+    }
+    /// Real local-slot observations from this retained CraftingMenu, before
+    /// each corresponding remote update. Inputs/result are not player-backed;
+    /// menu10..45 map to canonical InventoryMenu9..44.
+    pub fn broadcast_changes_with_listener(
+        &mut self,
+        inventory: &PlayerInventory,
+        mut listener: impl FnMut(usize, Option<usize>, &ItemStack) -> Result<()>,
+    ) -> Result<Vec<Packet>> {
+        let mut work = Engine::new(self, inventory);
+        let mut packets = Vec::new();
+        work.synchronize_with_listener(&mut packets, &mut listener)?;
         work.commit_menu(self);
         Ok(packets)
     }
@@ -375,6 +405,49 @@ impl Engine {
             .map(copy_stack)
             .collect();
         self.local_initialized = true;
+    }
+    fn synchronize_with_listener(
+        &mut self,
+        packets: &mut Vec<Packet>,
+        listener: &mut dyn FnMut(usize, Option<usize>, &ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        let mut local = Vec::with_capacity(MENU_SLOTS);
+        let mut remote = Vec::with_capacity(MENU_SLOTS);
+        for slot in 0..MENU_SLOTS {
+            let stack = &self.inventory.slots[slot];
+            local.push(!stack_matches(stack, &self.last[slot])?);
+            remote.push(if !stack_matches(stack, &self.remote[slot])? {
+                Some(stack.encode_canonical()?)
+            } else { None });
+        }
+        let carried = if !stack_matches(&self.inventory.carried, &self.remote_carried)? {
+            Some(self.inventory.carried.encode_canonical()?)
+        } else { None };
+        // Only after all fallible value work succeeds, visit each actual local
+        // change before mutating that slot's remote baseline or emitting it.
+        for slot in 0..MENU_SLOTS {
+            if local[slot] {
+                self.last[slot] = copy_stack(&self.inventory.slots[slot]);
+                let player_slot = if slot >= 10 { Some(slot - 1) } else { None };
+                listener(slot, player_slot, &self.inventory.slots[slot])?;
+            }
+            if let Some(wire) = &remote[slot] {
+                self.remote[slot] = copy_stack(&self.inventory.slots[slot]);
+                let state = self.next_state();
+                let mut fields = Writer::new();
+                fields.u8(self.window_id).varint(state).i16(slot as i16).raw(wire);
+                packets.push(Packet { id: 0x15, payload: fields.into_inner() });
+            }
+        }
+        self.local_initialized = true;
+        if let Some(wire) = carried {
+            self.remote_carried = copy_stack(&self.inventory.carried);
+            let state = self.next_state();
+            let mut fields = Writer::new();
+            fields.i8(-1).varint(state).i16(-1).raw(&wire);
+            packets.push(Packet { id: 0x15, payload: fields.into_inner() });
+        }
+        Ok(())
     }
     fn refresh_crafting(&mut self, context: &RecipeContext) -> Result<()> {
         let input = RecipeInput::crafting(3, 3, self.inventory.slots[1..10].to_vec())?;

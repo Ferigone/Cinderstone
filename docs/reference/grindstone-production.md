@@ -35,6 +35,12 @@ keeps its own cursor and 2x2 inputs. No grindstone block entity, second live
 inventory, private connection writer, independent item index or entity-ID
 allocator is introduced.
 
+## Shared current-menu pickup correction
+
+The current level-player phase captures all eight actual external menu owners before validity can close one. Native Generic and Crafting pickup now uses the retained current menu at the literal Player.take phase, after Inventory.add and Collect. Each genuine local slot observation reaches the existing player gameplay listener before that slot's remote baseline and packet. Generic top-container slots and Crafting result/grid slots retain their actual foreign-container identity; only player-backed slots map to canonical InventoryMenu coordinates.
+
+Pure validation of actual retained baselines, the incoming item and gameplay owner runs before Inventory.add. Only the existing typed UnsupportedFoodIdentity boundary refuses without inventory/stack/revision mutation or Collect; unexpected owner/state errors propagate. This does not complete the older Generic/Crafting click/listener implementations or arbitrary reentrant advancement behavior. The final focused ordinary lib+Main compiler check passed; the separate runtime report remains tied to its recorded source.
+
 ## Supported source profile and registry
 
 Mutable actions require the actual certified native flat-world source and

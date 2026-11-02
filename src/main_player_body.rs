@@ -561,10 +561,36 @@ impl PlayerBodyHooks for BodyHooks<'_> {
                             let mut frame = gameplay.frame_current(registry, &chunk_runtime.manager, true,
                                 self.region.context("body pickup requires loaded region")?);
                             let mut host = RuntimeInventoryHost::new(registry, containers, &mut frame);
-                            let mut native_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
-                                native_containers.broadcast_for_inventory(&*w, actor_id, inventory);
-                            let mut crafting_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
-                                crafting_tables.broadcast_for_inventory(actor_id, inventory);
+                            let mut native_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                                   inventory: &mc121_rust::inventory::PlayerInventory,
+                                                   candidate: Option<&ItemStack>| {
+                                if let Some(candidate) = candidate {
+                                    match native_containers.preflight_inventory_pickup(&*w, actor_id, pickup, inventory, candidate, hooks) {
+                                        Ok(()) => Ok(ExternalMenuPickupResult::Admit),
+                                        Err(error) if error.is::<main_workstation_components::UnsupportedFoodIdentity>() =>
+                                            Ok(ExternalMenuPickupResult::Refuse),
+                                        Err(error) => Err(error),
+                                    }
+                                } else {
+                                    native_containers.broadcast_for_inventory(&*w, actor_id, pickup, inventory, hooks)
+                                        .map(ExternalMenuPickupResult::Packets)
+                                }
+                            };
+                            let mut crafting_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+                                                     inventory: &mc121_rust::inventory::PlayerInventory,
+                                                     candidate: Option<&ItemStack>| {
+                                if let Some(candidate) = candidate {
+                                    match crafting_tables.preflight_inventory_pickup(actor_id, pickup, inventory, candidate, hooks) {
+                                        Ok(()) => Ok(ExternalMenuPickupResult::Admit),
+                                        Err(error) if error.is::<main_workstation_components::UnsupportedFoodIdentity>() =>
+                                            Ok(ExternalMenuPickupResult::Refuse),
+                                        Err(error) => Err(error),
+                                    }
+                                } else {
+                                    crafting_tables.broadcast_for_inventory(actor_id, pickup, inventory, hooks)
+                                        .map(ExternalMenuPickupResult::Packets)
+                                }
+                            };
                             let mut furnace_sync = |inventory: &mc121_rust::inventory::PlayerInventory|
                                 furnaces.broadcast_for_inventory(&*w, actor_id, inventory);
                             let mut stonecutter_sync = |hooks: &mut main_item_gameplay::MainGameplayFrame<'_>, inventory: &mc121_rust::inventory::PlayerInventory|
@@ -592,9 +618,9 @@ impl PlayerBodyHooks for BodyHooks<'_> {
                                 }
                             };
                             if active_native {
-                                host = host.with_external_menu_sync(actor_id, &mut native_sync);
+                                host = host.with_external_menu_sync_and_pickup_preflight(pickup, &mut native_sync);
                             } else if active_crafting {
-                                host = host.with_external_menu_sync(actor_id, &mut crafting_sync);
+                                host = host.with_external_menu_sync_and_pickup_preflight(pickup, &mut crafting_sync);
                             } else if active_anvil {
                                 host = host.with_external_menu_sync_and_pickup_preflight(pickup, &mut anvil_sync);
                             } else if active_grindstone {
