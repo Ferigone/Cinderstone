@@ -83,6 +83,15 @@ impl<S: Clone> CommandTree<S> {
         }
     }
 
+    /// `getUsageText()`: `""` for the root, the literal, or `<name>` for an argument.
+    pub fn usage_text(&self, id: NodeId) -> String {
+        match &self.nodes[id].kind {
+            NodeKind::Root => String::new(),
+            NodeKind::Literal { literal, .. } => literal.clone(),
+            NodeKind::Argument { name, .. } => format!("<{name}>"),
+        }
+    }
+
     pub fn kind(&self, id: NodeId) -> &NodeKind {
         &self.nodes[id].kind
     }

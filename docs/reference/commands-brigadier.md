@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments and dispatcher core (WP-E3 stages 1-2)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core and usage (WP-E3 stages 1-3)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-2
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-3
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -56,9 +56,14 @@ Stage 2 (`src/commands/dispatcher/`, dispatcher core):
   during the port and the algorithm was then read from the bytecode of the bundled classes
   (direct `javap` inspection, not an REA run).
 
+Stage 3 (usage strings): `CommandDispatcher::all_usage(node, source, restricted)` and
+`smart_usage(node, source)` plus the node usage text (`<name>` for arguments, `...` or
+`-> target` for redirects, `[optional]` / `(a|b)` groups), following `getAllUsage` /
+`getSmartUsage`. Children are visited in the original's insertion order.
+
 ## Not implemented (later WP-E3 stages)
 
-Usage strings (`getAllUsage`, `getSmartUsage`), completion suggestions, `ContextChain`'s
+Completion suggestions, `ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
 Minecraft argument types and their serialization (`ArgumentTypeInfos`), selectors,
@@ -90,7 +95,9 @@ merge) and 4,048 inputs (valid paths plus truncations, junk, extra spaces). For 
 failures (node, key, typed arguments, messages, context, cursor), the full context chain (source,
 input, ranges, parsed nodes, argument values, fork/modifier/command flags), the order and
 content of every executed command and modifier, every result-consumer notification, and the
-final result or exception.
+final result or exception. Stage 3 adds, for every node of every tree (root included) and the
+sources 0, 2 and 4, the restricted and unrestricted `getAllUsage` lines and the `getSmartUsage`
+map.
 
 Reproduce (the oracle directory must stay outside git):
 

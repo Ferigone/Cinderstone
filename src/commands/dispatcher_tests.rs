@@ -205,7 +205,7 @@ fn expected_error(error: &Value) -> Value {
 fn dispatcher_parse_and_execute_match_the_executed_original() {
     let document = fixture();
     let tests = document["tests"].as_array().unwrap();
-    let (mut inputs, mut failures, mut forks, mut multi) = (0, 0, 0, 0);
+    let (mut inputs, mut failures, mut forks, mut multi, mut usages) = (0, 0, 0, 0, 0);
     for (test_index, test) in tests.iter().enumerate() {
         let mut names = Vec::new();
         for tree in test["tree"].as_array().unwrap() {
@@ -226,6 +226,24 @@ fn dispatcher_parse_and_execute_match_the_executed_original() {
         for tree in test["tree"].as_array().unwrap() {
             let builder = build(tree, &dispatcher, &events, &names);
             dispatcher.register(builder);
+        }
+        for entry in test["usage"].as_array().unwrap() {
+            let mut node = dispatcher.root();
+            for name in entry["path"].as_array().unwrap() {
+                node = dispatcher.tree().child(node, name.as_str().unwrap()).expect("usage path exists");
+            }
+            let source = entry["source"].as_i64().unwrap() as i32;
+            let context = format!("tree {test_index} usage path {} source {source}", entry["path"]);
+            let lines = |value: Vec<String>| Value::Array(value.into_iter().map(Value::from).collect());
+            assert_eq!(lines(dispatcher.all_usage(node, &source, true)), entry["allRestricted"], "{context}: restricted");
+            assert_eq!(lines(dispatcher.all_usage(node, &source, false)), entry["allUnrestricted"], "{context}: unrestricted");
+            let smart: Vec<Value> = dispatcher
+                .smart_usage(node, &source)
+                .into_iter()
+                .map(|(child, usage)| serde_json::json!([dispatcher.tree().name(child), usage]))
+                .collect();
+            assert_eq!(Value::Array(smart), entry["smart"], "{context}: smart");
+            usages += 1;
         }
         for (case_index, case) in test["cases"].as_array().unwrap().iter().enumerate() {
             let input = case["input"].as_str().unwrap();
@@ -285,4 +303,5 @@ fn dispatcher_parse_and_execute_match_the_executed_original() {
     }
     assert!(inputs > 3_500, "{inputs}");
     assert!(failures > 1_000 && forks > 50 && multi > 20, "failures {failures}, forks {forks}, multi {multi}");
+    assert!(usages > 1_000, "{usages}");
 }
