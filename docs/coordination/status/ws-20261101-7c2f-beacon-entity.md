@@ -7,6 +7,7 @@ Branch: `teams/workstations/ws-20261101-7c2f/beacon-entity`.
 Assigned [issue #3](https://github.com/Ferigone/Cinderstone/issues/3),
 [exact claim](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6569390389).
 Target: original Java 1.21, protocol 767.
+Implementation commit: `39b3cfbd8ade60fb3e1e394d2baee9825d7a67ad`.
 
 ## Exact owned source
 
@@ -58,6 +59,10 @@ Frozen source SHA-256 values:
 Locked offline all-target compilation passed in 1m26s. The focused native
 class/lifecycle, NBT and live-data flows passed. Independent pinned-primary and
 API/integration reviews found no concrete blocker; formatting/diff checks pass.
+Staged-index repository hygiene passed with exactly the six claimed files.
+Current master was refetched after verification and remained the recorded base.
+Required GitHub CI and actual publication/merge read-back are recorded separately
+in the PR and assigned issue. No merge or hosted result is presumed here.
 These use real shared native base/EMPTY/decoder/compound algorithms with
 explicitly controlled class/holder/name/Level/callback fixtures. They do not
 establish an actual configured world, effect application or Main Beacon flow.
