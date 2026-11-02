@@ -129,3 +129,4 @@ pub mod connection_settings;
 pub mod connection_transport;
 pub mod worldgen;
 pub mod falling_block;
+pub mod loot;
