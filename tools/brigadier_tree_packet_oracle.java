@@ -42,8 +42,13 @@ import java.util.HashMap;
 import java.util.Map;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.AngleArgument;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.commands.arguments.TimeArgument;
+import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.ColumnPosArgument;
+import net.minecraft.commands.arguments.coordinates.SwizzleArgument;
 import net.minecraft.commands.arguments.coordinates.Vec2Argument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.commands.synchronization.SuggestionProviders;
@@ -144,6 +149,12 @@ public final class brigadier_tree_packet_oracle {
             case "columnpos": return ColumnPosArgument.columnPos();
             case "vec3": return Vec3Argument.vec3();
             case "vec2": return Vec2Argument.vec2();
+            // stage 7: simple value arguments
+            case "time": return t.has("min") ? TimeArgument.time(t.get("min").getAsInt()) : TimeArgument.time();
+            case "uuid": return UuidArgument.uuid();
+            case "anchor": return EntityAnchorArgument.anchor();
+            case "angle": return AngleArgument.angle();
+            case "swizzle": return SwizzleArgument.swizzle();
             default: throw new IllegalArgumentException(t.get("k").getAsString());
         }
     }

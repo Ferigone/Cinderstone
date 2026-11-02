@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and position arguments (WP-E3 stages 1-6)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value arguments (WP-E3 stages 1-7)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-6
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-7
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -124,13 +124,28 @@ Stage 6 (`src/commands/coordinates.rs`, position arguments): `Vec3Argument` (cen
 - Network forms: `block_pos` 8, `column_pos` 9, `vec3` 10, `vec2` 11, no template. The registry ids and
   the empty templates are compared with the original's `ClientboundCommandsPacket` in the stage 5 fixture.
 
+Stage 7 (`src/commands/simple_arguments.rs`, value arguments that need no other subsystem):
+- `TimeArgument`: a float and a `d` / `s` / `t` (or no) unit, scaled in `float` arithmetic and rounded
+  with `Math.round(float)` (round half up, saturating); a result below the minimum fails with
+  `argument.time.tick_count_too_low` (arguments minimum, found) at the end of the read.
+- `UuidArgument`: the longest run of `[-A-Fa-f0-9]` must satisfy `UUID.fromString`, whose general path
+  accepts any five dash-separated hex numbers of at most 36 characters in total (so `1-2-3-4-5` is a
+  UUID), rejects a part above `Long.MAX_VALUE` (`Long.parseLong`, leading zeros are free) and masks the
+  parts into the two halves. A failure does not move the cursor.
+- `EntityAnchorArgument` (`feet`, `eyes`; the cursor returns to the start on failure), `AngleArgument`
+  (`~` relative, `readFloat`, NaN / infinity rejected, `Mth.wrapDegrees` of the angle or of yaw plus the
+  angle) and `SwizzleArgument` (each of `x`, `y`, `z` at most once, error after the offending character).
+- Network forms from the executed `ArgumentTypeInfos`: `angle` 27, `swizzle` 31, `entity_anchor` 37, `time` 42
+  (the minimum as a big-endian `int`) and `uuid` 53; only `time` has a template.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
 the remaining Minecraft argument types (entity, game profile, message, component, NBT, resource and
-registry arguments, scoreboard arguments, ... and their `ArgumentTypeInfos` templates), selectors,
+registry arguments, the int and float range arguments, the scoreboard arguments, ... and their
+`ArgumentTypeInfos` templates), selectors,
 coordinate suggestions and the loaded / out-of-world checks of `BlockPosArgument.getLoadedBlockPos`,
 `CommandSourceStack`, the command catalog and the migration of the administration commands.
 The wrapping of unchecked exceptions thrown by an argument parser into `command.exception`
@@ -207,6 +222,17 @@ the resolved values bit for bit. The sources are built with the unchanged `Comma
 without a level, server or entity, so the anchor leaves the position unchanged; the anchored position is the
 caller's input to `CoordinateSource`. Dropping the centring, negating the local `left` axis or not resetting
 the cursor on a mixed local coordinate makes the test fail.
+
+Stage 7. The same fixture and harness hold 1,820 more cases appended after the stage 6 ones from their own
+random stream (the stage 6 cases are unchanged; seed 20261107): 816 parse and 1,004 fail. Time covers
+fractions, negative halves, every unit and several minimums; UUIDs cover standard strings, the lenient
+forms, parts that overflow `Long.parseLong` and trailing text (296 parse, 354 fail); anchors, angles
+(resolved for two command sources with rotations up to 720 degrees, including values that parse to infinity)
+and swizzles with repeated and invalid letters. `cargo test --locked --lib commands::mc_arguments_tests`
+compares the cursor afterwards and the value or the exception as for stage 6. Replacing `Math.round` with
+round-half-away, ignoring the `Long.parseLong` overflow, allowing repeated swizzle letters or dropping the
+angle wrap each make the test fail. The registry ids and templates come from seven more fixed trees appended
+to the tree-packet fixture (the earlier 164 cases are unchanged).
 
 Reproduce (the oracle directory must stay outside git):
 

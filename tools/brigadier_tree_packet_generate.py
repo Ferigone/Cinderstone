@@ -76,6 +76,9 @@ def build_tests(rng):
     # argument each, so the registry ids and empty templates of stage 6 are compared too.
     for kind in ["blockpos", "columnpos", "vec3", "vec2"]:
         tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": {"k": kind}, "cmd": 1}]}]})
+    # stage 7: simple value arguments (time with the default and with a minimum, whose template is an int)
+    for spec in [{"k": "time"}, {"k": "time", "min": 5}, {"k": "time", "min": -100}, {"k": "uuid"}, {"k": "anchor"}, {"k": "angle"}, {"k": "swizzle"}]:
+        tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": spec, "cmd": 1}]}]})
     return tests
 
 

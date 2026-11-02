@@ -1,8 +1,10 @@
-// Executed Minecraft argument-type oracle for WP-E3 stage 6 (docs/reference/commands-brigadier.md).
+// Executed Minecraft argument-type oracle for WP-E3 stages 6-7 (docs/reference/commands-brigadier.md).
 //
 // Runs the UNCHANGED argument classes of the pinned 1.21 server (net.minecraft.commands.arguments.*)
 // on seeded inputs: the value parsed from a StringReader, the reader cursor afterwards, and for
-// coordinates the position / rotation / block position they resolve to for given command sources.
+// coordinates the position / rotation / block position they resolve to for given command sources
+// (stage 6), and the values of the simple argument types of stage 7 (time, uuid, entity anchor, angle,
+// swizzle).
 // The server classes come from the pinned jar remapped with the official mappings
 // (tools/loot_oracle_setup.py builds <oracle-dir>/server-named.jar and cp.txt); everything stays
 // OUTSIDE git. The exception provider installed is the server's own BrigadierExceptions.
@@ -22,16 +24,24 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumSet;
+import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.BrigadierExceptions;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.AngleArgument;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.commands.arguments.TimeArgument;
+import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.commands.arguments.coordinates.ColumnPosArgument;
 import net.minecraft.commands.arguments.coordinates.Coordinates;
+import net.minecraft.commands.arguments.coordinates.SwizzleArgument;
 import net.minecraft.commands.arguments.coordinates.Vec2Argument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.Bootstrap;
@@ -63,8 +73,14 @@ public final class mc_arguments_oracle {
         return builder.toString();
     }
 
-    private static ArgumentType type(String name) {
+    private static ArgumentType type(JsonObject c) {
+        String name = c.get("type").getAsString();
         switch (name) {
+            case "time": return c.has("min") ? TimeArgument.time(c.get("min").getAsInt()) : TimeArgument.time();
+            case "uuid": return UuidArgument.uuid();
+            case "anchor": return EntityAnchorArgument.anchor();
+            case "angle": return AngleArgument.angle();
+            case "swizzle": return SwizzleArgument.swizzle();
             case "vec3": return Vec3Argument.vec3();
             case "vec3_raw": return Vec3Argument.vec3(false);
             case "blockpos": return BlockPosArgument.blockPos();
@@ -90,13 +106,58 @@ public final class mc_arguments_oracle {
         }
         JsonObject result = new JsonObject();
         try {
-            Object value = type(c.get("type").getAsString()).parse(reader);
-            result.add("ok", describe((Coordinates) value, c.getAsJsonArray("sources")));
+            Object value = type(c).parse(reader);
+            result.add("ok", describeValue(value, c.getAsJsonArray("sources")));
         } catch (CommandSyntaxException e) {
             result.add("err", describe(e));
         }
         result.addProperty("cursor", reader.getCursor());
         return result;
+    }
+
+    private static CommandSourceStack source(JsonObject spec) {
+        JsonArray p = spec.getAsJsonArray("pos");
+        JsonArray r = spec.getAsJsonArray("rot");
+        Vec3 position = new Vec3(
+            Double.longBitsToDouble(Long.parseUnsignedLong(p.get(0).getAsString(), 16)),
+            Double.longBitsToDouble(Long.parseUnsignedLong(p.get(1).getAsString(), 16)),
+            Double.longBitsToDouble(Long.parseUnsignedLong(p.get(2).getAsString(), 16)));
+        Vec2 rotation = new Vec2(
+            Float.intBitsToFloat((int) Long.parseLong(r.get(0).getAsString(), 16)),
+            Float.intBitsToFloat((int) Long.parseLong(r.get(1).getAsString(), 16)));
+        // No level, server or entity: positions only. The anchor then leaves the position unchanged.
+        return new CommandSourceStack(CommandSource.NULL, position, rotation, null, 0, "n", Component.literal("n"), null, null);
+    }
+
+    // Stage 7 values; coordinates keep their stage 6 description.
+    private static JsonObject describeValue(Object value, JsonArray sources) {
+        if (value instanceof Coordinates) {
+            return describe((Coordinates) value, sources);
+        }
+        JsonObject o = new JsonObject();
+        if (value instanceof Integer) {
+            o.addProperty("v", (Integer) value);
+        } else if (value instanceof UUID) {
+            o.addProperty("msb", Long.toString(((UUID) value).getMostSignificantBits()));
+            o.addProperty("lsb", Long.toString(((UUID) value).getLeastSignificantBits()));
+        } else if (value instanceof EntityAnchorArgument.Anchor) {
+            o.addProperty("v", ((EntityAnchorArgument.Anchor) value).name());
+        } else if (value instanceof AngleArgument.SingleAngle) {
+            JsonArray at = new JsonArray();
+            for (JsonElement element : sources) {
+                at.add(bits(((AngleArgument.SingleAngle) value).getAngle(source(element.getAsJsonObject()))));
+            }
+            o.add("at", at);
+        } else if (value instanceof EnumSet) {
+            StringBuilder axes = new StringBuilder();
+            for (Object axis : (EnumSet) value) {
+                axes.append(((Direction.Axis) axis).getName());
+            }
+            o.addProperty("v", axes.toString());
+        } else {
+            throw new IllegalArgumentException(value.getClass().getName());
+        }
+        return o;
     }
 
     private static JsonObject describe(Coordinates coordinates, JsonArray sources) {
@@ -108,18 +169,7 @@ public final class mc_arguments_oracle {
         o.add("rel", relative);
         JsonArray at = new JsonArray();
         for (JsonElement element : sources) {
-            JsonObject spec = element.getAsJsonObject();
-            JsonArray p = spec.getAsJsonArray("pos");
-            JsonArray r = spec.getAsJsonArray("rot");
-            Vec3 position = new Vec3(
-                Double.longBitsToDouble(Long.parseUnsignedLong(p.get(0).getAsString(), 16)),
-                Double.longBitsToDouble(Long.parseUnsignedLong(p.get(1).getAsString(), 16)),
-                Double.longBitsToDouble(Long.parseUnsignedLong(p.get(2).getAsString(), 16)));
-            Vec2 rotation = new Vec2(
-                Float.intBitsToFloat((int) Long.parseLong(r.get(0).getAsString(), 16)),
-                Float.intBitsToFloat((int) Long.parseLong(r.get(1).getAsString(), 16)));
-            // No level, server or entity: positions only. The anchor then leaves the position unchanged.
-            CommandSourceStack source = new CommandSourceStack(CommandSource.NULL, position, rotation, null, 0, "n", Component.literal("n"), null, null);
+            CommandSourceStack source = source(element.getAsJsonObject());
             JsonObject entry = new JsonObject();
             Vec3 resolved = coordinates.getPosition(source);
             JsonArray pos = new JsonArray();

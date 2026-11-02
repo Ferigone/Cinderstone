@@ -14,6 +14,7 @@ pub mod coordinates;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
+pub mod simple_arguments;
 pub mod string_reader;
 pub mod suggestion;
 pub mod tree_packet;
@@ -29,6 +30,10 @@ pub use coordinates::{
 pub use dispatcher::{ArgumentBuilder, CommandContext, CommandDispatcher, ParseResults};
 pub use exception::{CommandArg, CommandMessage, CommandSyntaxException};
 pub use string_reader::StringReader;
+pub use simple_arguments::{
+    AngleArgumentType, EntityAnchor, EntityAnchorArgumentType, JavaUuid, SingleAngle, Swizzle, SwizzleArgumentType,
+    TimeArgumentType, UuidArgumentType,
+};
 pub use suggestion::{Suggestion, SuggestionError, SuggestionProvider, Suggestions, SuggestionsBuilder};
 pub use tree_packet::{encode_commands_packet, CommandTreePacketError};
 

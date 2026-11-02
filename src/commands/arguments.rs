@@ -6,6 +6,7 @@
 //! Minecraft's own argument types (coordinates, selectors, ...) are later stages.
 
 use super::coordinates::Coordinates;
+use super::simple_arguments::{EntityAnchor, JavaUuid, SingleAngle, Swizzle};
 use super::dispatcher::CommandContext;
 use super::exception::{built_in, CommandArg, CommandSyntaxException};
 use super::string_reader::StringReader;
@@ -272,6 +273,14 @@ pub enum ArgumentValue {
     String(String),
     /// `Coordinates` of a position argument (stage 6).
     Coordinates(Coordinates),
+    /// `UuidArgument` (stage 7).
+    Uuid(JavaUuid),
+    /// `EntityAnchorArgument` (stage 7).
+    EntityAnchor(EntityAnchor),
+    /// `AngleArgument` (stage 7).
+    Angle(SingleAngle),
+    /// `SwizzleArgument` (stage 7).
+    Swizzle(Swizzle),
 }
 
 macro_rules! argument_value_from {
@@ -284,7 +293,7 @@ macro_rules! argument_value_from {
     };
 }
 
-argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String, Coordinates => Coordinates);
+argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String, Coordinates => Coordinates, JavaUuid => Uuid, EntityAnchor => EntityAnchor, SingleAngle => Angle, Swizzle => Swizzle);
 
 /// Object-safe `ArgumentType<?>` for command sources of type `S`: what a tree node holds so
 /// that nodes of different argument types can live in one command tree.

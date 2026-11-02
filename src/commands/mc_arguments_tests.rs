@@ -3,15 +3,21 @@
 //! classes of the pinned 1.21 server (`tools/mc_arguments_generate.py`). Stage 6: the position
 //! arguments. For every input the test compares the cursor afterwards and either the exception (key,
 //! typed arguments, `getMessage()`, context, cursor) or the relative flags and, for two command
-//! sources each, the position, rotation and block position the coordinates resolve to.
+//! sources each, the position, rotation and block position the coordinates resolve to. Stage 7: time,
+//! uuid, entity anchor, angle and swizzle, compared the same way on their parsed values.
 
 use super::arguments::ArgumentType;
+use super::simple_arguments::{
+    AngleArgumentType, EntityAnchor, EntityAnchorArgumentType, SwizzleArgumentType, TimeArgumentType, UuidArgumentType,
+};
 use super::coordinates::{
     BlockPosArgumentType, ColumnPosArgumentType, CoordinateSource, Coordinates, Vec2ArgumentType, Vec3ArgumentType,
 };
 use super::string_reader::StringReader;
 use crate::geometry::Vec3;
 use serde_json::{json, Value};
+
+const POSITION_TYPES: [&str; 6] = ["vec3", "vec3_raw", "blockpos", "vec2", "vec2_raw", "columnpos"];
 
 fn fixture() -> Value {
     serde_json::from_str(include_str!("../../fixtures/commands-mc-arguments-vectors.json")).unwrap()
@@ -55,12 +61,29 @@ fn bits32(value: f32) -> String {
     format!("{:x}", value.to_bits())
 }
 
+fn check_error(error: &super::exception::CommandSyntaxException, expected: &Value, context: &str) {
+    let args: Vec<Value> = error
+        .raw_message()
+        .args
+        .iter()
+        .map(|a| json!({"t": a.java_type(), "v": a.java_to_string()}))
+        .collect();
+    assert_eq!(error.raw_message().key, expected["key"].as_str().unwrap(), "{context}: key");
+    assert_eq!(Value::Array(args), expected["args"], "{context}: arguments");
+    assert_eq!(error.message(), expected["message"].as_str().unwrap(), "{context}: message");
+    assert_eq!(error.context().as_deref(), expected["context"].as_str(), "{context}: context");
+    assert_eq!(i64::from(error.cursor()), expected["errCursor"].as_i64().unwrap(), "{context}: exception cursor");
+}
+
 #[test]
 fn position_arguments_match_the_executed_original() {
     let document = fixture();
     let (mut parsed, mut failed, mut local, mut relative, mut centred) = (0, 0, 0, 0, 0);
     for (index, case) in document["cases"].as_array().unwrap().iter().enumerate() {
         let kind = case["type"].as_str().unwrap();
+        if !POSITION_TYPES.contains(&kind) {
+            continue;
+        }
         let input = case["input"].as_str().unwrap();
         let context = format!("case {index} {kind} input={input:?} start={:?}", case.get("start"));
         let mut reader = StringReader::new(input);
@@ -97,20 +120,80 @@ fn position_arguments_match_the_executed_original() {
             }
             (Err(error), None, Some(expected)) => {
                 failed += 1;
-                let args: Vec<Value> = error
-                    .raw_message()
-                    .args
-                    .iter()
-                    .map(|a| json!({"t": a.java_type(), "v": a.java_to_string()}))
-                    .collect();
-                assert_eq!(error.raw_message().key, expected["key"].as_str().unwrap(), "{context}: key");
-                assert_eq!(Value::Array(args), expected["args"], "{context}: arguments");
-                assert_eq!(error.message(), expected["message"].as_str().unwrap(), "{context}: message");
-                assert_eq!(error.context().as_deref(), expected["context"].as_str(), "{context}: context");
-                assert_eq!(i64::from(error.cursor()), expected["errCursor"].as_i64().unwrap(), "{context}: exception cursor");
+                check_error(&error, expected, &context);
             }
             (result, ok, err) => panic!("{context}: {result:?} vs fixture ok={ok:?} err={err:?}"),
         }
     }
     assert!(parsed > 2_000 && failed > 1_000 && local > 150 && relative > 300 && centred > 100, "{parsed} {failed} {local} {relative} {centred}");
+}
+
+const VALUE_TYPES: [&str; 5] = ["time", "uuid", "anchor", "angle", "swizzle"];
+
+/// Parse with a stage 7 type and render the value the way the Java harness does.
+fn parse_value(case: &Value, reader: &mut StringReader) -> Result<Value, super::exception::CommandSyntaxException> {
+    Ok(match case["type"].as_str().unwrap() {
+        "time" => {
+            let argument = match case["min"].as_i64() {
+                Some(minimum) => TimeArgumentType::with_minimum(minimum as i32),
+                None => TimeArgumentType::new(),
+            };
+            json!({ "v": argument.parse(reader)? })
+        }
+        "uuid" => {
+            let uuid = UuidArgumentType.parse(reader)?;
+            json!({ "msb": uuid.most_significant_bits.to_string(), "lsb": uuid.least_significant_bits.to_string() })
+        }
+        "anchor" => json!({ "v": match EntityAnchorArgumentType.parse(reader)? {
+            EntityAnchor::Feet => "FEET",
+            EntityAnchor::Eyes => "EYES",
+        } }),
+        "angle" => {
+            let angle = AngleArgumentType.parse(reader)?;
+            let at: Vec<Value> = case["sources"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|spec| Value::from(bits32(angle.angle(&source(spec)))))
+                .collect();
+            json!({ "at": at })
+        }
+        "swizzle" => json!({ "v": SwizzleArgumentType.parse(reader)?.letters() }),
+        other => panic!("unknown type {other}"),
+    })
+}
+
+#[test]
+fn simple_value_arguments_match_the_executed_original() {
+    let document = fixture();
+    let (mut parsed, mut failed, mut scaled, mut relative_angles, mut lenient_uuids) = (0, 0, 0, 0, 0);
+    for (index, case) in document["cases"].as_array().unwrap().iter().enumerate() {
+        let kind = case["type"].as_str().unwrap();
+        if !VALUE_TYPES.contains(&kind) {
+            continue;
+        }
+        let input = case["input"].as_str().unwrap();
+        let context = format!("case {index} {kind} input={input:?} min={:?}", case.get("min"));
+        let mut reader = StringReader::new(input);
+        let result = parse_value(case, &mut reader);
+        assert_eq!(reader.cursor() as i64, case["cursor"].as_i64().unwrap(), "{context}: cursor afterwards");
+        match (result, case.get("ok"), case.get("err")) {
+            (Ok(value), Some(expected), None) => {
+                parsed += 1;
+                assert_eq!(&value, expected, "{context}: value");
+                scaled += usize::from(kind == "time" && input.ends_with(['d', 's']));
+                relative_angles += usize::from(kind == "angle" && input.starts_with('~'));
+                lenient_uuids += usize::from(kind == "uuid" && reader.cursor() != 36);
+            }
+            (Err(error), None, Some(expected)) => {
+                failed += 1;
+                check_error(&error, expected, &context);
+            }
+            (result, ok, err) => panic!("{context}: {result:?} vs fixture ok={ok:?} err={err:?}"),
+        }
+    }
+    assert!(
+        parsed > 600 && failed > 400 && scaled > 20 && relative_angles > 30 && lenient_uuids > 20,
+        "{parsed} {failed} {scaled} {relative_angles} {lenient_uuids}"
+    );
 }
