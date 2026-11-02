@@ -2,9 +2,12 @@
 //!
 //! This owns interpolation state, not a ChunkStatus or a fabricated FULL chunk.
 //! The caller supplies block material/aquifer work in the visit callback. The
-//! density graph currently supports an explicitly empty Blender and beardifier.
+//! density graph retains its actual Blender; structure beardifiers remain an
+//! explicit separate generation contract.
+use super::blending::Blender;
 use crate::density::{ChunkDensity, DensityGraph, DensityPoint, NoiseGrid};
 use anyhow::{anyhow, bail, ensure, Result};
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TraversalPhase {
@@ -51,6 +54,10 @@ impl RetainedNoiseChunk {
         self.require_graph(graph)?;
         Ok(&mut self.density)
     }
+    pub(super) fn blender_for(&self, graph: &DensityGraph) -> Result<Arc<Blender>> {
+        self.require_graph(graph)?;
+        Ok(Arc::clone(self.density.blender()))
+    }
     #[cfg(test)]
     pub(super) fn density_for(&self, graph: &DensityGraph) -> Result<&ChunkDensity> {
         self.require_graph(graph)?;
@@ -82,6 +89,25 @@ impl<'g> NoiseChunk<'g> {
         chunk_z: i32,
         level_min_y: i32,
         level_height: i32,
+    ) -> Result<Self> {
+        Self::new_with_blender(
+            graph,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            Blender::empty(),
+        )
+    }
+
+    /// Capture the actual Blender before router wrapping and aquifer creation.
+    pub fn new_with_blender(
+        graph: &'g DensityGraph,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        blender: Arc<Blender>,
     ) -> Result<Self> {
         let settings = graph
             .grid()
@@ -119,8 +145,13 @@ impl<'g> NoiseChunk<'g> {
         );
         let origin_x = chunk_x.wrapping_shl(4);
         let origin_z = chunk_z.wrapping_shl(4);
-        let mut density =
-            ChunkDensity::new(grid, origin_x, origin_z, (16 / grid.cell_width) as usize)?;
+        let mut density = ChunkDensity::new_with_blender(
+            grid,
+            origin_x,
+            origin_z,
+            (16 / grid.cell_width) as usize,
+            blender,
+        )?;
         // This also registers the aquifer/router functions before the first
         // slice is filled, preserving the source wrapper and cache ownership.
         density.wrap_router(graph)?;

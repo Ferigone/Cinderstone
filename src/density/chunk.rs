@@ -1,5 +1,6 @@
-//! NoiseChunk marker caches and interpolation phase state (empty Blender).
+//! NoiseChunk marker caches, Blender wrappers and interpolation phase state.
 use super::*;
+use crate::worldgen::blending::Blender;
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -104,8 +105,14 @@ pub struct ChunkDensity {
     first_quart_x: i32,
     first_quart_z: i32,
     quart_count: usize,
+    blender: Arc<Blender>,
+    blend_alpha: Vec<Vec<f64>>,
+    blend_offset: Vec<Vec<f64>>,
+    last_blending_pos: i64,
+    last_blending_output: (f64, f64),
     canonical: Vec<usize>,
     rewritten_arithmetic: Vec<Option<(NodeId, f64)>>,
+    wrapped_bounds: Vec<DensityBounds>,
     canonical_keys: HashMap<String, usize>,
     registered: HashSet<usize>,
     caches: Vec<Option<MarkerCache>>,
@@ -127,6 +134,18 @@ impl ChunkDensity {
         origin_z: i32,
         cell_count_xz: usize,
     ) -> ChunkResult<Self> {
+        Self::new_with_blender(grid, origin_x, origin_z, cell_count_xz, Blender::empty())
+    }
+
+    /// Retain the actual already-constructed Blender before mapping the router.
+    /// A caller cannot replace it after marker caches or interpolation exist.
+    pub fn new_with_blender(
+        grid: NoiseGrid,
+        origin_x: i32,
+        origin_z: i32,
+        cell_count_xz: usize,
+        blender: Arc<Blender>,
+    ) -> ChunkResult<Self> {
         if grid.cell_width <= 0
             || grid.cell_height <= 0
             || grid.height < 0
@@ -137,6 +156,23 @@ impl ChunkDensity {
         }
         let width = grid.cell_width;
         let height = grid.cell_height;
+        let first_quart_x = origin_x >> 2;
+        let first_quart_z = origin_z >> 2;
+        let quart_count = ((cell_count_xz as i32).wrapping_mul(width) >> 2) as usize;
+        let mut blend_alpha = vec![vec![0.0; quart_count + 1]; quart_count + 1];
+        let mut blend_offset = vec![vec![0.0; quart_count + 1]; quart_count + 1];
+        // NoiseChunk fills the pair directly, X outer and Z inner, before
+        // router visitation/aquifer creation. This does not warm the fallback
+        // getOrComputeBlendingOutput cache, including for the empty singleton.
+        for x in 0..=quart_count {
+            for z in 0..=quart_count {
+                let point_x = first_quart_x.wrapping_add(x as i32).wrapping_shl(2);
+                let point_z = first_quart_z.wrapping_add(z as i32).wrapping_shl(2);
+                let output = blender.blend_offset_and_factor(point_x, point_z);
+                blend_alpha[x][z] = output.alpha;
+                blend_offset[x][z] = output.blending_offset;
+            }
+        }
         Ok(Self {
             grid,
             cell_count_xz,
@@ -144,11 +180,17 @@ impl ChunkDensity {
             first_cell_x: origin_x.div_euclid(width),
             first_cell_z: origin_z.div_euclid(width),
             first_cell_y: grid.min_y.div_euclid(height),
-            first_quart_x: origin_x >> 2,
-            first_quart_z: origin_z >> 2,
-            quart_count: ((cell_count_xz as i32).wrapping_mul(width) >> 2) as usize,
+            first_quart_x,
+            first_quart_z,
+            quart_count,
+            blender,
+            blend_alpha,
+            blend_offset,
+            last_blending_pos: pack_xz(1_875_066, 1_875_066),
+            last_blending_output: (1.0, 0.0),
             canonical: Vec::new(),
             rewritten_arithmetic: Vec::new(),
+            wrapped_bounds: Vec::new(),
             canonical_keys: HashMap::new(),
             registered: HashSet::new(),
             caches: Vec::new(),
@@ -207,6 +249,42 @@ impl ChunkDensity {
         self.grid
     }
 
+    /// Same immutable Blender owner retained with this NoiseChunk's caches.
+    pub fn blender(&self) -> &Arc<Blender> {
+        &self.blender
+    }
+
+    /// Bounds of the actual visited function, without mutating RandomState's
+    /// raw metadata. Call wrap before querying a custom function's bounds.
+    pub fn wrapped_bounds(&self, id: NodeId) -> ChunkResult<DensityBounds> {
+        self.wrapped_bounds
+            .get(id.0)
+            .copied()
+            .ok_or(ChunkDensityError::UnregisteredMarker)
+    }
+
+    fn blending_pair(&mut self, point: DensityPoint) -> (f64, f64) {
+        let x = (point.x >> 2).wrapping_sub(self.first_quart_x);
+        let z = (point.z >> 2).wrapping_sub(self.first_quart_z);
+        if x >= 0
+            && z >= 0
+            && (x as usize) < self.blend_alpha.len()
+            && (z as usize) < self.blend_alpha.len()
+        {
+            return (
+                self.blend_alpha[x as usize][z as usize],
+                self.blend_offset[x as usize][z as usize],
+            );
+        }
+        let position = pack_xz(point.x, point.z);
+        if position != self.last_blending_pos {
+            self.last_blending_pos = position;
+            let output = self.blender.blend_offset_and_factor(point.x, point.z);
+            self.last_blending_output = (output.alpha, output.blending_offset);
+        }
+        self.last_blending_output
+    }
+
     /// NoiseChunk.preliminarySurfaceLevel, including quart-block quantization,
     /// its per-chunk cache and the original no-surface sentinel (i32::MAX).
     ///
@@ -256,6 +334,12 @@ impl ChunkDensity {
             let id = self.canonical.len();
             let rewritten = graph.wrapped_constant_argument(NodeId(id));
             self.rewritten_arithmetic.push(rewritten);
+            self.wrapped_bounds.push(visited_bounds(
+                graph,
+                NodeId(id),
+                &self.wrapped_bounds,
+                !self.blender.is_empty(),
+            ));
             if let DensityNode::Reference(input) = graph.nodes[id] {
                 // HolderHolder.mapAll visits the held function first, then
                 // NoiseChunk.wrapNew returns holder.value(). Parent equality
@@ -275,6 +359,28 @@ impl ChunkDensity {
             let key = match &node {
                 DensityNode::Spline(Spline::Multipoint { identity, .. }) => {
                     format!("spline{identity}:{node:?}")
+                }
+                DensityNode::Binary(..)
+                | DensityNode::ConstantArgument(..)
+                | DensityNode::Mapped(..) => {
+                    // These source records contain their reconstructed min/max
+                    // as equality fields. Existing MulOrAdd.mapAll and Ap2's
+                    // factory can yield different signed-zero bounds for the
+                    // same input and coefficient, so the bounds are part of
+                    // cache-owner identity as well as short-circuit metadata.
+                    let bounds = self.wrapped_bounds[id];
+                    let bits = |value: f64| {
+                        if value.is_nan() {
+                            0x7ff8_0000_0000_0000
+                        } else {
+                            value.to_bits()
+                        }
+                    };
+                    format!(
+                        "{node:?}:bounds({:016x},{:016x})",
+                        bits(bounds.min),
+                        bits(bounds.max)
+                    )
                 }
                 _ => format!("{node:?}"),
             };
@@ -608,6 +714,62 @@ impl ChunkDensity {
 }
 impl DensityContext for ChunkDensity {
     type Error = ChunkDensityError;
+    fn bounds(&self, graph: &DensityGraph, id: NodeId) -> DensityBounds {
+        self.wrapped_bounds
+            .get(id.0)
+            .copied()
+            .unwrap_or_else(|| graph.bounds(id))
+    }
+    fn blend_alpha(&mut self, _id: NodeId, point: DensityPoint) -> f64 {
+        if self.blender.is_empty() {
+            1.0
+        } else {
+            self.blending_pair(point).0
+        }
+    }
+    fn blend_offset(&mut self, _id: NodeId, point: DensityPoint) -> f64 {
+        if self.blender.is_empty() {
+            0.0
+        } else {
+            self.blending_pair(point).1
+        }
+    }
+    fn blend_alpha_fill(
+        &mut self,
+        graph: &DensityGraph,
+        id: NodeId,
+        values: &mut [f64],
+    ) -> ChunkResult<()> {
+        if self.blender.is_empty() {
+            values.fill(1.0);
+            Ok(())
+        } else {
+            self.fill_direct(graph, id, values)
+        }
+    }
+    fn blend_offset_fill(
+        &mut self,
+        graph: &DensityGraph,
+        id: NodeId,
+        values: &mut [f64],
+    ) -> ChunkResult<()> {
+        if self.blender.is_empty() {
+            values.fill(0.0);
+            Ok(())
+        } else {
+            self.fill_direct(graph, id, values)
+        }
+    }
+    fn blend_density(&mut self, point: DensityPoint, value: f64) -> f64 {
+        if self.owner_context {
+            self.blender.blend_density(point, value)
+        } else {
+            // SinglePointContext inherits FunctionContext's EMPTY Blender.
+            // Wrapped alpha/offset capture this chunk independently of that
+            // sampling context; BlendDensity deliberately does not.
+            value
+        }
+    }
     fn rewritten_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {
         self.rewritten_arithmetic.get(id.0).copied().flatten()
     }
@@ -890,6 +1052,146 @@ impl DensityContext for ChunkDensity {
         Ok(())
     }
 }
+
+/// Metadata reconstructed by the source visitor, including MulOrAdd.mapAll's
+/// signed-zero behavior. Ap2's factory computes its general binary bounds
+/// before selecting a newly eligible constant optimization, so Binary and an
+/// already-existing ConstantArgument must retain their distinct construction.
+fn visited_bounds(
+    graph: &DensityGraph,
+    id: NodeId,
+    visited: &[DensityBounds],
+    nonempty_blender: bool,
+) -> DensityBounds {
+    let child = |id: NodeId| visited[id.0];
+    match &graph.nodes[id.0] {
+        DensityNode::Reference(input) | DensityNode::Marker(_, input) => child(*input),
+        DensityNode::BlendAlpha if nonempty_blender => DensityBounds::new(0.0, 1.0),
+        DensityNode::BlendOffset if nonempty_blender => {
+            DensityBounds::new(f64::NEG_INFINITY, f64::INFINITY)
+        }
+        DensityNode::Binary(kind, a, b) => {
+            let x = child(*a);
+            let y = child(*b);
+            match kind {
+                Binary::Add => DensityBounds::new(x.min + y.min, x.max + y.max),
+                Binary::Min => DensityBounds::new(java_min(x.min, y.min), java_min(x.max, y.max)),
+                Binary::Max => DensityBounds::new(java_max(x.min, y.min), java_max(x.max, y.max)),
+                Binary::Mul => {
+                    if x.min > 0.0 && y.min > 0.0 {
+                        DensityBounds::new(x.min * y.min, x.max * y.max)
+                    } else if x.max < 0.0 && y.max < 0.0 {
+                        DensityBounds::new(x.max * y.max, x.min * y.min)
+                    } else {
+                        DensityBounds::new(
+                            java_min(x.min * y.max, x.max * y.min),
+                            java_max(x.min * y.min, x.max * y.max),
+                        )
+                    }
+                }
+            }
+        }
+        DensityNode::ConstantArgument(kind, input, argument) => {
+            let x = child(*input);
+            match kind {
+                Binary::Add => DensityBounds::new(x.min + argument, x.max + argument),
+                Binary::Mul if *argument >= 0.0 => {
+                    DensityBounds::new(x.min * argument, x.max * argument)
+                }
+                Binary::Mul => DensityBounds::new(x.max * argument, x.min * argument),
+                _ => unreachable!("constant optimization is add/mul only"),
+            }
+        }
+        DensityNode::Mapped(kind, input) => {
+            let before = child(*input);
+            let a = apply_mapped(*kind, before.min);
+            let b = apply_mapped(*kind, before.max);
+            if matches!(kind, Mapped::Abs | Mapped::Square) {
+                DensityBounds::new(java_max(0.0, before.min), java_max(a, b))
+            } else {
+                DensityBounds::new(a, b)
+            }
+        }
+        DensityNode::RangeChoice {
+            inside, outside, ..
+        } => {
+            let a = child(*inside);
+            let b = child(*outside);
+            DensityBounds::new(java_min(a.min, b.min), java_max(a.max, b.max))
+        }
+        DensityNode::Spline(spline) => {
+            let (min, max) = visited_spline_bounds(spline, visited);
+            DensityBounds::new(f64::from(min), f64::from(max))
+        }
+        // Clamp's declared limits and noise/rarity/gradient/BlendDensity bounds
+        // do not depend on the visited child metadata.
+        _ => graph.bounds(id),
+    }
+}
+
+/// CubicSpline.Multipoint.mapAll calls create again after visiting both the
+/// coordinate and nested values. Keep the original float operation order;
+/// custom spline coordinates containing Blender nodes need this remap too.
+fn visited_spline_bounds(spline: &Spline, visited: &[DensityBounds]) -> (f32, f32) {
+    let Spline::Multipoint {
+        coordinate, points, ..
+    } = spline
+    else {
+        return spline.bounds();
+    };
+    let values = points
+        .iter()
+        .map(|point| visited_spline_bounds(&point.value, visited))
+        .collect::<Vec<_>>();
+    let coordinate = visited[coordinate.0];
+    let cmin = coordinate.min as f32;
+    let cmax = coordinate.max as f32;
+    let mut min = f32::INFINITY;
+    let mut max = f32::NEG_INFINITY;
+    let first = &points[0];
+    let last = &points[points.len() - 1];
+    if cmin < first.location {
+        let (a, b) = values[0];
+        let a = extend_spline(cmin, first, a);
+        let b = extend_spline(cmin, first, b);
+        min = min32(min, min32(a, b));
+        max = max32(max, max32(a, b));
+    }
+    if cmax > last.location {
+        let (a, b) = values[values.len() - 1];
+        let a = extend_spline(cmax, last, a);
+        let b = extend_spline(cmax, last, b);
+        min = min32(min, min32(a, b));
+        max = max32(max, max32(a, b));
+    }
+    for &(a, b) in &values {
+        min = min32(min, a);
+        max = max32(max, b);
+    }
+    for (index, pair) in points.windows(2).enumerate() {
+        let a = &pair[0];
+        let b = &pair[1];
+        let width = b.location - a.location;
+        let (amin, amax) = values[index];
+        let (bmin, bmax) = values[index + 1];
+        let da = a.derivative;
+        let db = b.derivative;
+        if da == 0.0 && db == 0.0 {
+            continue;
+        }
+        let da = da * width;
+        let db = db * width;
+        let low = min32(amin, bmin);
+        let high = max32(amax, bmax);
+        let e1 = da - bmax + amin;
+        let e2 = da - bmin + amax;
+        let e3 = -db + bmin - amax;
+        let e4 = -db + bmax - amin;
+        min = min32(min, low + 0.25_f32 * min32(e1, e3));
+        max = max32(max, high + 0.25_f32 * max32(e2, e4));
+    }
+    (min, max)
+}
 fn visit_spline(spline: &Spline, visit: &mut impl FnMut(NodeId)) {
     match spline {
         Spline::Constant(_) => {}
@@ -1014,6 +1316,154 @@ mod tests {
             .collect()
     }
 
+    fn constructed_nonempty_blender() -> Arc<Blender> {
+        // This models the original map constructor, not Blender.of's empty
+        // region shortcut. Wrapper identity differs even with no old samples.
+        Blender::from_calculated_data(
+            std::iter::empty::<(i64, Arc<crate::worldgen::blending::BlendingData>)>(),
+            std::iter::empty::<(i64, Arc<crate::worldgen::blending::BlendingData>)>(),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn blender_wrapping_changes_bounds_and_provider_visits_without_mutating_raw_graph() {
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let alpha = graph
+            .parse(&serde_json::json!({"type":"minecraft:blend_alpha"}))
+            .unwrap();
+        let offset = graph
+            .parse(&serde_json::json!({"type":"minecraft:blend_offset"}))
+            .unwrap();
+        let minimum = graph
+            .parse(&serde_json::json!({
+                "type":"minecraft:min", "argument1":0.5,
+                "argument2":{"type":"minecraft:blend_alpha"}
+            }))
+            .unwrap();
+        let spline = graph
+            .parse(&serde_json::json!({
+                "type":"minecraft:spline", "spline":{
+                    "coordinate":{"type":"minecraft:blend_alpha"},
+                    "points":[{"location":0.5,"value":2.0,"derivative":1.0}]
+                }
+            }))
+            .unwrap();
+        let raw_spline = graph.bounds(spline);
+        assert_eq!(raw_spline, DensityBounds::new(2.0, 2.5));
+        let blender = constructed_nonempty_blender();
+        assert!(!blender.is_empty());
+        let mut chunk = ChunkDensity::new_with_blender(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+            Arc::clone(&blender),
+        )
+        .unwrap();
+        for id in [alpha, offset, minimum, spline] {
+            chunk.wrap(&graph, id).unwrap();
+        }
+        assert!(Arc::ptr_eq(chunk.blender(), &blender));
+        assert_eq!(
+            chunk.wrapped_bounds(alpha).unwrap(),
+            DensityBounds::new(0.0, 1.0)
+        );
+        assert_eq!(
+            chunk.wrapped_bounds(offset).unwrap(),
+            DensityBounds::new(f64::NEG_INFINITY, f64::INFINITY)
+        );
+        assert_eq!(
+            chunk.wrapped_bounds(minimum).unwrap(),
+            DensityBounds::new(0.0, 0.5)
+        );
+        assert_eq!(
+            chunk.wrapped_bounds(spline).unwrap(),
+            DensityBounds::new(1.5, 2.5)
+        );
+        // Arrays.fill on the left constant performs no visits. Each RHS visit
+        // is required by the visited alpha minimum 0, even though its actual
+        // value happens to be 1 in this source constructor's zero-map case.
+        assert_eq!(chunk.fill_column(&graph, minimum).unwrap(), [0.5; 3]);
+        assert_eq!(chunk.state.interpolation_counter, 3);
+        assert_eq!(graph.bounds(alpha), DensityBounds::constant(1.0));
+        assert_eq!(graph.bounds(offset), DensityBounds::constant(0.0));
+        assert_eq!(graph.bounds(spline), raw_spline);
+        assert_eq!(graph.eval(spline, DensityPoint::new(0, 0, 0)), 2.5);
+
+        let mut empty = ChunkDensity::new(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+        )
+        .unwrap();
+        empty.wrap(&graph, alpha).unwrap();
+        assert!(Arc::ptr_eq(empty.blender(), &Blender::empty()));
+        assert_eq!(empty.fill_column(&graph, alpha).unwrap(), [1.0; 3]);
+        assert_eq!(empty.state.interpolation_counter, 0);
+    }
+
+    #[test]
+    fn blender_prefill_and_shared_exact_block_fallback_survive_moves() {
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let alpha = graph
+            .parse(&serde_json::json!({"type":"minecraft:blend_alpha"}))
+            .unwrap();
+        let offset = graph
+            .parse(&serde_json::json!({"type":"minecraft:blend_offset"}))
+            .unwrap();
+        let mut chunk = ChunkDensity::new_with_blender(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            -16,
+            32,
+            4,
+            constructed_nonempty_blender(),
+        )
+        .unwrap();
+        chunk.wrap(&graph, alpha).unwrap();
+        chunk.wrap(&graph, offset).unwrap();
+        let sentinel = pack_xz(1_875_066, 1_875_066);
+        assert_eq!(chunk.last_blending_pos, sentinel);
+        assert_eq!(chunk.last_blending_output, (1.0, 0.0));
+        // The inclusive final quart row covers three additional block values;
+        // reading it does not warm the exact-block fallback cache.
+        assert_eq!(
+            chunk
+                .sample_external(&graph, alpha, DensityPoint::new(3, 99, 51))
+                .unwrap(),
+            1.0
+        );
+        assert_eq!(chunk.last_blending_pos, sentinel);
+        let outside = DensityPoint::new(4, -17, 52);
+        chunk.sample_external(&graph, alpha, outside).unwrap();
+        assert_eq!(chunk.last_blending_pos, pack_xz(4, 52));
+        let alpha_allocation = chunk.blend_alpha.as_ptr();
+        let offset_allocation = chunk.blend_offset.as_ptr();
+        let mut moved = chunk;
+        moved
+            .sample_external(&graph, offset, DensityPoint::new(4, 200, 52))
+            .unwrap();
+        assert_eq!(moved.last_blending_pos, pack_xz(4, 52));
+        assert_eq!(moved.blend_alpha.as_ptr(), alpha_allocation);
+        assert_eq!(moved.blend_offset.as_ptr(), offset_allocation);
+    }
+
     #[test]
     fn chunk_arithmetic_rewrite_preserves_original_scalar_and_fill_bits() {
         let fixture = rewrite_fixture();
@@ -1042,11 +1492,16 @@ mod tests {
                 vec![bounds.min.to_bits(), bounds.max.to_bits()],
                 observed_bits(&case["raw_bounds_bits"])
             );
-            // Empty-context holder erasure preserves these bounds exactly;
-            // MIN/MAX may retain the graph's original short-circuit metadata.
+            // These actual original empty-context holder rewrites preserve the
+            // recorded bounds; the visited metadata must keep the same bits.
             assert_eq!(case["raw_bounds_bits"], case["wrapped_bounds_bits"]);
             let mut chunk = rewrite_chunk();
             chunk.wrap(&graph, id).unwrap();
+            let visited = chunk.wrapped_bounds(id).unwrap();
+            assert_eq!(
+                vec![visited.min.to_bits(), visited.max.to_bits()],
+                observed_bits(&case["wrapped_bounds_bits"])
+            );
             let sampled = points
                 .iter()
                 .map(|point| chunk.sample_external(&graph, id, *point).unwrap().to_bits())
@@ -1096,6 +1551,47 @@ mod tests {
         chunk.wrap(&graph, direct_marker).unwrap();
         assert_eq!(chunk.interpolators.len(), 1);
         assert_eq!(
+            chunk.canonical[held_marker.0],
+            chunk.canonical[direct_marker.0]
+        );
+    }
+
+    #[test]
+    fn reconstructed_signed_zero_bounds_keep_distinct_marker_owners() {
+        // Ap2's factory and existing MulOrAdd.mapAll use different bound
+        // formulas. The source records include both bounds in equality even
+        // when their transformed inputs and coefficients are identical.
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let expression = serde_json::json!({
+            "type":"minecraft:mul", "argument1":-0.0,
+            "argument2":{
+                "type":"minecraft:y_clamped_gradient", "from_y":0,"to_y":16,
+                "from_value":-2.0,"to_value":1.0
+            }
+        });
+        let held = graph.parse(&expression).unwrap();
+        let constant = graph.parse(&expression["argument1"]).unwrap();
+        let input = graph.parse(&expression["argument2"]).unwrap();
+        let direct = graph.binary(Binary::Mul, constant, input);
+        let held_marker = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, held),
+            graph.bounds(held),
+        );
+        let direct_marker = graph.push(
+            DensityNode::Marker(MarkerKind::Interpolated, direct),
+            graph.bounds(direct),
+        );
+        let mut chunk = rewrite_chunk();
+        chunk.wrap(&graph, held_marker).unwrap();
+        chunk.wrap(&graph, direct_marker).unwrap();
+        let held_bounds = chunk.wrapped_bounds(held).unwrap();
+        let direct_bounds = chunk.wrapped_bounds(direct).unwrap();
+        assert_eq!(held_bounds.min.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(held_bounds.max.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(direct_bounds.min.to_bits(), 0.0_f64.to_bits());
+        assert_eq!(direct_bounds.max.to_bits(), (-0.0_f64).to_bits());
+        assert_eq!(chunk.interpolators.len(), 2);
+        assert_ne!(
             chunk.canonical[held_marker.0],
             chunk.canonical[direct_marker.0]
         );

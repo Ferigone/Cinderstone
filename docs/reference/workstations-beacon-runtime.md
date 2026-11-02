@@ -1,13 +1,18 @@
 # Beacon runtime reference ledger
 
-This stage adds borrowed-owner kernels in `beacon_block_entity.rs`,
+The earlier stage added kernels borrowing their owners in `beacon_block_entity.rs`,
 `beacon_effects.rs` and `beacon_data.rs`. It does not register a native beacon
 block entity, attach a ticker, apply effects in Main or complete beacon gameplay.
-The final unpublished composition base is
+Its recorded composition base was
 `26c4d2ec13b885e51025e105f1edeb0fe78f6309`; the three source files were preserved
 unchanged when root advanced the initial `fb3` preparation base.
 The existing [beacon menu ledger](workstations-beacon.md) remains the reference
 for the separate temporary payment, lock, cursor and menu synchronization owners.
+
+The staged tick/effect APIs below apply **only to an explicitly proven restricted
+staged domain**. They do not admit general canonical living-effect APIs with
+reentrant callbacks and committed failure prefixes. The separately certified
+production boundary is the [ordered/live contract](workstations-beacon-live-contract.md).
 
 ## Pinned primary evidence
 
@@ -129,7 +134,8 @@ and actual lookup, retaining Java wrapping. This is distinct from the
 serverbound SetBeacon packet's presence-bit/optional direct registry-ID codec.
 VALID_EFFECTS filtering is not a pyramid-level or primary/secondary tier check.
 
-`set_data` owns a standalone BE transaction. `set_data_in_stage` is for the
+`set_data` owns a standalone BE transaction within its separately proven staged
+domain. `set_data_in_stage` is for the
 existing menu's enclosing real transaction: do not nest publication between its
 primary, secondary, payment removal and later blockEntityChanged. These helpers
 do not add menu broadcasts, dirty notifications or another payment owner.
@@ -148,18 +154,24 @@ keys, matching storeEffect. Full save/updateTag/updatePacket, metadata and
 components remain outside: superclass → power/Levels helper → optional Name →
 Lock. No complete BE serializer or new Name/Lock implementation is claimed.
 
-## Mandatory owner publication and remaining integration
+## Restricted staged compatibility contract and remaining integration
 
-`BeaconTransactionHost::begin_stage/publish_stage` must stage the actual BE,
-world/registry/tag binding, living effects, criterion rewards, sound RNG and
-ordered outbox together. `require_actual_stage(action)` checks a detached,
-owner-bound action capability before public staged helpers observe or mutate
-anything; a caller Boolean/shallow clone is insufficient. Publication validates
-the same actual BE lifetime/version/context and adopts once after all fallible
-preparation. It must not leak callbacks or save/drain network output before the
-outer ownership interval completes. Independent constructor/factory entropy
-requires its real acquisition boundary; this trait does not promise global
-rollback or permit rewinding a process RNG. Observations do not authorize replay.
+`BeaconTransactionHost::begin_stage/publish_stage` remains a compatibility API,
+not a general production actor boundary. Its actual owner must prove that the
+admitted domain preserves retained identities, source callback/reentry behavior,
+failure prefixes, RNG and outbox semantics under staging. Controlled recorder
+fixtures are not that production proof. A stage certificate cannot authorize
+calling Team4's live actor APIs, cloning their state, then rolling back already
+executed mutations or callbacks.
+
+Only within that proven domain does `require_actual_stage(action)` certify a
+detached owner-bound action before staged helpers run, with one validated
+publication. A caller Boolean/shallow clone, escaping live callback or process-RNG
+rewind is insufficient. Independent constructor/factory entropy retains its real
+acquisition boundary. The existing data/payment/controller contracts are
+unchanged and require their own proof; a live tick capability does not admit
+those staged operations. General live tick/effect integration instead preserves
+its actual executed prefix as described in the linked live contract.
 
 Concrete missing bindings at this base include:
 
@@ -172,7 +184,7 @@ Concrete missing bindings at this base include:
 - A real construct-beacon criterion bridge. Generic empty-criteria admission
   does not itself implement this callback or certify unavailable rewards as empty.
 - Main beacon block-use/menu binding, World/BE tick call phase, registry/source
-  admission, atomic sound/effect/criterion publication and persistence hooks.
+  admission, ordered live sound/effect/criterion execution and persistence hooks.
   The existing bounded native player profile has no active-effect producer;
   beacon buffs cannot be enabled by silently retaining its no-effects certificate.
 
@@ -193,7 +205,8 @@ This ledger's author ran no build, server or gameplay oracle.
 
 After the preserved base advance, root corrected two fixture-only RNG method
 calls to the real Rust `next_i64` API; functional implementation was unchanged.
-The following final source snapshots include that fixture correction:
+The following historical staged-source snapshots include that fixture correction;
+they are not hashes or validation of the later live API:
 
 | Source | SHA256 |
 | --- | --- |

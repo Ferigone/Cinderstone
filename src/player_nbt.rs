@@ -6,6 +6,7 @@ use crate::{
     inventory::{ItemStack, PlayerInventory}, item_nbt,
     metadata::{MetadataValue, PlayerEntityData}, nbt::{NbtRoot, Tag},
     player_data::{AbilitiesData, ExperienceData, FoodData, PlayerData, PlayerLifecycle},
+    player_enchantment_seed::{read_xp_seed_value, PlayerEnchantmentSeed},
     player_stats::{stat_key, PlayerStats},
 };
 use anyhow::{anyhow, bail, ensure, Context, Result};
@@ -96,6 +97,9 @@ impl JavaPlayerSource{
             exhaustion:float_field(tag,"foodExhaustionLevel",0.)?,tick_timer:int_field(tag,"foodTickTimer",0)?,
         };
         lifecycle.experience=ExperienceData{level:int_field(tag,"XpLevel",0)?,total:int_field(tag,"XpTotal",0)?,progress:float_field(tag,"XpP",0.)?};
+        // Passive projection of the genuine Java saved-data getter. Loading
+        // the live player and its one conditional RNG draw belongs to Main.
+        lifecycle.enchantment_seed=Some(PlayerEnchantmentSeed::from_saved_value(read_xp_seed_value(tag)?));
         lifecycle.remaining_fire_ticks=int_field(tag,"Fire",-1)? as i16 as i32;
         lifecycle.fall_distance=float_field(tag,"FallDistance",0.)?;
         lifecycle.death_time=int_field(tag,"DeathTime",0)? as i16 as i32;
@@ -136,8 +140,14 @@ impl JavaPlayerSource{
     }
     pub fn export(&self,data:&PlayerData)->Result<Vec<u8>>{
         validate_export(data)?;
-        if let Ok(original)=self.import(data.uuid,data.lifecycle.java_stats_json.as_deref()){
-            if original.to_bytes()?==data.to_bytes()?{return Ok(self.original_gzip.clone());}
+        // Source addAdditionalSaveData writes an Int even if an old source
+        // getter produced the same value from a missing or other numeric tag.
+        let seed_matches=data.lifecycle.enchantment_seed.as_ref().map_or(true,|seed|
+            matches!(self.root.tag.get("XpSeed"),Some(Tag::Int(value)) if *value==seed.get()));
+        if seed_matches{
+            if let Ok(original)=self.import(data.uuid,data.lifecycle.java_stats_json.as_deref()){
+                if original.to_bytes()?==data.to_bytes()?{return Ok(self.original_gzip.clone());}
+            }
         }
         let mut root=self.root.clone();write_player(&mut root.tag,data)?;gzip_root(&root)
     }
@@ -188,6 +198,9 @@ fn write_player(tag:&mut Tag,data:&PlayerData)->Result<()>{
     tag.insert("DeathTime",Tag::Short(l.death_time as i16))?;
     tag.insert("SleepTimer",Tag::Short(l.sleep_timer as i16))?;
     for (key,value) in [("foodLevel",l.food.level),("foodTickTimer",l.food.tick_timer),("XpLevel",l.experience.level),("XpTotal",l.experience.total)]{tag.insert(key,Tag::Int(value))?;}
+    // A known native field, including zero, supersedes preserved source NBT.
+    // Unknown legacy state does not manufacture or overwrite a Java seed.
+    if let Some(seed)=&l.enchantment_seed{seed.add_additional_save_data(tag)?;}
     for (key,value) in [("foodSaturationLevel",l.food.saturation),("foodExhaustionLevel",l.food.exhaustion),("XpP",l.experience.progress)]{tag.insert(key,Tag::Float(value))?;}
     let mut abilities=tag.get("abilities").cloned().unwrap_or_else(empty);compound(&abilities)?;
     for (key,value) in [("invulnerable",l.abilities.invulnerable),("flying",l.abilities.flying),("mayfly",l.abilities.may_fly),("instabuild",l.abilities.instant_build),("mayBuild",l.abilities.may_build)]{abilities.insert(key,Tag::Byte(i8::from(value)))?;}

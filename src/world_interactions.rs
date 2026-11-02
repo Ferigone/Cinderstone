@@ -384,6 +384,17 @@ impl<'a, W: InteractionWorld> Planner<'a, W> {
             state,
             flags,
         });
+        // LevelChunk.setBlockState calls the new state's onPlace after an
+        // actual changed write, including a same-Block property change. It
+        // precedes Level.setBlock's neighbour/shape propagation. Preserve that
+        // phase rather than appending a copied Anvil placement tick at the end.
+        if let Some(delay) = placement::anvil_falling_delay(state)? {
+            self.plan.events.push(InteractionEvent::ScheduleBlockTick(PlannedBlockTick {
+                position: p,
+                state,
+                delay,
+            }));
+        }
         if flags & 1 != 0 {
             self.plan.events.push(InteractionEvent::NeighbourNotice {
                 position: p,
@@ -450,6 +461,18 @@ impl<'a, W: InteractionWorld> Planner<'a, W> {
         next: u32,
     ) -> Result<u32> {
         let b = facts(state)?;
+        if let Some(delay) = placement::anvil_falling_delay(state)? {
+            // FallingBlock.updateShape schedules in EVERY direction, even
+            // when the inherited superclass returns this unchanged state.
+            // A duplicate attempt still consumes the actual shared sub-tick
+            // count when Main later executes this ordered obligation.
+            self.plan.events.push(InteractionEvent::ScheduleBlockTick(PlannedBlockTick {
+                position: p,
+                state,
+                delay,
+            }));
+            return Ok(state);
+        }
         let class = b.placement_class.as_str();
         if matches!(b.survival_class.as_str(), "diy" | "dnk") {
             return crate::fire_simulation::shape_update(state, p, self);
@@ -591,12 +614,15 @@ pub fn plan_place(
             .into_iter()
             .map(InteractionEvent::CreateBlockEntity),
     );
-    p.plan.events.extend(
-        selected
-            .scheduled_ticks
-            .into_iter()
-            .map(InteractionEvent::ScheduleBlockTick),
-    );
+    for tick in selected.scheduled_ticks {
+        if let Some(delay) = placement::anvil_falling_delay(tick.state)? {
+            ensure!(tick.delay == delay, "Anvil placement callback delay differs");
+            // Planner.write already emitted this actual onPlace obligation at
+            // the source write phase. Do not replay a second schedule attempt.
+        } else {
+            p.plan.events.push(InteractionEvent::ScheduleBlockTick(tick));
+        }
+    }
     p.plan.events.extend(
         selected
             .extra_neighbour_notices

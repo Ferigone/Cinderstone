@@ -130,6 +130,16 @@ impl MainItemGameplay {
         self.stats.entry(uuid).or_default().mark_all_dirty();
         Ok(())
     }
+    /// Pure admission of the actual native callback/statistic owner. This
+    /// neither registers another player nor constructs default counters.
+    pub(super) fn validate_active_player(&self, id: i32, uuid: Uuid) -> Result<()> {
+        self.require_supported_floor()?;
+        ensure!(self.active_players.get(&id) == Some(&uuid),
+            "gameplay active player identity changed");
+        ensure!(self.known_player_uuids.contains(&uuid) && self.stats.contains_key(&uuid),
+            "gameplay active player statistics are not registered");
+        Ok(())
+    }
     pub fn remove_player(&mut self, id: i32) {
         if let Some(uuid) = self.active_players.remove(&id) {
             // Original stopListening removes this PlayerAdvancements identity.
@@ -534,6 +544,21 @@ impl MainGameplayFrame<'_> {
             self.gameplay.active_players.get(&player.entity_id) == Some(&player.uuid),
             "gameplay picker not registered"
         );
+        Ok(())
+    }
+    /// Preflight the same actual callback owner and historical inventory used
+    /// by the subsequent source listener replay. Dropping the prepared token
+    /// executes no observation/statistic mutation or packet publication.
+    pub(super) fn preflight_inventory_slot_changes(
+        &mut self,
+        player: PickupPlayer,
+        inventory: &PlayerInventory,
+        changes: &[LocalSlotChange],
+    ) -> Result<()> {
+        self.validate_player(player)?;
+        self.gameplay.validate_active_player(player.entity_id, player.uuid)?;
+        let stats = self.gameplay.snapshot_player_stats(player.uuid)?;
+        drop(self.gameplay.prepare_menu_commit(player.uuid, inventory, changes.to_vec(), stats)?);
         Ok(())
     }
     fn post(&mut self, state: &EntityPhysicalState, event: ItemGameEvent) -> Result<()> {

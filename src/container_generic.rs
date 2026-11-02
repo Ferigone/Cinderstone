@@ -130,6 +130,23 @@ impl GenericContainerMenu {
         s.extend((9..45).map(|i| canonical(inventory.slot(i).expect("canonical inventory slot"))));
         Ok(s)
     }
+    pub fn carried(&self) -> &ItemStack { &self.carried }
+    /// Pure admission of every actual value used by the next broadcast,
+    /// including hidden local/remote history. No listener or baseline advances.
+    pub fn preflight_broadcast_context(
+        &self,
+        top: &[ItemStack],
+        inventory: &PlayerInventory,
+        mut require_stack: impl FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        let slots = self.slots(top, inventory)?;
+        for stack in slots.iter().chain(&self.last).chain(&self.remote)
+            .chain(std::iter::once(&self.carried))
+            .chain(std::iter::once(&self.remote_carried)) {
+            require_stack(stack)?;
+        }
+        Ok(())
+    }
     pub fn inventory_snapshot(&self, inventory: &PlayerInventory) -> PlayerInventory {
         let mut i = inventory.clone();
         i.set_carried_authoritative(self.carried.clone());
@@ -197,6 +214,55 @@ impl GenericContainerMenu {
             });
         }
         Ok(out)
+    }
+    /// Actual AbstractContainerMenu local-slot listener phase, then that
+    /// slot's remote update. Player backing is the canonical InventoryMenu
+    /// coordinate; top-container slots have no player-inventory backing.
+    /// The callback must not reenter/mutate this menu or the borrowed inventory.
+    pub fn broadcast_changes_with_listener(
+        &mut self,
+        top: &[ItemStack],
+        inventory: &PlayerInventory,
+        mut listener: impl FnMut(usize, Option<usize>, &ItemStack) -> Result<()>,
+    ) -> Result<Vec<Packet>> {
+        let slots = self.slots(top, inventory)?;
+        let mut local = Vec::with_capacity(slots.len());
+        let mut remote = Vec::with_capacity(slots.len());
+        // Resolve fallible comparisons/encoding before the first real callback.
+        // No baseline is installed and no listener is invented by this pass.
+        for (index, stack) in slots.iter().enumerate() {
+            local.push(!matches(stack, &self.last[index])?);
+            remote.push(if !matches(stack, &self.remote[index])? {
+                Some(stack.encode_canonical()?)
+            } else { None });
+        }
+        let carried = if !matches(&self.carried, &self.remote_carried)? {
+            Some(self.carried.encode_canonical()?)
+        } else { None };
+        let mut packets = Vec::new();
+        for (index, stack) in slots.iter().enumerate() {
+            if local[index] {
+                self.last[index] = canonical(stack);
+                let player_slot = if index >= top.len() { Some(9 + index - top.len()) } else { None };
+                listener(index, player_slot, stack)?;
+            }
+            if let Some(wire) = &remote[index] {
+                self.remote[index] = canonical(stack);
+                let state = self.next_state();
+                let mut fields = Writer::new();
+                fields.u8(self.window_id).varint(state).i16(index as i16).raw(wire);
+                packets.push(Packet { id: 0x15, payload: fields.into_inner() });
+            }
+        }
+        self.local_initialized = true;
+        if let Some(wire) = carried {
+            self.remote_carried = canonical(&self.carried);
+            let state = self.next_state();
+            let mut fields = Writer::new();
+            fields.i8(-1).varint(state).i16(-1).raw(&wire);
+            packets.push(Packet { id: 0x15, payload: fields.into_inner() });
+        }
+        Ok(packets)
     }
     fn reset_drag(&mut self) {
         self.drag_status = 0;
