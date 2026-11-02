@@ -1,7 +1,7 @@
 # Integration coordinator status
 
 Instance: integration-root-20261101
-State: implementing; Stonecutter/Smithing hosted, Loom source publication and next native owners
+State: scaffold-counter source/runtime ready for publication; bounded native powder122 merged and hosted
 Integration queue: https://github.com/Ferigone/Cinderstone/issues/1
 Team assignments: world-generation #2; workstations #3; entities-survival #4.
 
@@ -15,33 +15,53 @@ without an actual issue or Git branch/status check-in.
 
 ## Current stage
 
-Stonecutter Main PR72 merged as `dddc0e7807bf8caa91d5b57232e0535e6519f5ed`;
-exact head/tree `b19e160`/`adf8b392` matched local `5553015`. Full Main/actual CI
-passed. Local positive and FOOD current-menu recovery flows passed; queued
-button handler observed, queued click coverage explicitly unresolved.
-Railway `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS/native offline
-listen `2026-11-01T22:05:31.290410832Z`, one replica, volume, no pending work.
-Fresh public TCP status still fails DNS.
+Native powder [PR122](https://github.com/Ferigone/Cinderstone/pull/122) merged
+as `d95c5b0870d47a6a0b599ef1de29f6e154e77357`. Exact head `f15059d4`,
+tree `5889628a`, passed both actual required CI41394705272 jobs/every step and
+coordinator COMMENT5732482823. All23 own blob IDs match the isolated product
+and factual documentation delta; composed master preserves unrelated source.
+The real dry powder→fall→airborne save→hidden restart→same-actor resume→WATER
+hardening flow is [published](../../reference/concrete-powder-runtime.md), with
+original overloads and explicit unsupported cases. Wet/adjacent-fluid player
+placement and mixed cascades remain gated.
 
-Smithing Main PR78 merged as `005e759`, exact published tree `5840f6ec`.
-Build, actual transform/1044/close/disconnect/native-restart flow and both CI
-jobs passed. Railway `138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS/native
-offline listen `2026-11-01T22:24:46.700522705Z`, one replica, retained volume,
-no pending work. No graphical/public gameplay verification follows.
+Hosted descendant `eaf1db4f` (independent Beacon123 atop122) reached SUCCESS in
+Railway release `8613fd93-0bf1-4fb4-a17e-3769aa436c02`, native offline1.21/767
+listening `2026-11-02T05:43:18.670616473Z`. The observed environment had one
+running/zero crashed replica, retained original `/data` volume and no pending
+work. Direct d95 rollout was superseded; it is not claimed independently live.
+Fresh public STATUS at05:44:09 failed DNS; public/graphical PLAY is unverified.
 
-Loom Main source `17f1fa6`, tree `6e1931f9`, binary `8af216dc` passed full Main
-build and actual component49/pattern/1429-sound/close/disconnect/native-restart
-flow at `2026-11-01T22:27:32.519206+00:00`. Source publication/CI/self-review is
-current; no hosted Loom claim. Scope1 stays56/100 code and51/100 Main.
+Pressure113, fluid-data correction114, native owner115 and Docker context118
+are merged. Docker118 preserves the actual compile-time provenance Java SOURCE
+and current generator modules, with a real Docker context CI gate. Historical
+failed builds and the earlier failed stale-path gate remain recorded. No JAR,
+source stub, volume replacement, licensing or world edit was used.
 
-Root plus six actual subordinate slots handle disjoint active source tasks:
-isolated Grindstone mixed entity/XP/Host and compiler review; Loom configured
-registry/provider/callback/lifetime/primary code and original-source/runtime
-prerequisites. No coding after a stopped session is implied. The user's
-standing authorization permits independent teams to self-review/merge owned
-source; root retains central shared seams, checklist/journal and deployment.
-Team3's explicit new MainAnvil namespace assignment is
-[issue3 comment6564589182](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6564589182).
+Next narrow `scaffold-counter` stage is claimed in
+[issue4 comment6570106207](https://github.com/Ferigone/Cinderstone/issues/4#issuecomment-6570106207):
+`src/main.rs`/`src/main_block_ticks.rs` BLOCK/FLUID shared-counter restore admission and
+`src/bucket_interactions.rs` exact scaffolding interaction-grid owner.
+Root plus six roles were actually resumed: two disjoint source authors and
+four source/admission/runtime reviewers. Source baseline4853e4d has exact
+current-mastereaf1 owned Main/bucket blobs3bb1634d/883b2ffb; publication must
+recheck every changed path against fresh master and preserve unrelated work.
+The follow-up adds a pure saved BLOCK requirement before restoration/bind/RNG,
+with later source/actual-owner guards retained, plus the exact scaffold
+interaction grid. Productc2c1b77/tree03e44471 passed all-target5.63s/full15.46s
+and the [finite actual observation](../../validation/scaffold-counter-flow.json):
+genuine restore shared counter4→4; fluid-only malformed copy rejected by exact
+new BLOCK guard before listening; constant interaction-grid/clip probe only.
+Original inputs stayed unchanged. Firste2274b9 compiled but was superseded by
+review for pre-entropy ordering and had no runtime claim. Current source-global
+static-collision/bucket-OUTLINE and player-water guards remain. Publication/
+exact-head CI/merge/hosted evidence is tracked on the issue/PR; these observations
+are explicitly bound to the isolated product, not all unrelated newer modules.
+
+The fixed scope1 checklist remains56/100 code and51/100 Main. These are
+checklist indicators, not functional compatibility or effort percentages.
+The persistent journal32 records this verified checkpoint. No automatic
+cross-chat wakeup or coding after a stopped turn is implied.
 
 ## Earlier published delivery
 
@@ -127,12 +147,17 @@ owners and actual blockers for the entities/survival team.
 
 ## Next handoff
 
-Draft PR5/workstations and PR6/worldgen, published damage/effects branches and
-actual issue2–4 check-ins are observed. Older branch status statements about
-publication failure are superseded by their later issue comments. The next
-central candidate is bounded stonecutter Main integration, followed separately
-by smithing, after the actual recipe order/features/callback contract is pinned.
-Worldgen still needs genuine ProtoChunk/BIOMES/staged readiness and owned job
-lifetime contracts; damage/effects still need canonical actor/timer/lethal owners.
-These are pending integration requirements, not completed or active Main work.
+The exact next player-water contract is a genuine one-use
+`PlayerPowderOperation`/prepared source receipt and synchronous
+write→onPlace→publication→WATER neighbor/shape→placement-tail execution,
+retaining actual flags11/depth512 and shared queues/counter/RNG. `used_powder`
+alone cannot authorize it. Wet-selected concrete has no Falling Schedule2;
+dry powder over DOWN WATER must schedule BLOCK first. Existing guards remain
+until the actual owner is implemented. No projected Level, fake source-water
+singleton, counter reset or deferred-prefix replay is acceptable.
+
+Independent worldgen and retained Beacon/Bat source advances are observed in
+issues2–4. Actual generator job/ProtoChunk/status binding, Beacon native arena/
+menu/packet/Level binding and full retained actor Main admission/ticking remain
+central contracts. They are not inferred from library modules or team prompts.
 No polling, cross-chat wakeup or coding continues automatically after a turn.

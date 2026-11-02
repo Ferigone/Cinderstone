@@ -2779,6 +2779,7 @@ async fn main() -> Result<()> {
     let mut initial_weather = WeatherState::default();
     let mut initial_fluid_runtime = main_fluid_simulation::MainFluidRuntime::default();
     let mut initial_fluid_random = None;
+    let mut had_fluid_checkpoint = false;
     let mut fluid_checkpoint_clock = None;
     let mut initial_fluid_shapes = None;
     let mut initial_fire_runtime = None;
@@ -2796,6 +2797,12 @@ async fn main() -> Result<()> {
         initial_world_file_bytes = Some(saved_bytes);
         if saved.format != "mc121-flat-diffs-v1" || saved.minecraft != "1.21" {
             bail!("unsupported saved fixture world format");
+        }
+        // Inspect actual saved provenance before restoring blocks/BEs or
+        // binding/listening and creating the cold Level/Math RNG owners.
+        if saved.block_ticks.as_ref().is_some_and(main_block_ticks::SavedBlockRuntime::requires_shared_counter) {
+            ensure!(saved.fluid_ticks.is_some() && saved.clock.is_some(),
+                "saved BLOCK use or pending/stale ticks require a paired clock/FLUID shared-counter checkpoint before world restoration");
         }
         fixture_world.apply_changes(&saved.changes)?;
         initial_clock = saved.clock.unwrap_or_default();
@@ -2818,7 +2825,7 @@ async fn main() -> Result<()> {
             .transpose()
             .context("restoring actual singleton fluid-shape history")?
             .unwrap_or_else(mc121_rust::fluid_physics::FluidShapeCache::unknown);
-        let had_fluid_checkpoint = saved.fluid_ticks.is_some();
+        had_fluid_checkpoint = saved.fluid_ticks.is_some();
         if let Some(checkpoint) = saved.fluid_ticks {
             ensure!(saved.clock.is_some(), "native fluid checkpoint has no matching saved world clock");
             if first_fluid.is_some() {
@@ -2920,6 +2927,10 @@ async fn main() -> Result<()> {
                     "native source history requires its saved fire queue, including stale scheduled ticks");
                 ensure!(!restored.source.requires_block_checkpoint() || had_block_checkpoint,
                     "native source history requires its saved global BLOCK scheduler");
+                // BLOCK shares the FLUID checkpoint's level sub-tick counter,
+                // including historically used queues that are now empty.
+                ensure!(!restored.source.requires_block_checkpoint() || had_fluid_checkpoint,
+                    "native BLOCK source history requires its paired clock/FLUID shared-counter checkpoint");
                 ensure!(!restored.source.requires_fluid_checkpoint() || initial_fluid_random.is_some(),
                     "native source history requires its saved fluid queue, including stale scheduled ticks");
                 if restored.source.requires_fluid_checkpoint() {
@@ -3068,6 +3079,13 @@ async fn main() -> Result<()> {
         players.block_runtime=main_block_ticks::MainBlockRuntime::from_checkpoint(saved,supported_native_source)?;
     }
     players.block_runtime.adopt_legacy_fire(&mut players.fire_runtime,initial_clock.game_time)?;
+    // Check the actual final owner too: this covers queued/stale records and
+    // legacy migration without an entity source, never a queue-derived counter.
+    // A present FLUID checkpoint already passed its saved-clock validation.
+    if players.block_runtime.was_used() || players.block_runtime.pending_count() != 0 {
+        ensure!(had_fluid_checkpoint,
+            "used or pending native BLOCK scheduler requires its paired clock/FLUID shared-counter checkpoint");
+    }
     if supported_native_source {
         let falling_owner = main_falling_block_damage::NativeFallingDamageTypes::capture(&fixtures)?;
         let powder_owner = main_falling_block_powder::NativeConcretePowderOwner::capture(&fixtures)?;

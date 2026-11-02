@@ -1,0 +1,94 @@
+{
+  "ok": true,
+  "source_commit": "c2c1b77cf3ee6edd29f3c4d12d2483c4b4dfac8b",
+  "source_tree": "03e44471ba4620cb6d9e5d48f964f4285f9659c6",
+  "started_at": "2026-11-02T06:05:36.456659+00:00",
+  "checks": {
+    "genuine_paired_native_restore": {
+      "ok": true,
+      "input_exact_byte_copy": true,
+      "sticky_block_usage": true,
+      "pending_block_queue_empty": true,
+      "shared_counter_before": 4,
+      "shared_counter_after": 4,
+      "status": {
+        "version": {
+          "name": "1.21",
+          "protocol": 767
+        },
+        "online": 0,
+        "ping_echo": true
+      },
+      "normal_sigint_exit_code": 0,
+      "play_sessions_created": 0
+    },
+    "explicit_malformed_missing_fluid_rejected_by_block_guard": {
+      "ok": true,
+      "purpose": "DELIBERATELY MALFORMED NEGATIVE INPUT; never a genuine checkpoint",
+      "mode": "fluid-only",
+      "omitted_world_fields": [
+        "fluid_ticks"
+      ],
+      "omitted_files": [],
+      "integrity_values_repaired": false,
+      "scene_values_or_block_history_modified": false,
+      "sticky_block_usage_retained": true,
+      "input_world_sha256": "ce1c5dcf0d74b92913adb314964e86fa1b52dfdbb2a5a47978694ec9665ab943",
+      "malformed_world_sha256": "32c249a35f45f4a111b559c26a7c25f501bda57331e8555ca6618306b005ce31",
+      "exit_code": 1,
+      "actual_expected_diagnostic": "saved BLOCK use or pending/stale ticks require a paired clock/FLUID shared-counter checkpoint before world restoration",
+      "listening_observed": false,
+      "fire_or_world_integrity_rejection_used_as_evidence": false,
+      "explicit_offline_loopback_local_key_cli": true,
+      "local_key_task_may_be_unreached_due_to_early_rejection": true
+    },
+    "exported_scaffold_interaction_provider": {
+      "ok": true,
+      "scope": "exported scaffolding interaction provider and voxel clip only; no Level, bucket gameplay or high-speed falling claim",
+      "registry_id": 772,
+      "minimum_state": 18372,
+      "maximum_state": 18403,
+      "canonical_full_grid_for_entire_certified_domain": true,
+      "full_grid_clip_for_entire_domain": true
+    }
+  },
+  "scope": "One genuine valid paired-counter native restore, one explicitly malformed negative copy, and exported scaffolding interaction-provider probe only; no PLAY/gameplay campaign.",
+  "runner_sha256": "a05ae4a5350c38a4944430bba14eea5e677084823148fa0dbf002a6610ac4769",
+  "provider_source_sha256": "dee51f60fe63ede403ec73550e320eba2124491911baa4575796302783c81d22",
+  "immutable_input": {
+    "world_sha256": "ce1c5dcf0d74b92913adb314964e86fa1b52dfdbb2a5a47978694ec9665ab943",
+    "native_checkpoint_sha256": "e193d65ed0d5e72d48839af45eb45c260387785184c30b4f7f13e7e2682f8fc9",
+    "tree_sha256": "515acacf62765286d6ba4ae5d5cad587274adb01493ee63b940b75889c481a22"
+  },
+  "binary_sha256": "4f8b5af1d882b6a9155dfc91b93652a6ddedf6b4d96e7c2390482d108d37d855",
+  "local_public_service_key_source": {
+    "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+    "server_sources": [
+      {
+        "stage": "valid-restore",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      }
+    ],
+    "empty_trust_set_only": true,
+    "signed_certificate_validation_claim": false
+  },
+  "provider_probe_sha256": "4e95d68c3c8bc3fbf0e126724095ae0c578240812696ec9dd517f7ce70bc1f30",
+  "original_inputs_unchanged": true,
+  "completed_at": "2026-11-02T06:05:39.509324+00:00"
+}

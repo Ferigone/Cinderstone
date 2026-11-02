@@ -3,6 +3,14 @@ use super::*;
 use mc121_rust::{block_ticks::{self,BlockTickScheduler},tick::{SavedTick,TickPriority},placement::PlannedBlockTick};
 #[derive(Clone,Serialize,Deserialize)]
 pub(super) struct SavedBlockRuntime { chunks:Vec<((i32,i32),Vec<SavedTick<u32>>)>, stopped:Option<String>, was_used:bool }
+impl SavedBlockRuntime {
+    /// Pure saved provenance: sticky use survives drained queues, and every
+    /// queued record counts even if stale or paired with an older false flag.
+    /// This neither constructs a live owner nor infers the counter's value.
+    pub(super) fn requires_shared_counter(&self) -> bool {
+        self.was_used || self.chunks.iter().any(|(_, ticks)| !ticks.is_empty())
+    }
+}
 pub(super) struct MainBlockRuntime {
     pub(super) queue:BlockTickScheduler,
     loaded:BTreeSet<(i32,i32)>, saved:BTreeMap<(i32,i32),Vec<SavedTick<u32>>>,
