@@ -18,3 +18,5 @@ pub mod attribute_persistence;
 pub mod tick;
 pub mod callbacks;
 pub mod refresh;
+pub mod definitions;
+pub mod supplier;
