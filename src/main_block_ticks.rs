@@ -55,6 +55,7 @@ impl Server{
    let done=(||{if main_fire_simulation::MainFireRuntime::supports_scheduled_state(state){let fire=players.tick_fire_block(&mut world,p,now,border,&self.entity_events)?;report.fire.executed+=fire.executed;report.fire.stale+=fire.stale;report.fire.changed_blocks+=fire.changed_blocks;Ok(())}
    else if players.block_runtime.owns_falling_tick(state,2)?{self.tick_native_falling_block_callback_locked(&mut world,&mut players,p,state,now,border)}
    else if mc121_rust::native_block_entities::container_kind(state).is_some(){self.tick_native_container_block_locked(&mut world,&mut players,p,state,now,border)}
+   else if main_falling_block_redstone::pressure_plate_profile(state)?.is_some(){self.tick_native_pressure_plate_locked(&mut world,&mut players,p,now,border)}
    else{players.tick_redstone_block(&mut world,p,now,border,&self.entity_events)}})();
    std::mem::swap(queue,&mut players.block_runtime.queue);done
   });players.block_runtime.queue=queue;

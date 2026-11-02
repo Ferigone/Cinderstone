@@ -52,6 +52,7 @@ pub(super) struct ActualFallingBlockEditServices<'a> {
     pub(super) source: &'a mut Option<NativeEntitySource>,
     pub(super) block_runtime: &'a mut main_block_ticks::MainBlockRuntime,
     pub(super) fluid_runtime: &'a mut main_fluid_simulation::MainFluidRuntime,
+    pub(super) redstone_runtime: &'a mut main_redstone::MainRedstoneRuntime,
     pub(super) random_ticks: &'a mut main_random_block_ticks::MainRandomBlockTicks,
     pub(super) world_revision: &'a mut u64,
     pub(super) context: &'a WorldContext,
@@ -63,6 +64,9 @@ pub(super) struct ActualFallingBlockEditServices<'a> {
     /// captured before borrowing this actor's retained Box. Drop admission
     /// requires it; absence is not a fabricated empty entity population.
     pub(super) external_entity_uuids: Option<&'a [(i32,[u8;16])]>,
+    /// Actual same-lock external query facts; current source actor is always
+    /// resolved from its genuine physical reference by the pressure host.
+    pub(super) external_trigger_bodies: Option<&'a [main_redstone::NativeTriggerBody]>,
     /// Actual current-FULL query certificate obtained by the entity dispatch.
     /// Spawn-only block callbacks have no movement region and retain None.
     pub(super) query_region: Option<main_chunk_runtime::CurrentChunkQueryRegion>,
@@ -263,16 +267,17 @@ impl NativeAnvilScheduledHost<'_> {
     }
     fn services(&mut self) -> ActualFallingBlockEditServices<'_> {
         let LivePlayers { item_runtime,gameplay,registry,player_motion_runtime,chunk_runtime,
-            world_interactions,entity_source,block_runtime,fluid_runtime,random_block_ticks,
+            world_interactions,entity_source,block_runtime,fluid_runtime,redstone_runtime,random_block_ticks,
             world_revision,world_context,rain_context,.. } = &mut *self.players;
         ActualFallingBlockEditServices {
             world:self.world,items:item_runtime,gameplay,registry,player_motion:player_motion_runtime,
             chunks:chunk_runtime,interactions:world_interactions,source:entity_source,
-            block_runtime,fluid_runtime,
+            block_runtime,fluid_runtime,redstone_runtime,
             random_ticks:random_block_ticks,world_revision,context:world_context,
             rain:rain_context.as_mut(),changes:&self.server.changes,
             events:&self.server.entity_events,entities:&self.server.entities,
             external_entity_uuids:None,
+            external_trigger_bodies:None,
             query_region:None,
             now:self.now,border:self.border,
         }

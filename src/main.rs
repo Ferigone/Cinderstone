@@ -101,6 +101,8 @@ mod main_falling_block_runtime;
 mod main_falling_block_persistence;
 mod main_falling_block_spawn;
 mod main_falling_block_physics;
+mod main_falling_block_redstone;
+mod main_pressure_plate_entities;
 mod main_falling_block_damage;
 mod main_falling_block_dispatch;
 mod main_block_ticks;
@@ -1604,7 +1606,7 @@ impl Server {
             .players
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
-        players.simulate_native_entities_with_player_menus(&mut world, game_time, border, &self.entity_events,
+        players.simulate_native_entities_with_player_menus(&mut world, game_time, border, &self.entity_events, Some(&self.changes),
             |players, world, id| {
                 self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;

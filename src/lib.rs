@@ -131,6 +131,8 @@ pub mod connection_settings;
 pub mod connection_transport;
 pub mod worldgen;
 pub mod falling_block;
+pub mod block_entity;
+pub mod enchanting_block_entity;
 pub mod loot;
 pub mod components;
 pub mod saved_data;

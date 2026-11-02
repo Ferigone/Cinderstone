@@ -1,4 +1,5 @@
 //! Real XP-orb owner using the shared native entity index and inherited physics.
+use super::main_pressure_plate_entities::MainPressurePlateEntities;
 use super::*;
 use mc121_rust::{
     entity::{EntityMotionTracker, MotionTrackingOptions},
@@ -497,37 +498,44 @@ fn mending_id() -> Result<i32> {
 
 struct OrbServices<'a> {
     items: &'a mut RuntimeEntities,
-    gameplay: &'a mut MainItemGameplay,
-    registry: &'a EntityRegistry,
-    manager: &'a mc121_rust::runtime_chunk_manager::RuntimeChunkManager,
+    hooks: MainPressurePlateEntities<'a>,
     handle: EntityHandle,
-    events: &'a broadcast::Sender<PlayerEvent>,
 }
 impl RuntimeItemHost for OrbServices<'_> {
+    fn pressure_plate_inside(&mut self, world: &mut WorldBackend,
+        state: &mut EntityPhysicalState, position: (i32,i32,i32), block_state: u32,
+    ) -> Result<()> {
+        self.hooks.pressure_plate_inside(world, state, self.handle,
+            EntityKind::ExperienceOrb, position, block_state, self.items)
+    }
+    fn fluid_shape(&mut self, world: &mut WorldBackend, position: (i32,i32,i32),
+        fluid: mc121_rust::fluid_physics::FluidState,
+    ) -> Result<geometry::VoxelShape> { self.hooks.fluid_shape(world, position, fluid) }
+    fn rain_exposure(&mut self, world: &mut WorldBackend, state: &EntityPhysicalState) -> Result<bool> {
+        self.hooks.rain_exposure(world, state)
+    }
     fn position_changed(&mut self, state: &EntityPhysicalState) -> Result<()> {
         if !state.removed { self.items.move_experience_orb(self.handle, state.position_vec())?; }
         Ok(())
     }
     fn profile(&mut self, event: ProfileEvent) {
-        let mut frame = self.gameplay.frame(self.registry, self.manager, true);
-        RuntimeGameplayHooks::profile(&mut frame, event);
+        RuntimeGameplayHooks::profile(&mut self.hooks, event);
     }
     fn effect(&mut self, state: &EntityPhysicalState, effect: RuntimeItemEffect) -> Result<()> {
         match effect {
             RuntimeItemEffect::HitGround { affected_block } => {
-                let mut frame = self.gameplay.frame(self.registry, self.manager, true);
-                frame.hit_ground(state, affected_block)
+                self.hooks.hit_ground(state, affected_block)
             }
             RuntimeItemEffect::Sound { sound, volume, pitch } => {
                 let packet = mc121_rust::item_effects::sound_packet(sound, state.position_vec(), volume, pitch, self.items.next_sound_seed()?);
-                let recipients = self.registry.snapshot().into_iter().filter(|p| packet.in_range(Vec3::new(p.position.x,p.position.y,p.position.z),true)).map(|p|p.entity_id).collect();
-                emit(self.events, recipients, vec![packet.packet]); Ok(())
+                let recipients = self.hooks.registry.snapshot().into_iter().filter(|p| packet.in_range(Vec3::new(p.position.x,p.position.y,p.position.z),true)).map(|p|p.entity_id).collect();
+                emit(self.hooks.events, recipients, vec![packet.packet]); Ok(())
             }
             RuntimeItemEffect::Base(entity_base::BaseEffect::DiscardBelowWorld) => Ok(()),
             RuntimeItemEffect::Base(entity_base::BaseEffect::MeltFrozen { position, event, data }) => {
                 let origin=Vec3::new(f64::from(position.0),f64::from(position.1),f64::from(position.2));
-                let recipients=self.registry.snapshot().iter().filter(|p|Vec3::new(p.position.x,p.position.y,p.position.z).subtract(origin).length_squared()<4096.).map(|p|p.entity_id).collect();
-                emit(self.events, recipients,
+                let recipients=self.hooks.registry.snapshot().iter().filter(|p|Vec3::new(p.position.x,p.position.y,p.position.z).subtract(origin).length_squared()<4096.).map(|p|p.entity_id).collect();
+                emit(self.hooks.events, recipients,
                     vec![mc121_rust::item_effects::level_event_packet(event,position,data,false)]); Ok(())
             }
             _ => bail!("unported native XP base effect"),
@@ -542,17 +550,13 @@ struct OrbWorld<'a> {
     services: OrbServices<'a>,
     others: &'a mut BTreeMap<i32, NativeOrb>,
     facts: ItemWorldFacts,
-    shapes: &'a mut mc121_rust::fluid_physics::FluidShapeCache,
-    rain: Option<mc121_rust::native_rain::NativeFlatPlainsRainFrame<'a>>,
 }
 impl<'w> OrbWorld<'w> {
     fn provider<'a>(&'a mut self, s: &EntityPhysicalState, random: &'a mut LegacyRandomSource) -> Result<RuntimeItemWorld<'a, LegacyRandomSource, OrbServices<'w>>> {
-        let provider = RuntimeItemWorld::new_experience_orb(self.world, s, random, &mut self.services, self.facts, &[])?
-            .with_fluid_shape_cache(self.shapes);
-        Ok(if let Some(rain) = self.rain.as_mut() { provider.with_rain_exposure(rain) } else { provider })
+        RuntimeItemWorld::new_experience_orb(self.world, s, random, &mut self.services, self.facts, &[])
     }
     fn following(&self, id: i32) -> Option<FollowingPlayer> {
-        let p = self.services.registry.get(id)?;
+        let p = self.services.hooks.registry.get(id)?;
         let dimensions = player_physics::player_dimensions(p.metadata.pose, 1.).ok()?;
         Some(FollowingPlayer { entity_id: id, position: Vec3::new(p.position.x,p.position.y,p.position.z),
             eye_height: dimensions.eye_height, spectator: p.gamemode == 3,
@@ -584,7 +588,7 @@ impl ExperienceOrbWorld for OrbWorld<'_> {
     }
     fn nearest_player(&mut self, orb: &ExperienceOrbState, radius: f64) -> Result<Option<FollowingPlayer>> {
         let mut distance = radius*radius; let mut result = None;
-        for p in self.services.registry.snapshot() {
+        for p in self.services.hooks.registry.snapshot() {
             if let Some(p) = self.following(p.entity_id).filter(|p| !p.spectator && !p.dead) {
                 let d = p.position.subtract(orb.position_vec()).length_squared();
                 if d < distance { distance=d; result=Some(p); }
@@ -602,7 +606,7 @@ impl ExperienceOrbWorld for OrbWorld<'_> {
             if let Some(mut other) = self.others.remove(&handle.id) {
                 orb.merge_from(&mut other.state);
                 self.services.items.remove_experience_orb(handle)?;
-                emit(self.services.events, other.seen.into_iter().collect(), vec![experience::remove_packet(&[handle.id])]);
+                emit(self.services.hooks.events, other.seen.into_iter().collect(), vec![experience::remove_packet(&[handle.id])]);
             }
         }
         Ok(())
@@ -624,21 +628,17 @@ impl ExperienceOrbWorld for OrbWorld<'_> {
 impl MainExperienceRuntime {
     pub(super) fn tick_one(
         &mut self, handle: EntityHandle, world: &mut WorldBackend, items: &mut RuntimeEntities,
-        gameplay: &mut MainItemGameplay, registry: &EntityRegistry, chunks: &mut MainChunkRuntime,
-        shapes: &mut mc121_rust::fluid_physics::FluidShapeCache,
-        rain: Option<&mut mc121_rust::rain_physics::FreshFlatPlainsRain>, context: &WorldContext,
-        game_time: i64, border: CollisionBorder, events: &broadcast::Sender<PlayerEvent>,
+        hooks: MainPressurePlateEntities<'_>,
     ) -> Result<()> {
         if items.entity_kind(handle) != Some(EntityKind::ExperienceOrb) { return Ok(()); }
         ensure!(self.orbs.get(&handle.id).is_some_and(|o|o.handle==Some(handle)), "registered XP owner/generation missing");
-        let facts = context.item_facts(game_time,border,false)?;
-        let (light,manager)=chunks.native_lighting_parts()?;
+        let facts = hooks.context.item_facts(hooks.now, hooks.border, false)?;
+        let events = hooks.events;
         let mut orb = self.orbs.remove(&handle.id).context("registered XP owner disappeared")?;
         if orb.state.removed { items.remove_experience_orb(handle)?; return Ok(()); }
         let result = {
-            let rain=rain.map(|owner|mc121_rust::native_rain::NativeFlatPlainsRainFrame::new(owner,light,manager));
-            let services = OrbServices { items, gameplay, registry, manager, handle, events };
-            let mut host = OrbWorld { world, services, others:&mut self.orbs, facts, shapes, rain };
+            let services = OrbServices { items, hooks, handle };
+            let mut host = OrbWorld { world, services, others:&mut self.orbs, facts };
             experience::tick(&mut orb.state,&mut orb.random,&mut host)
         };
         if orb.state.removed {
