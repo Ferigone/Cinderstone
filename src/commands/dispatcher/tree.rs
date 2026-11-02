@@ -1,0 +1,321 @@
+//! Brigadier's command tree: nodes, builders and `addChild` merging (Brigadier 1.2.9).
+//!
+//! Derived from Mojang's Brigadier (MIT, see `licenses/brigadier-MIT.txt`).
+//!
+//! The original links node objects through shared references, including redirects back to
+//! earlier nodes. Here nodes live in an arena (`CommandTree`) and refer to each other by
+//! `NodeId`. As in 1.2.9, `addChild` merges onto a same-named child and does **not** re-sort
+//! the children; `literals` and `arguments` keep insertion order, which decides the order in
+//! which argument nodes are tried.
+
+use super::context::{CommandContext, CommandContextBuilder, ParsedArgument, StringRange};
+use crate::commands::arguments::ErasedArgumentType;
+use crate::commands::exception::{built_in, CommandSyntaxException};
+use crate::commands::string_reader::StringReader;
+use std::rc::Rc;
+
+pub type NodeId = usize;
+pub type Command<S> = Rc<dyn Fn(&CommandContext<S>) -> Result<i32, CommandSyntaxException>>;
+pub type Requirement<S> = Rc<dyn Fn(&S) -> bool>;
+pub type RedirectModifier<S> = Rc<dyn Fn(&CommandContext<S>) -> Result<Vec<S>, CommandSyntaxException>>;
+
+pub enum NodeKind {
+    Root,
+    Literal { literal: String, units: Vec<u16> },
+    Argument { name: String, argument_type: Rc<dyn ErasedArgumentType> },
+}
+
+pub struct CommandNode<S> {
+    kind: NodeKind,
+    children: Vec<(String, NodeId)>,
+    literals: Vec<(String, NodeId)>,
+    arguments: Vec<(String, NodeId)>,
+    requirement: Requirement<S>,
+    redirect: Option<NodeId>,
+    modifier: Option<RedirectModifier<S>>,
+    forks: bool,
+    command: Option<Command<S>>,
+}
+
+impl<S> CommandNode<S> {
+    fn new(kind: NodeKind) -> Self {
+        Self {
+            kind,
+            children: Vec::new(),
+            literals: Vec::new(),
+            arguments: Vec::new(),
+            requirement: Rc::new(|_| true),
+            redirect: None,
+            modifier: None,
+            forks: false,
+            command: None,
+        }
+    }
+}
+
+/// The arena owning every node of one dispatcher (and the temporary roots builders use).
+pub struct CommandTree<S> {
+    nodes: Vec<CommandNode<S>>,
+}
+
+impl<S> Default for CommandTree<S> {
+    fn default() -> Self {
+        Self { nodes: Vec::new() }
+    }
+}
+
+impl<S: Clone> CommandTree<S> {
+    pub fn new_root(&mut self) -> NodeId {
+        self.push(CommandNode::new(NodeKind::Root))
+    }
+
+    fn push(&mut self, node: CommandNode<S>) -> NodeId {
+        self.nodes.push(node);
+        self.nodes.len() - 1
+    }
+
+    /// `getName()`: `""` for the root, the literal text, or the argument name.
+    pub fn name(&self, id: NodeId) -> &str {
+        match &self.nodes[id].kind {
+            NodeKind::Root => "",
+            NodeKind::Literal { literal, .. } => literal,
+            NodeKind::Argument { name, .. } => name,
+        }
+    }
+
+    pub fn kind(&self, id: NodeId) -> &NodeKind {
+        &self.nodes[id].kind
+    }
+
+    pub fn command(&self, id: NodeId) -> Option<&Command<S>> {
+        self.nodes[id].command.as_ref()
+    }
+
+    pub fn redirect(&self, id: NodeId) -> Option<NodeId> {
+        self.nodes[id].redirect
+    }
+
+    pub fn redirect_modifier(&self, id: NodeId) -> Option<&RedirectModifier<S>> {
+        self.nodes[id].modifier.as_ref()
+    }
+
+    pub fn is_fork(&self, id: NodeId) -> bool {
+        self.nodes[id].forks
+    }
+
+    /// `getChildren()` in the order the original's `LinkedHashMap` holds them.
+    pub fn children(&self, id: NodeId) -> Vec<NodeId> {
+        self.nodes[id].children.iter().map(|(_, child)| *child).collect()
+    }
+
+    /// `getChild(name)`.
+    pub fn child(&self, id: NodeId, name: &str) -> Option<NodeId> {
+        self.nodes[id].children.iter().find(|(key, _)| key == name).map(|(_, child)| *child)
+    }
+
+    pub fn can_use(&self, id: NodeId, source: &S) -> bool {
+        (self.nodes[id].requirement)(source)
+    }
+
+    /// `addChild`: merge onto a same-named child (taking over a command) or append.
+    pub fn add_child(&mut self, parent: NodeId, node: NodeId) {
+        if matches!(self.nodes[node].kind, NodeKind::Root) {
+            panic!("Cannot add a RootCommandNode as a child to any other CommandNode");
+        }
+        let name = self.name(node).to_string();
+        if let Some(existing) = self.child(parent, &name) {
+            if let Some(command) = self.nodes[node].command.clone() {
+                self.nodes[existing].command = Some(command);
+            }
+            for grandchild in self.children(node) {
+                self.add_child(existing, grandchild);
+            }
+        } else {
+            self.nodes[parent].children.push((name.clone(), node));
+            match self.nodes[node].kind {
+                NodeKind::Literal { .. } => self.nodes[parent].literals.push((name, node)),
+                NodeKind::Argument { .. } => self.nodes[parent].arguments.push((name, node)),
+                NodeKind::Root => {}
+            }
+        }
+    }
+
+    /// `getRelevantNodes(reader)`: the literal matching the next token, else every argument.
+    pub fn relevant_nodes(&self, parent: NodeId, reader: &mut StringReader) -> Vec<NodeId> {
+        let node = &self.nodes[parent];
+        if !node.literals.is_empty() {
+            let cursor = reader.cursor();
+            while reader.can_read() && reader.peek() != Some(b' ' as u16) {
+                reader.skip();
+            }
+            let text: Vec<u16> = reader.units()[cursor..reader.cursor()].to_vec();
+            reader.set_cursor(cursor);
+            let matching = node.literals.iter().find(|(name, _)| name.encode_utf16().eq(text.iter().copied()));
+            if let Some((_, literal)) = matching {
+                return vec![*literal];
+            }
+        }
+        node.arguments.iter().map(|(_, id)| *id).collect()
+    }
+
+    /// `CommandNode.parse(reader, contextBuilder)` for each node kind.
+    pub fn parse_node(
+        &self,
+        id: NodeId,
+        reader: &mut StringReader,
+        context: &mut CommandContextBuilder<S>,
+    ) -> Result<(), CommandSyntaxException> {
+        match &self.nodes[id].kind {
+            NodeKind::Root => Ok(()),
+            NodeKind::Literal { literal, units } => {
+                let start = reader.cursor();
+                if reader.can_read_n(units.len()) {
+                    let end = start + units.len();
+                    if reader.units()[start..end] == units[..] {
+                        reader.set_cursor(end);
+                        if !reader.can_read() || reader.peek() == Some(b' ' as u16) {
+                            context.with_node(self, id, StringRange::between(start, end));
+                            return Ok(());
+                        }
+                        reader.set_cursor(start);
+                    }
+                }
+                Err(built_in::string_arg(
+                    "argument.literal.incorrect",
+                    literal.clone(),
+                    reader.units(),
+                    reader.cursor(),
+                ))
+            }
+            NodeKind::Argument { name, argument_type } => {
+                let start = reader.cursor();
+                let result = argument_type.parse_value(reader)?;
+                let parsed = ParsedArgument {
+                    range: StringRange::between(start, reader.cursor()),
+                    result,
+                };
+                let range = parsed.range;
+                context.with_argument(name, parsed);
+                context.with_node(self, id, range);
+                Ok(())
+            }
+        }
+    }
+
+    /// Build a detached subtree from a builder and return its node. Children go through a
+    /// temporary root so duplicate names merge exactly as `ArgumentBuilder.then` does.
+    pub fn build(&mut self, builder: &ArgumentBuilder<S>) -> NodeId {
+        let temporary_root = self.new_root();
+        for child in &builder.children {
+            let built = self.build(child);
+            self.add_child(temporary_root, built);
+        }
+        let kind = match &builder.kind {
+            BuilderKind::Literal(literal) => NodeKind::Literal {
+                literal: literal.clone(),
+                units: literal.encode_utf16().collect(),
+            },
+            BuilderKind::Argument(name, argument_type) => NodeKind::Argument {
+                name: name.clone(),
+                argument_type: Rc::clone(argument_type),
+            },
+        };
+        let mut node = CommandNode::new(kind);
+        node.command = builder.command.clone();
+        node.requirement = Rc::clone(&builder.requirement);
+        node.redirect = builder.target;
+        node.modifier = builder.modifier.clone();
+        node.forks = builder.forks;
+        let id = self.push(node);
+        for child in self.children(temporary_root) {
+            self.add_child(id, child);
+        }
+        id
+    }
+}
+
+enum BuilderKind {
+    Literal(String),
+    Argument(String, Rc<dyn ErasedArgumentType>),
+}
+
+/// `LiteralArgumentBuilder` / `RequiredArgumentBuilder` in one type.
+pub struct ArgumentBuilder<S> {
+    kind: BuilderKind,
+    children: Vec<ArgumentBuilder<S>>,
+    command: Option<Command<S>>,
+    requirement: Requirement<S>,
+    target: Option<NodeId>,
+    modifier: Option<RedirectModifier<S>>,
+    forks: bool,
+}
+
+impl<S: Clone + 'static> ArgumentBuilder<S> {
+    fn with_kind(kind: BuilderKind) -> Self {
+        Self {
+            kind,
+            children: Vec::new(),
+            command: None,
+            requirement: Rc::new(|_| true),
+            target: None,
+            modifier: None,
+            forks: false,
+        }
+    }
+
+    /// `LiteralArgumentBuilder.literal(name)`.
+    pub fn literal(name: &str) -> Self {
+        Self::with_kind(BuilderKind::Literal(name.to_string()))
+    }
+
+    /// `RequiredArgumentBuilder.argument(name, type)`.
+    pub fn argument(name: &str, argument_type: Rc<dyn ErasedArgumentType>) -> Self {
+        Self::with_kind(BuilderKind::Argument(name.to_string(), argument_type))
+    }
+
+    /// `then(argument)`; the original throws `IllegalStateException` on a redirected node.
+    pub fn then(mut self, child: ArgumentBuilder<S>) -> Self {
+        if self.target.is_some() {
+            panic!("Cannot add children to a redirected node");
+        }
+        self.children.push(child);
+        self
+    }
+
+    pub fn executes(mut self, command: Command<S>) -> Self {
+        self.command = Some(command);
+        self
+    }
+
+    pub fn requires(mut self, requirement: Requirement<S>) -> Self {
+        self.requirement = requirement;
+        self
+    }
+
+    /// `redirect(target)`.
+    pub fn redirect(self, target: NodeId) -> Self {
+        self.forward(target, None, false)
+    }
+
+    /// `redirect(target, SingleRedirectModifier)`: one new source per context.
+    pub fn redirect_single(self, target: NodeId, modifier: Rc<dyn Fn(&CommandContext<S>) -> Result<S, CommandSyntaxException>>) -> Self {
+        let modifier: RedirectModifier<S> = Rc::new(move |context| modifier(context).map(|source| vec![source]));
+        self.forward(target, Some(modifier), false)
+    }
+
+    /// `fork(target, modifier)`.
+    pub fn fork(self, target: NodeId, modifier: RedirectModifier<S>) -> Self {
+        self.forward(target, Some(modifier), true)
+    }
+
+    /// `forward(target, modifier, fork)`; throws if the node already has children.
+    pub fn forward(mut self, target: NodeId, modifier: Option<RedirectModifier<S>>, fork: bool) -> Self {
+        if !self.children.is_empty() {
+            panic!("Cannot forward a node with children");
+        }
+        self.target = Some(target);
+        self.modifier = modifier;
+        self.forks = fork;
+        self
+    }
+}

@@ -135,3 +135,42 @@ impl ArgumentType for StringArgumentType {
         }
     }
 }
+
+/// A parsed argument value, the Rust form of the original's `Object` result.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ArgumentValue {
+    Bool(bool),
+    Integer(i32),
+    Long(i64),
+    Float(f32),
+    Double(f64),
+    String(String),
+}
+
+macro_rules! argument_value_from {
+    ($($value:ty => $variant:ident),* $(,)?) => {
+        $(impl From<$value> for ArgumentValue {
+            fn from(value: $value) -> Self {
+                Self::$variant(value)
+            }
+        })*
+    };
+}
+
+argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String);
+
+/// Object-safe `ArgumentType<?>`: what a tree node holds so that nodes of different
+/// argument types can live in one command tree.
+pub trait ErasedArgumentType {
+    fn parse_value(&self, reader: &mut StringReader) -> Result<ArgumentValue, CommandSyntaxException>;
+}
+
+impl<T> ErasedArgumentType for T
+where
+    T: ArgumentType,
+    T::Value: Into<ArgumentValue>,
+{
+    fn parse_value(&self, reader: &mut StringReader) -> Result<ArgumentValue, CommandSyntaxException> {
+        self.parse(reader).map(Into::into)
+    }
+}
