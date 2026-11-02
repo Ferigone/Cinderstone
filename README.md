@@ -10,6 +10,28 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native registry and NBT owners
+
+Current fixture construction retains the same canonical inventory/placement
+owners and the actual configured Block tags. Original-server extraction certifies
+Block IDs, property classes/domains and state-property encounter order. The
+[initialization observation](docs/reference/native-owner-startup.md) reached
+STATUS/PING and normal shutdown with these real constructor paths; it did not
+enter PLAY or certify a Java importer.
+
+The library now includes genuine fresh CompoundTag history, decoder-issued
+immutable views, source `getCompound` defaults and the canonical EMPTY component
+branch. [BE contracts](docs/reference/enchanting-block-entity.md) and
+[SNBT limits](docs/reference/nbt-snbt.md) identify remaining owners and unsupported
+floating diagnostics. Powder hardening, ordered landing and real collider/fluid
+clipping have composed source, but production powder classification stays
+disabled until its actual owner/placement/dispatch pipeline is installed.
+
+The separate [flowing-fluid correction](docs/reference/placement-fluid-source-correction.md)
+fixes the original extractor's WATER/LAVA singleton mix-up; fresh original
+predicate capture binds the corrected data. These are bounded source deliveries,
+not full vanilla compatibility or fixed-checklist increments.
+
 ## Native entity pressure callbacks
 
 Player, Item, XP and Falling callbacks now share the actual pressure kernel,

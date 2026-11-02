@@ -99,6 +99,95 @@ fn block(state: u32) -> Result<&'static Block> {
     Ok(b)
 }
 
+/// Opaque identity of the actual placement catalogue already used by placement.
+/// Equal-looking catalogue bytes are not a replacement for this retained owner.
+#[derive(Clone, Copy)]
+pub struct CanonicalPlacementCatalogIdentity {
+    catalog: &'static Catalog,
+}
+impl PartialEq for CanonicalPlacementCatalogIdentity {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.catalog, other.catalog)
+    }
+}
+impl Eq for CanonicalPlacementCatalogIdentity {}
+impl std::fmt::Debug for CanonicalPlacementCatalogIdentity {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CanonicalPlacementCatalogIdentity")
+            .field("minecraft", &self.catalog.minecraft)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Read-only values borrowed from one actual canonical placement row.
+/// This source catalogue stores state ranges, not raw Block registry IDs.
+/// `raw_registry_id` is therefore explicitly absent, never a row ordinal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CanonicalPlacementBlock<'a> {
+    pub key: &'a str,
+    pub minimum_state: u32,
+    pub maximum_state: u32,
+    pub default_state: u32,
+    pub raw_registry_id: Option<i32>,
+}
+impl<'a> CanonicalPlacementBlock<'a> {
+    fn borrowed(block: &'a Block) -> Self {
+        Self {
+            key: &block.name,
+            minimum_state: block.min,
+            maximum_state: block.max,
+            default_state: block.default,
+            raw_registry_id: None,
+        }
+    }
+}
+
+/// Borrowed access to the SAME immutable OnceLock catalogue as `block` and all
+/// normal placement operations. Construction remains private; no parse, cache,
+/// tag fallback, registry allocation or identity counter is introduced here.
+#[derive(Clone, Copy)]
+pub struct CanonicalPlacementCatalog {
+    catalog: &'static Catalog,
+}
+impl CanonicalPlacementCatalog {
+    pub fn identity(self) -> CanonicalPlacementCatalogIdentity {
+        CanonicalPlacementCatalogIdentity { catalog: self.catalog }
+    }
+    /// Actual retained provenance. Protocol/mappings IDs are not stored by
+    /// this catalogue and must be supplied by their genuine separate owner.
+    pub fn minecraft_version(self) -> &'static str {
+        &self.catalog.minecraft
+    }
+    pub fn original_inner_sha256(self) -> &'static str {
+        &self.catalog.jar_sha256
+    }
+    pub fn state_count(self) -> usize {
+        self.catalog.fluids.len()
+    }
+    pub fn blocks(self) -> impl ExactSizeIterator<Item = CanonicalPlacementBlock<'static>> {
+        self.catalog.blocks.iter().map(CanonicalPlacementBlock::borrowed)
+    }
+    pub fn state_definition(self, state: u32) -> Result<CanonicalPlacementBlock<'static>> {
+        let index = self.catalog.blocks.partition_point(|block| block.min <= state)
+            .checked_sub(1).ok_or_else(|| anyhow!("unknown block state"))?;
+        let block = &self.catalog.blocks[index];
+        ensure!(state <= block.max, "unknown block state");
+        Ok(CanonicalPlacementBlock::borrowed(block))
+    }
+}
+impl std::fmt::Debug for CanonicalPlacementCatalog {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CanonicalPlacementCatalog")
+            .field("identity", &self.identity())
+            .field("blocks", &self.catalog.blocks.len())
+            .finish_non_exhaustive()
+    }
+}
+
+pub fn canonical_placement_catalog() -> CanonicalPlacementCatalog {
+    CanonicalPlacementCatalog { catalog: catalog() }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct PlacementContext {
     /// The final candidate block, after replacement/adjacent-target selection.

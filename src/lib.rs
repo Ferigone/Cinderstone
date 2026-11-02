@@ -136,3 +136,7 @@ pub mod enchanting_block_entity;
 pub mod loot;
 pub mod components;
 pub mod saved_data;
+pub mod block_entity_compound;
+pub mod block_entity_empty_components;
+pub mod source_nbt_decode;
+pub mod nbt_snbt;

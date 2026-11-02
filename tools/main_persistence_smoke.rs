@@ -88,17 +88,14 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         events.clone(),
     );
     players.entity_source = Some(source);
+    let actual_fixtures = fixtures(
+        &Path::new(env!("CARGO_MANIFEST_DIR")).join("fixtures/configuration.json"),
+    ).await.unwrap();
     let server = Arc::new(Server {
         options,
         connection_settings,
         connection_rates: StdRwLock::new(BTreeMap::new()),
-        fixtures: Fixtures {
-            chat_type: 0,
-            configuration: vec![],
-            dimension: 0,
-            dimension_facts: facts,
-            seed_hash: 0,
-        },
+        fixtures: actual_fixtures,
         seed_hash: 0,
         world: RwLock::new(world),
         save_lock: Mutex::new(()),
