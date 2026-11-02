@@ -24,3 +24,4 @@ pub mod supplier;
 pub mod active_map;
 pub mod binding;
 pub mod default_attributes;
+pub mod location_map;
