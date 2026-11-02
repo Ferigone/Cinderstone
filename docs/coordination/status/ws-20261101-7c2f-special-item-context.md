@@ -6,6 +6,7 @@ Assigned [issue #3](https://github.com/Ferigone/Cinderstone/issues/3),
 Base: `68fba409b757eae8287b301228303ae2510a205d`.
 Branch: `teams/workstations/ws-20261101-7c2f/special-item-context`.
 Target: Minecraft Java 1.21, protocol 767.
+Implementation commit: `2f08851eeca49f32e5b379c689b917a34b333445`.
 
 ## Exact owned changes
 
@@ -69,8 +70,16 @@ first nonflower supplier, logical AIR, directional decoration order, dye tag
 precedence, both copy counts and missing/replaced owner rejection. They are
 controlled owner checks, not an actual registry or Java/Main gameplay proof.
 Independent pinned-primary/API review found no concrete blocking defect.
-Formatting and whitespace checks passed. Source publication, exact commit
-record, staged-index hygiene and required GitHub CI follow separately.
+Formatting, whitespace and staged-index repository hygiene passed. Current
+master advanced through independent loot PR89 to
+`dfd4c99e92d815b24fc30ca8eb8a9ac1a134f3fb`; its clean local composition
+`d428b18b5ddce8167bebd400a37c9f38e0a01a46` with this source has tree
+`11fd56d312a3967cf1c8c75719598a831a19de9e`, source subtree
+`c68d39077795657d702f82ae305baece986446b1`. An isolated all-target compiler
+check passed on that composition in 26.06s. This does not assert it is the
+eventual merge tree; the actual merge is read back separately. No master merge
+or force push was performed on the source branch. Required GitHub CI and
+publication read-back follow in the PR and issue.
 
 Observed capacity is seven total slots. This continuation peaked at five
 active agents, including the concurrent team-index author. All source, review
