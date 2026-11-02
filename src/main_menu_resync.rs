@@ -28,6 +28,8 @@ impl Server {
             Stonecutter,
             Smithing,
             Loom,
+            Grindstone,
+            Anvil,
             CraftingTable,
             NativeContainer,
         }
@@ -36,6 +38,8 @@ impl Server {
             players.stonecutters.window_id(id).map(|_| CurrentMenu::Stonecutter),
             players.smithing_tables.window_id(id).map(|_| CurrentMenu::Smithing),
             players.looms.window_id(id).map(|_| CurrentMenu::Loom),
+            players.grindstones.window_id(id).map(|_| CurrentMenu::Grindstone),
+            players.anvils.window_id(id).map(|_| CurrentMenu::Anvil),
             players.crafting_tables.window_id(id).map(|_| CurrentMenu::CraftingTable),
             players.native_containers.window_id(id).map(|_| CurrentMenu::NativeContainer),
         ].into_iter().flatten();
@@ -52,6 +56,12 @@ impl Server {
                 &mut world, &mut players, id, now, border,
             ),
             Some(CurrentMenu::Loom) => self.resync_native_loom_locked(
+                &mut world, &mut players, id, now, border,
+            ),
+            Some(CurrentMenu::Grindstone) => self.resync_native_grindstone_locked(
+                &mut world, &mut players, id, now, border,
+            ),
+            Some(CurrentMenu::Anvil) => self.resync_native_anvil_locked(
                 &mut world, &mut players, id, now, border,
             ),
             Some(CurrentMenu::Smithing) => self.resync_native_smithing_locked(

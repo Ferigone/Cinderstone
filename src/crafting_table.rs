@@ -46,6 +46,8 @@ impl CraftingTableMenu {
             crafted_items: vec![],
         })
     }
+    pub fn carried(&self) -> &ItemStack { &self.carried }
+    pub fn inputs(&self) -> &[ItemStack] { &self.inputs }
     pub fn inventory_snapshot(&self, inventory: &PlayerInventory) -> PlayerInventory {
         let mut value = inventory.clone();
         value.set_carried_authoritative(self.carried.clone());

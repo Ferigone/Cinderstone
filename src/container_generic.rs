@@ -130,6 +130,7 @@ impl GenericContainerMenu {
         s.extend((9..45).map(|i| canonical(inventory.slot(i).expect("canonical inventory slot"))));
         Ok(s)
     }
+    pub fn carried(&self) -> &ItemStack { &self.carried }
     pub fn inventory_snapshot(&self, inventory: &PlayerInventory) -> PlayerInventory {
         let mut i = inventory.clone();
         i.set_carried_authoritative(self.carried.clone());

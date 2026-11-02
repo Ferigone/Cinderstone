@@ -18,6 +18,13 @@ impl CraftingTableRuntime {
     pub fn has_open(&self, id: i32) -> bool {
         self.menus.contains_key(&id)
     }
+    /// Observe the same canonical inventory at Player.take's current-menu phase.
+    pub(super) fn broadcast_for_inventory(
+        &mut self, id: i32, inventory: &PlayerInventory,
+    ) -> Result<Vec<Packet>> {
+        self.menus.get_mut(&id).context("current crafting table absent during pickup")?
+            .menu.broadcast_changes(inventory)
+    }
     pub fn pending_players(&self) -> Vec<i32> {
         self.menus.keys().copied().collect()
     }
@@ -26,6 +33,19 @@ impl CraftingTableRuntime {
             || inventory.clone(),
             |m| m.menu.inventory_snapshot(inventory),
         )
+    }
+    /// Actual removed returns cursor then the nine owned temporary inputs.
+    /// Preview and retained window0 cursor do not belong to this observation.
+    pub(super) fn preflight_close_return_stacks(
+        &self, id: i32, check: &mut dyn FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) {
+            let inputs = open.menu.inputs();
+            ensure!(inputs.len() == 9, "crafting close requires its actual nine inputs");
+            check(open.menu.carried())?;
+            for stack in inputs { check(stack)?; }
+        }
+        Ok(())
     }
 }
 fn send(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet>) {
@@ -126,6 +146,18 @@ impl Server {
             players.world_context.rules.boolean("doLimitedCrafting") == Some(false),
             "limited crafting requires actual known-recipe unlock owner"
         );
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.looms.window_id(id) {
             self.close_loom_with_context_locked(
                 &mut world, &mut players, id, window, true, now, border,

@@ -178,7 +178,7 @@ impl PreparedFurnaceExperience {
     }
 }
 
-fn require_furnace_experience_world(world: &WorldBackend, players: &LivePlayers) -> Result<()> {
+fn require_native_experience_world(world: &WorldBackend, players: &LivePlayers) -> Result<()> {
     players.gameplay.require_supported_floor()?;
     ensure!(matches!(world, WorldBackend::Fixture(_)), "native XP requires an owned native world");
     players.entity_source.as_ref().context("native XP source missing")?.require_owned_callback_world(world)
@@ -188,7 +188,7 @@ pub(super) fn prepare_furnace_experience(
     world: &mut WorldBackend, players: &mut LivePlayers, id: i32,
     rewards: &[mc121_rust::furnace::FurnaceRecipeReward], entities: &AtomicI32,
 ) -> Result<PreparedFurnaceExperience> {
-    require_furnace_experience_world(world, players)?;
+    require_native_experience_world(world, players)?;
     let player = players.registry.get(id).context("XP actor missing")?;
     require_no_mending(players.containers.get(&id).context("XP actor inventory missing")?)?;
     let at = Vec3::new(player.position.x, player.position.y, player.position.z);
@@ -218,7 +218,7 @@ pub(super) fn prepare_furnace_block_experience_after_drops(
     index_after_drops: RuntimeEntityIndex,
     level_after_drops: &LegacyRandomSource, math_after_drops: &LegacyRandomSource,
 ) -> Result<PreparedFurnaceExperience> {
-    require_furnace_experience_world(world, players)?;
+    require_native_experience_world(world, players)?;
     let at = Vec3::new(f64::from(position.0) + 0.5, f64::from(position.1) + 0.5,
         f64::from(position.2) + 0.5);
     prepare_furnace_experience_at(players, at, rewards, || {
@@ -242,42 +242,212 @@ fn prepare_furnace_experience_at(
     let mut new_ids = Vec::new();
     let mut deliveries = Vec::new();
     for reward in rewards {
-        let mut remaining = experience::recipe_experience(reward.count, reward.experience, || Ok(math_random.next_f64()))?;
-        while remaining > 0 {
-            let value = experience::experience_value(remaining); remaining -= value;
-            let group = level_random.next_bounded_i32(40)?;
-            let candidates = index.query(experience::award_bounds(at), Some(EntityKind::ExperienceOrb), |h| {
-                Ok(staged.orbs.get(&h.id).filter(|o| !o.state.removed && o.state.can_merge_with(group, value)).map(|o| o.state.bounds))
-            })?;
-            if let Some(handle) = candidates.first() {
-                let orb = staged.orbs.get_mut(&handle.id).context("XP merge owner missing")?;
-                orb.state.count = orb.state.count.wrapping_add(1); orb.state.age = 0;
-            } else {
-                let entity_id = next_entity_id()?;
-                ensure!(entity_id > 0 && entity_id < i32::MAX, "entity ID exhausted");
-                let mut random = random_seed::create_random()?;
-                let state = ExperienceOrbState::new(entity_id, at, value, &mut random)?;
-                index.register(entity_id, EntityKind::ExperienceOrb, at, false,
-                    |_| players.item_runtime.experience_visibility_at(at))?;
-                staged.insert(state, random, None)?;
-                let orb = staged.orbs.get_mut(&entity_id).context("prepared new XP orb missing")?;
-                let chunk = ((at.x.floor() as i32).div_euclid(16), (at.z.floor() as i32).div_euclid(16));
-                for (&viewer, observer) in &players.observers {
-                    let target = entity_tracking::TrackingTarget { entity_id, position: at,
-                        base_range_blocks: 96, indirect_passenger_ranges_chunks: &[], broadcast_allowed: true };
-                    if players.chunk_transports.get(&viewer).is_some_and(|t|t.entity_chunk_sent(chunk))
-                        && entity_tracking::within_tracking_range(*observer,target) { orb.seen.insert(viewer); }
-                }
-                let packets = vec![orb.state.spawn_packet(orb.tracker.spawn_position())?,
-                    entity::velocity_packet(entity_id, orb.tracker.spawn_velocity())?];
-                deliveries.push((orb.seen.iter().copied().collect(),packets));
-                new_ids.push(entity_id);
-            }
-        }
+        let amount = experience::recipe_experience(reward.count, reward.experience, || Ok(math_random.next_f64()))?;
+        prepare_native_experience_amount(players, at, amount, &mut staged, &mut next_entity_id,
+            &mut index, &mut level_random, &mut new_ids, &mut deliveries)?;
     }
     players.item_runtime.validate_experience_orb_registration_batch(new_ids.iter().copied())?;
     Ok(PreparedFurnaceExperience { staged, expected_revision: players.experience_runtime.revision,
         new_ids, world_before, world_after: level_random, math_before, math_after: math_random, deliveries })
+}
+
+/// One genuine integer ExperienceOrb.award call. Furnace rounding stays at its
+/// existing caller; this shared path never reads or draws global Math.random.
+fn prepare_native_experience_amount(
+    players: &LivePlayers, at: Vec3, mut remaining: i32,
+    staged: &mut MainExperienceRuntime, next_entity_id: &mut impl FnMut() -> Result<i32>,
+    index: &mut RuntimeEntityIndex, level_random: &mut LegacyRandomSource,
+    new_ids: &mut Vec<i32>, deliveries: &mut Vec<(Vec<i32>, Vec<Packet>)>,
+) -> Result<()> {
+    ensure!(at.x.is_finite() && at.y.is_finite() && at.z.is_finite(), "nonfinite XP award position");
+    while remaining > 0 {
+        let value = experience::experience_value(remaining); remaining -= value;
+        let group = level_random.next_bounded_i32(40)?;
+        let candidates = index.query(experience::award_bounds(at), Some(EntityKind::ExperienceOrb), |h| {
+            Ok(staged.orbs.get(&h.id).filter(|o| !o.state.removed && o.state.can_merge_with(group, value)).map(|o| o.state.bounds))
+        })?;
+        if let Some(handle) = candidates.first() {
+            let orb = staged.orbs.get_mut(&handle.id).context("XP merge owner missing")?;
+            orb.state.count = orb.state.count.wrapping_add(1); orb.state.age = 0;
+        } else {
+            let entity_id = next_entity_id()?;
+            ensure!(entity_id > 0 && entity_id < i32::MAX, "entity ID exhausted");
+            let mut random = random_seed::create_random()?;
+            let state = ExperienceOrbState::new(entity_id, at, value, &mut random)?;
+            index.register(entity_id, EntityKind::ExperienceOrb, at, false,
+                |_| players.item_runtime.experience_visibility_at(at))?;
+            staged.insert(state, random, None)?;
+            let orb = staged.orbs.get_mut(&entity_id).context("prepared new XP orb missing")?;
+            let chunk = ((at.x.floor() as i32).div_euclid(16), (at.z.floor() as i32).div_euclid(16));
+            for (&viewer, observer) in &players.observers {
+                let target = entity_tracking::TrackingTarget { entity_id, position: at,
+                    base_range_blocks: 96, indirect_passenger_ranges_chunks: &[], broadcast_allowed: true };
+                if players.chunk_transports.get(&viewer).is_some_and(|t|t.entity_chunk_sent(chunk))
+                    && entity_tracking::within_tracking_range(*observer,target) { orb.seen.insert(viewer); }
+            }
+            let packets = vec![orb.state.spawn_packet(orb.tracker.spawn_position())?,
+                entity::velocity_packet(entity_id, orb.tracker.spawn_velocity())?];
+            deliveries.push((orb.seen.iter().copied().collect(),packets));
+            new_ids.push(entity_id);
+        }
+    }
+    Ok(())
+}
+
+/// One integer award at its source event, backed by the actual XP/index owners.
+/// There is no furnace reward identity and no global-Math owner in this token.
+#[derive(Clone)]
+pub(super) struct PreparedNativeExperience {
+    staged: MainExperienceRuntime,
+    expected_revision: u64,
+    new_ids: Vec<i32>,
+    expected_handles: BTreeMap<i32, EntityHandle>,
+    registered_handles: BTreeMap<i32, EntityHandle>,
+    world_before: u64,
+    world_after: LegacyRandomSource,
+    deliveries: Vec<(Vec<i32>, Vec<Packet>)>,
+}
+impl PreparedNativeExperience {
+    pub(super) fn registration_ids(&self) -> impl Iterator<Item = i32> + '_ {
+        self.new_ids.iter().copied()
+    }
+    pub(super) fn registration_states(&self) -> impl Iterator<Item = &ExperienceOrbState> + '_ {
+        self.new_ids.iter().map(|id| &self.staged.orbs.get(id)
+            .expect("prepared native XP state retained").state)
+    }
+    pub(super) fn expected_registration_handle(&self, id: i32) -> Option<EntityHandle> {
+        self.expected_handles.get(&id).copied()
+    }
+    /// Bind only the real Registered{kind:ExperienceOrb} event from the mixed
+    /// native batch. Its index generation must equal the staged source order.
+    pub(super) fn attach_registered(&mut self, id: i32, handle: EntityHandle) -> Result<()> {
+        ensure!(self.expected_handles.get(&id).copied() == Some(handle),
+            "native XP registration differs from its prepared source handle");
+        ensure!(!self.registered_handles.contains_key(&id), "native XP registration repeated");
+        self.registered_handles.insert(id, handle);
+        Ok(())
+    }
+    fn rebind_existing_handles(&mut self, runtime: &MainExperienceRuntime) -> Result<()> {
+        for (id, orb) in &mut self.staged.orbs {
+            if !self.expected_handles.contains_key(id) {
+                orb.handle = runtime.orbs.get(id).context("prior native XP owner missing")?.handle;
+            }
+        }
+        Ok(())
+    }
+    /// Mixed-batch publication owns actual index/tick registration and the one
+    /// final Level RNG. Install this award's XP state at its source boundary,
+    /// after binding every one of its new registered handles. Merge-only and
+    /// zero awards still have a real checkpoint and ordered delivery boundary.
+    pub(super) fn commit_registered_parts(mut self, runtime: &mut MainExperienceRuntime,
+        events: &broadcast::Sender<PlayerEvent>) -> Result<()> {
+        ensure!(runtime.revision == self.expected_revision, "XP state changed before mixed award checkpoint");
+        ensure!(self.registered_handles == self.expected_handles,
+            "mixed XP award has unregistered source entities");
+        self.rebind_existing_handles(runtime)?;
+        for (id, handle) in &self.registered_handles {
+            self.staged.orbs.get_mut(id).context("registered native XP state missing")?.handle = Some(*handle);
+        }
+        self.staged.revision = runtime.revision.wrapping_add(1);
+        *runtime = self.staged;
+        for (recipients, packets) in self.deliveries { emit(events, recipients, packets); }
+        Ok(())
+    }
+    /// Commit at this exact award boundary, after only its source predecessors.
+    /// The caller owns the shared entity counter and has applied the preceding
+    /// getExperienceAmount draw/drop state to the actual Level RNG. Later
+    /// drops cannot be committed first without changing index encounter order.
+    pub(super) fn commit_parts(mut self, runtime: &mut MainExperienceRuntime,
+        items: &mut RuntimeEntities, events: &broadcast::Sender<PlayerEvent>) -> Result<()> {
+        ensure!(runtime.revision == self.expected_revision, "XP state changed after integer award preparation");
+        ensure!(items.world_random_state48() == self.world_before, "Level RNG changed before integer XP award");
+        items.validate_experience_orb_registration_batch(self.new_ids.iter().copied())?;
+        self.rebind_existing_handles(runtime)?;
+        let mut index = items.prepare_experience_index()?;
+        for id in &self.new_ids {
+            let at = self.staged.orbs.get(id).context("prepared integer XP entity missing")?.state.position_vec();
+            let handle = index.register(*id, EntityKind::ExperienceOrb, at, false,
+                |_| items.experience_visibility_at(at))?;
+            ensure!(self.expected_handles.get(id).copied() == Some(handle),
+                "shared index source order changed before integer XP award");
+        }
+        for id in self.new_ids.clone() {
+            let at = self.staged.orbs.get(&id).expect("validated integer XP entity").state.position_vec();
+            let handle = items.register_experience_orb(id, at)?;
+            self.attach_registered(id, handle)?;
+        }
+        *items.world_random_mut() = self.world_after.clone();
+        self.commit_registered_parts(runtime, events)
+    }
+}
+
+/// Cloneable transaction-local XP proposals for repeated synchronous onTake.
+/// This creates no additional live inventory/index/RNG owner. Award updates
+/// the caller's one staged index/Level RNG; tokens retain its read-only states.
+#[derive(Clone)]
+pub(super) struct NativeMenuExperienceStage {
+    staged: MainExperienceRuntime,
+    awards: Vec<PreparedNativeExperience>,
+}
+impl NativeMenuExperienceStage {
+    pub(super) fn new(players: &LivePlayers) -> Result<Self> {
+        players.gameplay.require_supported_floor()?;
+        Ok(Self { staged: players.experience_runtime.clone(), awards: Vec::new() })
+    }
+    pub(super) fn award_count(&self) -> usize { self.awards.len() }
+    pub(super) fn registration_ids(&self) -> impl Iterator<Item = i32> + '_ {
+        self.awards.iter().flat_map(|award| award.registration_ids())
+    }
+    pub(super) fn awards(&self) -> &[PreparedNativeExperience] { &self.awards }
+    /// Use the actual locked players for visibility, observers and sent chunks.
+    /// On failure discard this stage together with the passed staging owners;
+    /// no real orb/index/RNG has been installed or published.
+    pub(super) fn award(&mut self, players: &LivePlayers, amount: i32, at: Vec3,
+        next_entity_id: &mut i32, index: &mut RuntimeEntityIndex,
+        level_random: &mut LegacyRandomSource) -> Result<()> {
+        players.gameplay.require_supported_floor()?;
+        let expected_revision = self.staged.revision;
+        let world_before = level_random.state48();
+        let mut new_ids = Vec::new();
+        let mut deliveries = Vec::new();
+        prepare_native_experience_amount(players, at, amount, &mut self.staged, &mut || {
+            let id = *next_entity_id;
+            ensure!(id > 0 && id < i32::MAX, "entity ID exhausted");
+            *next_entity_id = id + 1;
+            Ok(id)
+        }, index, level_random, &mut new_ids, &mut deliveries)?;
+        players.item_runtime.validate_experience_orb_registration_batch(new_ids.iter().copied())?;
+        let expected_handles = new_ids.iter().map(|id| {
+            let entry = index.by_id(*id).context("prepared XP index entry missing")?;
+            ensure!(entry.kind == EntityKind::ExperienceOrb, "prepared XP index kind changed");
+            Ok((*id, entry.handle))
+        }).collect::<Result<BTreeMap<_, _>>>()?;
+        self.staged.revision = expected_revision.wrapping_add(1);
+        self.awards.push(PreparedNativeExperience { staged: self.staged.clone(), expected_revision,
+            new_ids, expected_handles, registered_handles: BTreeMap::new(),
+            world_before, world_after: level_random.clone(), deliveries });
+        Ok(())
+    }
+    /// Consume each token at its recorded synchronous source award event.
+    /// This is deliberately not an end-of-click batch publication API.
+    pub(super) fn into_awards(self) -> Vec<PreparedNativeExperience> { self.awards }
+}
+
+/// Single award after genuine preceding drops and the grindstone's already
+/// sampled integer amount. Only predecessor Items belong in index_after_drops;
+/// a later result THROW must not be moved ahead of its onTake XP award.
+pub(super) fn prepare_grindstone_experience_after_drops(
+    world: &mut WorldBackend, players: &mut LivePlayers, position: (i32, i32, i32),
+    amount: i32, next_entity_id: &mut i32, mut index_after_drops: RuntimeEntityIndex,
+    level_after_drops: &LegacyRandomSource,
+) -> Result<PreparedNativeExperience> {
+    require_native_experience_world(world, players)?;
+    let mut stage = NativeMenuExperienceStage::new(players)?;
+    let mut level_random = level_after_drops.clone();
+    stage.award(players, amount,
+        Vec3::new(f64::from(position.0) + 0.5, f64::from(position.1) + 0.5, f64::from(position.2) + 0.5),
+        next_entity_id, &mut index_after_drops, &mut level_random)?;
+    Ok(stage.into_awards().pop().expect("one actual integer award was prepared"))
 }
 
 /// Mending requires the actual equipped-item/enchantment effect owner. The

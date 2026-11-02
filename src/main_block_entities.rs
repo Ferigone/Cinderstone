@@ -38,6 +38,18 @@ impl NativeContainerRuntime {
     pub fn has_open(&self, id: i32) -> bool {
         self.menus.contains_key(&id)
     }
+    /// Player.take synchronizes the actual current menu after Inventory.add.
+    /// Container contents remain borrowed from the real block entity.
+    pub(super) fn broadcast_for_inventory(
+        &mut self, world: &WorldBackend, id: i32, inventory: &PlayerInventory,
+    ) -> Result<Vec<Packet>> {
+        let open = self.menus.get_mut(&id).context("current native container absent during pickup")?;
+        let WorldBackend::Fixture(flat) = world else {
+            bail!("native container pickup requires its actual block entity")
+        };
+        let top = flat.native_block_entities().read_slots(&open.key)?;
+        open.menu.broadcast_changes(&top, inventory)
+    }
     /// Includes spectator menus, whose captured container does not increment
     /// the block entity's opener counter but still retains its actual owner.
     pub(super) fn has_menu_at(&self, position: (i32, i32, i32)) -> bool {
@@ -56,6 +68,14 @@ impl NativeContainerRuntime {
             || inventory.clone(),
             |m| m.menu.inventory_snapshot(inventory),
         )
+    }
+    /// Observe only this actual menu's returned cursor before any old-menu
+    /// close. Chest/barrel contents stay with their real block entity.
+    pub(super) fn preflight_close_return_stacks(
+        &self, id: i32, check: &mut dyn FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) { check(open.menu.carried())?; }
+        Ok(())
     }
 }
 fn send_private(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet>) {
@@ -151,7 +171,9 @@ impl Server {
                     && !players.furnaces.has_open(id)
                     && !players.stonecutters.has_open(id)
                     && !players.smithing_tables.has_open(id)
-                    && !players.looms.has_open(id)),
+                    && !players.looms.has_open(id)
+                    && !players.grindstones.has_open(id)
+                    && !players.anvils.has_open(id)),
             "close actual native menu before InventoryMenu cleanup"
         );
         // Player.remove cleans the retained InventoryMenu before the actual
@@ -321,6 +343,18 @@ impl Server {
         );
         let title = flat.native_block_entities().title(&key)?;
         let top = flat.native_block_entities().read_slots(&key)?;
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.looms.window_id(id) {
             self.close_loom_with_context_locked(
                 &mut world, &mut players, id, window, true, now, border,
