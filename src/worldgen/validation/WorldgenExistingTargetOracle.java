@@ -2,6 +2,7 @@ import com.google.gson.*;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.MapCodec;
 import it.unimi.dsi.fastutil.shorts.ShortList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import java.io.*;
 import java.lang.reflect.*;
 import java.nio.*;
@@ -138,7 +139,7 @@ public final class WorldgenExistingTargetOracle {
    // configuration. The original constructor stores its source lazily.
    result.put("no_cells_entry","controlled_null_argument_early_return_probe");result.put("original_noise_task_callback_executed",true);result.put("biomes_ran",false);result.put("surface_ran",false);result.put("biome_queries",source==null?List.of():source.queries);result.put("noise_chunk_absent",field(owner.proto,duy.class,"e")==null);result.put("persisted_status_unchanged",owner.proto.j()==dvz.c);return result;
   }
-  Method pickerMethod=dzb.class.getDeclaredMethod("a",dzd.class);pickerMethod.setAccessible(true);dyk.a picker=(dyk.a)pickerMethod.invoke(null,settings);Field bf=Class.forName("dys$b").getField("a");bf.setAccessible(true);dys.c beard=(dys.c)bf.get(null);dzc noise=dzc.a(owner.proto,state,beard,settings,picker,blender);if(owner.proto.a((Function<duy,dzc>)unused->noise)!=noise)throw new AssertionError("NC install changed owner");dyk aquifer=noise.i();
+  Method pickerMethod=dzb.class.getDeclaredMethod("a",dzd.class);pickerMethod.setAccessible(true);dyk.a picker=(dyk.a)pickerMethod.invoke(null,settings);dys.c beard=new dyl(new ObjectArrayList().iterator(),new ObjectArrayList().iterator());result.put("beardifier_input_kind","actual_empty_beardifier");result.put("structure_owner_class",beard.getClass().getName());dzc noise=dzc.a(owner.proto,state,beard,settings,picker,blender);if(owner.proto.a((Function<duy,dzc>)unused->noise)!=noise)throw new AssertionError("NC install changed owner");dyk aquifer=noise.i();
   // Execute the exact original body on this controlled worker. Its public
   // async wrapper otherwise chooses an arbitrary ThreadLocal RTree cursor.
   Method createBiomes=dzb.class.getDeclaredMethod("b",eaa.class,dzm.class,ddq.class,duy.class);createBiomes.setAccessible(true);createBiomes.invoke(generator,blender,state,null,owner.proto);result.put("biomes_ran",true);result.put("biomes_entry","original_private_doCreateBiomes_controlled_one_worker");result.put("biomes",snapshot(owner,id,"biomes"));List<?> interpolators=cacheOwners(noise,"i"),cells=cacheOwners(noise,"j");result.put("biome_queries",source.queries);result.put("biomes_same_sampler",source.firstSampler!=null&&source.differentSamplers==0);

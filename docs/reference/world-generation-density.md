@@ -44,15 +44,21 @@ error from a constructed original NoiseChunk, with no Unsafe allocation. The
 native owner retains a per-node arithmetic rewrite and canonicalizes the same
 `MulOrAdd` shape. Raw evaluation does not use that metadata.
 
-In the supported empty Blender/beardifier context, holder erasure preserves
-child bounds. The original two-argument factory recomputes its bounds using
-the same child endpoints and operations before detecting a constant, then
-passes those bounds into `MulOrAdd`; constant optimization does not replace
-them with different metadata. The observed zero-coefficient witnesses retain
-exact `[-0,+0]` bounds before and after wrapping. Native MIN/MAX therefore keep
-the original graph bounds for their short-circuit checks. Nonempty blending
-and structure replacements remain outside this argument and the supported
-generation contract.
+The recorded holder-rewrite fixture uses an empty Blender and an explicit raw
+`BeardifierMarker`, rather than an actual empty Beardifier owner. In that
+historical witness, holder erasure preserves child bounds. The original
+two-argument factory recomputes bounds before detecting a constant and passes
+them into `MulOrAdd`; the observed zero-coefficient witnesses retain exact
+`[-0,+0]` bounds. Those fixture observations and their source pins remain
+unchanged.
+
+Native MIN/MAX use `ChunkDensity`'s reconstructed visited bounds. The
+[actual empty Beardifier](world-generation-empty-beardifier.md) has infinite
+bounds even with no selected structures, and its fill visits the active
+provider. The current chunk owner applies those metadata and fill hooks;
+Blender wrappers likewise supply their visited metadata. Direct raw graph
+evaluation retains the marker's zero bounds and zero fill without provider
+visits. Nonempty structure contributions remain unsupported.
 
 Resource locations with an empty namespace, such as `:overworld`, use the
 original `minecraft` default namespace when loading density settings or names.

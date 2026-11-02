@@ -136,7 +136,13 @@ impl NoiseBasedAquifer {
         height: i32,
         random: PositionalRandomFactory,
     ) -> Result<Self> {
-        if height <= 0 || min_y < -2032 || i64::from(min_y) + i64::from(height) > 2032 {
+        // The original constructor allocates its border grid even at height
+        // zero. Some negative heights also construct in Java, but that owner
+        // lifecycle remains outside the supported native profile.
+        if height < 0 {
+            bail!("negative-height aquifer construction is unsupported");
+        }
+        if min_y < -2032 || i64::from(min_y) + i64::from(height) > 2032 {
             bail!("aquifer height is outside the original dimension coordinate range");
         }
         let block_x = chunk_x
@@ -568,6 +574,24 @@ mod tests {
         name: String,
         input_bits: String,
         quantized: i32,
+    }
+    #[test]
+    fn zero_height_owner_keeps_original_border_cache_extent() -> Result<()> {
+        // Actual original dyk$c(seed=123456789, chunk=-1,2, minY=320,
+        // height=0) has grid minima -2,25,1 and two 27-entry caches.
+        let factory = RandomStateRandoms::new(123456789, false).aquifer_random();
+        let aquifer = NoiseBasedAquifer::new(-1, 2, 320, 0, factory)?;
+        assert_eq!((aquifer.min_grid_x, aquifer.min_grid_y, aquifer.min_grid_z), (-2, 25, 1));
+        assert_eq!((aquifer.grid_size_x, aquifer.grid_size_y, aquifer.grid_size_z), (3, 3, 3));
+        assert_eq!((aquifer.locations.len(), aquifer.statuses.len()), (27, 27));
+        assert_eq!(aquifer.index(-2, 25, 1)?, 0);
+        assert_eq!(aquifer.index(0, 27, 3)?, 26);
+        assert!(aquifer.index(-2, 24, 1).is_err());
+        assert!(aquifer.index(0, 28, 3).is_err());
+        assert!(!aquifer.should_schedule_fluid_update());
+        // Unsupported here does not mean rejected by the original constructor.
+        assert!(NoiseBasedAquifer::new(-1, 2, 320, -1, factory).is_err());
+        Ok(())
     }
     #[test]
     fn spread_quantization_matches_original_java_narrowing_and_wrapping() -> Result<()> {

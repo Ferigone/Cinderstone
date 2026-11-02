@@ -433,6 +433,18 @@ pub trait DensityContext: Sized {
     fn blend_offset(&mut self, _id: NodeId, _point: DensityPoint) -> f64 {
         0.0
     }
+    /// The raw BeardifierMarker fills zero without visiting provider indices.
+    /// NoiseChunk replaces it with an actual Beardifier, whose SimpleFunction
+    /// fill uses the provider even when the selected structure lists are empty.
+    fn beardifier_fill(
+        &mut self,
+        _graph: &DensityGraph,
+        _id: NodeId,
+        values: &mut [f64],
+    ) -> std::result::Result<(), Self::Error> {
+        values.fill(0.0);
+        Ok(())
+    }
     /// Raw/empty BlendAlpha and BlendOffset use Arrays.fill, without visiting
     /// provider indices. Nonempty NoiseChunk FlatCache wrappers override these.
     fn blend_alpha_fill(
@@ -1332,7 +1344,7 @@ impl DensityGraph {
             DensityNode::Constant(value) => values.fill(*value),
             DensityNode::BlendAlpha => context.blend_alpha_fill(self, id, values)?,
             DensityNode::BlendOffset => context.blend_offset_fill(self, id, values)?,
-            DensityNode::Beardifier => values.fill(0.0),
+            DensityNode::Beardifier => context.beardifier_fill(self, id, values)?,
             DensityNode::Reference(input) => self.fill_sampled(*input, values, context)?,
             DensityNode::Marker(kind, input) => {
                 context.marker_fill(self, id, *kind, *input, values)?
