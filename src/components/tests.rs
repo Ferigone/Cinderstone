@@ -236,3 +236,136 @@ fn compound_keys_follow_hash_map_order() {
     let text = wire.find(&hex(b"text")).unwrap();
     assert!(text < strike && strike < bold, "{wire}");
 }
+
+// ---------------------------------------------------------------- NBT decoding
+
+fn unhex(text: &str) -> Vec<u8> {
+    (0..text.len()).step_by(2).map(|i| u8::from_str_radix(&text[i..i + 2], 16).unwrap()).collect()
+}
+
+/// Runs `[input hex, accepted, re-encoded hex]` rows through `Component::from_nbt`.
+fn check_nbt_rows(text: &str, label: &str, minimum_compared: usize) {
+    let doc = fixture(text);
+    let rows = doc["cases"].as_array().expect("cases");
+    let (mut compared, mut unsupported) = (0usize, 0usize);
+    let mut failures = Vec::new();
+    for row in rows {
+        let input = row[0].as_str().unwrap();
+        let java_ok = row[1].as_bool().unwrap();
+        let tag = crate::nbt::Tag::decode_anonymous(&unhex(input)).expect("fixture NBT");
+        match Component::from_nbt(&tag) {
+            Err(ComponentError::Unsupported(_)) => unsupported += 1,
+            Ok(component) => {
+                compared += 1;
+                if !java_ok {
+                    failures.push(format!("accepted but Java rejects: {input}"));
+                } else {
+                    let out = hex(&component.to_network_nbt().unwrap());
+                    if out != row[2].as_str().unwrap() {
+                        failures.push(format!("re-encoding differs for {input}\n  rust {out}\n  java {}", row[2].as_str().unwrap()));
+                    }
+                }
+            }
+            Err(error) => {
+                compared += 1;
+                if java_ok {
+                    failures.push(format!("rejected but Java accepts: {input} ({error})"));
+                }
+            }
+        }
+    }
+    eprintln!("{label}: {compared} compared, {unsupported} unsupported, {} rows", rows.len());
+    assert!(
+        failures.is_empty(),
+        "{label}: {} of {} disagree:\n{}",
+        failures.len(),
+        rows.len(),
+        failures.iter().take(30).cloned().collect::<Vec<_>>().join("\n")
+    );
+    assert!(compared >= minimum_compared, "{label}: only {compared} compared");
+}
+
+#[test]
+fn nbt_oracle_vectors_match() {
+    check_nbt_rows(include_str!("../../fixtures/component-nbt-vectors.json"), "nbt vectors", 1500);
+}
+
+#[test]
+fn nbt_parse_parity_net_agrees() {
+    check_nbt_rows(include_str!("../../fixtures/component-nbt-parity.json"), "nbt parity", 800);
+}
+
+/// Full-set run: `COMPONENT_NBT_PARITY_FILE=<json> cargo test --lib components::tests::explore_nbt_parity -- --ignored`
+#[test]
+#[ignore]
+fn explore_nbt_parity() {
+    let path = std::env::var("COMPONENT_NBT_PARITY_FILE").expect("COMPONENT_NBT_PARITY_FILE");
+    check_nbt_rows(&std::fs::read_to_string(path).unwrap(), "nbt full parity", 100_000);
+}
+
+#[test]
+fn every_accepted_vector_round_trips_through_nbt() {
+    let doc = fixture(include_str!("../../fixtures/component-oracle-vectors.json"));
+    let mut checked = 0;
+    for case in doc["cases"].as_array().unwrap() {
+        let Ok(component) = Component::from_json(&case["j"]) else { continue };
+        let tag = component.to_nbt();
+        let decoded = Component::from_nbt(&tag).unwrap_or_else(|error| panic!("{}: {error}", case["j"]));
+        // A boolean argument is written as a byte and read back as one, so compare the wire form.
+        assert_eq!(decoded.to_network_nbt().unwrap(), component.to_network_nbt().unwrap(), "{}", case["j"]);
+        let reread = crate::nbt::Tag::decode_anonymous(&component.to_network_nbt().unwrap()).unwrap();
+        assert_eq!(Component::from_nbt(&reread).unwrap().to_network_nbt().unwrap(), component.to_network_nbt().unwrap());
+        checked += 1;
+    }
+    assert!(checked > 1400, "{checked}");
+}
+
+#[test]
+fn nbt_booleans_are_numeric_byte_values() {
+    use crate::nbt::{JavaString, Tag};
+    let compound = |bold: Tag| {
+        Tag::Compound(vec![
+            (JavaString::from("text"), Tag::String(JavaString::from("a"))),
+            (JavaString::from("bold"), bold),
+        ])
+    };
+    for (tag, expected) in [
+        (Tag::Byte(1), true),
+        (Tag::Byte(0), false),
+        (Tag::Byte(-1), true),
+        (Tag::Short(256), false),
+        (Tag::Int(257), true),
+        (Tag::Long(2), true),
+        (Tag::Float(0.4), false),
+        (Tag::Float(1.5), true),
+        (Tag::Double(256.0), false),
+    ] {
+        assert_eq!(Component::from_nbt(&compound(tag.clone())).unwrap().style.bold, Some(expected), "{tag:?}");
+    }
+    assert!(Component::from_nbt(&compound(Tag::String(JavaString::from("true")))).is_err());
+}
+
+#[test]
+fn nbt_wrappers_and_arrays_decode_like_nbt_ops() {
+    use crate::nbt::{JavaString, Tag};
+    let wrapper = |element: Tag| Tag::Compound(vec![(JavaString::from(""), element)]);
+    let string = |text: &str| Tag::String(JavaString::from(text));
+    // {translate:"k", with:[{"":"a"},{"":1b}]} is a mixed list; the wrappers unwrap.
+    let mixed = Tag::Compound(vec![
+        (JavaString::from("translate"), string("k")),
+        (JavaString::from("with"), Tag::List { element_type: 10, values: vec![wrapper(string("a")), wrapper(Tag::Byte(1))] }),
+    ]);
+    let component = Component::from_nbt(&mixed).unwrap();
+    assert_eq!(component.to_json()["with"], serde_json::json!(["a", 1]));
+    // A byte array is a list of byte arguments.
+    let array = Tag::Compound(vec![
+        (JavaString::from("translate"), string("k")),
+        (JavaString::from("with"), Tag::ByteArray(vec![1, 2])),
+    ]);
+    assert_eq!(Component::from_nbt(&array).unwrap().to_json()["with"], serde_json::json!([1, 2]));
+    // A lone wrapper is not unwrapped outside a list.
+    assert!(Component::from_nbt(&wrapper(string("a"))).is_err());
+    // A string with an unpaired surrogate cannot be held: reported, not guessed.
+    let lone = Tag::String(JavaString::Utf16(vec![0xD800]));
+    assert!(matches!(Component::from_nbt(&lone), Err(ComponentError::Unsupported(_))));
+}

@@ -9,7 +9,7 @@ SHA-1 `31c77994d96f05ba25a870ada70f47f315330437`) come from
 [`fixtures/source-lock.json`](../../fixtures/source-lock.json). Java artifacts, remapped
 jars and decompiled text stay outside Git.
 
-Scope of this document: `src/components/**`, work package WP-E8 stage 2 (delivery
+Scope of this document: `src/components/**`, work package WP-E8 stages 2 and 3 (delivery
 `registries.4`, **partial**). It claims **no** checklist point and **no** Main
 integration. Nothing in `src/` calls it yet.
 
@@ -23,6 +23,7 @@ integration. Nothing in `src/` calls it yet.
 | `ClickEvent` (server-sendable actions) | `text::ClickEvent` | `open_file` is rejected as in `filterForSerialization` |
 | `HoverEvent` | `text::HoverEvent` | `show_text`, including the legacy `value` form |
 | `ComponentSerialization.CODEC` decode (JSON) | `Component::from_json` | string shorthand, list form, fuzzy and typed contents, `extra` |
+| `ComponentSerialization.CODEC` decode (NBT) | `Component::from_nbt` | the form item components, block entities and packets carry; shares the decoder with JSON through a lowered value tree (`components::decode`) |
 | `CODEC` encode (JSON) | `Component::to_json` | a plain component is a bare string |
 | `CODEC` encode (NBT, network form) | `Component::to_nbt`, `to_network_nbt` | `HashMap` key order, `NbtOps` list collectors |
 | `java.util.HashMap` iteration order | `components::java` | `String.hashCode`, spread, bucket and resize order |
@@ -49,6 +50,13 @@ original before it was fixed:
   `ByteArray`/`IntArray`/`LongArray`; a leading compound or a type change makes a list of
   compounds in which every non-compound element is wrapped as `{"": element}`; other
   homogeneous lists stay typed lists.
+- **NBT input (`NbtOps`) differs from JSON input in four places.** `Codec.BOOL` goes through
+  `getNumberValue` and `Number.byteValue() != 0`, so any numeric tag is a boolean (`256s` is
+  false, `0.4f` is false, `-1b` is true; float and double narrow through `int`); a list of
+  compounds unwraps every `{"": element}` element (only inside a list: a lone wrapper compound
+  is not a component); `ByteArray`/`IntArray`/`LongArray` are lists of numbers (so
+  `with:[B;1b,2b]` is two byte arguments, and an array can never be `extra`); and a translate
+  argument keeps its tag type (no `longValueExact` narrowing), a byte staying a byte.
 - **Compound key order is `java.util.HashMap` order.** Colliding keys keep insertion order, and
   the original inserts contents, then `extra`, then the style members in *reverse*
   declaration order (`font`, `insertion`, `hoverEvent`, `clickEvent`, `obfuscated`,
@@ -77,21 +85,40 @@ and records, per input, accept or reject, the network NBT bytes (`NbtIo.writeAny
   `--sample 1` (about 77 MB, not committed) and run
   `COMPONENT_PARITY_FILE=<json> cargo test --lib components::tests::explore_parity -- --ignored`.
 
-`cargo test --locked --lib components::` runs both fixtures plus 11 focused tests in about a
-tenth of a second.
+### NBT decoding
+
+`tools/component_nbt_generate.py` runs `tools/loot_oracle.java component-nbt`
+(`ComponentSerialization.CODEC.parse(NbtOps, tag)`): the input tag, accept or reject, and the NBT
+the original re-encodes the decoded component to.
+
+- `fixtures/component-nbt-vectors.json`: **1592 inputs** (1505 accepted): the original's own NBT
+  for every accepted JSON input above, plus hand-written NBT-specific forms (numeric booleans of
+  every width, array tags, `{"": x}` wrappers nested and not, lists of every argument type,
+  colour forms). All agree, re-encoding byte for byte (5 use `show_item`/`show_entity`).
+- `fixtures/component-nbt-parity.json`: a sample of **927** of **231,616** mutants built on the
+  Java side (each member or list element removed, each node replaced by 19 wrong-typed tags, a
+  foreign or unknown `type` added). 54,959 were accepted by the original. **The full set agrees
+  with zero disagreements and identical re-encoded bytes** (231,251 compared; 365 contain
+  `show_item`/`show_entity`). Run it with
+  `COMPONENT_NBT_PARITY_FILE=<json> cargo test --lib components::tests::explore_nbt_parity -- --ignored`
+  after `--sample 1` regeneration (about 80 MB, not committed).
+
+`cargo test --locked --lib components::` runs both families of fixtures plus the focused tests
+(19 tests, about a third of a second).
 
 ## Not implemented (explicit)
 
 - `show_item` and `show_entity` hover events return `ComponentError::Unsupported` (they need
   the item-stack and entity-tooltip codecs; the legacy string forms likewise).
-- **Decoding from NBT.** The model encodes to NBT but does not yet read the NBT form that item
-  components, block entities and packets carry; that is the next stage.
 - Resolution (`ComponentUtils.updateForEntity`, selector/score/nbt contents), `getString`,
   legacy `§` formatting, `Style.applyTo`/`Style.applyFormat`, and the `ChatFormatting` enum.
   `selector` strings are kept verbatim: the original only logs a warning for an invalid
   pattern and still accepts it.
 - Text is Rust `String`: a lone UTF-16 surrogate (legal in Java and in NBT) cannot be
-  represented, and `serde_json` rejects it on input.
+  represented. `from_nbt` reports a string holding one as `Unsupported`; `serde_json` rejects it
+  on input.
+- `to_json` of a non-finite float argument (only reachable from NBT) is `null`; the original's
+  `JsonOps` keeps the `NaN` and fails later when serializing it.
 - `serde_json::Number` keeps no decimal text, so an integer literal below `i64::MIN` is read
   as `-9223372036854775808.0` (a long) where the original makes it a float. Float values in
   `to_json` print the shortest `f32` digits; Java may add a trailing `.0` or use `E` notation,
@@ -102,5 +129,6 @@ tenth of a second.
 ```bash
 python3 tools/loot_oracle_setup.py --oracle-dir /path/outside/git      # JDK 21 required
 python3 tools/component_generate.py --oracle-dir /path/outside/git     # --sample 1 keeps every mutant
+python3 tools/component_nbt_generate.py --oracle-dir /path/outside/git # NBT vectors and Java-side mutants
 cargo test --locked --lib components::
 ```

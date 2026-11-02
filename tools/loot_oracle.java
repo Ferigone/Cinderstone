@@ -265,6 +265,108 @@ public class loot_oracle {
 
   static Entity presenceOnly(Class<?> c) throws Exception { return (Entity) unsafe.allocateInstance(c); }
 
+  static String tagHex(Tag tag) throws IOException {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    NbtIo.writeAnyTag(tag, new DataOutputStream(bytes));
+    return hex(bytes.toByteArray());
+  }
+
+  /** SNBT cannot spell an empty key, so the generator writes WRAP and it becomes "" here. */
+  static Tag renameWrap(Tag tag) {
+    if (tag instanceof CompoundTag compound) {
+      CompoundTag out = new CompoundTag();
+      for (String key : compound.getAllKeys()) out.put(key.equals("WRAP") ? "" : key, renameWrap(compound.get(key)));
+      return out;
+    }
+    if (tag instanceof ListTag list) {
+      ListTag out = new ListTag();
+      for (Tag element : list) out.add(renameWrap(element));
+      return out;
+    }
+    return tag;
+  }
+
+  static Tag[] wrongTags() {
+    ListTag ints = new ListTag(); ints.add(IntTag.valueOf(1));
+    ListTag compounds = new ListTag(); compounds.add(new CompoundTag());
+    CompoundTag wrapper = new CompoundTag(); wrapper.put("", StringTag.valueOf("x"));
+    ListTag wrapped = new ListTag(); wrapped.add(wrapper);
+    return new Tag[] {
+      ByteTag.valueOf((byte) 0), ByteTag.valueOf((byte) 1), ShortTag.valueOf((short) 2), IntTag.valueOf(256), LongTag.valueOf(4L),
+      FloatTag.valueOf(2.5f), FloatTag.valueOf(256.0f), DoubleTag.valueOf(0.4), StringTag.valueOf("x"), StringTag.valueOf(""),
+      new ListTag(), ints, compounds, wrapped, new CompoundTag(), wrapper,
+      new ByteArrayTag(new byte[] {1}), new IntArrayTag(new int[] {1}), new LongArrayTag(new long[] {1}),
+    };
+  }
+
+  /** One-step mutants of an NBT tree: removals, wrong-typed replacements, foreign `type` members. */
+  static List<Tag> nbtMutants(Tag root) {
+    List<Tag> out = new ArrayList<>();
+    collectMutants(root, root, new ArrayList<>(), out);
+    return out;
+  }
+
+  static void collectMutants(Tag root, Tag node, List<Object> path, List<Tag> out) {
+    Tag[] wrong = wrongTags();
+    if (!path.isEmpty()) {
+      Tag removed = editAt(root, path, null);
+      if (removed != null) out.add(removed);
+      for (Tag w : wrong) {
+        Tag replaced = editAt(root, path, w);
+        if (replaced != null) out.add(replaced);
+      }
+    } else {
+      for (Tag w : wrong) out.add(w);
+    }
+    if (node instanceof CompoundTag compound) {
+      if (!compound.contains("type")) {
+        for (Tag kind : new Tag[] {StringTag.valueOf("text"), StringTag.valueOf("translatable"), StringTag.valueOf("keybind"),
+            StringTag.valueOf("score"), StringTag.valueOf("selector"), StringTag.valueOf("nbt"), StringTag.valueOf("bogus"), ByteTag.valueOf((byte) 1)}) {
+          List<Object> typePath = new ArrayList<>(path);
+          typePath.add("type");
+          Tag added = editAt(root, typePath, kind);
+          if (added != null) out.add(added);
+        }
+      }
+      List<String> keys = new ArrayList<>(compound.getAllKeys());
+      Collections.sort(keys);
+      for (String key : keys) {
+        List<Object> child = new ArrayList<>(path);
+        child.add(key);
+        collectMutants(root, compound.get(key), child, out);
+      }
+    } else if (node instanceof ListTag list) {
+      for (int i = 0; i < list.size(); i++) {
+        List<Object> child = new ArrayList<>(path);
+        child.add(i);
+        collectMutants(root, list.get(i), child, out);
+      }
+    }
+  }
+
+  /** Copy of root with the node at path replaced by value (removed when value is null); null when illegal. */
+  static Tag editAt(Tag root, List<Object> path, Tag value) {
+    try {
+      Tag copy = root.copy();
+      Tag parent = copy;
+      for (int i = 0; i < path.size() - 1; i++) {
+        Object step = path.get(i);
+        parent = step instanceof String key ? ((CompoundTag) parent).get(key) : ((ListTag) parent).get((Integer) step);
+      }
+      Object last = path.get(path.size() - 1);
+      if (last instanceof String key) {
+        CompoundTag compound = (CompoundTag) parent;
+        if (value == null) compound.remove(key); else compound.put(key, value.copy());
+      } else {
+        ListTag list = (ListTag) parent;
+        if (value == null) list.remove((int) (Integer) last); else list.set((Integer) last, value.copy());
+      }
+      return copy;
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
   static String hex(byte[] b) {
     StringBuilder sb = new StringBuilder();
     for (byte x : b) sb.append(String.format("%02x", x));
@@ -540,6 +642,53 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("components=" + in.size());
+        break;
+      }
+      case "component-nbt": {
+        // ComponentSerialization.CODEC over NbtOps. Input: JSON array of SNBT strings. With a
+        // fourth argument "mutate" every input is also mutated one step at a time (each member or
+        // element removed, each node replaced by a wrong-typed tag, foreign `type` members added)
+        // and the mutants are decided too. Output rows: in (hex of the tag), ok, out (hex of the
+        // codec's NbtOps re-encoding of the decoded component).
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        boolean mutate = a.length > 3 && a[3].equals("mutate");
+        LinkedHashMap<String, Tag> inputs = new LinkedHashMap<>();
+        for (JsonElement e : in) {
+          Tag base;
+          try {
+            base = new TagParser(new com.mojang.brigadier.StringReader(e.getAsString())).readValue();
+          } catch (com.mojang.brigadier.exceptions.CommandSyntaxException bad) {
+            System.err.println("skipped SNBT " + e.getAsString() + ": " + bad.getMessage());
+            continue;
+          }
+          base = renameWrap(base);
+          inputs.putIfAbsent(tagHex(base), base);
+        }
+        if (mutate) {
+          for (Tag base : new ArrayList<>(inputs.values())) {
+            for (Tag mutant : nbtMutants(base)) inputs.putIfAbsent(tagHex(mutant), mutant);
+          }
+        }
+        JsonArray outArr = new JsonArray();
+        for (Map.Entry<String, Tag> entry : inputs.entrySet()) {
+          JsonObject r = new JsonObject();
+          r.addProperty("in", entry.getKey());
+          try {
+            DataResult<net.minecraft.network.chat.Component> result = net.minecraft.network.chat.ComponentSerialization.CODEC.parse(nbtOps, entry.getValue());
+            r.addProperty("ok", result.result().isPresent());
+            if (result.error().isPresent()) r.addProperty("error", result.error().get().message());
+            if (result.result().isPresent()) {
+              Tag out = net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(nbtOps, result.result().get()).getOrThrow(m -> new IllegalStateException(m));
+              r.addProperty("out", tagHex(out));
+            }
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("component-nbt=" + inputs.size());
         break;
       }
       case "export-facts": {
