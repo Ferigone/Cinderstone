@@ -204,3 +204,44 @@ teleport progression. Existing compiler checks, source reviews and controlled
 probes support the exported fragments; none supplies that Main proof. Generic
 LivingEntity/Player death, arbitrary damage/effect/AI contexts, mobs and whole
 entities/survival deliveries remain outside this bounded milestone.
+
+## Nov2 reconciliation to master26c4d2e / Beacon descendant9b1e48b
+
+Main now genuinely serializes item, connection, autosave and cleanup with the
+outer chat_dispatch guard. Reuse it; synchronous lifecycle callbacks must not
+reacquire it. Current-menu selection/removal is atomic, but the public helper
+selects AliveConnected and takes the guard, so death requires a narrowly assigned
+already-locked context-qualified helper. Player.remove executes inventoryMenu
+removal first, then external doClose in DeadOrDisconnected without an extra
+CloseScreen; this is not an immediate ServerPlayer.die callback.
+
+Actual level entry uses main_rain_context begin_level_tick_pass and shared
+RuntimeEntities handles. Player level_player_tick currently validates UUID and
+counts the callback; real creative body execution remains in the later connection
+phase. tick_players owns old transforms/tickCount; no second living/effect counter
+is permitted. Current player body still removes its motion/body entry temporarily,
+rejects reentry/dead/effects and hardcodes dead_or_dying=false. A retained actor
+lease and short physical/body borrows are needed before real callback reentry.
+
+An actual bounded Bat is a separate actor milestone: no Mob EntityKind/admitted
+actor arena/metadata owner exists (only Player, Item and ExperienceOrb). It needs
+full Entity→Living→Mob→AmbientCreature→Bat construction, the existing real ID/UUID/
+entity/global/Level RNG provenance, proper inherited metadata and one canonical
+attribute/effect/equipment/Brain/selector/navigation/control object graph. Bat
+inherits ordinary GroundPathNavigation and ordinary Living.travel, including
+gravity/fluid/friction/collision; no FlyingMob or synthetic noGravity shortcut.
+Its constructor must install both final animation fields before resting setter
+callbacks. Real goal lists may be empty; navigation/sensing/control callbacks
+remain mandatory. Mob serverAI ticks its direct navigation/control fields,
+whereas control internals' getters may delegate to a controlling vehicle.
+
+Team4 source has now added Living.baseTick and generic health/Living+Player die,
+ordinary controls and equipment drop orchestration, and effect/attribute state
+operations. Missing inherited Living.tick2468–2595, aiStep2736–2859 and
+travel2184–2353 remain source work, not a supplied production parent callback.
+The central request is a narrow actual main_living_entities adapter/retained
+arena contract, exact existing ID/index admission/removal and per-entry level
+dispatch seams, real world/registry/RNG/loot/XP/enchantment/packet/save callbacks.
+No central FallingBlock scope is included. Player survival independently still
+needs the real player actor, death/body retirement and same-connection
+RespawnSessionUpdate contracts described above.

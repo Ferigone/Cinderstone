@@ -10,3 +10,5 @@ pub mod respawn;
 pub mod restore;
 pub mod client_command;
 pub mod server_player_death;
+pub mod base_tick;
+pub mod death;
