@@ -847,6 +847,7 @@ impl LivePlayers {
         self.chunk_runtime.manager.player_add(id, chunk, false)?;
         self.connection_admissions.insert(admission, id);
         self.player_random.insert(id, random);
+        self.experience_runtime.initialize_player_cache(id);
         self.creative_drop.insert(id, CreativeDropGate::default());
         self.chunk_transports
             .insert(id, SessionChunkTransport::new());
@@ -3302,7 +3303,7 @@ async fn play(
         send(&codec, &mut writer, 0x1d, rejection.network_component()?).await?;
         return Ok(PlayExit::Disconnected);
     }
-    let (entity_id, player_random) = server.allocate_player_entity()?;
+    let (entity_id, mut player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
         let _ = menu_sender.send(PlayerEvent::Container {
@@ -3340,6 +3341,9 @@ async fn play(
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
         let uuid = profile.uuid;
+        let mut seed_admission = main_player_data::EnchantmentSeedAdmission::SavedData;
+        // Pending writes are saved-data proposals for this new Player too.
+        // Reconfiguration does not retain/copy the old Player object.
         let mut saved = match players.pending_player_saves.get(&uuid) {
             Some(data) => Some(data.clone()),
             None => server.player_store.load(uuid)?,
@@ -3361,10 +3365,11 @@ async fn play(
         let math=players.math_random.as_ref().context("actual global Math.random owner missing")?;
         let constructor_math=[math.next_f64()?,math.next_f64()?,math.next_f64()?];
         let mut player = PlayerState::new(entity_id, profile, position)?;
-        let (inventory, stats, lifecycle) = if let Some(saved) = saved {
+        let (inventory, stats, mut lifecycle) = if let Some(saved) = saved {
             saved.apply_to_player(&mut player)?;
             (saved.inventory, saved.stats, saved.lifecycle)
         } else {
+            seed_admission = main_player_data::EnchantmentSeedAdmission::NewPlayer;
             let mut stats = PlayerStats::default();
             if let Some(root) = &server.options.anvil_world {
                 let uuid_text = mc121_rust::player_data::uuid_string(uuid);
@@ -3388,6 +3393,11 @@ async fn play(
             lifecycle.dimension == "minecraft:overworld",
             "saved player dimension is unsupported by this world host"
         );
+        // This is the one real local Player.random created for this admission.
+        // Every actual saved-data admission, including reconfiguration and a
+        // pending native save, loads seed0 once. A genuinely new player keeps
+        // constructor zero. Move this advanced RNG into runtime below.
+        main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
         position = player.position;
         metadata = player.metadata;
@@ -3651,8 +3661,9 @@ async fn play(
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
-                        // switchToConfig removes the actual old ServerPlayer.
-                        // Re-entry uses the normal saved-player admission path.
+                        // switchToConfig removes/saves the old ServerPlayer.
+                        // Configuration completion constructs a new Player and
+                        // uses normal saved-data loading, not restoreFrom.
                         server.cleanup_player(entity_id, None).await?;
                         let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
                         send(&codec, &mut writer, terminal.id, terminal.payload).await?;

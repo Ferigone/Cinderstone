@@ -35,6 +35,15 @@ pub(super) struct MainExperienceRuntime {
     last_sent_experience: BTreeMap<i32, i32>,
 }
 impl MainExperienceRuntime {
+    /// ServerPlayer constructor's actual lastSentExp field (aqv.cR). The
+    /// enchanting override later writes -1 through this same retained entry.
+    pub(super) fn initialize_player_cache(&mut self, id: i32) {
+        self.last_sent_experience.insert(id, -99_999_999);
+    }
+    pub(super) fn last_sent_experience_mut(&mut self, id: i32) -> Result<&mut i32> {
+        self.last_sent_experience.get_mut(&id)
+            .context("actual player last-sent-experience owner missing")
+    }
     pub(super) fn snapshot(&self) -> Result<Vec<SavedExperienceOrb>> {
         let mut values = self.orbs.values().filter(|o| !o.state.removed).collect::<Vec<_>>();
         values.sort_by_key(|o| o.insertion);
