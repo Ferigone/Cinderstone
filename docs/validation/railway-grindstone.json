@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-11-02T01:49:31.651887+00:00",
+  "master": "f19197affbf4134bbb767ff79065d4dbbdd2a1b1",
+  "pr": 84,
+  "deployment": "7f39646a-63ba-4218-9419-e6f7cc70005b",
+  "status": "SUCCESS",
+  "native_listening_at": "2026-11-02T01:19:07.247485044Z",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "mode": "offline",
+  "running": 1,
+  "crashed": 0,
+  "volume_retained": true,
+  "pending_work": [],
+  "public_play_verified": false,
+  "note": "Root direct API observation. Optional service-key request and missing server.properties defaults do not establish public gameplay. Falling PR97 not included in this deployment."
+}
