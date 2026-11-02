@@ -7,3 +7,4 @@ pub mod reduction;
 pub mod totem;
 pub mod tracker;
 pub mod living_health;
+pub mod damage_source;
