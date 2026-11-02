@@ -326,16 +326,23 @@ pub struct BatState {
     rest_animation_state: BatAnimationState,
 }
 impl BatState {
+    /// Callback-free source field initializers, after the complete superclass
+    /// constructor. A retained actor installs this object BEFORE setResting
+    /// may invoke metadata callbacks on that same partially constructed Bat.
+    pub fn initialized_fields() -> Self {
+        Self {
+            target_position: None,
+            fly_animation_state: BatAnimationState::new(),
+            rest_animation_state: BatAnimationState::new(),
+        }
+    }
+
     /// Source constructor. The mandatory inherited callback creates the actual
     /// actor's shared owners first; this returned value must be attached to that
     /// same actor, never used to imply an independently created live entity.
     pub fn construct<H: BatHost>(host: &mut H) -> Result<Self, H::Error> {
         host.inherited_construct()?;
-        let state = Self {
-            target_position: None,
-            fly_animation_state: BatAnimationState::new(),
-            rest_animation_state: BatAnimationState::new(),
-        };
+        let state = Self::initialized_fields();
         if !host.is_client_side()? {
             set_resting(host, true)?;
         }

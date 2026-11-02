@@ -127,6 +127,22 @@ pub enum LivingHand {
     Off,
 }
 
+/// Default tracker reference encoding. Keeping this a nominal tag avoids
+/// recursively normalizing Objects::Actor in a public default type parameter.
+pub struct RetainedLivingTracker;
+/// Aggregate-private tracker self-reference encoding. This never changes the
+/// genuine retained LivingObjects::Actor fields used for other actors.
+pub struct InternalLivingTracker<A>(std::marker::PhantomData<A>);
+pub trait LivingTrackerStorage<O: LivingObjects> {
+    type Actor;
+}
+impl<O: LivingObjects> LivingTrackerStorage<O> for RetainedLivingTracker {
+    type Actor = O::Actor;
+}
+impl<O: LivingObjects, A> LivingTrackerStorage<O> for InternalLivingTracker<A> {
+    type Actor = A;
+}
+
 /// Canonical complementary Living fields. `jvm_zeroed` represents allocation
 /// BEFORE Entity's constructor and virtual metadata definition. Reference fields
 /// are genuinely null then; it does not allocate a map/Brain/EMPTY substitute.
@@ -136,7 +152,10 @@ pub enum LivingHand {
 /// scalar; Player's override uses metadata15 instead. Mob metadata15 is a BYTE.
 /// `dead` is ONLY source btn.be; it is never inferred from health/removal and
 /// is not used as a replacement isAlive/isDeadOrDying predicate.
-pub struct LivingEntityState<O: LivingObjects> {
+pub struct LivingEntityState<
+    O: LivingObjects,
+    Tracker: LivingTrackerStorage<O> = RetainedLivingTracker,
+> {
     pub swinging: bool,
     pub swinging_arm: Option<LivingHand>,
     pub swing_time: i32,
@@ -204,7 +223,8 @@ pub struct LivingEntityState<O: LivingObjects> {
     pub discard_friction: bool,
     pub skip_drop_experience: bool,
     pub applied_scale: f32,
-    pub combat_tracker: Option<LivingCombatTracker<O::Actor, O::DamageSource, O::FallLocation>>,
+    pub combat_tracker:
+        Option<LivingCombatTracker<Tracker::Actor, O::DamageSource, O::FallLocation>>,
     pub active_effects: Option<O::ActiveEffectsMap>,
     pub last_hand_items: Option<EquipmentHistory<O::ItemStack, 2>>,
     pub last_armor_items: Option<EquipmentHistory<O::ItemStack, 4>>,
@@ -215,7 +235,7 @@ pub struct LivingEntityState<O: LivingObjects> {
     pub brain: Option<O::Brain>,
     pub active_location_enchantments: Option<O::LocationEnchantmentsMap>,
 }
-impl<O: LivingObjects> LivingEntityState<O> {
+impl<O: LivingObjects, Tracker: LivingTrackerStorage<O>> LivingEntityState<O, Tracker> {
     /// Raw Java allocation defaults only. Attach this SAME state to the actor
     /// before Entity's virtual callbacks; never interpret this as a constructor
     /// completion or fill missing source references on a successful fallback.
@@ -421,12 +441,18 @@ impl<'a> SourcePositionHistory<'a> {
 }
 
 /// Short combined field view only. Never hold it across a source callback.
-pub struct LivingTickProjection<'a, O: LivingObjects> {
-    pub living: &'a mut LivingEntityState<O>,
+pub struct LivingTickProjection<
+    'a,
+    O: LivingObjects,
+    Tracker: LivingTrackerStorage<O> = RetainedLivingTracker,
+> {
+    pub living: &'a mut LivingEntityState<O, Tracker>,
     pub physical: &'a mut EntityPhysicalState,
     pub history: SourcePositionHistory<'a>,
 }
-impl<O: LivingObjects> LivingTickFields for LivingTickProjection<'_, O> {
+impl<O: LivingObjects, Tracker: LivingTrackerStorage<O>> LivingTickFields
+    for LivingTickProjection<'_, O, Tracker>
+{
     fn int(&self, field: TickIntField) -> i32 {
         match field {
             TickIntField::RemoveArrowTime => self.living.remove_arrow_time,
@@ -543,14 +569,167 @@ pub trait LivingConstructionHost {
     ) -> Result<<Self::Objects as LivingObjects>::Brain, Self::Error>;
 }
 
-/// Exact Living field-initializer prefix187–267 after Entity returns. A caller
-/// must execute it at that source position, once, on the same staged object.
+/// Specialized storage projection for a graph-internal CombatTracker backlink.
+/// Public Actor is still a genuine retained source handle. TrackerActor may be
+/// an aggregate-private backlink ONLY when every escaped tracker lease roots
+/// that same graph. No source callback may expose the backlink as an Actor.
+pub trait LivingConstructionFields<Tracker>
+where
+    Tracker: LivingTrackerStorage<Self::Objects>,
+{
+    type Error;
+    type Actor: Clone;
+    type Objects: LivingObjects<Actor = Self::Actor>;
+    type EntityType;
+
+    /// Same canonical state attached BEFORE Entity's virtual callbacks. Closure
+    /// is callback-free and releases all actor/field borrows before returning.
+    /// Errors precede access; completed fragments/draws are never rolled back.
+    fn with_living_state<R>(
+        &mut self,
+        actor: &Self::Actor,
+        access: impl FnOnce(&mut LivingEntityState<Self::Objects, Tracker>) -> R,
+    ) -> Result<R, Self::Error>;
+    /// Actual Maps.newHashMap with source canonical keys/instances/live cursors.
+    /// The current effect executors do not themselves supply this owner.
+    fn new_active_effects_map(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::ActiveEffectsMap, Self::Error>;
+    /// Actual nonnull shared ItemStack.EMPTY. Never construct a fresh empty
+    /// stack/value clone, obtain it from an inventory snapshot, or consume RNG.
+    fn canonical_empty_stack(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::ItemStack, Self::Error>;
+    /// Actual Reference2ObjectArrayMap keyed by definition identity. No sorted
+    /// map or `empty=true` marker can stand in for its mutable source owner.
+    fn new_location_enchantments_map(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::LocationEnchantmentsMap, Self::Error>;
+    /// DefaultAttributes.getSupplier on the RETAINED constructor type argument,
+    /// not a new type lookup or peractor copy of the shared immutable template.
+    fn default_attribute_supplier(
+        &mut self,
+        entity_type: &Self::EntityType,
+    ) -> Result<<Self::Objects as LivingObjects>::AttributeSupplier, Self::Error>;
+    /// Actual final getMaxHealth, including virtual getAttributeValue dispatch.
+    fn max_health(&mut self, actor: &Self::Actor) -> Result<f32, Self::Error>;
+    /// Actual virtual setHealth, current max-health lookup and metadata9 owner.
+    fn set_health(&mut self, actor: &Self::Actor, health: f32) -> Result<(), Self::Error>;
+    /// Actual Entity.blocksBuilding(J) field, currently a central Entity seam.
+    fn set_blocks_building(&mut self, actor: &Self::Actor, value: bool) -> Result<(), Self::Error>;
+    /// ONE actual global java.lang.Math.random double, independent of Entity
+    /// and Level random streams. Three calls are deliberately interleaved.
+    fn next_global_math_double(&mut self) -> Result<f64, Self::Error>;
+    fn reapply_position(&mut self, actor: &Self::Actor) -> Result<(), Self::Error>;
+    fn set_yaw(&mut self, actor: &Self::Actor, yaw: f32) -> Result<(), Self::Error>;
+    fn yaw(&mut self, actor: &Self::Actor) -> Result<f32, Self::Error>;
+    /// Actual empty-memories Dynamic -> virtual makeBrain/provider -> real NEW
+    /// peractor Brain object. Missing Brain/codec owner must return an error.
+    fn make_brain_from_empty_memories(
+        &mut self,
+        actor: &Self::Actor,
+    ) -> Result<<Self::Objects as LivingObjects>::Brain, Self::Error>;
+}
+
+// Preserve every existing implementation of LivingConstructionHost unchanged.
+impl<H: LivingConstructionHost> LivingConstructionFields<RetainedLivingTracker> for H {
+    type Error = H::Error;
+    type Actor = H::Actor;
+    type Objects = H::Objects;
+    type EntityType = H::EntityType;
+    fn with_living_state<R>(
+        &mut self,
+        a: &Self::Actor,
+        f: impl FnOnce(&mut LivingEntityState<Self::Objects>) -> R,
+    ) -> Result<R, Self::Error> {
+        LivingConstructionHost::with_living_state(self, a, f)
+    }
+    fn new_active_effects_map(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::ActiveEffectsMap, Self::Error> {
+        LivingConstructionHost::new_active_effects_map(self)
+    }
+    fn canonical_empty_stack(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::ItemStack, Self::Error> {
+        LivingConstructionHost::canonical_empty_stack(self)
+    }
+    fn new_location_enchantments_map(
+        &mut self,
+    ) -> Result<<Self::Objects as LivingObjects>::LocationEnchantmentsMap, Self::Error> {
+        LivingConstructionHost::new_location_enchantments_map(self)
+    }
+    fn default_attribute_supplier(
+        &mut self,
+        t: &Self::EntityType,
+    ) -> Result<<Self::Objects as LivingObjects>::AttributeSupplier, Self::Error> {
+        LivingConstructionHost::default_attribute_supplier(self, t)
+    }
+    fn max_health(&mut self, a: &Self::Actor) -> Result<f32, Self::Error> {
+        LivingConstructionHost::max_health(self, a)
+    }
+    fn set_health(&mut self, a: &Self::Actor, v: f32) -> Result<(), Self::Error> {
+        LivingConstructionHost::set_health(self, a, v)
+    }
+    fn set_blocks_building(&mut self, a: &Self::Actor, v: bool) -> Result<(), Self::Error> {
+        LivingConstructionHost::set_blocks_building(self, a, v)
+    }
+    fn next_global_math_double(&mut self) -> Result<f64, Self::Error> {
+        LivingConstructionHost::next_global_math_double(self)
+    }
+    fn reapply_position(&mut self, a: &Self::Actor) -> Result<(), Self::Error> {
+        LivingConstructionHost::reapply_position(self, a)
+    }
+    fn set_yaw(&mut self, a: &Self::Actor, v: f32) -> Result<(), Self::Error> {
+        LivingConstructionHost::set_yaw(self, a, v)
+    }
+    fn yaw(&mut self, a: &Self::Actor) -> Result<f32, Self::Error> {
+        LivingConstructionHost::yaw(self, a)
+    }
+    fn make_brain_from_empty_memories(
+        &mut self,
+        a: &Self::Actor,
+    ) -> Result<<Self::Objects as LivingObjects>::Brain, Self::Error> {
+        LivingConstructionHost::make_brain_from_empty_memories(self, a)
+    }
+}
+
+/// Existing retained-Actor constructor API, with its original field owner.
 pub fn initialize_living_fields<H: LivingConstructionHost>(
     actor: &H::Actor,
     host: &mut H,
 ) -> Result<(), H::Error> {
+    initialize_living_fields_with_tracker::<RetainedLivingTracker, H>(actor, actor.clone(), host)
+}
+
+/// Existing constructor API. Specialized aggregates reuse the SAME source body
+/// through construct_living_after_entity_with_tracker below.
+pub fn construct_living_after_entity<H: LivingConstructionHost>(
+    actor: &H::Actor,
+    entity_type: &H::EntityType,
+    host: &mut H,
+) -> Result<(), H::Error> {
+    construct_living_after_entity_with_tracker::<RetainedLivingTracker, H>(
+        actor,
+        entity_type,
+        actor.clone(),
+        host,
+    )
+}
+
+/// Exact Living field-initializer prefix187–267 after Entity returns. A caller
+/// must execute it at that source position, once, on the same staged object.
+pub fn initialize_living_fields_with_tracker<Tracker, H>(
+    actor: &H::Actor,
+    tracker_actor: Tracker::Actor,
+    host: &mut H,
+) -> Result<(), H::Error>
+where
+    H: LivingConstructionFields<Tracker>,
+    Tracker: LivingTrackerStorage<H::Objects>,
+{
     let tracker = LivingCombatTracker {
-        actor: actor.clone(),
+        actor: tracker_actor,
         state: CombatTracker::new(),
     };
     host.with_living_state(actor, |s| s.combat_tracker = Some(tracker))?;
@@ -587,12 +766,17 @@ pub fn initialize_living_fields<H: LivingConstructionHost>(
 /// AttributeMap/CombatTracker objects are constructed here, not successful
 /// owner placeholders. No actor is admitted and no physical/health/RNG copy is
 /// created. A partial error leaves all prior real assignments/draws committed.
-pub fn construct_living_after_entity<H: LivingConstructionHost>(
+pub fn construct_living_after_entity_with_tracker<Tracker, H>(
     actor: &H::Actor,
     entity_type: &H::EntityType,
+    tracker_actor: Tracker::Actor,
     host: &mut H,
-) -> Result<(), H::Error> {
-    initialize_living_fields(actor, host)?;
+) -> Result<(), H::Error>
+where
+    H: LivingConstructionFields<Tracker>,
+    Tracker: LivingTrackerStorage<H::Objects>,
+{
+    initialize_living_fields_with_tracker::<Tracker, H>(actor, tracker_actor, host)?;
     let supplier = host.default_attribute_supplier(entity_type)?;
     let attributes = AttributeMapState::new(supplier);
     host.with_living_state(actor, |s| s.attributes = Some(attributes))?;
