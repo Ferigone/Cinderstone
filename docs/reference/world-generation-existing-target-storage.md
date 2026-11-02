@@ -8,6 +8,12 @@ into the target. Generation does not clone these allocations into a replacement
 air image. This module supplies storage operations, not a runtime chunk, a
 scheduler status transition, persistence or Main integration.
 
+The public namespace remains `worldgen::target`. Its physical source directory
+is `src/worldgen/chunk_target/`, selected by `#[path]` in `worldgen/mod.rs`, so
+the Docker build-output exclusion `**/target/**` cannot discard these sources.
+The earlier paired runtime fixtures retain their historical source paths and
+native source commit `a28bfc2`; see [packaging evidence](world-generation-target-packaging.md).
+
 The reference is the pinned unchanged Minecraft Java **1.21**, protocol **767**
 server: inner SHA-256
 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`,
