@@ -253,6 +253,12 @@ pub enum SupportType {
 /// dynamic facts fail explicitly; there is no assumed redstone/sky/border value.
 pub trait PlacementWorld {
     fn block(&mut self, position: BlockPosition) -> Result<u32>;
+    /// ConcretePowderBlock requires its actual Level-bound BlockPlaceContext
+    /// and retained concrete association, not a coordinate-only approximation.
+    fn concrete_powder_placement(&mut self, _placing: u32, _context: &PlacementContext)
+        -> Result<PlacementResult> {
+        Ok(PlacementResult::Unsupported("actual_concrete_powder_placement_owner"))
+    }
     fn max_build_height(&mut self) -> Result<i32> {
         bail!("maximum build height fact required")
     }
@@ -975,6 +981,9 @@ pub fn placement_state_in_world(
     world: &mut impl PlacementWorld,
 ) -> Result<PlacementResult> {
     let b = block(placing_state)?;
+    if b.placement_class == "dhk" {
+        return world.concrete_powder_placement(placing_state, context);
+    }
     let state = match b.placement_class.as_str() {
         "die" => {
             if context.position.1 >= world.max_build_height()?.wrapping_sub(1) {
@@ -2277,35 +2286,7 @@ pub fn placement_state(
             b.default,
             &[("facing", context.horizontal_direction.opposite().name())],
         )?,
-        "dhk" => {
-            let mut harden = is_water(current);
-            if !harden {
-                for direction in [
-                    Direction::Up,
-                    Direction::North,
-                    Direction::South,
-                    Direction::West,
-                    Direction::East,
-                ] {
-                    let next = get(neighbour(context.position, direction))?;
-                    if is_water(next) {
-                        let Some(sturdy) = block_support_face(next, direction.opposite()) else {
-                            return Ok(PlacementResult::Unsupported("dynamic_neighbor_support"));
-                        };
-                        if !sturdy {
-                            harden = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            if harden {
-                b.hardened_state
-                    .ok_or_else(|| anyhow!("concrete powder target missing"))?
-            } else {
-                b.default
-            }
-        }
+        "dhk" => return Ok(PlacementResult::Unsupported("actual_concrete_powder_placement_owner")),
         _ => return Ok(PlacementResult::Unsupported(&b.placement_class)),
     };
     Ok(PlacementResult::State(result))

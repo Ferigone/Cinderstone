@@ -10,6 +10,20 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native concrete-powder Main
+
+Concrete powder now has a bounded native placement, scheduler, falling,
+hardening and resume path. The [real local flow](docs/reference/concrete-powder-runtime.md)
+placed white powder on dry support, saved it airborne, preserved its complete
+body/UUID/RNG through a hidden restart and resumed the same actor into water,
+leaving one concrete block without duplicate entities or items.
+
+Player operations require a single write and a fluid-quiescent neighborhood;
+direct-water/adjacent-fluid powder placement remains unsupported. Falling
+water handling uses its separate source-ordered phase. The short observed fall
+does not certify high-speed rays, arbitrary dynamic supports or mixed cascades.
+Recorded tick overloads remain explicit; no performance advantage is claimed.
+
 ## Native registry and NBT owners
 
 Current fixture construction retains the same canonical inventory/placement
@@ -23,9 +37,8 @@ The library now includes genuine fresh CompoundTag history, decoder-issued
 immutable views, source `getCompound` defaults and the canonical EMPTY component
 branch. [BE contracts](docs/reference/enchanting-block-entity.md) and
 [SNBT limits](docs/reference/nbt-snbt.md) identify remaining owners and unsupported
-floating diagnostics. Powder hardening, ordered landing and real collider/fluid
-clipping have composed source, but production powder classification stays
-disabled until its actual owner/placement/dispatch pipeline is installed.
+floating diagnostics. The bounded concrete-powder Main delivery above consumes
+the actual retained placement, scheduler, landing and clipping owners.
 
 The separate [flowing-fluid correction](docs/reference/placement-fluid-source-correction.md)
 fixes the original extractor's WATER/LAVA singleton mix-up; fresh original

@@ -43,6 +43,7 @@ pub(super) fn has_water_context(world:&mut WorldBackend,plan:&InteractionPlan)->
 /// here rather than moved across the water scheduling calls.
 pub(super) fn preflight_water_plan(services:&mut ActualFallingBlockEditServices<'_>,
     plan:&InteractionPlan)->Result<()> {
+    services.require_powder_plan_owners(plan)?;
     validate_anvil_schedule_obligations(plan)?;
     let writes=plan.events.iter().filter_map(|event|match event {
         InteractionEvent::Write {position,old_state,state,flags}=>Some((*position,*old_state,*state,*flags)),
@@ -82,6 +83,9 @@ pub(super) fn preflight_water_plan(services:&mut ActualFallingBlockEditServices<
         if delta!=(0,0,0) {
             // Exact base Block/AirBlock and LiquidBlock neighbors have no
             // additional shape scheduler between the liquid shape attempts.
+            // A powder target's inherited onPlace is its represented schedule
+            // above. Adjacent powder still requires an interleaved shape/fluid
+            // owner; do not turn wet hardening into a quiescent callback.
             // Snowy/plant/custom/Falling neighbors require their real owner.
             ensure!(matches!(block.class.as_str(),"dfy"|"dev"|"dko"),
                 "mixed active shape callback cannot be moved across fluid scheduling");

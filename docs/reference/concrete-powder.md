@@ -1,10 +1,12 @@
 # ConcretePowderBlock hardening source kernel
 
-This future stage adds callable block-bound ConcretePowderBlock algorithms in
-`src/falling_block/concrete_powder.rs`. It does not bind powder colors to the
-canonical registry, declare a module, admit this class into native callbacks or
-connect a new production Main path. It is not evidence of a working complete
-concrete-powder falling lifecycle or a checklist delivery.
+`src/falling_block/concrete_powder.rs` supplies callable block-bound
+ConcretePowderBlock algorithms. `src/falling_block/block.rs` additionally
+certifies the finite pinned powder source class and its captured concrete
+associations against the existing canonical registry. These library contracts
+do not install a production Main owner, certify active world callbacks or prove
+a complete concrete-powder falling lifecycle or checklist delivery. Actual Main
+admission and runtime validation are reported by the integration coordinator.
 
 ## Pinned source evidence
 
@@ -28,6 +30,68 @@ Raw JVM disassembly and Java binaries remain outside the repository.
 | Inherited FallingBlock.onPlace32–33, `diu.b`, offsets0–10 | Unconditionally schedule this powder Block with actual delay2. There is no ConcretePowderBlock.onPlace override or added hardening query. |
 | Inherited FallingBlock.updateShape37–39, `diu.a`, offsets0–27 | Schedule this same Block at delay2 before the inherited unchanged-state delegate. Reuse the actual shared BLOCK scheduler and subtick owner; deduplication does not suppress the source scheduling attempt. |
 | Inherited FallingBlock.tick44–50 / falling53 | Reuse the existing source scheduled tick and empty inherited falling hook. It tests below/isFree before minimum build height, then calls the same actual constructor/replacement/add owner. It does not configure Anvil hurt2/40. |
+
+## Finite source class and inherited scheduler contract
+
+`block::source_class` recognizes `NativeFallingClass::ConcretePowder` only for
+the captured `dhk` class. Its existing catalogue owner now verifies exactly
+16 powder singletons, each with inherited `diu` onPlace, actual delay2, its own
+`dhk` placement method and its recorded `hardened_state`. Each captured target
+must resolve to a distinct canonical single-state base Block/default with the
+source inherited onPlace declaration. Both powder and concrete key/range/default
+bindings are checked against the **same existing** inventory registry owner.
+The placement file hash must match that owner's actual pinned bootstrap proof.
+No Block registry ID is inferred from state IDs or iteration position.
+
+The association comes from `PlacementCatalog` reading the original final
+`ConcretePowderBlock.b` field and that actual Block's default state. The checks
+use these captured associations, never a color-name rule or a difference between
+powder and concrete state IDs. The observed source domain is:
+
+| Powder singleton | Captured concrete singleton |
+| --- | --- |
+| white_concrete_powder (`12744`) | white_concrete (`12728`) |
+| orange_concrete_powder (`12745`) | orange_concrete (`12729`) |
+| magenta_concrete_powder (`12746`) | magenta_concrete (`12730`) |
+| light_blue_concrete_powder (`12747`) | light_blue_concrete (`12731`) |
+| yellow_concrete_powder (`12748`) | yellow_concrete (`12732`) |
+| lime_concrete_powder (`12749`) | lime_concrete (`12733`) |
+| pink_concrete_powder (`12750`) | pink_concrete (`12734`) |
+| gray_concrete_powder (`12751`) | gray_concrete (`12735`) |
+| light_gray_concrete_powder (`12752`) | light_gray_concrete (`12736`) |
+| cyan_concrete_powder (`12753`) | cyan_concrete (`12737`) |
+| purple_concrete_powder (`12754`) | purple_concrete (`12738`) |
+| blue_concrete_powder (`12755`) | blue_concrete (`12739`) |
+| brown_concrete_powder (`12756`) | brown_concrete (`12740`) |
+| green_concrete_powder (`12757`) | green_concrete (`12741`) |
+| red_concrete_powder (`12758`) | red_concrete (`12742`) |
+| black_concrete_powder (`12759`) | black_concrete (`12743`) |
+
+These numbers are state IDs of actual single-state Blocks, not raw Block
+registry IDs. `concrete_powder_hardened_state(state)` returns the captured target
+default for an admitted powder source class. `concrete_powder_delay` is narrow
+to powder, `ordinary_delay` remains narrow to sand/red-sand/gravel, and
+`source_delay` covers the three finite classes Anvil/Ordinary/ConcretePowder.
+They report source facts; none grants a retained Main capability.
+
+`inherits_base_falling_hook(state)` is true only for certified `dhg` and `dhk`.
+The pinned `dhk` method inventory has no falling override, and inherited
+`diu.a(FallingBlockEntity)` at source53 is literally bytecode0:return. The
+existing OrdinaryFallingBlockHost contract and scheduled-tick kernel retain
+their callable signatures for both admitted base-hook classes. Production must
+resolve the same constructed/add-attempt object before executing that empty
+body. No Anvil hurt2/40 setter, second entity, constructor entropy refund or
+additional RNG draw is introduced. Stable support/minimum-height branches do
+not acquire falling-entity constructor entropy.
+
+For powder, the actual Main scheduler and physics/restore admission must also
+require the installed retained NativeConcretePowderOwner, matching powder and
+associated concrete singleton bindings, actual damage/configuration owners and
+all required stage-specific world capabilities. Unknown families remain
+unsupported. A source-class match without those owners is not a successful
+Main callback. Powder's wet updateShape still returns concrete without reaching
+FallingBlock scheduling; broadening source_delay cannot create an extra wet
+shape obligation.
 
 ## Exact neighbor traversal
 
@@ -65,10 +129,10 @@ association and capabilities; it does not query the world early, draw RNG,
 schedule, edit or publish. A production edit must complete admission before
 mutating any world/source/scheduler/output owner.
 
-The central binding must capture the actual powder-to-concrete Block association
-from the pinned source/configuration and validate it against the real canonical
-registry once. The wrapper's constructor retains supplied handles; calling it
-alone is not that provenance check. State getters resolve against that same
+The production binding must retain the actual powder-to-concrete Block
+association and validate it against the certified library association and real
+canonical registry once. The wrapper's constructor retains supplied handles;
+calling it alone is not that provenance check. State getters resolve against that same
 registry. Fluid tags belong to the actual world/configuration and include
 waterlogged or flowing-water states when their genuine fluid is WATER-tagged.
 Face-support queries retain the same dimension, BlockGetter and state/shape
@@ -91,10 +155,10 @@ second entity, drop, sound, particle or RNG draw to this block-bound callback.
 
 ## Remaining delivery and validation boundary
 
-The central coordinator still owns module/class registration, canonical concrete
-associations, production placement/update propagation, scheduler certification
-and actual landing dispatch. Real fluid/face-support/edit capabilities must be
-available before these functions can be admitted in Main. The existing source
+The central coordinator and assigned Main owners retain production owner
+installation, placement/update propagation, scheduler certification and actual
+landing dispatch. Real fluid/face-support/edit capabilities must be available
+before these functions can be admitted in Main. The existing source
 FallingBlockEntity kernel has concrete-water and high-speed raycast branches,
 but this stage does not implement or certify their production world/clip hosts.
 It does not remove current unsupported fluid, active callback, portal or block
@@ -102,7 +166,8 @@ entity boundaries by advertising this helper as a complete falling lifecycle.
 
 The source dust-color getter and inherited client animation are outside this
 hardening stage. No complete ConcretePowderBlock class codec, generic falling
-subclass support or whole-game compatibility is claimed. Work was reviewed
-against the pinned bytecode and existing source interfaces; compiler/runtime
-validation is pending the coordinator's coherent module/integration stage.
-No tests, build or Git operations were run for this isolated source stage.
+subclass support or whole-game compatibility is claimed. The class/association
+and inherited-hook source work was reviewed against the pinned bytecode,
+existing captured facts and agreed Main-owner contracts. Its compiler/runtime
+validation is pending the coordinator's coherent integration stage. No tests,
+builds, Git operations or progress metric changes were made in this source slice.

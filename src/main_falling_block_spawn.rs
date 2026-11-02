@@ -1,4 +1,4 @@
-//! Actual native Anvil spawning and retained-actor-safe block edits.
+//! Actual native Falling spawning and retained-actor-safe block edits.
 //! The original quiescent path is retained; the separate water callback
 //! profile uses actual fluid owners. Other active callbacks remain explicit.
 use super::*;
@@ -75,6 +75,41 @@ pub(super) struct ActualFallingBlockEditServices<'a> {
 }
 
 impl ActualFallingBlockEditServices<'_> {
+    /// Source classification alone does not admit a powder callback. Resolve
+    /// the actual retained configured owner and captured concrete association
+    /// before planning, constructor entropy or either landing write.
+    fn require_powder_state_owner(&self, state: u32) -> Result<()> {
+        use mc121_rust::falling_block::block::{self, NativeFallingClass};
+        if block::source_class(state)? != Some(NativeFallingClass::ConcretePowder) {
+            return Ok(());
+        }
+        let owner = self.block_runtime.concrete_powder_owner()?;
+        let binding = owner.binding_for_state(state)?
+            .context("powder edit has no installed actual Block association")?;
+        let hardened = block::concrete_powder_hardened_state(state)?
+            .context("powder source lacks its captured concrete default")?;
+        let concrete = placement::canonical_placement_catalog().state_definition(hardened)?;
+        ensure!(*binding.powder() == placement::placement_block_min_state(state)?
+            && *binding.concrete() == concrete.minimum_state
+            && hardened == concrete.default_state,
+            "powder edit owner differs from its original Block association");
+        Ok(())
+    }
+
+    fn require_powder_plan_owners(&self, plan: &InteractionPlan) -> Result<()> {
+        for event in &plan.events {
+            match event {
+                InteractionEvent::Write { old_state, state, .. } => {
+                    self.require_powder_state_owner(*old_state)?;
+                    self.require_powder_state_owner(*state)?;
+                }
+                InteractionEvent::ScheduleBlockTick(tick) => self.require_powder_state_owner(tick.state)?,
+                _ => {},
+            }
+        }
+        Ok(())
+    }
+
     fn require_source(&mut self) -> Result<()> {
         self.context.dimension.require_runtime_layout()?;
         self.gameplay.require_supported_floor()?;
@@ -97,6 +132,7 @@ impl ActualFallingBlockEditServices<'_> {
         actor.validate()?;
         ensure!(mc121_rust::falling_block::block::source_class(actor.block_state)?.is_some(),
             "falling actor has no actual supported block callback class");
+        self.require_powder_state_owner(actor.block_state)?;
         ensure!(actor.block_data.is_none() && actor.vehicle.is_none(),
             "falling block data/vehicle requires its actual retained owner");
         let chunk = (actor.block_position.0.div_euclid(16), actor.block_position.2.div_euclid(16));
@@ -108,10 +144,14 @@ impl ActualFallingBlockEditServices<'_> {
         flags: i32) -> Result<InteractionPlan> {
         self.require_source()?;
         ensure!(flags == 3, "falling Level.setBlock must retain source flags3");
-        let mut query = RuntimeInteractionWorld::new(self.world, world::MIN_Y,
-            world::MAX_Y + 1, self.border,
-            |_, _| bail!("falling block edit does not perform entity placement"))?;
-        let plan = world_interactions::plan_edit(position, state, 3, &mut query)?;
+        self.require_powder_state_owner(state)?;
+        // The actual planner resolves dhk through the SAME installed source
+        // owner. Its wet shape returns concrete without a Falling schedule;
+        // its dry branch records the real schedule-before-super obligation.
+        // A detached generic planner cannot grant either callback capability.
+        let plan = main_concrete_powder_placement::plan_edit_with_powder(
+            self.world, self.source.as_ref().context("falling source absent")?,
+            self.block_runtime, position, state, 3, self.border)?;
         self.validate_edit_plan(&plan)?;
         // Complete these fallible native capabilities before a caller can
         // acquire irreversible constructor entropy for the same locked edit.
@@ -126,6 +166,7 @@ impl ActualFallingBlockEditServices<'_> {
     }
 
     fn validate_edit_plan(&mut self, plan: &InteractionPlan) -> Result<()> {
+        self.require_powder_plan_owners(plan)?;
         if callbacks::has_water_context(self.world,plan)? {
             callbacks::preflight_water_plan(self,plan)
         } else {

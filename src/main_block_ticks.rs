@@ -8,13 +8,38 @@ pub(super) struct MainBlockRuntime {
     loaded:BTreeSet<(i32,i32)>, saved:BTreeMap<(i32,i32),Vec<SavedTick<u32>>>,
     stopped:Option<String>, native_source:bool, was_used:bool,
     falling_owner:Option<main_falling_block_damage::NativeFallingDamageTypes>,
+    concrete_powder_owner:Option<main_falling_block_powder::NativeConcretePowderOwner>,
 }
 impl MainBlockRuntime {
-    pub fn new(native_source:bool)->Self{Self{queue:BlockTickScheduler::new(),loaded:BTreeSet::new(),saved:BTreeMap::new(),stopped:None,native_source,was_used:false,falling_owner:None}}
+    pub fn new(native_source:bool)->Self{Self{queue:BlockTickScheduler::new(),loaded:BTreeSet::new(),saved:BTreeMap::new(),stopped:None,native_source,was_used:false,falling_owner:None,concrete_powder_owner:None}}
     pub(super) fn install_falling_owner(&mut self, owner:main_falling_block_damage::NativeFallingDamageTypes)->Result<()>{self.require_healthy()?;ensure!(self.falling_owner.is_none(),"falling callback owner was already installed");self.falling_owner=Some(owner);Ok(())}
     pub(super) fn falling_damage_types(&self)->Result<&main_falling_block_damage::NativeFallingDamageTypes>{self.require_healthy()?;self.falling_owner.as_ref().context("actual configured falling callback owner is unavailable")}
+    /// Capture from the actual outgoing configuration once, after restoring
+    /// the BLOCK runtime. Neither a class label nor a loaded tick installs it.
+    pub(super) fn install_concrete_powder_owner(&mut self,owner:main_falling_block_powder::NativeConcretePowderOwner)->Result<()>{
+        self.require_healthy()?;
+        ensure!(self.concrete_powder_owner.is_none(),"actual concrete-powder owner was already installed");
+        self.concrete_powder_owner=Some(owner);Ok(())
+    }
+    pub(super) fn concrete_powder_owner(&self)->Result<&main_falling_block_powder::NativeConcretePowderOwner>{
+        self.require_healthy()?;
+        self.concrete_powder_owner.as_ref().context("actual configured concrete-powder owner is unavailable")
+    }
     pub(super) fn owns_anvil_tick(&self,state:u32,delay:i32)->Result<bool>{Ok(self.falling_owner.is_some()&&mc121_rust::placement::anvil_falling_delay(state)?==Some(delay))}
-    pub(super) fn owns_falling_tick(&self,state:u32,delay:i32)->Result<bool>{Ok(self.falling_owner.is_some()&&mc121_rust::falling_block::block::source_delay(state)?==Some(delay))}
+    pub(super) fn owns_falling_tick(&self,state:u32,delay:i32)->Result<bool>{
+        use mc121_rust::falling_block::block::{self,NativeFallingClass};
+        if self.falling_owner.is_none()||block::source_delay(state)?!=Some(delay){return Ok(false)}
+        if block::source_class(state)?==Some(NativeFallingClass::ConcretePowder){
+            let Some(owner)=self.concrete_powder_owner.as_ref() else{return Ok(false)};
+            let Some(binding)=owner.binding_for_state(state)? else{return Ok(false)};
+            let hardened=block::concrete_powder_hardened_state(state)?
+                .context("classified powder lacks its captured concrete association")?;
+            ensure!(*binding.powder()==mc121_rust::placement::placement_block_min_state(state)?
+                &&*binding.concrete()==mc121_rust::placement::placement_block_min_state(hardened)?,
+                "installed powder owner differs from its captured actual Block association");
+        }
+        Ok(true)
+    }
     pub fn require_healthy(&self)->Result<()>{ensure!(self.native_source,"global BLOCK source unavailable");ensure!(self.stopped.is_none(),"global BLOCK runtime stopped: {:?}",self.stopped);Ok(())}
     pub fn pending_count(&self)->usize{self.queue.count()+self.saved.values().map(Vec::len).sum::<usize>()}
     pub fn was_used(&self)->bool{self.was_used}

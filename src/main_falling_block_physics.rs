@@ -7,7 +7,8 @@ use super::{main_falling_block_damage::{MainFallingDamageHost, NativeFallingDama
 use mc121_rust::{
     entity_move::{self, EntityMoveWorld, EntityMoveContext, MoverType, MovementEmission, ProfileEvent},
     entity_state::{java_floor, EntityPhysicalState},
-    falling_block::{FallingBlockState, damage::{self, FallingBlockDamageActor}},
+    falling_block::{FallingBlockState, block::{self, NativeFallingClass},
+        damage::{self, FallingBlockDamageActor}},
     fluid_physics::{FluidKind, FluidWorld, RuntimeFluidWorld},
     geometry::{self, EntityCollisionContext, VoxelShape},
     item_host::RuntimeGameplayHooks,
@@ -275,6 +276,19 @@ fn falling_block_fact(state: u32) -> Result<&'static FallingBlockFact> {
         .context("falling state has no actual catalogue owner")
 }
 
+fn require_concrete_powder_binding(owner: &NativeConcretePowderOwner, state: u32) -> Result<()> {
+    ensure!(block::source_class(state)? == Some(NativeFallingClass::ConcretePowder),
+        "powder callback received an unported actual Block class");
+    let binding = owner.binding_for_state(state)?
+        .context("powder callback lacks its installed canonical Block association")?;
+    let hardened = block::concrete_powder_hardened_state(state)?
+        .context("powder source classifier lacks its captured concrete association")?;
+    ensure!(*binding.powder() == placement::placement_block_min_state(state)?
+        && *binding.concrete() == placement::placement_block_min_state(hardened)?,
+        "installed powder binding differs from its captured source association");
+    Ok(())
+}
+
 /// One synchronous source tick, retaining the canonical actor Box and borrowing
 /// all other owners from the real Level interval. No state is detached or
 /// installed into an ItemEntity proxy. The dispatcher calls this only for an
@@ -288,8 +302,8 @@ pub(super) fn tick_falling_block(
     tick_falling_block_inner(actor, publication, services, damage_types, None)
 }
 
-/// The coordinator supplies its once-installed actual configuration owner.
-/// This additive entry does not install the owner or admit a powder class.
+/// The dispatcher supplies its once-installed actual configuration owner.
+/// Powder admission still requires every actual source/shape/landing owner.
 pub(super) fn tick_falling_block_with_powder(
     actor: &mut FallingBlockState,
     publication: &mut FallingBlockPublication,
@@ -307,11 +321,12 @@ fn tick_falling_block_inner(
     damage_types: &NativeFallingDamageTypes,
     powder_owner: Option<&NativeConcretePowderOwner>,
 ) -> Result<()> {
-    let is_powder = falling_block_fact(actor.block_state)?.class == "dhk";
+    let class = block::source_class(actor.block_state)?
+        .context("falling tick has no actual native Block class owner")?;
+    let is_powder = class == NativeFallingClass::ConcretePowder;
     if is_powder {
-        powder_owner.context("powder tick lacks its installed actual configuration/Block owner")?
-            .binding_for_state(actor.block_state)?
-            .context("powder tick is absent from its retained actual Block association registry")?;
+        require_concrete_powder_binding(powder_owner
+            .context("powder tick lacks its installed actual configuration/Block owner")?, actor.block_state)?;
     }
     services.preflight_tick(actor)?;
     ensure!(services.items.entity_kind(publication.handle) == Some(EntityKind::FallingBlock)
@@ -366,10 +381,9 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
     type Block = u32;
     type BlockEntity = std::convert::Infallible;
     fn preflight_tick(&mut self, actor: &FallingBlockState) -> Result<()> {
-        if falling_block_fact(actor.block_state)?.class == "dhk" {
-            self.powder_owner.context("powder tick has no retained actual Block owner")?
-                .binding_for_state(actor.block_state)?
-                .context("powder preflight is absent from its retained actual Block registry")?;
+        if block::source_class(actor.block_state)? == Some(NativeFallingClass::ConcretePowder) {
+            require_concrete_powder_binding(self.powder_owner
+                .context("powder tick has no retained actual Block owner")?, actor.block_state)?;
             return self.powder_clip.take().context("powder preflight lacks its actual clip admission phase")?
                 .validate_after_begin(&self.services, self.publication, actor);
         }
@@ -397,16 +411,15 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         Ok(false)
     }
     fn is_concrete_powder(&mut self, state: u32) -> Result<bool> {
-        if falling_block_fact(state)?.class == "dhk" {
-            self.powder_owner.context("powder identity lacks its retained actual Block owner")?
-                .binding_for_state(state)?.context("powder Block is not in the retained source association registry")?;
-            return Ok(true);
+        match block::source_class(state)? {
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder identity lacks its retained actual Block owner")?, state)?;
+                Ok(true)
+            }
+            Some(NativeFallingClass::Anvil | NativeFallingClass::Ordinary) => Ok(false),
+            None => bail!("falling subclass requires its actual native Block owner"),
         }
-        ensure!(mc121_rust::falling_block::block::source_class(state)?.is_some(),
-            "falling subclass requires its actual concrete-powder owner");
-        // Actual AnvilBlock and ColoredFallingBlock are distinct from powder.
-        // Foreign/special subclasses are not guessed.
-        Ok(false)
     }
     fn fluid_is_water(&mut self, position: BlockPosition) -> Result<bool> {
         let block = self.services.world.block(position.0, position.1, position.2)?;
@@ -461,11 +474,12 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
     }
     fn set_block_for_landing(&mut self, actor: &mut FallingBlockState, original: &u32,
         position: BlockPosition, state: u32, captured_replaced: u32, flags: i32) -> Result<bool> {
-        if falling_block_fact(*original)?.class != "dhk" {
+        if block::source_class(*original)? != Some(NativeFallingClass::ConcretePowder) {
             return self.set_block(actor, position, state, flags);
         }
         ensure!(self.powder_landing.is_none(), "powder tick attempted a second independent landing");
         let owner = self.powder_owner.context("powder landing lacks its installed actual Block owner")?;
+        require_concrete_powder_binding(owner, *original)?;
         let admission = main_falling_block_powder::prepare_landing(&mut self.services,
             owner, actor, *original, position, state, captured_replaced, flags)?;
         self.powder_landing = Some(admission);
@@ -484,37 +498,37 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
     }
     fn on_land_if_fallable(&mut self, original: &u32, actor: &mut FallingBlockState,
         position: BlockPosition, carried: u32, replaced: u32) -> Result<()> {
-        if falling_block_fact(*original)?.class == "dhk" {
-            return self.powder_landing.as_mut().context("powder onLand lacks its admitted first-write receipt")?
-                .on_land(&mut self.services, actor, *original, position, carried, replaced);
-        }
-        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
-        match source_class(*original)? {
+        match block::source_class(*original)? {
             Some(NativeFallingClass::Anvil) => {
                 if !actor.silent { self.level_event(1031, position)?; }
                 Ok(())
             }
             // dhg inherits the literal return-only Fallable.onLand body.
             Some(NativeFallingClass::Ordinary) => Ok(()),
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder onLand lacks its installed actual Block owner")?, *original)?;
+                self.powder_landing.as_mut().context("powder onLand lacks its admitted first-write receipt")?
+                    .on_land(&mut self.services, actor, *original, position, carried, replaced)
+            }
             None => bail!("falling onLand requires its actual Fallable implementation"),
         }
     }
     fn on_broken_after_fall_if_fallable(&mut self, original: &u32,
         actor: &mut FallingBlockState, position: BlockPosition) -> Result<()> {
-        if falling_block_fact(*original)?.class == "dhk" {
-            self.powder_owner.context("powder broken callback lacks its retained actual owner")?
-                .binding_for_state(*original)?.context("broken powder has no actual retained source binding")?;
-            // ConcretePowderBlock inherits Fallable's literal empty body.
-            return Ok(());
-        }
-        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
-        match source_class(*original)? {
+        match block::source_class(*original)? {
             Some(NativeFallingClass::Anvil) => {
                 if !actor.silent { self.level_event(1029, position)?; }
                 Ok(())
             }
             // dhg inherits the literal return-only Fallable broken callback.
             Some(NativeFallingClass::Ordinary) => Ok(()),
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder broken callback lacks its retained actual owner")?, *original)?;
+                // ConcretePowderBlock inherits Fallable's literal empty body.
+                Ok(())
+            }
             None => bail!("falling broken callback requires its actual Fallable implementation"),
         }
     }

@@ -107,7 +107,7 @@ impl NativeConcretePowderOwner {
         Ok(self.0.bindings.get(&block))
     }
 
-    fn require_binding(&self, binding: &ConcretePowderBlock<u32>) -> Result<()> {
+    pub(super) fn require_binding(&self, binding: &ConcretePowderBlock<u32>) -> Result<()> {
         let actual = self.0.bindings.get(binding.powder())
             .context("powder callback has no retained canonical association")?;
         ensure!(std::ptr::eq(actual, binding),
@@ -115,11 +115,11 @@ impl NativeConcretePowderOwner {
         Ok(())
     }
 
-    fn default_state(&self, block: u32) -> Result<u32> {
+    pub(super) fn default_state(&self, block: u32) -> Result<u32> {
         self.0.defaults.get(&block).copied().context("actual Block default state is absent")
     }
 
-    fn fluid_is_water(&self, state: FluidState) -> bool {
+    pub(super) fn fluid_is_water(&self, state: FluidState) -> bool {
         // Pinned Fluids.<clinit> registers EMPTY, FLOWING_WATER, WATER,
         // FLOWING_LAVA, LAVA in that order. Keep the actual configured tag set;
         // source and flowing FluidStates resolve to their genuine singleton.
@@ -195,7 +195,7 @@ fn capture_water_fluids(configuration: &[Packet]) -> Result<BTreeSet<i32>> {
 
 /// Exact cached FULL support is state-owned. An uncached state needs its live
 /// dynamic shape provider; zero bits from an absent source cache are not false.
-fn cached_face_sturdy(state: u32, _original_position: BlockPosition,
+pub(super) fn cached_face_sturdy(state: u32, _original_position: BlockPosition,
     face: Direction) -> Result<bool> {
     let facts = fluid_physics::block_facts(state)?;
     let faces = facts.cached_sturdy_faces.context(

@@ -152,10 +152,12 @@ impl ActualFallingBlockEditServices<'_> {
         revalidate_first(self, first, first_request)?;
         ensure!(flags == 3, "following falling setBlock must retain source flags3");
         let mut projected = project(self.world, first)?;
-        let mut query = RuntimeInteractionWorld::new(&mut projected, world::MIN_Y,
-            world::MAX_Y + 1, self.border,
-            |_, _| bail!("falling sequence does not perform entity placement"))?;
-        let plan = world_interactions::plan_edit(position, state, 3, &mut query)?;
+        // This SAME installed association is borrowed only for projected
+        // planning. The helper grants no actual Level/source/callback owner;
+        // combined admission below still uses the real world and source.
+        let owner = self.block_runtime.concrete_powder_owner()?;
+        let plan = super::main_concrete_powder_placement::plan_projected_edit_with_powder(
+            &mut projected, owner, position, state, 3, self.border)?;
         validate_dry_following(&mut projected, &plan, position, self.border)?;
         // This is the real source/BLOCK admission for BOTH ordered writes,
         // not a source object constructed or advanced on the projection.
