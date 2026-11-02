@@ -116,6 +116,13 @@ fn english_template(key: &str) -> &'static str {
         "argument.pos.mixed" => "Cannot mix world & local coordinates (everything must either use ^ or not)",
         "argument.pos3d.incomplete" => "Incomplete (expected 3 coordinates)",
         "argument.pos2d.incomplete" => "Incomplete (expected 2 coordinates)",
+        "argument.time.invalid_unit" => "Invalid unit",
+        "argument.time.tick_count_too_low" => "The tick count must not be less than %s, found %s",
+        "argument.uuid.invalid" => "Invalid UUID",
+        "argument.anchor.invalid" => "Invalid entity anchor position %s",
+        "argument.angle.invalid" => "Invalid angle",
+        "argument.angle.incomplete" => "Incomplete (expected 1 angle)",
+        "arguments.swizzle.invalid" => "Invalid swizzle, expected combination of 'x', 'y' and 'z'",
         "command.unknown.command" => "Unknown or incomplete command, see below for error",
         "command.unknown.argument" => "Incorrect argument for command",
         "command.expected.separator" => {

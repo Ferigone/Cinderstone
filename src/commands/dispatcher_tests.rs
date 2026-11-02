@@ -55,6 +55,11 @@ pub(super) fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType<i32>> {
         "columnpos" => Rc::new(super::coordinates::ColumnPosArgumentType),
         "vec3" => Rc::new(super::coordinates::Vec3ArgumentType::new()),
         "vec2" => Rc::new(super::coordinates::Vec2ArgumentType::new()),
+        "time" => Rc::new(super::simple_arguments::TimeArgumentType::with_minimum(spec["min"].as_i64().unwrap_or(0) as i32)),
+        "uuid" => Rc::new(super::simple_arguments::UuidArgumentType),
+        "anchor" => Rc::new(super::simple_arguments::EntityAnchorArgumentType),
+        "angle" => Rc::new(super::simple_arguments::AngleArgumentType),
+        "swizzle" => Rc::new(super::simple_arguments::SwizzleArgumentType),
         other => panic!("unknown type {other}"),
     }
 }
@@ -68,6 +73,10 @@ fn value_text(value: &ArgumentValue) -> String {
         ArgumentValue::Long(v) => format!("L{v}"),
         ArgumentValue::String(v) => format!("S{v}"),
         ArgumentValue::Coordinates(v) => format!("C{v:?}"),
+        ArgumentValue::Uuid(v) => format!("U{v:?}"),
+        ArgumentValue::EntityAnchor(v) => format!("E{v:?}"),
+        ArgumentValue::Angle(v) => format!("A{v:?}"),
+        ArgumentValue::Swizzle(v) => format!("W{v:?}"),
     }
 }
 

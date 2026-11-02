@@ -81,7 +81,7 @@ impl WorldCoordinate {
         }
     }
 
-    fn is_relative_prefix(reader: &mut StringReader) -> bool {
+    pub(super) fn is_relative_prefix(reader: &mut StringReader) -> bool {
         let relative = reader.peek() == Some(TILDE);
         if relative {
             reader.skip();
