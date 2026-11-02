@@ -5,6 +5,12 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## BLOCK restore provenance and scaffold interaction provider
+
+Source `c2c1b77cf3ee6edd29f3c4d12d2483c4b4dfac8b` passed the [finite native check](reference/scaffolding-counter-owners.md): a genuine dry used-BLOCK/empty-queue save kept shared counter4 through STATUS/PING/shutdown; an explicitly malformed copy missing only FLUID rejected with the new BLOCK diagnostic before world restoration/listening. Pure raw-saved provenance now guards before BE/Level/Math RNG creation, with independent later real-source/owner checks retained. No counter0 or queue-derived history is invented.
+
+The exact original scaffolding interaction FULL grid is now callable through the shared provider. Source-global static-collision and bucket OUTLINE restrictions remain; this is not newly admitted scaffolding gameplay. Current player-water/mixed-cascade guards remain. The [next synchronous player commit source contract](reference/concrete-powder-player-commit-contract.md) is documentation, not implementation or expanded admission. No whole checklist item closes.
+
 ## Concrete powder — bounded Main flow and native resume passed
 
 Actual source `43a5dbf573a4c0732910c1f9f755655f12fcb1f1`, tree `fbbc5641ef1452095c0fff36d5cb5d535fa3af57`, passed all-target check27.90s/full executable44.15s. Binary `910eafad98e6677f8f089cb55ffed88428eae01091ffd11b1ee7546033250e22` passed one [real dry-placement/fall/water-hardening/native-resume flow](reference/concrete-powder-runtime.md). Airborne actor2 atY69.8808/time2 retained its full body/UUID/RNG while hidden across restart, then resumed only after chunk publication. Actual source removal79 preceded onLand concrete publication80. Final normal save had one concrete12728 at10,65,8, no powder/Falling/Item/XP duplicate; only the real resumed Player allocated a new ID. All3processes used explicit offline-loopback local keys and normal shutdown; no scene or integrity input was edited.
@@ -33,9 +39,11 @@ The [actual flow](validation/falling-anvil-flow.json) passed at `2026-11-02T01:3
 
 A later [genuine mid-flight native resume](reference/falling-midflight-local-keys.md) passed on frozen local `a2b020f`, tree `64f645097fb0e287e33e65cb6e3cabe4c7ae227e`, executable `39adbead1c345ee5b9870a7adbef5c1cc58c47f60bdda9b1e4421edb66796395`. The real airborne actor retained exact body/UUID/RNG/StartPos while world time advanced48→111 without PLAY; the same actor spawned after actual chunk publication and landed once. Runtime generations correctly rebind across cold registration. An earlier wrong generation-equality assertion remains a failed report, separately cited by the still-unrun continuation. All three processes used explicit offline-loopback local public-key file mode, which removes the earlier interrupted HTTP request without changing production's default source. Damage/wear RNG reconstruction, generic active callbacks, Java-save and public graphical paths remain unverified or unsupported.
 
-## Latest hosted Main release
+## Hosted release observed before this follow-up
 
-PR113 merged as `c9e37eabb4d73e0151b0c672838aae2b73390c0a` after exact-head required CI and source review. Its Railway deployment `a7a9a9cb-5c19-4104-acbe-5a014d375ccb` reached SUCCESS and native1.21/767/offline listening at `2026-11-02T03:54:37.106188636Z`. The directly observed environment had one running/zero crashed replica, retained volume and no pending work. Default Official service keys remained selected and two actual profile keys loaded. This is startup evidence; public/graphical PLAY remains unverified. Earlier Root100/97 and other releases were superseded after successful startups.
+Native powder PR122 merged as `d95c5b0870d47a6a0b599ef1de29f6e154e77357` after exact-head required CI41394705272 and source COMMENT5732482823. Hosted descendant `eaf1db4f` preserves122 plus independent Beacon123; Railway release `8613fd93-0bf1-4fb4-a17e-3769aa436c02` reached SUCCESS/native1.21/767/offline listening at `2026-11-02T05:43:18.670616473Z`. The directly observed environment had one running/zero crashed replica, retained original volume and no pending work. The d95 build was superseded, not independently verified live. Default official-HTTPS keys remained selected and two actual profile keys loaded. Fresh public STATUS05:44:09 failed DNS; graphical/public PLAY remains unverified.
+
+Earlier pressure113/native-owner115 builds were followed by the actual Docker compile-input recovery118. The real context gate now preserves current generator source and compile-time provenance Java SOURCE; no JVM/binary/stub or world-volume replacement. The scaffolding/BLOCK-counter source and finite observations above are a later validation snapshot; final CI/merge/release evidence is recorded in the integration issue/PR. They do not change fixed checklist indicators.
 
 ## Native Grindstone — Main connected; bounded runtime passed
 
