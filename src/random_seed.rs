@@ -1,6 +1,6 @@
 //! Original RandomSupport unique seeds and Level's sequential RNG construction.
 //! Clock samples are injected for proof; Linux startup uses CLOCK_MONOTONIC.
-use crate::random::LegacyRandomSource;
+use crate::random::{LegacyRandomSource, XoroshiroRandomSource};
 use std::{
     io,
     sync::atomic::{AtomicU64, Ordering},
@@ -119,6 +119,12 @@ pub fn system_monotonic_nanos() -> io::Result<i64> {
 }
 pub fn create_random() -> io::Result<LegacyRandomSource> {
     create_random_with_clock(&PROCESS_SEED_UNIQUIFIER, &mut system_monotonic_nanos)
+}
+/// Construct Xoroshiro from one full-width seed from the shared process owner.
+pub fn create_xoroshiro_random() -> io::Result<XoroshiroRandomSource> {
+    Ok(XoroshiroRandomSource::new(
+        PROCESS_SEED_UNIQUIFIER.next_seed_with_clock(&mut system_monotonic_nanos)?,
+    ))
 }
 /// Entity's UUID consumes two nextLong calls. Actual stock ServerPlayer
 /// constructor observations show the same inherited RNG object/state survives
