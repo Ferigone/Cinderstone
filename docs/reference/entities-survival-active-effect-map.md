@@ -1,0 +1,55 @@
+# Active effects HashMap owner handoff — Nov 2
+
+Instance es-20261101-1425-a7c3; exact claim issue4comment6566884842. Worktree /workspace/cinderstone-effect-map-es-20261101-1425-a7c3, branch effect-map-owner, base96b4bad622155e2891d9d8a249f8e233721d34c8. ONLY new src/effects/active_map.rs edited. Root owns exports/docs/Git/actor/Main; no other repository edits, Git or Cargo by subagent.
+
+## Implemented bounded source owner
+
+Actual default JDK21 HashMap storage/algorithms for nonnull canonical registry Holder.Reference keys and retained nonnull effect instance handles: lazy table, size/modCount/threshold, fixed source default0.75 load factor; cached spread hash on original Nodes; bucket append/lookup/replacement/removal; threshold growth and stable LOW/HIGH split with original Node identities; clear; live key/value HashIterator fields/protocol.
+
+Default activeEffects HashMap constructor leaves table unallocated/size0/modCount0/threshold0; first put allocates16/threshold12. Nonstructural same-key replacement retains original Node/key and returns exact previous instance without size/modCount/resize. New entries append bucket chain; after normal insertion modCount++ then size++ then threshold resize. Existing Nodes are relinked, not cloned; low/high chains keep source relative order and terminate tails. remove unlinks without clearing detached Node.next/value and never shrinks table. clear increments modCount even empty/unallocated, retains capacity/threshold and clears occupied heads only when size>0.
+
+Reference identity and hash: ActiveEffectKey requires actual supplied source hashCode + same_object + canonical-reference capability. Clone retains same actual holder and all operations are immutable/callback-free. Equality in this supported domain is Holder.Reference's inherited Object identity. No randomized map/order substitute, pointer-to-hash conversion, identity-hash allocation, actor, RNG or scheduler. Null/Direct/custom hash/equals-bearing keys explicitly fail UnsupportedKey before hash/table mutations. No native registry ID can masquerade as canonical holder identity. Values Clone must retain original instance handle (Arc etc), never copy EffectInstance. Actual source identity/hash provider remains central integration work.
+
+Native representation is Arc<Mutex> map + Arc<Mutex> Nodes, per root's concrete Send requirement for tokio-spawned Main. It is Send+Sync when actual key/value handles support that, compile-time checked. Every guard is short and callback-free. No actor/definition/world callback or instance borrow spans a map operation. User/game callbacks happen after return and may call this exact same map normally. Poisoned native owner errors are explicit, not panics or simulated CME.
+
+## API and existing effects runners
+
+ActiveEffectMap<K:ActiveEffectKey,V:Clone>::new/clone retain map object; Clone is a Java-reference assignment, NOT HashMap.clone/copy constructor. get/contains_key/put/remove/clear; len/is_empty/state return exact fields or native-owner error. state includes unsupported-domain diagnostic separately from source fields. same_map is canonical map reference equality.
+
+key_cursor()->KeyCursor and values_cursor()->ValuesCursor each strongly retain ORIGINAL map and selected/prefetched Nodes. These are the real live cursor algorithm, not detached key/value arrays. has_next checks ONLY prefetched next, without map lock/modCount/CME check. next checks CME BEFORE NoSuchElement; then current=e, next=e.next, and scans current owner's CURRENT table ascending buckets only when next is null. Key/value is loaded from selected Node AFTER nextNode; prefetched value is not snapshotted. Thus same-key put before values.next sees new value, but a previously returned selected handle stays the original object.
+
+Iterator.remove checks current-null/IllegalIteratorState BEFORE CME; failure retains current. On success current=null first; JDK21 uses stored Node.hash, NOT a new key.hashCode call; removeNode matches key with matchValue=false (removes current replacement value), then expectedModCount=current modCount. Detached Node and old returned value lifetime remain retained by cursor/selected leases after map/actor replacement/removal. Wrapping signed i32 counters reproduce source arithmetic.
+
+actor_ops adapters: values_iterator holds ValuesCursor; iterator_next_retained returns exact V handle; iterator_remove calls cursor.remove on ORIGINAL map even if actor map ref changed. map_get/put/remove use actor's then-current actual map. tick adapters: key iterator has same original-map cursor; next returns canonical key, active_effect_get reads actor's current map (may differ), and key iterator remove targets selected original key. Do not implement iterator removal by removing from actor's current map or holder-to-instance re-resolution. Only ActiveMapError::ConcurrentModification is actual CME for tick.rs loop catch; unsupported/poison/allocation/key errors must propagate as distinct failures.
+
+## Explicit tree/domain boundary — NOT whole HashMap
+
+TreeNode red-black conversion/search/removal/tie breaking are NOT implemented. Original collision chain reaches9 entries at cap16 => treeifyBin resizes32; entry10 => resizes64. Those resizes are implemented exactly. The next colliding entry requiring treeifyBin at capacity>=64 is linked FIRST, then component returns UnsupportedTreeBin at source treeifyBin entry, before replacement TreeNodes/tree balancing and BEFORE putVal increments size/modCount.
+
+Example11th same-hash insertion after default collision growth: capacity64/threshold48; pending linked chain has11 Nodes but source size/modCount remain10. The pending instance stays strongly owned, preserving source mutation prefix. A separate diagnostic marks unsupported domain; subsequent semantic operations/cursor construction/next return explicit unsupported error rather than silently treating the required tree as a list. hasNext remains its source prefetched predicate. clear can explicitly clear the object and diagnostic (modCount increments, table retained). This is a capability refusal at an exact source prefix, NOT an invented original Java exception class or rollback transaction. Caller must stop unsupported actor operation. No full arbitrary-collision map, general Map API, cached keySet/values view-object identity, entrySet, serialization, null values or alternative constructors claimed.
+
+Allocation failure similarly preserves source threshold-before-allocation and any already committed put prefix. No arbitrary new capacity cap is invented. General concurrent unsynchronized Java HashMap behavior is outside the single actual server/world ownership contract; internal native mutexes provide safe representation, not a replacement world scheduler.
+
+## Source and focused evidence
+
+Direct actual JDK21 javap, NOT REA/MCP: HashMap default constructor477–479; hash338; putVal634–671; resize684–754; treeifyBin763–780; removeNode822–857; clear866–872; HashIterator1587–1623; Key/ValueIterator1626–1633. Cached scratch-only active-map-jdk21*.javap. Current source runtime is Debian OpenJDK21.0.12.1+1. Pinned Minecraft inner jar/mappings remain original1.21; this owner specifically ports its Java21 collection dependency.
+
+Native final actual-file rustc1.99.1 --edition2021 --test -Dwarnings compiled and focused runtime exited0 (active-map-test), then fresh --crate-type lib -Dwarnings exited0 (empty active-map-native-lib-compile.log). Native checks cover lazy/clear/error priority; true identity vs equal labels + unsigned spread; replacement live Node.value/retained selected handle; stable split/order/Node identity; stored-hash iterator removal and continuing detached links; hasNext vs next/remove failfast; oldmap/Node/value lifetime after actor ref replacement; collision-growth and unsupported prefix/recovery; i32 modCount wrap; Send+Sync. Fixtures supply controlled canonical key/hash facts and Arc values, not actual Minecraft identity allocation or actor execution. Counts are not progress metrics. No full Cargo or Main result claimed.
+
+Original runtime probe ActiveMapProbe.java loads UNCHANGED java.util.HashMap and its iterators from JDK21; no HashMap instrumentation/subclass. Synthetic Key inherits Object.equals and supplies controlled immutable hashCode values plus read instrumentation, matching supported hash/equality observations but NOT constructing real Minecraft Holder.Reference keys/identity allocator. java --add-opens java.base/java.util=ALL-UNNAMED permits read-only fields; controlled modCount reflection tests JVM wrap. Probe confirms source fields, identity/hashspread, native expected13-entry bucket order, exact original Node survives resize, replacement behavior, old selected/map lifetime, hashCode not called on iterator.remove, CME/illegal/exhaustion priority/current preservation, and collision9→cap32/10→cap64/11→actualTreeNode. Native refusal begins before the last original tree conversion, never claiming equivalence beyond boundary. Final javac/run exit0, oracle/active-map-probe.log.
+
+Bup side probe separately completed for living_lifecycle: unchanged original bup default/setSpeed/update/interpolation/NaN/threshold observed; WalkAnimationProbe.java/log hashes sent root and author. The rotA3c3851eb line is explicitly standalone source-expression observation, NOT an original Living constructor invocation.
+
+Remaining: root peer review/composition/export, actual actor-held map and canonical holder identity/hash provider, retained instance arena, concrete effects/attributes/metadata/RNG/callbacks and Main integration. This map is a real bounded new owner, not proof that effects/full survival or a Bat run in production. No checklist/status edits or delivery completion claim.
+
+## Exact SHA256
+
+- /workspace/cinderstone-effect-map-es-20261101-1425-a7c3/src/effects/active_map.rs: b9de019c7455fc9b3196078555a6cb5e0ca56038fdaf3289bdb833eb014b6a60
+- /workspace/scratch/es-20261101-1425-a7c3/active-map-test: c76a560889170fa180df9a75c23a4d6f6956082b48e3399d499c3f3961c26d58
+- /workspace/scratch/es-20261101-1425-a7c3/active-map-native-lib-compile.log: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/ActiveMapProbe.java: 2397fa63653f4549f533c5e537f21b5969fb0a4828b883398433368b1eade1c8
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/active-map-probe.log: e1cfb9e5136f3e09c347166dfc30d19c211423d8b196e605bcddcbd3deb6b5ac
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/active-map-jdk21.javap: 17006b2730374d6f132965d61012f2c67fa80bfda006dd91b1e7551439b0ef38
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/active-map-jdk21-iterator.javap: e350ed10d59776d26dda379619c76b5113957bfad79170086899d4277c8b91d8
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/active-map-jdk21-keyiterator.javap: e5376ae184d4f08130779bfe86f2a705f698b1509934b09066acae7890ed3e1c
+- /workspace/scratch/es-20261101-1425-a7c3/oracle/active-map-jdk21-valueiterator.javap: c231490180cdd332ee23d321eafe56c944e65d6ef4f4ac3e54dc806e8b706286
