@@ -1,6 +1,6 @@
 # Ordered Beacon menu method handoff
 
-Instance: `ws-20261101-7c2f`; WORKSTATIONS; state: implementing/verification.
+Instance: `ws-20261101-7c2f`; WORKSTATIONS; state: ready for integration.
 Assigned issue: [#3](https://github.com/Ferigone/Cinderstone/issues/3).
 Exact [claim](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6569695292)
 and [source correction](https://github.com/Ferigone/Cinderstone/issues/3#issuecomment-6569720542).
@@ -10,6 +10,7 @@ Initial dependency base: published PR120 head
 actual merge `3da06b2ff048932438e2ae311a7db84b27fd6188`.
 Current master is separately verified before publication/merge. No master merge
 or force push is performed on this feature branch.
+Implementation commit: `78e0dec461091aabcdccae9c651b3235ac39fbf9`.
 
 ## Exact owned files
 
@@ -45,8 +46,16 @@ was corrected against the pinned source before implementation.
 Frozen Rust SHA-256:
 `67e998c7d72f7d294f3cdedb15e52c6e8f38ae7c0de5a7d7fc8ba24a7d711cb6`.
 Independent direct pinned-JDK21 primary/API review found no concrete blocker.
-Formatting passed. Root's compiler/native/hygiene verification and publication
-receipts follow separately; they are not presumed successful by this draft.
+Formatting, whitespace and staged-index repository hygiene passed. Clean local
+composition `55036132884371ebe34bc30bec4293f505f8ffce` with actual master
+`3da06b2ff048932438e2ae311a7db84b27fd6188` has tree
+`400adc8887c358232ebf4f5e17e61aa93d755e3a` and source subtree
+`c71b01e8d5f7c099bfe3cfa8f746019d8a451889`. Isolated locked offline all-target
+compilation passed in 21.26s, followed by the focused native flow. Its checks
+cover callback/secondary-encoding failure prefixes, current payment consumption
+surviving access failure, index refusal and successful broadcast order.
+Required GitHub CI and publication/merge/read-back follow separately in the PR
+and issue; the local tree is not presumed to be the eventual merge tree.
 
 The focused fixture uses actual shared BE/base/EMPTY/BeaconState/scan code and
 controlled slot descriptors, registry, listeners, access and broadcast. Its

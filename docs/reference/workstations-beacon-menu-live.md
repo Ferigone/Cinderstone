@@ -109,8 +109,22 @@ does not certify the staged click/drag/close transaction or replace its owner.
 
 ## Validation and production integration
 
-Root records focused compiler/native checks and exact frozen source hashes
-after source/API review. No validation success is asserted here before it runs.
+Root checked frozen Rust SHA-256
+`67e998c7d72f7d294f3cdedb15e52c6e8f38ae7c0de5a7d7fc8ba24a7d711cb6`.
+The clean composition with master `3da06b2` passed isolated locked offline
+all-target compilation in 21.26s. The focused native flow passed, checking
+primary callback changes before secondary-encoding failure, current payment
+consumption retained after later access failure, invalid menu-index refusal
+without broadcast and a valid setter followed by one broadcast. Separate
+pinned-primary/API review found no concrete blocking defect. Formatting,
+whitespace and staged-index hygiene passed.
+
+The fixture uses genuine shared BE/base/EMPTY, existing BeaconState and tick
+algorithms; its remaining owners are explicitly controlled descriptors. The
+retained-menu marker points to the existing PAYMENT BeaconState, not a native
+BeaconMenu object. It does not establish Menu/DataSlot/ContainerData allocation
+or capture. That distinction remains an actual integration requirement.
+
 Controlled recording hosts are not actual configured menus, registry holders,
 Level/actor owners, source-Java execution or Main/gameplay evidence.
 
