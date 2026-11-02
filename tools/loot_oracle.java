@@ -511,6 +511,37 @@ public class loot_oracle {
         System.out.println("parsed=" + in.size());
         break;
       }
+      case "component": {
+        // ComponentSerialization.CODEC: accept/reject, the NBT network form and the JSON re-encoding.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject r = new JsonObject();
+          try {
+            DataResult<net.minecraft.network.chat.Component> result = net.minecraft.network.chat.ComponentSerialization.CODEC.parse(jsonOps, e);
+            r.addProperty("ok", result.result().isPresent());
+            if (result.error().isPresent()) r.addProperty("error", result.error().get().message());
+            if (result.result().isPresent()) {
+              net.minecraft.network.chat.Component c = result.result().get();
+              Tag nbt = net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(nbtOps, c).getOrThrow(m -> new IllegalStateException(m));
+              ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+              NbtIo.writeAnyTag(nbt, new DataOutputStream(bytes));
+              r.addProperty("nbt", hex(bytes.toByteArray()));
+              r.addProperty("snbt", nbt.toString());
+              JsonElement json = net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(jsonOps, c).getOrThrow(m -> new IllegalStateException(m));
+              r.addProperty("json", net.minecraft.util.GsonHelper.toStableString(json));
+              r.addProperty("string", c.getString());
+            }
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("components=" + in.size());
+        break;
+      }
       case "export-facts": {
         Files.writeString(Path.of(a[1]), GSON.toJson(exportFacts()));
         break;
