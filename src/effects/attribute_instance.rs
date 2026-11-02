@@ -460,10 +460,38 @@ impl<D: AttributeDefinition, K: ResourceLocationKey> AttributeInstance<D, K> {
         &mut self,
         listener: &mut L,
     ) -> Result<(), L::Error> {
+        self.replace_from_self_fields();
+        listener.on_dirty(self)
+    }
+    pub(crate) fn replace_from_self_fields(&mut self) {
         self.by_id.0.clear();
         self.permanent.0.clear();
         self.by_operation = [None, None, None];
-        self.set_dirty(listener)
+        self.dirty = true;
+    }
+    /// Source setBaseValue fields and setDirty assignment before its callback.
+    pub(crate) fn set_base_value_fields(&mut self, value: f64) -> bool {
+        if value == self.base_value {
+            return false;
+        }
+        self.base_value = value;
+        self.dirty = true;
+        true
+    }
+    /// Source load writes base before decoding, without marking dirty yet.
+    pub(crate) fn load_base_fields(&mut self, value: f64) {
+        self.base_value = value;
+    }
+    /// Source load puts byID, operation bucket, permanent in that order. It does
+    /// not reject duplicate IDs, remove old-operation ghosts or notify per item.
+    pub(crate) fn load_modifier_fields(&mut self, modifier: Arc<Modifier<K>>) {
+        self.by_id.put(Arc::clone(&modifier));
+        self.operation_mut(modifier.operation)
+            .put(Arc::clone(&modifier));
+        self.permanent.put(modifier);
+    }
+    pub(crate) fn finish_load_fields(&mut self) {
+        self.dirty = true;
     }
     pub(crate) fn replacement_data(&self) -> ReplacementData<K> {
         let copy_array = |source: &ArrayMap<K>| {
