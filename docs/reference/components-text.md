@@ -106,6 +106,15 @@ the original re-encodes the decoded component to.
 `cargo test --locked --lib components::` runs both families of fixtures plus the focused tests
 (19 tests, about a third of a second).
 
+### Gson text and lenient parsing
+
+`Component::to_json_string` is `Component.Serializer.toJson`: compact `Gson` text (HTML escaping
+off) in the member order the original's codec inserts them. That order is not the sorted order of
+`to_json`; it matters for persisted text (`scoreboard.dat`). The vectors and both parity nets
+compare it (`gson` fields). Float and double arguments print with Java's `Float/Double.toString`
+rules, including the closest-two-digit rule (`1.4E-45`). `components::lenient::parse` is
+`JsonParser.parseString` (Gson's lenient reader) for the callers that need it.
+
 ## Not implemented (explicit)
 
 - `show_item` and `show_entity` hover events return `ComponentError::Unsupported` (they need

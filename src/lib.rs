@@ -134,3 +134,4 @@ pub mod falling_block;
 pub mod loot;
 pub mod components;
 pub mod saved_data;
+pub mod scoreboard;

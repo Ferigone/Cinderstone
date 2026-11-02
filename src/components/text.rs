@@ -14,7 +14,7 @@
 
 use super::java::hashmap_iteration_order;
 use crate::nbt::{JavaString, Tag};
-use serde_json::{Map, Number, Value};
+use serde_json::{Number, Value};
 
 /// Decode failure kinds. `Codec` is a rejection the original also makes;
 /// `Unsupported` is outside the ported scope and says nothing about Java.
@@ -35,9 +35,9 @@ impl std::fmt::Display for ComponentError {
 
 impl std::error::Error for ComponentError {}
 
-pub(super) type Result<T> = std::result::Result<T, ComponentError>;
+pub(crate) type Result<T> = std::result::Result<T, ComponentError>;
 
-pub(super) fn reject<T>(what: impl Into<String>) -> Result<T> {
+pub(crate) fn reject<T>(what: impl Into<String>) -> Result<T> {
     Err(ComponentError::Codec(what.into()))
 }
 
@@ -93,7 +93,10 @@ impl TextColor {
     pub fn parse(text: &str) -> Result<Self> {
         if let Some(hex) = text.strip_prefix('#') {
             match parse_int_hex(hex) {
-                Some(value) if (0..=0xFF_FFFF).contains(&value) => Ok(Self { value: value as u32, name: None }),
+                Some(value) if (0..=0xFF_FFFF).contains(&value) => Ok(Self {
+                    value: value as u32,
+                    name: None,
+                }),
                 Some(_) => reject(format!("Color value out of range: {text}")),
                 None => reject(format!("Invalid color value: {text}")),
             }
@@ -101,7 +104,10 @@ impl TextColor {
             NAMED_COLORS
                 .iter()
                 .find(|(name, _)| *name == text)
-                .map(|(name, value)| Self { value: *value, name: Some(name) })
+                .map(|(name, value)| Self {
+                    value: *value,
+                    name: Some(name),
+                })
                 .ok_or_else(|| ComponentError::Codec(format!("Invalid color name: {text}")))
         }
     }
@@ -219,11 +225,26 @@ pub enum DataSource {
 #[derive(Debug, Clone, PartialEq)]
 pub enum Contents {
     Text(String),
-    Translatable { key: String, fallback: Option<String>, args: Vec<Arg> },
+    Translatable {
+        key: String,
+        fallback: Option<String>,
+        args: Vec<Arg>,
+    },
     Keybind(String),
-    Score { name: String, objective: String },
-    Selector { pattern: String, separator: Option<Box<Component>> },
-    Nbt { path: String, interpret: bool, separator: Option<Box<Component>>, source: DataSource },
+    Score {
+        name: String,
+        objective: String,
+    },
+    Selector {
+        pattern: String,
+        separator: Option<Box<Component>>,
+    },
+    Nbt {
+        path: String,
+        interpret: bool,
+        separator: Option<Box<Component>>,
+        source: DataSource,
+    },
 }
 
 /// `Component` (`MutableComponent`): contents, siblings and style.
@@ -236,7 +257,11 @@ pub struct Component {
 
 impl Component {
     pub fn literal(text: impl Into<String>) -> Self {
-        Self { contents: Contents::Text(text.into()), siblings: Vec::new(), style: Style::default() }
+        Self {
+            contents: Contents::Text(text.into()),
+            siblings: Vec::new(),
+            style: Style::default(),
+        }
     }
 
     /// `Component.tryCollapseToString`: a plain, unstyled, childless text is a bare string.
@@ -300,10 +325,18 @@ impl Json {
             Json::Bool(flag) => Value::Bool(*flag),
             Json::Num(text) => serde_json::from_str(text).unwrap_or_else(|_| {
                 // Java prints `1.0E10`, `NaN`, `Infinity`: not JSON for `serde_json`.
-                text.parse::<f64>().ok().and_then(Number::from_f64).map_or(Value::Null, Value::Number)
+                text.parse::<f64>()
+                    .ok()
+                    .and_then(Number::from_f64)
+                    .map_or(Value::Null, Value::Number)
             }),
             Json::Arr(items) => Value::Array(items.iter().map(Json::to_value).collect()),
-            Json::Obj(members) => Value::Object(members.iter().map(|(key, value)| ((*key).to_owned(), value.to_value())).collect()),
+            Json::Obj(members) => Value::Object(
+                members
+                    .iter()
+                    .map(|(key, value)| ((*key).to_owned(), value.to_value()))
+                    .collect(),
+            ),
         }
     }
 }
@@ -321,7 +354,9 @@ fn write_json_string(text: &str, out: &mut String) {
             '\n' => out.push_str("\\n"),
             '\u{c}' => out.push_str("\\f"),
             '\r' => out.push_str("\\r"),
-            c if (c as u32) < 0x20 || c == '\u{2028}' || c == '\u{2029}' => out.push_str(&format!("\\u{:04x}", c as u32)),
+            c if (c as u32) < 0x20 || c == '\u{2028}' || c == '\u{2029}' => {
+                out.push_str(&format!("\\u{:04x}", c as u32))
+            }
             c => out.push(c),
         }
     }
@@ -331,7 +366,11 @@ fn write_json_string(text: &str, out: &mut String) {
 fn contents_json(contents: &Contents, out: &mut Vec<(&'static str, Json)>) {
     match contents {
         Contents::Text(text) => out.push(("text", Json::Str(text.clone()))),
-        Contents::Translatable { key, fallback, args } => {
+        Contents::Translatable {
+            key,
+            fallback,
+            args,
+        } => {
             out.push(("translate", Json::Str(key.clone())));
             if let Some(fallback) = fallback {
                 out.push(("fallback", Json::Str(fallback.clone())));
@@ -343,7 +382,10 @@ fn contents_json(contents: &Contents, out: &mut Vec<(&'static str, Json)>) {
         Contents::Keybind(name) => out.push(("keybind", Json::Str(name.clone()))),
         Contents::Score { name, objective } => out.push((
             "score",
-            Json::Obj(vec![("name", Json::Str(name.clone())), ("objective", Json::Str(objective.clone()))]),
+            Json::Obj(vec![
+                ("name", Json::Str(name.clone())),
+                ("objective", Json::Str(objective.clone())),
+            ]),
         )),
         Contents::Selector { pattern, separator } => {
             out.push(("selector", Json::Str(pattern.clone())));
@@ -351,7 +393,12 @@ fn contents_json(contents: &Contents, out: &mut Vec<(&'static str, Json)>) {
                 out.push(("separator", separator.json()));
             }
         }
-        Contents::Nbt { path, interpret, separator, source } => {
+        Contents::Nbt {
+            path,
+            interpret,
+            separator,
+            source,
+        } => {
             out.push(("nbt", Json::Str(path.clone())));
             if *interpret {
                 out.push(("interpret", Json::Bool(true)));
@@ -396,14 +443,20 @@ impl Component {
         let mut out = Vec::new();
         contents_json(&self.contents, &mut out);
         if !self.siblings.is_empty() {
-            out.push(("extra", Json::Arr(self.siblings.iter().map(Self::json).collect())));
+            out.push((
+                "extra",
+                Json::Arr(self.siblings.iter().map(Self::json).collect()),
+            ));
         }
         // Style members, in the order the original's codec writes them.
         let style = &self.style;
         if let Some(hover) = &style.hover_event {
             out.push((
                 "hoverEvent",
-                Json::Obj(vec![("contents", hover.text.json()), ("action", Json::Str("show_text".to_owned()))]),
+                Json::Obj(vec![
+                    ("contents", hover.text.json()),
+                    ("action", Json::Str("show_text".to_owned())),
+                ]),
             ));
         }
         if let Some(insertion) = &style.insertion {
@@ -424,7 +477,11 @@ impl Component {
                 ]),
             ));
         }
-        for (key, flag) in [("italic", style.italic), ("underlined", style.underlined), ("strikethrough", style.strikethrough)] {
+        for (key, flag) in [
+            ("italic", style.italic),
+            ("underlined", style.underlined),
+            ("strikethrough", style.strikethrough),
+        ] {
             if let Some(flag) = flag {
                 out.push((key, Json::Bool(flag)));
             }
@@ -452,7 +509,61 @@ impl Component {
     }
 }
 
-fn nbt_string(text: &str) -> Tag {
+/// A style's members as NBT entries, in the order the original's codec inserts them (the order
+/// only matters where keys share a `HashMap` bucket; measured for every such pair).
+pub(crate) fn style_entries(style: &Style) -> Vec<(&'static str, Tag)> {
+    let mut out: Vec<(&'static str, Tag)> = Vec::new();
+    if let Some(hover) = &style.hover_event {
+        out.push((
+            "hoverEvent",
+            compound(vec![
+                ("contents", hover.text.to_nbt()),
+                ("action", nbt_string("show_text")),
+            ]),
+        ));
+    }
+    if let Some(insertion) = &style.insertion {
+        out.push(("insertion", nbt_string(insertion)));
+    }
+    if let Some(font) = &style.font {
+        out.push(("font", nbt_string(font)));
+    }
+    if let Some(flag) = style.obfuscated {
+        out.push(("obfuscated", Tag::Byte(i8::from(flag))));
+    }
+    if let Some(click) = &style.click_event {
+        out.push((
+            "clickEvent",
+            compound(vec![
+                ("action", nbt_string(click.action.name())),
+                ("value", nbt_string(&click.value)),
+            ]),
+        ));
+    }
+    for (key, flag) in [
+        ("italic", style.italic),
+        ("underlined", style.underlined),
+        ("strikethrough", style.strikethrough),
+    ] {
+        if let Some(flag) = flag {
+            out.push((key, Tag::Byte(i8::from(flag))));
+        }
+    }
+    if let Some(color) = &style.color {
+        out.push(("color", nbt_string(&color.serialize())));
+    }
+    if let Some(flag) = style.bold {
+        out.push(("bold", Tag::Byte(i8::from(flag))));
+    }
+    out
+}
+
+/// A `CompoundTag` whose entries are stored in `java.util.HashMap` order.
+pub(crate) fn hash_ordered_compound(entries: Vec<(&str, Tag)>) -> Tag {
+    compound(entries)
+}
+
+pub(crate) fn nbt_string(text: &str) -> Tag {
     Tag::String(JavaString::Utf8(text.to_owned()))
 }
 
@@ -518,31 +629,47 @@ impl ListCollector {
                     values.push(value);
                     Self::Bytes(values)
                 }
-                other => Self::Heterogeneous(values.into_iter().map(|v| wrap_element(Tag::Byte(v))).collect())
-                    .accept(other),
+                other => Self::Heterogeneous(
+                    values
+                        .into_iter()
+                        .map(|v| wrap_element(Tag::Byte(v)))
+                        .collect(),
+                )
+                .accept(other),
             },
             Self::Ints(mut values) => match tag {
                 Tag::Int(value) => {
                     values.push(value);
                     Self::Ints(values)
                 }
-                other => Self::Heterogeneous(values.into_iter().map(|v| wrap_element(Tag::Int(v))).collect())
-                    .accept(other),
+                other => Self::Heterogeneous(
+                    values
+                        .into_iter()
+                        .map(|v| wrap_element(Tag::Int(v)))
+                        .collect(),
+                )
+                .accept(other),
             },
             Self::Longs(mut values) => match tag {
                 Tag::Long(value) => {
                     values.push(value);
                     Self::Longs(values)
                 }
-                other => Self::Heterogeneous(values.into_iter().map(|v| wrap_element(Tag::Long(v))).collect())
-                    .accept(other),
+                other => Self::Heterogeneous(
+                    values
+                        .into_iter()
+                        .map(|v| wrap_element(Tag::Long(v)))
+                        .collect(),
+                )
+                .accept(other),
             },
             Self::Homogeneous(mut values) => {
                 if tag.tag_id() == values[0].tag_id() {
                     values.push(tag);
                     Self::Homogeneous(values)
                 } else {
-                    Self::Heterogeneous(values.into_iter().map(wrap_if_needed).collect()).accept(tag)
+                    Self::Heterogeneous(values.into_iter().map(wrap_if_needed).collect())
+                        .accept(tag)
                 }
             }
             Self::Heterogeneous(mut values) => {
@@ -554,18 +681,30 @@ impl ListCollector {
 
     fn result(self) -> Tag {
         match self {
-            Self::Initial => Tag::List { element_type: 0, values: Vec::new() },
+            Self::Initial => Tag::List {
+                element_type: 0,
+                values: Vec::new(),
+            },
             Self::Bytes(values) => Tag::ByteArray(values),
             Self::Ints(values) => Tag::IntArray(values),
             Self::Longs(values) => Tag::LongArray(values),
-            Self::Homogeneous(values) => Tag::List { element_type: values[0].tag_id(), values },
-            Self::Heterogeneous(values) => Tag::List { element_type: 10, values },
+            Self::Homogeneous(values) => Tag::List {
+                element_type: values[0].tag_id(),
+                values,
+            },
+            Self::Heterogeneous(values) => Tag::List {
+                element_type: 10,
+                values,
+            },
         }
     }
 }
 
 fn nbt_list(items: Vec<Tag>) -> Tag {
-    items.into_iter().fold(ListCollector::Initial, ListCollector::accept).result()
+    items
+        .into_iter()
+        .fold(ListCollector::Initial, ListCollector::accept)
+        .result()
 }
 
 fn primitive_nbt(primitive: &Primitive) -> Tag {
@@ -590,7 +729,11 @@ impl Component {
         let mut entries: Vec<(&str, Tag)> = Vec::new();
         match &self.contents {
             Contents::Text(text) => entries.push(("text", nbt_string(text))),
-            Contents::Translatable { key, fallback, args } => {
+            Contents::Translatable {
+                key,
+                fallback,
+                args,
+            } => {
                 entries.push(("translate", nbt_string(key)));
                 if let Some(fallback) = fallback {
                     entries.push(("fallback", nbt_string(fallback)));
@@ -609,7 +752,10 @@ impl Component {
             Contents::Keybind(name) => entries.push(("keybind", nbt_string(name))),
             Contents::Score { name, objective } => entries.push((
                 "score",
-                compound(vec![("name", nbt_string(name)), ("objective", nbt_string(objective))]),
+                compound(vec![
+                    ("name", nbt_string(name)),
+                    ("objective", nbt_string(objective)),
+                ]),
             )),
             Contents::Selector { pattern, separator } => {
                 entries.push(("selector", nbt_string(pattern)));
@@ -617,7 +763,12 @@ impl Component {
                     entries.push(("separator", separator.to_nbt()));
                 }
             }
-            Contents::Nbt { path, interpret, separator, source } => {
+            Contents::Nbt {
+                path,
+                interpret,
+                separator,
+                source,
+            } => {
                 entries.push(("nbt", nbt_string(path)));
                 if *interpret {
                     entries.push(("interpret", Tag::Byte(1)));
@@ -633,43 +784,12 @@ impl Component {
             }
         }
         if !self.siblings.is_empty() {
-            entries.push(("extra", nbt_list(self.siblings.iter().map(Self::to_nbt).collect())));
-        }
-        // Members in the order the original's codec inserts them (the order only matters where
-        // keys share a `HashMap` bucket; measured for every such pair, see the reference doc).
-        let style = &self.style;
-        if let Some(hover) = &style.hover_event {
             entries.push((
-                "hoverEvent",
-                compound(vec![("contents", hover.text.to_nbt()), ("action", nbt_string("show_text"))]),
+                "extra",
+                nbt_list(self.siblings.iter().map(Self::to_nbt).collect()),
             ));
         }
-        if let Some(insertion) = &style.insertion {
-            entries.push(("insertion", nbt_string(insertion)));
-        }
-        if let Some(font) = &style.font {
-            entries.push(("font", nbt_string(font)));
-        }
-        if let Some(flag) = style.obfuscated {
-            entries.push(("obfuscated", Tag::Byte(i8::from(flag))));
-        }
-        if let Some(click) = &style.click_event {
-            entries.push((
-                "clickEvent",
-                compound(vec![("action", nbt_string(click.action.name())), ("value", nbt_string(&click.value))]),
-            ));
-        }
-        for (key, flag) in [("italic", style.italic), ("underlined", style.underlined), ("strikethrough", style.strikethrough)] {
-            if let Some(flag) = flag {
-                entries.push((key, Tag::Byte(i8::from(flag))));
-            }
-        }
-        if let Some(color) = &style.color {
-            entries.push(("color", nbt_string(&color.serialize())));
-        }
-        if let Some(flag) = style.bold {
-            entries.push(("bold", Tag::Byte(i8::from(flag))));
-        }
+        entries.extend(style_entries(&self.style));
         compound(entries)
     }
 

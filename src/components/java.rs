@@ -6,8 +6,9 @@
 
 /// `String.hashCode()` over UTF-16 code units.
 pub fn string_hash(text: &str) -> i32 {
-    text.encode_utf16()
-        .fold(0i32, |hash, unit| hash.wrapping_mul(31).wrapping_add(i32::from(unit)))
+    text.encode_utf16().fold(0i32, |hash, unit| {
+        hash.wrapping_mul(31).wrapping_add(i32::from(unit))
+    })
 }
 
 /// `HashMap.hash(key)`: the hash code with its high half folded in.
@@ -23,8 +24,14 @@ fn spread(hash: i32) -> u32 {
 /// Buckets are never treeified here: that needs eight colliding keys in one
 /// bucket of a table of at least 64 entries, which a text component never has.
 pub fn hashmap_iteration_order(keys: &[&str]) -> Vec<usize> {
+    hashmap_iteration_order_in(keys, 16)
+}
+
+/// As [`hashmap_iteration_order`] for a map whose table already has `table_size` buckets (a
+/// `HashMap` never shrinks, so a set that once held many members keeps the larger table).
+pub fn hashmap_iteration_order_in(keys: &[&str], table_size: usize) -> Vec<usize> {
     let hashes: Vec<u32> = keys.iter().map(|key| spread(string_hash(key))).collect();
-    let mut capacity = 16usize;
+    let mut capacity = table_size.max(16).next_power_of_two();
     let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); capacity];
     for (index, hash) in hashes.iter().enumerate() {
         buckets[*hash as usize & (capacity - 1)].push(index);
@@ -98,7 +105,12 @@ pub fn double_to_string(value: f64) -> String {
         return if value > 0.0 { "Infinity" } else { "-Infinity" }.to_owned();
     }
     if value == 0.0 {
-        return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_owned();
+        return if value.is_sign_negative() {
+            "-0.0"
+        } else {
+            "0.0"
+        }
+        .to_owned();
     }
     let mut digits = format!("{value:e}");
     // A one-digit shortest form is widened to the closest two-digit decimal that still reads back
@@ -121,7 +133,12 @@ pub fn float_to_string(value: f32) -> String {
         return if value > 0.0 { "Infinity" } else { "-Infinity" }.to_owned();
     }
     if value == 0.0 {
-        return if value.is_sign_negative() { "-0.0" } else { "0.0" }.to_owned();
+        return if value.is_sign_negative() {
+            "-0.0"
+        } else {
+            "0.0"
+        }
+        .to_owned();
     }
     let mut digits = format!("{value:e}");
     if !digits.split('e').next().unwrap_or("").contains('.') {
@@ -155,7 +172,11 @@ fn java_decimal(scientific: &str, plain: bool) -> String {
         if digits.len() <= integer_len {
             format!("{sign}{digits}{}.0", "0".repeat(integer_len - digits.len()))
         } else {
-            format!("{sign}{}.{}", &digits[..integer_len], &digits[integer_len..])
+            format!(
+                "{sign}{}.{}",
+                &digits[..integer_len],
+                &digits[integer_len..]
+            )
         }
     } else {
         format!("{sign}0.{}{digits}", "0".repeat((-exponent - 1) as usize))
@@ -174,9 +195,9 @@ pub fn resource_location(text: &str) -> Option<String> {
     let namespace_ok = namespace
         .chars()
         .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.'));
-    let path_ok = path
-        .chars()
-        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.' | '/'));
+    let path_ok = path.chars().all(|c| {
+        c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-' | '.' | '/')
+    });
     (namespace_ok && path_ok).then(|| format!("{namespace}:{path}"))
 }
 
@@ -190,7 +211,20 @@ mod tests {
     fn hashmap_order_matches_the_jvm() {
         let cases: [(&[&str], &[usize]); 10] = [
             (
-                &["text", "color", "bold", "extra", "italic", "underlined", "strikethrough", "obfuscated", "clickEvent", "hoverEvent", "insertion", "font"],
+                &[
+                    "text",
+                    "color",
+                    "bold",
+                    "extra",
+                    "italic",
+                    "underlined",
+                    "strikethrough",
+                    "obfuscated",
+                    "clickEvent",
+                    "hoverEvent",
+                    "insertion",
+                    "font",
+                ],
                 &[9, 8, 1, 3, 5, 10, 0, 2, 6, 4, 7, 11],
             ),
             (&["translate", "with", "fallback"], &[1, 2, 0]),
@@ -199,7 +233,9 @@ mod tests {
             (&["score"], &[0]),
             (&["name", "objective"], &[0, 1]),
             (
-                &["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p"],
+                &[
+                    "a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p",
+                ],
                 &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
             ),
             (&["keybind"], &[0]),
@@ -216,15 +252,36 @@ mod tests {
     #[test]
     fn float_and_double_text_follows_java() {
         for (value, expected) in [
-            (1.0f32, "1.0"), (0.1, "0.1"), (100.0, "100.0"), (1.5e7, "1.5E7"), (9_999_999.0, "9999999.0"), (1e7, "1.0E7"),
-            (0.001, "0.001"), (0.0009, "9.0E-4"), (1.0e-5, "1.0E-5"), (123_456_789.0, "1.2345679E8"), (f32::MAX, "3.4028235E38"),
-            (f32::from_bits(1), "1.4E-45"), (-2.5, "-2.5"), (0.0, "0.0"), (-0.0, "-0.0"), (f32::NAN, "NaN"), (f32::INFINITY, "Infinity"),
+            (1.0f32, "1.0"),
+            (0.1, "0.1"),
+            (100.0, "100.0"),
+            (1.5e7, "1.5E7"),
+            (9_999_999.0, "9999999.0"),
+            (1e7, "1.0E7"),
+            (0.001, "0.001"),
+            (0.0009, "9.0E-4"),
+            (1.0e-5, "1.0E-5"),
+            (123_456_789.0, "1.2345679E8"),
+            (f32::MAX, "3.4028235E38"),
+            (f32::from_bits(1), "1.4E-45"),
+            (-2.5, "-2.5"),
+            (0.0, "0.0"),
+            (-0.0, "-0.0"),
+            (f32::NAN, "NaN"),
+            (f32::INFINITY, "Infinity"),
         ] {
             assert_eq!(float_to_string(value), expected, "{value:e}");
         }
         for (value, expected) in [
-            (1.0f64, "1.0"), (0.1, "0.1"), (1e7, "1.0E7"), (1.0e-5, "1.0E-5"), (4.9e-324, "4.9E-324"), (f64::MAX, "1.7976931348623157E308"),
-            (123_456.789, "123456.789"), (3.14159, "3.14159"), (1.0 / 3.0, "0.3333333333333333"),
+            (1.0f64, "1.0"),
+            (0.1, "0.1"),
+            (1e7, "1.0E7"),
+            (1.0e-5, "1.0E-5"),
+            (4.9e-324, "4.9E-324"),
+            (f64::MAX, "1.7976931348623157E308"),
+            (123_456.789, "123456.789"),
+            (3.14159, "3.14159"),
+            (1.0 / 3.0, "0.3333333333333333"),
         ] {
             assert_eq!(double_to_string(value), expected, "{value:e}");
         }

@@ -44,7 +44,12 @@ impl MapIndex {
 
     /// `getFreeAuxValueForMap`: the next map id (the first one is 0).
     pub fn get_free_aux_value_for_map(&mut self) -> i32 {
-        let next = self.used_aux_ids.get("map").copied().unwrap_or(-1).wrapping_add(1);
+        let next = self
+            .used_aux_ids
+            .get("map")
+            .copied()
+            .unwrap_or(-1)
+            .wrapping_add(1);
         self.used_aux_ids.insert("map".to_owned(), next);
         self.dirty = true;
         next

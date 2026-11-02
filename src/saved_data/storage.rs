@@ -29,7 +29,10 @@ impl std::fmt::Display for SavedDataError {
             Self::Io(what) => write!(f, "saved data I/O error: {what}"),
             Self::Corrupt(what) => write!(f, "corrupt saved data: {what}"),
             Self::DataFixerRequired { fix, from } => {
-                write!(f, "{fix} data of version {from} needs data fixers that are not ported")
+                write!(
+                    f,
+                    "{fix} data of version {from} needs data fixers that are not ported"
+                )
             }
             Self::TypeMismatch(name) => write!(f, "saved data {name} is cached as another type"),
             Self::InvalidName(name) => write!(f, "invalid saved data name {name:?}"),
@@ -47,6 +50,9 @@ pub enum DataFixType {
     SavedDataMapIndex,
     /// `SAVED_DATA_RANDOM_SEQUENCES`: `RandomSequenceSettingsFix` at data version 3565.
     SavedDataRandomSequences,
+    /// `SAVED_DATA_SCOREBOARD`: several fixers rewrite it (display slots, text components), so only
+    /// data already at the target version is accepted.
+    SavedDataScoreboard,
 }
 
 impl DataFixType {
@@ -55,6 +61,16 @@ impl DataFixType {
     pub fn update(self, root: Tag, from: i32, to: i32) -> Result<Tag, SavedDataError> {
         match self {
             Self::SavedDataMapIndex => Ok(root),
+            Self::SavedDataScoreboard => {
+                if from >= to {
+                    Ok(root)
+                } else {
+                    Err(SavedDataError::DataFixerRequired {
+                        fix: "saved_data/scoreboard",
+                        from,
+                    })
+                }
+            }
             Self::SavedDataRandomSequences => {
                 const SETTINGS_FIX: i32 = 3565;
                 if from < SETTINGS_FIX && SETTINGS_FIX <= to {
@@ -69,7 +85,9 @@ impl DataFixType {
 
 /// `RandomSequenceSettingsFix`: `data` becomes `{sequences: data}` when present.
 fn random_sequence_settings_fix(root: Tag) -> Tag {
-    let Tag::Compound(mut entries) = root else { return root };
+    let Tag::Compound(mut entries) = root else {
+        return root;
+    };
     for (name, value) in entries.iter_mut() {
         if name == "data" {
             let old = std::mem::replace(value, Tag::Compound(Vec::new()));
@@ -107,7 +125,11 @@ pub struct DimensionDataStorage {
 
 impl DimensionDataStorage {
     pub fn new(folder: impl Into<PathBuf>) -> Self {
-        Self { folder: folder.into(), cache: HashMap::new(), log: Vec::new() }
+        Self {
+            folder: folder.into(),
+            cache: HashMap::new(),
+            log: Vec::new(),
+        }
     }
 
     /// Messages Java would have logged at error level (unreadable file, failed write).
@@ -123,14 +145,24 @@ impl DimensionDataStorage {
     }
 
     /// `readTagFromDisk`: the whole document after the data fixers up to `version`.
-    pub fn read_tag_from_disk(&self, name: &str, fix: DataFixType, version: i32) -> Result<Tag, SavedDataError> {
-        let bytes = fs::read(self.data_file(name)?).map_err(|error| SavedDataError::Io(error.to_string()))?;
+    pub fn read_tag_from_disk(
+        &self,
+        name: &str,
+        fix: DataFixType,
+        version: i32,
+    ) -> Result<Tag, SavedDataError> {
+        let bytes = fs::read(self.data_file(name)?)
+            .map_err(|error| SavedDataError::Io(error.to_string()))?;
         let root = file::read_root(&bytes)?;
         let from = file::data_version(&root, 1343);
         fix.update(root, from, version)
     }
 
-    fn read_saved_data<T: SavedData>(&mut self, factory: &Factory<T>, name: &str) -> Result<Option<T>, SavedDataError> {
+    fn read_saved_data<T: SavedData>(
+        &mut self,
+        factory: &Factory<T>,
+        name: &str,
+    ) -> Result<Option<T>, SavedDataError> {
         let path = self.data_file(name)?;
         if !path.exists() {
             return Ok(None);
@@ -139,7 +171,8 @@ impl DimensionDataStorage {
             Ok(root) => match (factory.deserializer)(&file::compound_member(&root, "data")) {
                 Ok(data) => Ok(Some(data)),
                 Err(error) => {
-                    self.log.push(format!("Error loading saved data: {name}: {error}"));
+                    self.log
+                        .push(format!("Error loading saved data: {name}: {error}"));
                     Ok(None)
                 }
             },
@@ -147,7 +180,8 @@ impl DimensionDataStorage {
             // later save replace the file with a fresh object.
             Err(error @ SavedDataError::DataFixerRequired { .. }) => Err(error),
             Err(error) => {
-                self.log.push(format!("Error loading saved data: {name}: {error}"));
+                self.log
+                    .push(format!("Error loading saved data: {name}: {error}"));
                 Ok(None)
             }
         }
@@ -155,10 +189,17 @@ impl DimensionDataStorage {
 
     /// `get`: the cached object, loading it on first use. A missing or unreadable file is cached
     /// as absent, so a file that appears later is not seen until [`Self::set`] replaces it.
-    pub fn get<T: SavedData>(&mut self, factory: &Factory<T>, name: &str) -> Result<Option<&mut T>, SavedDataError> {
+    pub fn get<T: SavedData>(
+        &mut self,
+        factory: &Factory<T>,
+        name: &str,
+    ) -> Result<Option<&mut T>, SavedDataError> {
         if !self.cache.contains_key(name) {
             let loaded = self.read_saved_data(factory, name)?;
-            self.cache.insert(name.to_owned(), loaded.map(|data| Box::new(data) as Box<dyn SavedData>));
+            self.cache.insert(
+                name.to_owned(),
+                loaded.map(|data| Box::new(data) as Box<dyn SavedData>),
+            );
         }
         match self.cache.get_mut(name).and_then(Option::as_mut) {
             None => Ok(None),
@@ -171,11 +212,16 @@ impl DimensionDataStorage {
     }
 
     /// `computeIfAbsent`: a new object from the factory is cached but not marked dirty.
-    pub fn compute_if_absent<T: SavedData>(&mut self, factory: &Factory<T>, name: &str) -> Result<&mut T, SavedDataError> {
+    pub fn compute_if_absent<T: SavedData>(
+        &mut self,
+        factory: &Factory<T>,
+        name: &str,
+    ) -> Result<&mut T, SavedDataError> {
         if self.get(factory, name)?.is_none() {
             self.set(name, (factory.constructor)());
         }
-        self.get(factory, name)?.ok_or_else(|| SavedDataError::TypeMismatch(name.to_owned()))
+        self.get(factory, name)?
+            .ok_or_else(|| SavedDataError::TypeMismatch(name.to_owned()))
     }
 
     /// `set`: replaces the cached object; dirty state is the object's own.
@@ -189,7 +235,9 @@ impl DimensionDataStorage {
         let mut names: Vec<String> = self.cache.keys().cloned().collect();
         names.sort();
         for name in names {
-            let Some(Some(data)) = self.cache.get(&name) else { continue };
+            let Some(Some(data)) = self.cache.get(&name) else {
+                continue;
+            };
             if !data.is_dirty() {
                 continue;
             }
@@ -200,7 +248,9 @@ impl DimensionDataStorage {
                         data.set_dirty(false);
                     }
                 }
-                Err(error) => self.log.push(format!("Could not save data {name}: {error}")),
+                Err(error) => self
+                    .log
+                    .push(format!("Could not save data {name}: {error}")),
             }
         }
     }
