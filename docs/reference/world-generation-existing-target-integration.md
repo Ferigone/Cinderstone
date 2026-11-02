@@ -17,9 +17,11 @@ Bounded original/native paired validation passed for native source commit
 and [validation fixture](../../fixtures/world-generation-existing-target-validation.json)
 record the exact source, probe and artifact hashes and the limits of that result.
 
-A separately scoped extension is in progress for constructing actual retained
+A separately scoped extension constructs actual retained
 NoiseChunk/aquifer owners when the full-build noise clamp has zero height but
-BIOMES or SURFACE still needs those owners. Its paired validation is pending.
+BIOMES or SURFACE still needs those owners. Its actual original/native pair
+passed on source `dbbc19d`; the [zero-overlap note](world-generation-zero-overlap.md)
+records two zero-range profiles and one positive material-fill control.
 The validated cache-absent no-cell material return does not establish this
 owner-producing path: that profile skips BIOMES, constructs no NoiseChunk and
 returns before generation dependencies are accessed.
