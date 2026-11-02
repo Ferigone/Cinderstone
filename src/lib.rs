@@ -9,6 +9,7 @@ pub mod access_lists;
 pub mod admission_policy;
 pub mod admission_commands;
 pub mod command_protocol;
+pub mod commands;
 pub mod login_limits;
 pub mod block_ticks;
 pub mod border;
