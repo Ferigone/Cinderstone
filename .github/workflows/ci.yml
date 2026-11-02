@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: AGENTS.md hygiene and fixed-checklist integrity
         run: python3 .github/scripts/repo_hygiene.py
+      - name: Required compile inputs survive the Docker context
+        run: docker build --target compile-input-check --progress=plain .
 
   build:
     name: cargo check and tests
