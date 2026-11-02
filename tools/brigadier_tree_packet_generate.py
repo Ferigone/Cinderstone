@@ -7,7 +7,8 @@
 WP-E3 stage 5. Seeded random command trees (the generator of tools/brigadier_dispatch_generate.py:
 literals, typed Brigadier arguments, executable nodes, redirects, merged duplicate registrations) are
 built with the unchanged com.mojang.brigadier 1.2.9 builders and wrapped in the dedicated server's own
-ClientboundCommandsPacket; the bytes its StreamCodec writes are recorded (stage 6 appends one fixed tree per
+ClientboundCommandsPacket; the bytes its StreamCodec writes are recorded (stage 8 adds, per permission level 0-4, the packet of the tree
+Commands.fillUsableCommands builds for a source of that level; stage 6 appends one fixed tree per
 Minecraft position argument type). Extra decoration for this
 stage: custom suggestion providers (registered names and an unregistered provider), and copies of whole
 subtrees planted under other nodes so that structurally equal nodes exist (the original numbers nodes
@@ -79,6 +80,20 @@ def build_tests(rng):
     # stage 7: simple value arguments (time with the default and with a minimum, whose template is an int)
     for spec in [{"k": "time"}, {"k": "time", "min": 5}, {"k": "time", "min": -100}, {"k": "uuid"}, {"k": "anchor"}, {"k": "angle"}, {"k": "swizzle"}]:
         tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": spec, "cmd": 1}]}]})
+    # stage 8: redirect targets that only the original's structural map (CommandNode.equals, requirements ignored)
+    # can resolve. Tree 1: the target "t" needs level 3, an equal node a/t does not, so below level 3 the redirect
+    # still finds a/t's copy. Tree 2: t and a/t are equal in the source, but t's child "c" needs level 2, so below
+    # level 2 their copies differ, and the redirect must resolve to the later one (put overwrites the equal key).
+    tests.append({"tree": [
+        {"t": "lit", "name": "t", "req": 3, "children": [{"t": "lit", "name": "c", "cmd": 1}]},
+        {"t": "lit", "name": "a", "children": [
+            {"t": "lit", "name": "t", "children": [{"t": "lit", "name": "c", "cmd": 1}]},
+            {"t": "lit", "name": "r", "redirect": {"to": "t", "kind": "plain"}}]}]})
+    tests.append({"tree": [
+        {"t": "lit", "name": "t", "children": [{"t": "lit", "name": "c", "req": 2, "cmd": 1}]},
+        {"t": "lit", "name": "a", "children": [
+            {"t": "lit", "name": "t", "children": [{"t": "lit", "name": "c", "cmd": 1}]},
+            {"t": "lit", "name": "r", "redirect": {"to": "t", "kind": "plain"}}]}]})
     return tests
 
 
@@ -101,7 +116,7 @@ def main():
         subprocess.run(["java", "-cp", f"{classpath}:{tmp}", "cinderstone.oracle.brigadier_tree_packet_oracle", str(tmp / "cases.json"), str(tmp / "out.json")], check=True, timeout=300)
         outputs = json.loads((tmp / "out.json").read_text())
     assert len(outputs) == len(tests)
-    cases = [{"tree": test["tree"], "packet": output["packet"]} for test, output in zip(tests, outputs)]
+    cases = [{"tree": test["tree"], "packet": output["packet"], "usable": output["usable"]} for test, output in zip(tests, outputs)]
     sizes = [len(case["packet"]) // 2 for case in cases]
     document = {
         "format": "brigadier-1.2.9-tree-packet-vectors-v1",

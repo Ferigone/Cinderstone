@@ -3,13 +3,15 @@
 //! `ClientboundCommandsPacket` writes for seeded random Brigadier trees
 //! (`tools/brigadier_tree_packet_generate.py`). Trees contain every Brigadier argument type,
 //! redirects, custom suggestion providers (registered and unregistered) and planted copies of
-//! subtrees, so nodes that `CommandNode.equals` considers equal must share one index.
+//! subtrees, so nodes that `CommandNode.equals` considers equal must share one index. Stage 8: for each
+//! tree and every permission level 0 to 4 the packet of the tree `Commands.fillUsableCommands` builds
+//! for a source of that level (nodes carry permission-level requirements).
 
 use super::arguments::{ArgumentNetworkInfo, ArgumentType};
 use super::dispatcher::{ArgumentBuilder, Command, CommandDispatcher, NodeId};
 use super::suggestion::SuggestionProvider;
 use super::dispatcher_tests::argument_type;
-use super::tree_packet::{encode_commands_packet, CommandTreePacketError};
+use super::tree_packet::{encode_commands_packet, usable_tree, CommandTreePacketError};
 use super::string_reader::StringReader;
 use super::exception::CommandSyntaxException;
 use serde_json::Value;
@@ -35,6 +37,9 @@ fn build(spec: &Value, dispatcher: &CommandDispatcher<i32>, builders: &mut Build
     } else {
         ArgumentBuilder::argument(name, argument_type(&spec["type"]))
     };
+    if let Some(level) = spec.get("req").and_then(Value::as_i64) {
+        builder = builder.requires(Rc::new(move |source: &i32| i64::from(*source) >= level));
+    }
     if let Some(sug) = spec.get("sug") {
         let provider: SuggestionProvider<i32> = Rc::new(|_context, builder| Ok(builder.build()));
         builder = match sug.get("name") {
@@ -95,6 +100,7 @@ fn read_varint(bytes: &[u8]) -> usize {
 fn command_tree_packets_match_the_executed_original() {
     let document = fixture();
     let (mut merged, mut redirects, mut custom, mut registered, mut total) = (0, 0, 0, 0, 0);
+    let (mut level_dependent, mut no_op_merged) = (0, 0);
     for (index, case) in document["tests"].as_array().unwrap().iter().enumerate() {
         let mut dispatcher = CommandDispatcher::<i32>::new();
         let mut builders = Builders { commands: HashMap::new() };
@@ -106,12 +112,27 @@ fn command_tree_packets_match_the_executed_original() {
         assert_eq!(hex(&packet), case["packet"].as_str().unwrap(), "tree {index}: {}", case["tree"]);
         total += 1;
         merged += usize::from(read_varint(&packet) < reachable(&dispatcher));
+        let mut usable_packets = Vec::new();
+        for level in 0..=4i32 {
+            let (filtered, filtered_root) = usable_tree(dispatcher.tree(), dispatcher.root(), &level);
+            let bytes = encode_commands_packet(&filtered, filtered_root).unwrap();
+            assert_eq!(
+                hex(&bytes),
+                case["usable"][level as usize].as_str().unwrap(),
+                "tree {index} level {level}: {}",
+                case["tree"]
+            );
+            usable_packets.push(bytes);
+        }
+        level_dependent += usize::from(usable_packets.iter().any(|bytes| *bytes != usable_packets[0]));
+        no_op_merged += usize::from(hex(&usable_packets[4]) != case["packet"].as_str().unwrap());
         let text = case["tree"].to_string();
         redirects += usize::from(text.contains("\"redirect\""));
         custom += usize::from(text.contains("\"sug\""));
         registered += usize::from(text.contains("minecraft:"));
     }
     assert!(total >= 160 && merged > 20 && redirects > 40 && custom > 40 && registered > 10, "{total} {merged} {redirects} {custom} {registered}");
+    assert!(level_dependent > 80 && no_op_merged > 20, "{level_dependent} {no_op_merged}");
 }
 
 #[test]
