@@ -316,7 +316,7 @@ struct ClientInformation {
 
 enum PlayExit {
     Disconnected,
-    Reconfigure(Option<ClientInformation>),
+    Reconfigure(Option<ClientInformation>, Box<PlayerData>),
 }
 
 async fn fixtures(path: &Path) -> Result<Fixtures> {
@@ -847,6 +847,7 @@ impl LivePlayers {
         self.chunk_runtime.manager.player_add(id, chunk, false)?;
         self.connection_admissions.insert(admission, id);
         self.player_random.insert(id, random);
+        self.experience_runtime.initialize_player_cache(id);
         self.creative_drop.insert(id, CreativeDropGate::default());
         self.chunk_transports
             .insert(id, SessionChunkTransport::new());
@@ -2353,7 +2354,18 @@ impl Server {
         let admission = self.player_admission.lock().await;
         self.cleanup_player_admitted(id, reason, &admission).await
     }
-    async fn cleanup_player_admitted(&self, id: i32, reason: Option<&'static str>, _admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
+    async fn cleanup_player_admitted(&self, id: i32, reason: Option<&'static str>, admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
+        self.cleanup_player_admitted_with_restore(id, reason, admission, false).await.map(|_| ())
+    }
+    async fn cleanup_player_for_reconfiguration(&self, id: i32) -> Result<PlayerData> {
+        let _operation = self.chat_dispatch.lock().await;
+        let admission = self.player_admission.lock().await;
+        self.cleanup_player_admitted_with_restore(id, None, &admission, true).await?
+            .context("reconfiguration lost its actual previous player snapshot")
+    }
+    async fn cleanup_player_admitted_with_restore(&self, id: i32, reason: Option<&'static str>,
+        _admission: &tokio::sync::MutexGuard<'_, ()>, capture_restore: bool,
+    ) -> Result<Option<PlayerData>> {
         let now = self.clock.read().map_err(|_|anyhow!("clock poisoned"))?.game_time;
         let b = self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
         let border = CollisionBorder { min_x:b.min_x,min_z:b.min_z,max_x:b.max_x,max_z:b.max_z };
@@ -2366,7 +2378,7 @@ impl Server {
             ensure!(!players.stonecutters.has_open(id), "orphan stonecutter menu retained");
             ensure!(!players.smithing_tables.has_open(id), "orphan smithing menu retained");
             ensure!(!players.looms.has_open(id), "orphan loom menu retained");
-            return Ok(());
+            return Ok(None);
         }
         if let Some(reason)=reason {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
@@ -2397,6 +2409,11 @@ impl Server {
             self.native_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
         self.save_player_locked(&mut players,id)?;
+        // Capture after the real InventoryMenu/external-menu removals, while
+        // the same world/player/admission interval still owns this actor. The
+        // same-connection restoreFrom path must not reload known seed0 from
+        // disk and consume a replacement random sample.
+        let restored = if capture_restore { self.capture_player_locked(&mut players, id)? } else { None };
         players.remove_runtime_player(id)?;
         if let Some(event)=players.registry.remove(id) {
             players.motion.remove(&id);
@@ -2411,7 +2428,7 @@ impl Server {
             players.unavailable_pose.remove(&id);
             players.publish(event,&self.entity_events);
         }
-        Ok(())
+        Ok(restored)
     }
 }
 impl Drop for PresenceGuard {
@@ -3224,12 +3241,13 @@ async fn connection_session(
     let mut client_information = main_configuration::configure(
         &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
     ).await?;
+    let mut restored_player = None;
     loop {
         server.wait_secure_chat_enforcement().await?;
         main_connection::phase(main_connection::OutboundPhase::Play);
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
-            client_information, admission, address, &mut protocol, &mut packs,
+            client_information, restored_player.take(), admission, address, &mut protocol, &mut packs,
         ).await? {
             PlayExit::Disconnected => {
                 // Retain the actual framing reader while half-closing output.
@@ -3244,7 +3262,8 @@ async fn connection_session(
                 }).await;
                 return Ok(());
             },
-            PlayExit::Reconfigure(info) => {
+            PlayExit::Reconfigure(info, restored) => {
+                restored_player = Some(restored);
                 client_information = main_configuration::configure(
                     &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, info, false,
                 ).await?;
@@ -3283,6 +3302,7 @@ async fn play(
     server: Arc<Server>,
     profile: PlayerProfile,
     client_information: Option<ClientInformation>,
+    restored_player: Option<Box<PlayerData>>,
     admission: u64,
     address: SocketAddr,
     protocol: &mut Reconfiguration,
@@ -3302,7 +3322,7 @@ async fn play(
         send(&codec, &mut writer, 0x1d, rejection.network_component()?).await?;
         return Ok(PlayExit::Disconnected);
     }
-    let (entity_id, player_random) = server.allocate_player_entity()?;
+    let (entity_id, mut player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
         let _ = menu_sender.send(PlayerEvent::Container {
@@ -3340,9 +3360,15 @@ async fn play(
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
         let uuid = profile.uuid;
-        let mut saved = match players.pending_player_saves.get(&uuid) {
-            Some(data) => Some(data.clone()),
-            None => server.player_store.load(uuid)?,
+        let mut seed_admission = main_player_data::EnchantmentSeedAdmission::SavedData;
+        let mut saved = if let Some(restored) = restored_player {
+            seed_admission = main_player_data::EnchantmentSeedAdmission::RestoredPlayer;
+            Some(*restored)
+        } else if let Some(data) = players.pending_player_saves.get(&uuid) {
+            seed_admission = main_player_data::EnchantmentSeedAdmission::RestoredPlayer;
+            Some(data.clone())
+        } else {
+            server.player_store.load(uuid)?
         };
         if saved.is_none() {
             if let Some(root)=&server.options.anvil_world {
@@ -3361,10 +3387,11 @@ async fn play(
         let math=players.math_random.as_ref().context("actual global Math.random owner missing")?;
         let constructor_math=[math.next_f64()?,math.next_f64()?,math.next_f64()?];
         let mut player = PlayerState::new(entity_id, profile, position)?;
-        let (inventory, stats, lifecycle) = if let Some(saved) = saved {
+        let (inventory, stats, mut lifecycle) = if let Some(saved) = saved {
             saved.apply_to_player(&mut player)?;
             (saved.inventory, saved.stats, saved.lifecycle)
         } else {
+            seed_admission = main_player_data::EnchantmentSeedAdmission::NewPlayer;
             let mut stats = PlayerStats::default();
             if let Some(root) = &server.options.anvil_world {
                 let uuid_text = mc121_rust::player_data::uuid_string(uuid);
@@ -3388,6 +3415,10 @@ async fn play(
             lifecycle.dimension == "minecraft:overworld",
             "saved player dimension is unsupported by this world host"
         );
+        // This is the one real local Player.random created for this admission.
+        // Disk data loads seed0 once; new construction and retained restoreFrom
+        // snapshots never resample. Move this advanced RNG into runtime below.
+        main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
         position = player.position;
         metadata = player.metadata;
@@ -3439,6 +3470,11 @@ async fn play(
         players
             .player_lifecycle
             .insert(uuid, login_lifecycle.clone());
+        if seed_admission == main_player_data::EnchantmentSeedAdmission::RestoredPlayer {
+            // ServerPlayer.restoreFrom also invalidates this actual cache
+            // after copying XP/seed state (aqv.cR, offsets286–288).
+            *players.experience_runtime.last_sent_experience_mut(entity_id)? = -1;
+        }
         players.recipe_books.insert(uuid, book);
         if login_lifecycle.abilities.flying && login_lifecycle.abilities.may_fly {
             players.flying.insert(entity_id);
@@ -3652,11 +3688,12 @@ async fn play(
                 match request {
                     Ok(requested) if requested == entity_id => {
                         // switchToConfig removes the actual old ServerPlayer.
-                        // Re-entry uses the normal saved-player admission path.
-                        server.cleanup_player(entity_id, None).await?;
+                        // Retain its post-removal snapshot for restoreFrom;
+                        // re-entry is not another saved-data seed load.
+                        let restored = server.cleanup_player_for_reconfiguration(entity_id).await?;
                         let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
                         send(&codec, &mut writer, terminal.id, terminal.payload).await?;
-                        return Ok(PlayExit::Reconfigure(current_information));
+                        return Ok(PlayExit::Reconfigure(current_information, Box::new(restored)));
                     }
                     Ok(_) => {},
                     Err(broadcast::error::RecvError::Lagged(_)) => bail!("configuration control history lost"),

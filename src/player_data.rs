@@ -11,6 +11,7 @@ use crate::{
     inventory::{ItemStack, PlayerInventory, INVENTORY_SLOTS},
     metadata::{MetadataValue, PlayerEntityData},
     player_stats::PlayerStats,
+    player_enchantment_seed::PlayerEnchantmentSeed,
 };
 use anyhow::{ensure, Context, Result};
 use base64::{engine::general_purpose::STANDARD, Engine as _};
@@ -95,6 +96,11 @@ pub struct PlayerLifecycle {
     pub food: FoodData,
     pub abilities: AbilitiesData,
     pub experience: ExperienceData,
+    /// One actual canonical Player.enchantmentSeed field. Old native records
+    /// lack this owner: absence is UNKNOWN, not a new player's zero. Only the
+    /// explicit genuine constructor below creates a known initial zero.
+    #[serde(default)]
+    pub enchantment_seed: Option<PlayerEnchantmentSeed>,
     pub remaining_fire_ticks: i32,
     pub fall_distance: f32,
     pub death_time: i32,
@@ -128,6 +134,7 @@ impl PlayerLifecycle {
             food: FoodData::default(),
             abilities,
             experience: ExperienceData::default(),
+            enchantment_seed: Some(PlayerEnchantmentSeed::new_player()),
             remaining_fire_ticks: -1,
             fall_distance: 0.,
             death_time: 0,
@@ -138,6 +145,14 @@ impl PlayerLifecycle {
         };
         value.validate()?;
         Ok(value)
+    }
+    /// Future enchanting callbacks require this actual owner. An old native
+    /// record without provenance may still join and use ordinary gameplay.
+    pub fn require_enchantment_seed(&self) -> Result<&PlayerEnchantmentSeed> {
+        self.enchantment_seed.as_ref().context("player enchantment seed owner is unknown")
+    }
+    pub fn require_enchantment_seed_mut(&mut self) -> Result<&mut PlayerEnchantmentSeed> {
+        self.enchantment_seed.as_mut().context("player enchantment seed owner is unknown")
     }
     pub fn validate(&self) -> Result<()> {
         if let Some(velocity) = self.motion_velocity {

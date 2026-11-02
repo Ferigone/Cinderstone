@@ -2,7 +2,10 @@
 use anyhow::{ensure, Context, Result};
 use mc121_rust::{
     nbt::Tag,
+    player_enchantment_seed::{read_xp_seed_value, PlayerEnchantmentSeed},
     player_data::{uuid_string, PlayerDataStore, PlayerLifecycle},
+    player_nbt::JavaPlayerSource,
+    random::RandomSource,
     server_recipe_book::{
         RecipeLoadIssue, RecipeLoadLog, ServerRecipeBook, VanillaRecipeCatalogue,
     },
@@ -118,4 +121,63 @@ pub(super) fn load_recipe_book(lifecycle: &PlayerLifecycle) -> Result<ServerReci
 
 pub(super) fn save_recipe_book(book: &ServerRecipeBook) -> Result<Vec<u8>> {
     book.to_nbt().encode_network_anonymous()
+}
+
+/// Data origin determines whether a real saved-data load occurs. Retained
+/// snapshots follow restoreFrom, not a second load of their serialized fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum EnchantmentSeedAdmission {
+    NewPlayer,
+    SavedData,
+    RestoredPlayer,
+}
+
+/// Preserve only available original XpSeed provenance for an old native record.
+/// A present canonical field always wins, including a known zero. A native
+/// record lacking both field and actual source entry remains explicitly unknown.
+fn project_legacy_enchantment_seed(lifecycle: &mut PlayerLifecycle) -> Result<()> {
+    if lifecycle.enchantment_seed.is_some() { return Ok(()); }
+    let Some(bytes) = &lifecycle.java_source_nbt else { return Ok(()); };
+    let source = JavaPlayerSource::from_gzip(bytes)?;
+    if source.root().get("XpSeed").is_some() {
+        lifecycle.enchantment_seed = Some(PlayerEnchantmentSeed::from_saved_value(
+            read_xp_seed_value(source.root())?,
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn admit_enchantment_seed<R: RandomSource + ?Sized>(
+    lifecycle: &mut PlayerLifecycle,
+    origin: EnchantmentSeedAdmission,
+    player_random: &mut R,
+) -> Result<()> {
+    match origin {
+        EnchantmentSeedAdmission::NewPlayer => {
+            ensure!(lifecycle.require_enchantment_seed()?.get() == 0,
+                "new Player did not retain its actual constructor seed");
+        }
+        EnchantmentSeedAdmission::SavedData => {
+            if let Err(error) = project_legacy_enchantment_seed(lifecycle) {
+                // Broken retained provenance does not invent a seed or block
+                // unrelated legacy play. Enchanting will require a known owner.
+                eprintln!("{}", json!({"event":"native_player_enchantment_seed_unknown",
+                    "reason":"unavailable_preserved_java_seed", "detail":format!("{error:#}")}));
+            }
+            if let Some(seed) = &mut lifecycle.enchantment_seed {
+                let source_value = seed.get();
+                seed.load_xp_seed(source_value, player_random);
+            }
+        }
+        EnchantmentSeedAdmission::RestoredPlayer => {
+            // The snapshot contains the previous player's actual field. Copy
+            // it unconditionally, including zero/unknown, without load redraw.
+        }
+    }
+    if lifecycle.enchantment_seed.is_none() {
+        eprintln!("{}", json!({"event":"native_player_enchantment_seed_unknown",
+            "reason":"legacy_field_without_source_provenance",
+            "enchanting_available":false}));
+    }
+    Ok(())
 }
