@@ -27,6 +27,10 @@ pub enum LecternAction {
         changed: bool,
     },
     TakeBook,
+    /// Ordinary Slot.remove, independent of the button's mayBuild guard.
+    SplitBook {
+        amount: i32,
+    },
     EndPagePulse,
 }
 
@@ -75,6 +79,37 @@ pub trait LecternHost {
     fn drop_book(&mut self, remainder: ItemStack, throw_randomly: bool) -> Result<()>;
     /// Actual LecternMenu.setData calls broadcastChanges even on a no-op page.
     fn broadcast_changes(&mut self) -> Result<()>;
+}
+
+/// Actual lectern book ItemStack split. This only mutates its stored stack;
+/// the source removal callback below owns page/block updates, and no implicit
+/// container dirty/broadcast callback is added by removeItem.
+pub trait LecternContainerHost: LecternHost {
+    fn split_book_raw(&mut self, amount: i32) -> Result<ItemStack>;
+}
+
+pub fn on_book_item_remove(host: &mut impl LecternHost) -> Result<()> {
+    host.write_page_data(0, Some(0))?;
+    let old_state = host.block_entity_state()?;
+    let new_state = host.set_block_properties(&old_state, false, Some(false), 3)?;
+    host.block_change_without_source(&new_state)?;
+    host.update_neighbors_below(&old_state)
+}
+
+pub fn remove_book_item(host: &mut impl LecternContainerHost, amount: i32) -> Result<ItemStack> {
+    host.preflight(LecternAction::SplitBook { amount })?;
+    let taken = host.split_book_raw(amount)?;
+    if host.book().is_empty() {
+        on_book_item_remove(host)?;
+    }
+    Ok(taken)
+}
+
+/// removeItemNoUpdate still invokes onBookItemRemove in the real bookAccess.
+pub fn remove_book_no_update(host: &mut impl LecternHost) -> Result<ItemStack> {
+    let taken = host.take_book_raw()?;
+    on_book_item_remove(host)?;
+    Ok(taken)
 }
 
 /// Source ItemStack.is checks canonical items, not arbitrary book components.
@@ -161,14 +196,9 @@ pub fn click_menu_button(host: &mut impl LecternHost, button: i32) -> Result<boo
                 return Ok(false);
             }
             host.preflight(LecternAction::TakeBook)?;
-            let mut book = host.take_book_raw()?;
+            let mut book = remove_book_no_update(host)?;
             // LecternBlockEntity.onBookItemRemove precedes the explicit
             // Container.setChanged and player inventory insertion.
-            host.write_page_data(0, Some(0))?;
-            let old_state = host.block_entity_state()?;
-            let new_state = host.set_block_properties(&old_state, false, Some(false), 3)?;
-            host.block_change_without_source(&new_state)?;
-            host.update_neighbors_below(&old_state)?;
             host.set_changed()?;
             if !host.add_to_player_inventory(&mut book)? {
                 host.drop_book(book, false)?;

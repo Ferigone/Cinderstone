@@ -1,0 +1,130 @@
+{
+  "ok": false,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "18314fecde381929a1984d3ab941abebdaa2d113",
+  "binary_sha256": "0b76c6d0b35b2395b9fcff4600cecfa26aef6ed6504017fe35c64e0f604c24f1",
+  "harness_sha256": "6a3c2af62f69c992838cbb86a501190a4fa258808a5239f8b5162fbd357e08b7",
+  "started_at": "2026-11-01T23:49:56.429499+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One actual Main single-SharpnessI sword result THROW: positive XP1 then level1042 before Item spawn; connected close/disconnect and native item+XP cold checkpoint conservation. No broad grindstone/custom/pickup/RNG/Java/public compatibility claim.",
+  "checks": {
+    "actual_grindstone_and_single_sharpness_preview": {
+      "ok": true,
+      "menu_type": 15,
+      "menu_slots": 39,
+      "input_count": 1,
+      "actual_result_count": 1,
+      "actual_result_enchantments": []
+    },
+    "positive_xp1_then_level1042_before_actual_result_item_throw": {
+      "ok": true,
+      "wire_events": [
+        {
+          "kind": "experience_spawn",
+          "packet_ordinal": 97,
+          "entity_id": 2,
+          "value": 1,
+          "position": [
+            10.5,
+            64.5,
+            8.5
+          ]
+        },
+        {
+          "kind": "level_event",
+          "packet_ordinal": 99,
+          "event": 1042,
+          "data": 0,
+          "position": [
+            10,
+            64,
+            8
+          ],
+          "global": false
+        },
+        {
+          "kind": "item_spawn",
+          "packet_ordinal": 100,
+          "entity_id": 3
+        }
+      ],
+      "unenchanted_item_count": 1,
+      "input_and_derived_result_empty": true,
+      "cursor_empty": true,
+      "protocol_state_before": 5,
+      "protocol_state_after": 7,
+      "inventory_times_changed_instrumented": false
+    },
+    "connected_close_returns_only_owned_enchanted_input": {
+      "ok": true,
+      "owned_enchanted_swords_in_inventory": 2,
+      "derived_plain_preview_not_taken": true,
+      "cursor_empty": true
+    }
+  },
+  "configured_contract": {
+    "sword_item": 838,
+    "block_item": 1210,
+    "enchantment_key": "minecraft:sharpness",
+    "enchantment_raw_id": 32,
+    "enchantment_level": 1,
+    "actual_minimum_cost": 1,
+    "source_xp_bound": 1,
+    "expected_xp": 1,
+    "item_entity_type": 58
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/configuration.json": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+    "fixtures/item_pairing.json": "c18b174cfd45c6063b1907f9d97228e8e6fd7376ed342fd7ee12e0c0054a40eb"
+  },
+  "failure": "AssertionError({'translate': 'disconnect.disconnected'})",
+  "completed_at": "2026-11-01T23:50:19.338583+00:00",
+  "source_tree": "9eea8d01ae97f61aedf9e7e92838eca6cbc70ea6",
+  "coverage_status": "partial: actual grind preview, positive XP1-to-level1042-to-Item throw order and connected input return passed; final active-menu disconnect and cold restart unreached",
+  "failure_classification": "Actual actor native equipped-enchantment profile boundary after connected input return, not an observed Grindstone item/XP loss.",
+  "actual_server_diagnostic": {
+    "event": "native_player_body_failed",
+    "reason": "enchanted movement/location effects require their actual owner"
+  },
+  "independent_saved_observation": {
+    "selected_hotbar": 0,
+    "selected_canonical_slot": 36,
+    "selected_stack": {
+      "item_id": 838,
+      "count": 1,
+      "normal_enchantments": [
+        [
+          32,
+          1
+        ]
+      ]
+    },
+    "player": {
+      "enchanted_sword": 2,
+      "plain_sword": 0
+    },
+    "world_items": {
+      "enchanted_sword": 0,
+      "plain_sword": 1
+    },
+    "player_experience_total": 0,
+    "world_orb_experience": 1,
+    "total_experience": 1,
+    "cursor_empty": true,
+    "next_entity_id": 4
+  },
+  "process_completion": {
+    "server_sigint_exit": 0,
+    "harness_exit": 1,
+    "independent_retry_performed": false
+  },
+  "validation_limits": [
+    "No full lifecycle/cold-restart PASS: those later assertions were not reached.",
+    "Selected equipment must remain within actual native body capability; the observed failure is retained without weakening sword/XP invariants.",
+    "Protocol state IDs were observed but transient Inventory.timesChanged was not instrumented.",
+    "No broad source RNG, multi-holder/custom, graphical/public or Java-save interoperability claim."
+  ]
+}

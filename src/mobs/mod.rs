@@ -8,3 +8,7 @@ pub mod ai_step;
 pub mod bat;
 pub mod retained_bat;
 pub mod spawning;
+pub mod controls;
+pub mod equipment_drops;
+pub mod sensing;
+pub mod lifecycle;

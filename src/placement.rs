@@ -2310,3 +2310,17 @@ pub fn placement_block_min_state(state: u32) -> Result<u32> { Ok(block(state)?.m
 pub fn placement_block_name(state: u32) -> Result<&'static str> {
     Ok(&block(state)?.name)
 }
+
+/// The three pinned AnvilBlock instances inherit FallingBlock.onPlace and
+/// updateShape, both scheduling getDelayAfterPlace()==2. This is a source fact,
+/// not a claim that a world has the actual falling entity/tick/save owners.
+/// Other FallingBlock subclasses retain their existing explicit obligations.
+pub fn anvil_falling_delay(state: u32) -> Result<Option<i32>> {
+    let b = block(state)?;
+    if b.class != "dey" {
+        return Ok(None);
+    }
+    ensure!(b.on_place_class == "diu" && b.falling_delay == Some(2),
+        "Anvil callback catalogue differs from the pinned inherited source");
+    Ok(b.falling_delay)
+}

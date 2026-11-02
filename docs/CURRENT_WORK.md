@@ -5,27 +5,107 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
-## Native Stonecutter — Main connected; publication review
+## Native Anvil/FallingBlock — Main connected; bounded runtime passed
 
-The Stonecutter controller is connected to actual block use, click/button/close,
-shared inventory, source-phased callbacks, player menu ticks, immediate item
-pickup, snapshots, disconnect and shutdown. The full Main build passed on
-composition `57e90e6` atop master `2ad92fd`; focused crafting/lifetime/restart and
-valid equipped-range retirement flows passed on binary
-`a0169096d316d28ab7f5568cb6fe665b70947c2333d6b46c4374f2d17266072b`.
-[Production evidence and limits](reference/stonecutter-production.md) distinguish
-original and composed witnesses. Review also identified queued-packet reach
-handling and current-menu close ordering; their narrow fixes are part of the
-publication review, with final runtime evidence recorded separately.
+Published [PR97](https://github.com/Ferigone/Cinderstone/pull/97) has the exact Git tree of composed source `a8cc5a766a0ad7ba6217fa56d73ef0760e3f5b5c`, tree `e2e398445e35b958a713c24588a5691a96d9e770`. Required all-target compiler passed23.94s and full executable build37.04s; binary `e2c7950bf85c556e0f0a23004561fe038e894a87fbac6346088c29897f3da10e`.
 
-Smithing Main adapters are being assembled on the integration branch. They do
-not yet have a production runtime witness. The genuine retained full-state
-controller API and custom component reference-context admission are explicit
-owner contracts, not initialize/reset substitutes. Other teams self-review and
-merge their owned source PRs; central Main, checklist and deployment ownership
-remains with the integration coordinator. Scope1 remains56/100 code and51/100
-Main; neither this substage nor independent kernels close an aggregate row.
-No Stonecutter hosted-release claim is made before observed Railway success.
+The [actual flow](validation/falling-anvil-flow.json) passed at `2026-11-02T01:30:57Z`: stable raised Anvil, real support removal, type40 entity, StartPos metadata and initial motion, actual landing update before removal/event1031; then type8/39slot rename component5/cost1/take1030, close/coldPLAY/disconnect and native checkpoint ownership. Final named sword1/player + plain sword1/world, empty cursor/XP0, one landed Anvil/no remaining Falling owner; every process exited normally. [Exact source/limits](reference/falling-anvil-runtime.md) distinguish this from full class or game compatibility.
+
+A separate airborne native-resume probe had a harness-name setup failure, then its corrected run was interrupted by automatic execution review concerning the server public-key download. It produced no persistence result. Mid-flight restoration, damage/wear RNG sequence, generic active callbacks, Java-save and public graphical paths remain unverified or unsupported. No positive checkpoint/history was fabricated.
+
+## Latest hosted Main release
+
+Grindstone/current-menu PR84 merged as `f19197affbf4134bbb767ff79065d4dbbdd2a1b1`; corrected Player seed PR87 is included. Railway `7f39646a-63ba-4218-9419-e6f7cc70005b` reached SUCCESS/native offline listening at `2026-11-02T01:19:07.247485044Z`, one running/zero crashed replica, retained volume and no pending work. This does not establish hosted Falling gameplay: PR97 remains under review. Public PLAY remains unverified.
+
+## Native Grindstone — Main connected; bounded runtime passed
+
+Source `18314fecde381929a1984d3ab941abebdaa2d113` passed the full executable build and one [supported local flow](validation/grindstone-flow-supported.json) at `2026-11-01T23:59:21.627444+00:00`: actual enchantment removal, XP1 entity before event1042 before item entity, connected return, open-menu disconnect and cold native checkpoint preserved owned swords/XP/IDs. The [initial failed attempt](validation/grindstone-flow-initial.json) remains separate: selecting a returned Sharpness sword reaches existing unsupported equipment effects. The successful flow keeps real stone selected. [Production evidence](reference/grindstone-production.md) states unexercised pickup/internal counter/restored ticking and broader profiles.
+
+The initial failed Anvil placement attempt is historical. The new primary native Falling composition and actual combined Anvil runtime pass are recorded above; broader profiles remain open.
+
+## Native Loom — Main connected; local runtime passed
+
+A full Main build and actual offline protocol767 flow passed on source
+`17f1fa6f73c3fed1688d8403e03a0507f6bcb549`, tree
+`6e1931f9640fbba0946988846dccb22a199eeb11`, binary
+`8af216dc629a0b953fd087db3c2ed8074d7fa9f5ba1d9453aa1c32340adac115`.
+The [flow](validation/loom-flow.json) completed at
+`2026-11-01T22:27:32.519206+00:00`: actual type18/40slots, configured index0
+holder26/color14, one patterned component49 banner, source sound1429 and
+close/disconnect/native-restart conservation. Crafted/recipe/highlight/XP owners
+remained empty as this source path requires. The result preview never became a
+second owned item. All isolated processes exited normally.
+
+The later current-kernel build and one stale-window regression passed on
+`972cf8b9fb43e3f1a266e176d1eb37789b438c4b`, tree
+`1e702a720ff44cf462d52dae3af641e828e136d2`, binary
+`0008b1ac57e5e84a5e9d0a1e5b9e6d71c9b95ca666e62931dd04d1498a715e27`.
+[The separate report](validation/loom-stale-click-flow.json) completed at
+`2026-11-01T23:46:20.279010+00:00`: actual current Loom ignored a valid window0
+click, kept seven stones and empty cursor, then passed the original banner/dye/
+pattern/sound/close/disconnect/native-restart math. The other four old-family
+wrong-window fixes are source-reviewed, not runtime-certified by that result.
+Current source also replays before-marker/later inventory-counter phases and
+restores the final canonical image; no independent counter instrumentation is
+claimed. All current upstream controller/ore source remains preserved.
+
+[Production source and limits](reference/loom-production.md) document real
+configured HolderSet/template binding, default-listener phases, actual counter,
+indexed drops and independent sound RNG. Templates, custom/reentrant contexts,
+multi-target Slot-identity drag and unexercised pickup/recovery/audience paths
+remain unsupported or unproven. PR81 merged as `26c4d2ec13b885e51025e105f1edeb0fe78f6309`. Railway `7e85486e-40a8-4fce-89e0-78b794fa815a` reached SUCCESS/native offline listening at `2026-11-02T00:03:45.613716489Z`, one running/zero crashed replica, retained volume/no pending work. Public PLAY remains unverified. Fixed scope1 stays56code/51Main.
+
+## Native Smithing — merged and hosted
+
+The real Smithing Main path passed a full build and actual offline protocol767
+flow on source `a4d5b460de69c1380c12323fe5dbedd77581f0d0`, tree
+`e12ecb9193bc70c68b055551c51afcaba37687a3`, binary
+`d6e1df77a4698c763692c5c282028f55494d2724d89537d1dc96e71949c1df88`.
+The [flow](validation/smithing-flow.json) completed at
+`2026-11-01T22:05:07.066206+00:00`: actual three-input netherite-sword recipe,
+level event1044, crafted-stat1, close, native PLAY restart, open-menu disconnect
+and nonempty native item-checkpoint restart preserved owned items without a
+second result preview. All isolated servers exited normally.
+
+[Production contracts and limits](reference/smithing-production.md) describe
+actual counter/listener/book/stat/drop ownership, full-state recovery, integer
+block-event coordinates/audience and no sound RNG. The later current-master
+composition `3241766` also passed the complete Main build; its extra upstream
+changes are independently owned worldgen/entity source, with the observed Smith
+Main path retained. [PR78](https://github.com/Ferigone/Cinderstone/pull/78)
+merged as `005e7592cd13d3d8edfa9fe0f875404bfa038b91`. Railway release
+`138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS/native offline listening at
+`2026-11-01T22:24:46.700522705Z`, with one running/zero crashed replica, retained
+volume and no pending work. [Hosted observation](validation/railway-smithing.json)
+retains the external DNS limitation. Trim, custom/reentrant contexts and
+unexercised paths remain open.
+
+## Native Stonecutter — merged and hosted
+
+[PR72](https://github.com/Ferigone/Cinderstone/pull/72) merged as
+`dddc0e7807bf8caa91d5b57232e0535e6519f5ed`. Published head `b19e160` has the exact
+Git tree of locally built/runtime-checked `5553015`. The full Main build and
+actual positive/conservation and FOOD current-window recovery flows passed.
+Queued-button retirement was observed. Queued-click targeted runtime coverage
+remains unresolved: a tick retired the menu first; an isolated retry failed its
+initial placement visibility observation. Both incomplete reports keep
+`ok:false`; source review is not relabeled a runtime success.
+
+[Production evidence](reference/stonecutter-production.md) records actual recipe,
+callback, RNG, menu-phase/pickup, close/disconnect/save and component-recovery
+paths. Railway release `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` reached SUCCESS;
+native offline listening was observed at `2026-11-01T22:05:31.290410832Z`, with
+one running, zero crashed replicas, retained volume and no pending work. The
+fresh public status probe still failed DNS. See
+[hosted observation](validation/railway-stonecutter.json).
+
+## Active next source stages
+
+Separate future source has ordinary sand/red_sand/gravel, bounded genuine WATER callbacks, actual Falling placement obstruction, concrete BlockState NBT codec and retained enchantment registry/player callbacks. The complete future source, including a pre-removal persistent-only player save view and once-only native leave-game callback, passed an ordinary lib+Main compiler check in4.85s with identical source-input fingerprints before/after. It has no executable/runtime/merge claim. The corrected live Player seed source is merged in PR87: actual reconfiguration constructs and loads a NEW Player, so known saved zero draws once; it is not respawn restoreFrom. Real Enchanting block entity/provider/host/map ownership remains partial. Comprehensive conformance follows implementation.
+
+Other teams self-review/merge their owned source PRs. Fixed scope_version1
+checklist remains56/100 code and51/100 Main; these bounded stages do not close
+the aggregate all-workstation delivery or measure whole-game compatibility.
 
 ## Native connection transport — published and hosted
 

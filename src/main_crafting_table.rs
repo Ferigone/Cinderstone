@@ -18,6 +18,43 @@ impl CraftingTableRuntime {
     pub fn has_open(&self, id: i32) -> bool {
         self.menus.contains_key(&id)
     }
+    /// Pure pre-add admission, including the real preview and hidden retained
+    /// baselines, before any candidate can enter canonical inventory.
+    pub(super) fn preflight_inventory_pickup(
+        &self, id: i32, player: PickupPlayer, inventory: &PlayerInventory,
+        candidate: &ItemStack, hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+    ) -> Result<()> {
+        ensure!(id == player.entity_id, "crafting-table pickup actor changed before add");
+        let open = self.menus.get(&id).context("current crafting table absent before pickup add")?;
+        main_workstation_components::require_supported_inventory(inventory)?;
+        open.menu.preflight_broadcast_context(inventory, main_workstation_components::require_supported_stack)?;
+        main_workstation_components::require_supported_stack(candidate)?;
+        for slot in (36..45).chain(9..36).chain((5..9).rev()).chain(std::iter::once(45)) {
+            if let Some(stack) = inventory.slot(slot).filter(|stack| !stack.is_empty()) { stack.max_stack_size()?; }
+        }
+        if !candidate.is_empty() { candidate.max_stack_size()?; }
+        hooks.preflight_inventory_slot_changes(player, inventory, &[])
+    }
+    /// Observe the same canonical inventory at Player.take's current-menu phase.
+    pub(super) fn broadcast_for_inventory(
+        &mut self, id: i32, player: PickupPlayer, inventory: &PlayerInventory,
+        hooks: &mut main_item_gameplay::MainGameplayFrame<'_>,
+    ) -> Result<Vec<Packet>> {
+        ensure!(id == player.entity_id, "crafting-table pickup actor changed");
+        let open = self.menus.get(&id).context("current crafting table absent during pickup")?;
+        let mut next = open.menu.clone();
+        let packets = next.broadcast_changes_with_listener(inventory, |_menu_slot, player_slot, stack| {
+            if let Some(slot) = player_slot {
+                mc121_rust::item_host::RuntimeGameplayHooks::inventory_slot_changed(
+                    hooks, player, slot, inventory, stack,
+                )?;
+            }
+            // Result/grid containers fail the real player-backing identity test.
+            Ok(())
+        })?;
+        self.menus.get_mut(&id).expect("exclusive crafting-table pickup owner").menu = next;
+        Ok(packets)
+    }
     pub fn pending_players(&self) -> Vec<i32> {
         self.menus.keys().copied().collect()
     }
@@ -26,6 +63,19 @@ impl CraftingTableRuntime {
             || inventory.clone(),
             |m| m.menu.inventory_snapshot(inventory),
         )
+    }
+    /// Actual removed returns cursor then the nine owned temporary inputs.
+    /// Preview and retained window0 cursor do not belong to this observation.
+    pub(super) fn preflight_close_return_stacks(
+        &self, id: i32, check: &mut dyn FnMut(&ItemStack) -> Result<()>,
+    ) -> Result<()> {
+        if let Some(open) = self.menus.get(&id) {
+            let inputs = open.menu.inputs();
+            ensure!(inputs.len() == 9, "crafting close requires its actual nine inputs");
+            check(open.menu.carried())?;
+            for stack in inputs { check(stack)?; }
+        }
+        Ok(())
     }
 }
 fn send(events: &broadcast::Sender<PlayerEvent>, id: i32, packets: Vec<Packet>) {
@@ -126,6 +176,36 @@ impl Server {
             players.world_context.rules.boolean("doLimitedCrafting") == Some(false),
             "limited crafting requires actual known-recipe unlock owner"
         );
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.looms.window_id(id) {
+            self.close_loom_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.stonecutters.window_id(id) {
             self.close_stonecutter_with_context_locked(
                 &mut world,
@@ -291,9 +371,10 @@ impl Server {
         let Some(open) = players.crafting_tables.menus.get(&id).cloned() else {
             return Ok(false);
         };
-        if close.is_some_and(|window| window != open.menu.window_id)
-            || click.is_some_and(|c| c.window_id != open.menu.window_id)
-        {
+        if click.is_some_and(|c| c.window_id != open.menu.window_id) {
+            return Ok(true);
+        }
+        if close.is_some_and(|window| window != open.menu.window_id) {
             return Ok(false);
         }
         let player = players

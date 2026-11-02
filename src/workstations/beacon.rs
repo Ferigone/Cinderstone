@@ -44,7 +44,7 @@ pub trait BeaconHost: BeaconRegistry {
     fn block_entity_changed(&mut self, payment_after: &ItemStack) -> Result<()>;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BeaconState {
     payment: ItemStack,
     revision: u64,
@@ -55,6 +55,15 @@ pub enum BeaconUpdate {
     IgnoredInvalidMenu,
     IgnoredNoPayment,
     Updated,
+}
+/// Source callback observations; setters/dirty operations execute on the host
+/// once. Observers must not invoke them a second time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BeaconSourceEvent {
+    BeforeDataSet { index: usize, value: i32 },
+    AfterDataSet { index: usize, value: i32 },
+    PaymentContainerChanged,
+    BlockEntityChanged,
 }
 
 /// A non-cloneable close plan. Staging it does not create an owned drop or
@@ -77,8 +86,8 @@ impl BeaconClosePlan {
             state.revision == self.revision && state.payment == self.payment,
             "stale beacon close plan"
         );
+        state.advance_revision()?;
         let stack = std::mem::take(&mut state.payment);
-        state.revision = state.revision.wrapping_add(1);
         Ok((!stack.is_empty()).then_some(DroppedStack {
             stack,
             around: false,
@@ -88,6 +97,32 @@ impl BeaconClosePlan {
 }
 
 impl BeaconState {
+    fn advance_revision(&mut self) -> Result<()> {
+        self.revision = self
+            .revision
+            .checked_add(1)
+            .ok_or_else(|| anyhow::anyhow!("beacon payment revision exhausted"))?;
+        Ok(())
+    }
+    /// Raw source ItemStack/removeItemNoUpdate operation. The caller supplies
+    /// source container changed observations separately. This never creates BE
+    /// data, checks a lock, or marks the persistent block entity dirty.
+    pub(crate) fn replace_payment_raw(&mut self, stack: ItemStack) -> Result<ItemStack> {
+        ensure!(
+            stack.is_empty() || stack.count == 1,
+            "beacon payment exceeds max1"
+        );
+        stack.encode_canonical()?;
+        self.advance_revision()?;
+        Ok(std::mem::replace(
+            &mut self.payment,
+            if stack.is_empty() {
+                ItemStack::empty()
+            } else {
+                stack
+            },
+        ))
+    }
     /// BeaconBlockEntity.createMenu checks the actual lock owner before it
     /// constructs the temporary payment container or binds ContainerData.
     pub fn open(access: &mut impl BeaconOpenAccess) -> Result<Option<Self>> {
@@ -114,15 +149,7 @@ impl BeaconState {
             "invalid beacon payment slot/item/count"
         );
         stack.encode_canonical()?;
-        self.revision = self.revision.wrapping_add(1);
-        Ok(std::mem::replace(
-            &mut self.payment,
-            if stack.is_empty() {
-                ItemStack::empty()
-            } else {
-                stack
-            },
-        ))
+        self.replace_payment_raw(stack)
     }
 
     /// Data is read from the actual block entity for each synchronization; no
@@ -141,6 +168,17 @@ impl BeaconState {
         secondary: Option<BeaconEffect>,
         host: &mut impl BeaconHost,
     ) -> Result<BeaconUpdate> {
+        self.update_effects_observed(primary, secondary, host, |_, _, _| Ok(()))
+    }
+    /// Preserve direct ContainerData setters (no Menu.setData broadcast),
+    /// payment removeItem's callback, then Level.blockEntityChanged.
+    pub(crate) fn update_effects_observed<H: BeaconHost>(
+        &mut self,
+        primary: Option<BeaconEffect>,
+        secondary: Option<BeaconEffect>,
+        host: &mut H,
+        mut observe: impl FnMut(BeaconSourceEvent, &BeaconState, &mut H) -> Result<()>,
+    ) -> Result<BeaconUpdate> {
         if !host.menu_still_valid()? {
             return Ok(BeaconUpdate::IgnoredInvalidMenu);
         }
@@ -151,11 +189,23 @@ impl BeaconState {
         let secondary = encode_effect(secondary, host)?;
         let mut next = self.clone();
         // Actual ContainerData setters own their sound/filter callbacks.
-        host.set_data(1, primary)?;
-        host.set_data(2, secondary)?;
-        next.payment = ItemStack::empty();
-        next.revision = next.revision.wrapping_add(1);
+        for (index, value) in [(1, primary), (2, secondary)] {
+            observe(
+                BeaconSourceEvent::BeforeDataSet { index, value },
+                &next,
+                host,
+            )?;
+            host.set_data(index, value)?;
+            observe(
+                BeaconSourceEvent::AfterDataSet { index, value },
+                &next,
+                host,
+            )?;
+        }
+        next.replace_payment_raw(ItemStack::empty())?;
+        observe(BeaconSourceEvent::PaymentContainerChanged, &next, host)?;
         host.block_entity_changed(&next.payment)?;
+        observe(BeaconSourceEvent::BlockEntityChanged, &next, host)?;
         *self = next;
         Ok(BeaconUpdate::Updated)
     }

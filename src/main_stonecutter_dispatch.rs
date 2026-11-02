@@ -175,6 +175,36 @@ impl Server {
             crate::main_workstation_components::require_supported_inventory(&menu.inventory)
         })??;
 
+        if let Some(window) = players.grindstones.window_id(id) {
+            self.close_grindstone_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.anvils.window_id(id) {
+            self.close_anvil_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                mc121_rust::container::MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.looms.window_id(id) {
+            self.close_loom_with_context_locked(
+                &mut world, &mut players, id, window, true, now, border,
+                MenuCloseContext::AliveConnected,
+            )?;
+        }
+        if let Some(window) = players.smithing_tables.window_id(id) {
+            self.close_smithing_with_context_locked(
+                &mut world,
+                &mut players,
+                id,
+                window,
+                true,
+                now,
+                border,
+                MenuCloseContext::AliveConnected,
+            )?;
+        }
         if let Some(window) = players.stonecutters.window_id(id) {
             self.stonecutter_action_locked(
                 &mut world, &mut players, id,
@@ -264,9 +294,8 @@ impl Server {
         let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
         *players.player_last_actions.get_mut(&id)
             .context("stonecutter click last-action owner missing")? = self.epoch.elapsed().as_millis() as i64;
-        if players.stonecutters.window_id(id) != Some(click.window_id) {
-            return Ok(false);
-        }
+        let Some(window) = players.stonecutters.window_id(id) else { return Ok(false); };
+        if window != click.window_id { return Ok(true); }
         if let Err(error) = self.stonecutter_action_locked(
             &mut world, &mut players, id, StonecutterRequest::Click(click), now, border,
         ) {

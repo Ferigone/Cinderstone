@@ -97,8 +97,17 @@ core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
 - [x] Bounded native Stonecutter Main: canonical recipe/callback/transaction,
       immediate pickup, current-menu close, player phase and disconnect/save owners;
       focused local flows and [source evidence](reference/stonecutter-production.md).
-- [ ] Complete Smithing Main composition, retained full-state admission and actual
-      protocol/lifetime witness; current adapters remain an assembly stage.
+- [x] Bounded Smithing Main composition, genuine retained full-state recovery and
+      actual three-input transform/close/disconnect/native-restart witness;
+      [production limits](reference/smithing-production.md) remain explicit.
+- [x] Bounded native Loom Main with actual configured patterns, source-phased
+      callbacks, sound/drop owners and [local pattern/lifetime/restart witness](validation/loom-flow.json).
+- [x] Bounded Grindstone Main with configured enchantment removal, source-ordered real XP/item effects and [actual conservation evidence](reference/grindstone-production.md).
+- [x] Bounded creative Anvil rename/take Main with real falling-block placement, current-menu lifetime and [local runtime witness](validation/falling-anvil-flow.json); broader enchantment/survival contexts remain open.
+- [ ] Complete Loom templates/custom/reentrant/identity-order contexts and
+      remaining runtime coverage; multi-target drag still needs its actual owner.
+- [ ] Complete Smithing trim/custom contexts, remaining workstation families and
+      their actual Main lifetime/owner contracts.
 - [ ] Complete custom component reference identity, remaining workstation contexts
       and all remaining menu families before closing aggregate checklist rows.
 - [ ] Complete furnace-family processing, rewards and world interactions.
@@ -242,6 +251,8 @@ has its complete runtime lifecycle. Unported receivers must remain explicit.
 
 - [x] Bounded experience-orb creation, shared ticking, pickup and tracking for the
       supported native player profile.
+- [x] Bounded native Anvil FallingBlock actor: real scheduling/constructor, shared index/tick/tracking, actual landing and paired atomic native entity save; [local source/runtime evidence](reference/falling-anvil-runtime.md), PR97 under review.
+- [ ] Generic falling types, active callback contexts, passenger/damage profiles and mid-flight native-resume runtime proof; separate future source is not this primary proof.
 - [ ] Remaining entity types and their complete persistence/replication lifecycle.
 - [ ] Natural spawning, mob caps and despawning.
 - [ ] Pathfinding, navigation, goals, sensors and behavior trees.

@@ -1,0 +1,166 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "18314fecde381929a1984d3ab941abebdaa2d113",
+  "binary_sha256": "0b76c6d0b35b2395b9fcff4600cecfa26aef6ed6504017fe35c64e0f604c24f1",
+  "harness_sha256": "bf65fa198116c17cebd09c13d8197708120618e76904e66ccd5b8124e54a6bc1",
+  "started_at": "2026-11-01T23:58:56.257204+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One controlled supported-equipment grindstone flow: inert selected stone anchor, original three SharpnessI swords/XP1 invariant unchanged; positive XP-before-Item THROW, connected return/disconnect and native cold checkpoint. No broader matrix.",
+  "checks": {
+    "actual_grindstone_and_single_sharpness_preview": {
+      "ok": true,
+      "menu_type": 15,
+      "menu_slots": 39,
+      "input_count": 1,
+      "actual_result_count": 1,
+      "actual_result_enchantments": []
+    },
+    "positive_xp1_then_level1042_before_actual_result_item_throw": {
+      "ok": true,
+      "wire_events": [
+        {
+          "kind": "experience_spawn",
+          "packet_ordinal": 97,
+          "entity_id": 2,
+          "value": 1,
+          "position": [
+            10.5,
+            64.5,
+            8.5
+          ]
+        },
+        {
+          "kind": "level_event",
+          "packet_ordinal": 99,
+          "event": 1042,
+          "data": 0,
+          "position": [
+            10,
+            64,
+            8
+          ],
+          "global": false
+        },
+        {
+          "kind": "item_spawn",
+          "packet_ordinal": 100,
+          "entity_id": 3
+        }
+      ],
+      "unenchanted_item_count": 1,
+      "input_and_derived_result_empty": true,
+      "cursor_empty": true,
+      "protocol_state_before": 5,
+      "protocol_state_after": 7,
+      "inventory_times_changed_instrumented": false
+    },
+    "connected_close_returns_only_owned_enchanted_input": {
+      "ok": true,
+      "owned_enchanted_swords_in_inventory": 2,
+      "derived_plain_preview_not_taken": true,
+      "cursor_empty": true
+    },
+    "disconnect_and_native_save_conserve_actual_items_and_xp": {
+      "ok": true,
+      "player": {
+        "enchanted_sword": 1,
+        "plain_sword": 0
+      },
+      "world_items": {
+        "enchanted_sword": 1,
+        "plain_sword": 1
+      },
+      "cursor_empty": true,
+      "player_experience_total": 0,
+      "world_orb_experience": 1,
+      "total_experience": 1,
+      "crafted_stats": {},
+      "next_entity_id": 5,
+      "saved_entity_ids_unique": true,
+      "selected_unenchanted_anchor": {
+        "item_id": 1,
+        "count": 1
+      }
+    },
+    "native_cold_restart_retains_nonempty_item_xp_checkpoint": {
+      "ok": true,
+      "player": {
+        "enchanted_sword": 1,
+        "plain_sword": 0
+      },
+      "world_items": {
+        "enchanted_sword": 1,
+        "plain_sword": 1
+      },
+      "cursor_empty": true,
+      "player_experience_total": 0,
+      "world_orb_experience": 1,
+      "total_experience": 1,
+      "crafted_stats": {},
+      "next_entity_id": 5,
+      "saved_entity_ids_unique": true,
+      "selected_unenchanted_anchor": {
+        "item_id": 1,
+        "count": 1
+      },
+      "play_actors_created": 0,
+      "restored_item_tracking_and_ticking_proven": false
+    }
+  },
+  "configured_contract": {
+    "sword_item": 838,
+    "block_item": 1210,
+    "enchantment_key": "minecraft:sharpness",
+    "enchantment_raw_id": 32,
+    "enchantment_level": 1,
+    "actual_minimum_cost": 1,
+    "source_xp_bound": 1,
+    "expected_xp": 1,
+    "item_entity_type": 58,
+    "selected_anchor_item": 1
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/configuration.json": "4e862933c355b2adae68b9f57fb34bc652be104fb1cb929e53ea3b38213a5e37",
+    "fixtures/item_pairing.json": "c18b174cfd45c6063b1907f9d97228e8e6fd7376ed342fd7ee12e0c0054a40eb"
+  },
+  "disconnect_state": {
+    "owned_input_enchanted_swords": 1,
+    "derived_plain_preview": 1,
+    "preview_taken": false,
+    "cursor_empty": true
+  },
+  "conservation": {
+    "initial_enchanted_swords": 3,
+    "remaining_enchanted_swords": 2,
+    "owned_plain_swords": 1,
+    "actual_takes": 1,
+    "total_source_awarded_xp": 1,
+    "experience_owner": "actual player XP plus actual saved orbs, never fabricated direct credit"
+  },
+  "completed_at": "2026-11-01T23:59:21.627444+00:00",
+  "source_tree": "9eea8d01ae97f61aedf9e7e92838eca6cbc70ea6",
+  "controlled_precondition_change": {
+    "selected_hotbar": 0,
+    "actual_unenchanted_anchor_item": 1,
+    "anchor_count": 1,
+    "reason": "Retain the actual admitted native equipped-item profile when connected Inventory.add returns an enchanted sword; original sword3/XP1/order invariants unchanged.",
+    "original_harness_sha256": "6a3c2af62f69c992838cbb86a501190a4fa258808a5239f8b5162fbd357e08b7",
+    "original_failed_report_sha256": "fce5ab93648965fdb4142bbc44b072c378fc3fb6532d6768dd82cf26de36418d",
+    "original_failure_preserved": true
+  },
+  "process_completion": {
+    "all_isolated_server_sigint_exits": 0
+  },
+  "validation_limits": [
+    "One single-SharpnessI diamond sword result THROW in the actual supported native profile; no curse/repair/multi-holder/click-mode or timing matrix.",
+    "XP1 spawn, level1042 and Item spawn ordering, exact IDs and actual saved player/orb/item owners were observed; full source RNG sequence was not independently reconstructed.",
+    "Protocol state IDs are not direct instrumentation of transient Inventory.timesChanged or every internal callback phase.",
+    "Saved XP remained in the genuine world orb; player pickup/Mending award paths were not exercised.",
+    "Final cold restart created no PLAY actor; checkpoint acceptance/count/counter retention does not establish restored tracking/ticking or Java-save interoperability.",
+    "No graphical/public client, all-station, performance or aggregate checklist-delivery claim."
+  ]
+}

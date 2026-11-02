@@ -1,0 +1,279 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "a8cc5a766a0ad7ba6217fa56d73ef0760e3f5b5c",
+  "source_tree": "e2e398445e35b958a713c24588a5691a96d9e770",
+  "binary_sha256": "e2c7950bf85c556e0f0a23004561fe038e894a87fbac6346088c29897f3da10e",
+  "harness_sha256": "09fda88cafe209184d230ae1525bcae368aa3f67a30b4c0993ea8a822fa2d2fb",
+  "original_anvil_harness_sha256": "4573ada0115a1ed275dbe0f1649339c4fc640fdb3c52e14c5b923d023d2e4200",
+  "menu_helper_sha256": "f9b5656cfef8907b9f054f0abe96d942b1711839363d44319155949e370e31d7",
+  "transport_helper_sha256": "14f81108916913a825a7001d1a07ac9afcb07c3b92e28b20bc9de90f9ba17d94",
+  "started_at": "2026-11-02T01:30:09.137436+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "One real stable raised Anvil placement, support removal, one-block FallingBlock type40 landing/removal, then the unchanged ordinary unenchanted creative Anvil rename/take/close/disconnect/native restart ownership flow. No edited saves, fabricated settled input, damage/wear RNG matrix or broader conformance claim.",
+  "checks": {
+    "real_raised_anvil_placement_is_stable_on_actual_support": {
+      "ok": true,
+      "support": [
+        10,
+        64,
+        8
+      ],
+      "origin": [
+        10,
+        65,
+        8
+      ],
+      "original_state": 9109,
+      "time_publications": [
+        {
+          "ordinal": 89,
+          "game_time": 19
+        },
+        {
+          "ordinal": 90,
+          "game_time": 39
+        }
+      ],
+      "falling_actors_before_support_removal": 0
+    },
+    "one_block_fall_retains_real_actor_and_lands_before_removal": {
+      "ok": true,
+      "support_break_packet": 36,
+      "support_break_action": 0,
+      "break_body_hex": "00000002800000804001cb01",
+      "support_broken": {
+        "ordinal": 91,
+        "position": [
+          10,
+          64,
+          8
+        ],
+        "state": 0
+      },
+      "origin_air": {
+        "ordinal": 94,
+        "position": [
+          10,
+          65,
+          8
+        ],
+        "state": 0
+      },
+      "actual_spawn": {
+        "ordinal": 104,
+        "entity_id": 2,
+        "type": 40,
+        "position": [
+          10.5,
+          65.0,
+          8.5
+        ],
+        "carried_state": 9109,
+        "spawn_motion_raw": [
+          0,
+          0,
+          0
+        ]
+      },
+      "actual_start_position_metadata": {
+        "ordinal": 105,
+        "entity_id": 2,
+        "index": 8,
+        "serializer": 10,
+        "start_position": [
+          10,
+          65,
+          8
+        ]
+      },
+      "actual_explicit_initial_motion": {
+        "ordinal": 106,
+        "entity_id": 2,
+        "velocity_raw": [
+          0,
+          0,
+          0
+        ]
+      },
+      "actual_landing_block": {
+        "ordinal": 109,
+        "position": [
+          10,
+          64,
+          8
+        ],
+        "state": 9109
+      },
+      "actual_removal": {
+        "ordinal": 114,
+        "entity_id": 2
+      },
+      "landing_level_event": 1031,
+      "landing_position": [
+        10,
+        64,
+        8
+      ],
+      "landed_time_publications": [
+        {
+          "ordinal": 122,
+          "game_time": 59
+        },
+        {
+          "ordinal": 123,
+          "game_time": 79
+        }
+      ],
+      "one_block_fall": true,
+      "state_unchanged_observed": true,
+      "wear_or_constructor_rng_sequence_reconstructed": false
+    },
+    "real_anvil_open_input_and_source_rename_packet": {
+      "ok": true,
+      "menu_type": 8,
+      "menu_slots": 39,
+      "window": 1,
+      "input_counts": [
+        1,
+        0
+      ],
+      "derived_preview_count": 1,
+      "custom_name_component": 5,
+      "custom_name": "Cinder Forge",
+      "level_cost": 1
+    },
+    "take_owns_named_result_consumes_input_and_dispatches_real_world_event": {
+      "ok": true,
+      "owned_cursor_count": 1,
+      "actual_custom_name": "Cinder Forge",
+      "input_counts_after": [
+        0,
+        0
+      ],
+      "derived_preview_empty": true,
+      "level_cost_after": 0,
+      "level_event": 1030,
+      "event_position": [
+        10,
+        64,
+        8
+      ],
+      "event_data": 0,
+      "global": false,
+      "creative_wear_rng_draw_claim": false
+    },
+    "client_close_returns_actual_named_cursor_once": {
+      "ok": true,
+      "player": {
+        "plain_sword": 1,
+        "named_sword": 1
+      },
+      "cursor_empty": true
+    },
+    "native_save_retains_actual_custom_name_and_counts": {
+      "ok": true,
+      "player": {
+        "plain_sword": 1,
+        "named_sword": 1
+      },
+      "world_items": {
+        "plain_sword": 0,
+        "named_sword": 0
+      },
+      "cursor_empty": true,
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      }
+    },
+    "cold_restart_restores_component5_named_result": {
+      "ok": true,
+      "player": {
+        "plain_sword": 1,
+        "named_sword": 1
+      },
+      "name": "Cinder Forge"
+    },
+    "open_anvil_disconnect_drops_owned_input_not_named_preview": {
+      "ok": true,
+      "player": {
+        "plain_sword": 0,
+        "named_sword": 1
+      },
+      "world_items": {
+        "plain_sword": 1,
+        "named_sword": 0
+      },
+      "cursor_empty": true,
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      }
+    },
+    "cold_restart_accepts_actual_item_checkpoint_without_preview_duplication": {
+      "ok": true,
+      "player": {
+        "plain_sword": 0,
+        "named_sword": 1
+      },
+      "world_items": {
+        "plain_sword": 1,
+        "named_sword": 0
+      },
+      "cursor_empty": true,
+      "experience": {
+        "level": 0,
+        "total": 0,
+        "progress": 0.0
+      },
+      "play_actors_created": 0,
+      "restored_item_tracking_ticking_proven": false
+    },
+    "native_checkpoint_has_one_landed_anvil_and_no_duplicate_falling_owner": {
+      "ok": true,
+      "anvil_blocks": [
+        {
+          "x": 10,
+          "y": 64,
+          "z": 8,
+          "state": 9109
+        }
+      ],
+      "falling_block_owners": 0
+    }
+  },
+  "actual_items": {
+    "anvil": 419,
+    "iron_sword": 833
+  },
+  "rename_protocol": {
+    "packet_id": 42,
+    "source": "original GameProtocols.SERVERBOUND_TEMPLATE visitor and ahr codec roundtrip",
+    "example_name": "Cinder Forge",
+    "body_hex": "0c43696e64657220466f726765",
+    "window_or_state_fields": false
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea"
+  },
+  "disconnect_state": {
+    "input_counts": [
+      1,
+      0
+    ],
+    "derived_preview_count": 1,
+    "preview_name": "Cinder Pending",
+    "preview_taken": false
+  },
+  "conservation": {
+    "initial_plain_swords": 2,
+    "renames_taken": 1,
+    "owned_named_swords": 1,
+    "remaining_plain_swords": 1
+  },
+  "completed_at": "2026-11-02T01:30:57.720749+00:00"
+}

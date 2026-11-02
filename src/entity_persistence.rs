@@ -1,6 +1,6 @@
-//! Native item checkpoints, not Java entity NBT import or chunk-future saves.
+//! Native entity checkpoints, not Java entity NBT import or chunk-future saves.
 //!
-//! NativeResume preserves retained item/level RNGs and the complete item body.
+//! NativeResume preserves retained RNGs and complete Item/XP/Falling bodies.
 //! Restored entities start hidden: only new, confirmed chunk callbacks may make
 //! them tick or track. Network sender baselines and live player sessions reset.
 use crate::{
@@ -26,6 +26,17 @@ use std::{
 #[path = "entity_persistence_dto.rs"]
 mod dto;
 use dto::SavedItem;
+
+/// One authoritative non-player entity cohort, covered by the SAME atomic
+/// EntityCheckpoint checksum as item bodies and source world/time. Legacy
+/// SavedWorld XP is a migration input only when this payload is absent.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativeEntityCohort {
+    pub experience_orbs: Vec<crate::experience::SavedExperienceOrb>,
+    pub falling_blocks: Vec<crate::falling_block::persistence::FallingBlockSnapshot>,
+    pub order: crate::runtime_entities::PersistentEntityOrder,
+}
 
 const FORMAT: &str = "mc121-rust-native-items";
 const VERSION: u32 = 1;
@@ -642,6 +653,12 @@ pub struct EntityCheckpoint {
     sound_random_state48: u64,
     item_tick_order: Vec<i32>,
     items: Vec<SavedItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    native_entities: Option<NativeEntityCohort>,
+    /// Exact bytes written to the separate SavedWorld file in this capture.
+    /// Block-image equality alone does not bind queues or other world fields.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    world_file_sha256: Option<String>,
 }
 pub struct RestoredEntities {
     pub runtime: RuntimeEntities,
@@ -651,6 +668,9 @@ pub struct RestoredEntities {
     /// Saved scheduling order is retained as registration order. Chunk readiness
     /// is rebuilt, so this is not a claim to resume old executor/future order.
     pub item_tick_order: Vec<i32>,
+    /// Some (including an empty cohort) is authoritative. None explicitly
+    /// denotes the legacy item-only checkpoint and its narrower order proof.
+    pub native_entities: Option<NativeEntityCohort>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -664,6 +684,48 @@ fn digest(bytes: &[u8]) -> String {
         .map(|byte| format!("{byte:02x}"))
         .collect()
 }
+
+fn validate_cohort_identity(
+    id: i32,
+    uuid: [u8; 16],
+    next_entity_id: i32,
+    ids: &mut BTreeSet<i32>,
+    uuids: &mut BTreeSet<[u8; 16]>,
+) -> Result<()> {
+    ensure!(id > 0 && id < next_entity_id, "native cohort exceeds shared entity counter");
+    ensure!(ids.insert(id), "duplicate ID across native entity cohort");
+    ensure!(uuids.insert(uuid), "duplicate UUID across native entity cohort");
+    Ok(())
+}
+
+/// JSON must never silently replace a retained physical NaN/Inf with null.
+/// Damage-specific float bits are encoded separately by FallingBlockSnapshot.
+fn validate_persistent_physical(p: &crate::entity_state::EntityPhysicalState) -> Result<()> {
+    ensure!(p.vehicle.is_none(), "native entity passenger/vehicle graph checkpoint is unsupported");
+    let doubles = [
+        p.position.x, p.position.y, p.position.z,
+        p.velocity.x, p.velocity.y, p.velocity.z,
+        p.bounds.min_x, p.bounds.min_y, p.bounds.min_z,
+        p.bounds.max_x, p.bounds.max_y, p.bounds.max_z,
+        p.old_position.x, p.old_position.y, p.old_position.z,
+        p.stuck_speed_multiplier.x, p.stuck_speed_multiplier.y, p.stuck_speed_multiplier.z,
+        p.piston_totals[0], p.piston_totals[1], p.piston_totals[2],
+        p.fluid_heights[0], p.fluid_heights[1],
+    ];
+    let floats = [
+        p.position.yaw, p.position.pitch, p.width, p.height, p.eye_height,
+        p.old_yaw, p.old_pitch, p.walk_dist_old, p.walk_dist, p.move_dist,
+        p.fly_dist, p.next_step, p.fall_distance,
+    ];
+    ensure!(doubles.into_iter().all(f64::is_finite) && floats.into_iter().all(f32::is_finite),
+        "nonfinite native entity physical field cannot be persisted as JSON");
+    ensure!(p.width >= 0. && p.height >= 0.
+        && p.bounds.min_x <= p.bounds.max_x && p.bounds.min_y <= p.bounds.max_y && p.bounds.min_z <= p.bounds.max_z,
+        "invalid native entity physical bounds");
+    ensure!(p.metadata_dirty & !0x1ff == 0, "unknown native nonliving entity metadata fields");
+    Ok(())
+}
+
 impl EntityCheckpoint {
     pub fn capture(
         runtime: &RuntimeEntities,
@@ -712,9 +774,59 @@ impl EntityCheckpoint {
                 .context("native resume requires actual level sound RNG owner")?,
             item_tick_order,
             items,
+            native_entities: None,
+            world_file_sha256: None,
         };
         value.validate_structure()?;
         Ok(value)
+    }
+    /// Capture all actual persistent entity owners while Main retains the same
+    /// world/player registry lock. The caller supplies snapshots of the REAL
+    /// external bodies; shared index/section/tick order is read from runtime.
+    pub fn capture_with_native_entities(
+        runtime: &RuntimeEntities,
+        source: &mut NativeEntitySource,
+        world: &RuntimeWorld,
+        next_entity_id: i32,
+        time: NativeWorldTime,
+        experience_orbs: Vec<crate::experience::SavedExperienceOrb>,
+        falling_blocks: Vec<crate::falling_block::persistence::FallingBlockSnapshot>,
+    ) -> Result<Self> {
+        let order = runtime.capture_persistent_entity_order()?;
+        let mut value = Self::capture(runtime, source, world, next_entity_id, time)?;
+        value.native_entities = Some(NativeEntityCohort { experience_orbs, falling_blocks, order });
+        value.validate_structure()?;
+        Ok(value)
+    }
+
+    pub fn has_native_entity_cohort(&self) -> bool { self.native_entities.is_some() }
+    /// Bind a newly captured checkpoint to the exact world bytes Main is about
+    /// to write. An existing proof cannot be rebound to another save interval.
+    pub fn bind_world_file_bytes(&mut self, bytes: &[u8]) -> Result<()> {
+        ensure!(self.world_file_sha256.is_none(), "native world-file proof is already bound");
+        self.world_file_sha256 = Some(digest(bytes));
+        Ok(())
+    }
+    /// Validate the bytes actually read from disk, without parsing/reserializing
+    /// them into a different representation. Every new atomic cohort, including
+    /// EMPTY, requires this proof; older item-only checkpoints remain legacy.
+    pub fn require_world_file_bytes(&self, bytes: &[u8]) -> Result<()> {
+        match &self.world_file_sha256 {
+            Some(expected) => ensure!(expected == &digest(bytes),
+                "world/entity checkpoint byte mismatch; refusing torn scheduling/source state"),
+            None => ensure!(self.native_entities.is_none(),
+                "atomic native entity cohort lacks its exact world-file proof"),
+        }
+        Ok(())
+    }
+    fn require_persisted_world_proof(&self) -> Result<()> {
+        ensure!(self.native_entities.is_none() || self.world_file_sha256.is_some(),
+            "atomic native entity cohort lacks its exact world-file proof");
+        Ok(())
+    }
+    pub fn persistent_entity_count(&self) -> usize {
+        self.items.len() + self.native_entities.as_ref()
+            .map_or(0, |entities| entities.experience_orbs.len() + entities.falling_blocks.len())
     }
     pub fn item_count(&self) -> usize {
         self.items.len()
@@ -727,6 +839,7 @@ impl EntityCheckpoint {
     }
     pub fn require_native_resume(&self, world: &RuntimeWorld) -> Result<()> {
         self.validate_structure()?;
+        self.require_persisted_world_proof()?;
         ensure!(
             self.source.complete_native_items && self.source.invalidated.is_none(),
             "native item source was invalidated: {:?}",
@@ -764,6 +877,11 @@ impl EntityCheckpoint {
         );
         restore_random(self.world_random_state48)?;
         restore_random(self.sound_random_state48)?;
+        if let Some(hash) = &self.world_file_sha256 {
+            ensure!(hash.len() == 64 && hash.bytes().all(|byte|
+                byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)),
+                "invalid native world-file digest");
+        }
         let mut ids = BTreeSet::new();
         let mut uuids = BTreeSet::new();
         for item in &self.items {
@@ -777,11 +895,38 @@ impl EntityCheckpoint {
                 "saved next entity ID would collide"
             );
         }
+        let item_ids = ids.clone();
+        if let Some(native) = &self.native_entities {
+            let mut entries = self.items.iter().map(|item| {
+                let (state, _) = item.clone().restore()?;
+                validate_persistent_physical(&state.physical)?;
+                Ok((state.entity_id, crate::runtime_entity_index::EntityKind::Item, state.position_vec()))
+            }).collect::<Result<Vec<_>>>()?;
+            for orb in &native.experience_orbs {
+                orb.state.validate()?;
+                orb.restore_random()?;
+                validate_persistent_physical(&orb.state.physical)?;
+                ensure!(!orb.state.removed, "removed XP orb in native cohort");
+                validate_cohort_identity(orb.state.entity_id, orb.state.uuid, self.next_entity_id, &mut ids, &mut uuids)?;
+                entries.push((orb.state.entity_id, crate::runtime_entity_index::EntityKind::ExperienceOrb, orb.state.position_vec()));
+            }
+            for saved in &native.falling_blocks {
+                ensure!(saved.block_data.is_none(),
+                    "native falling checkpoint lacks the actual retained block-data map owner");
+                let falling = saved.clone().restore()?;
+                validate_persistent_physical(&falling.physical)?;
+                ensure!(!falling.removed, "removed falling block in native cohort");
+                crate::placement::placement_block_name(falling.block_state)?;
+                validate_cohort_identity(falling.entity_id, falling.uuid, self.next_entity_id, &mut ids, &mut uuids)?;
+                entries.push((falling.entity_id, crate::runtime_entity_index::EntityKind::FallingBlock, falling.position_vec()));
+            }
+            native.order.validate_entries(&entries)?;
+        }
         ensure!(self.next_entity_id > 0, "invalid saved next entity ID");
         let mut ticks = BTreeSet::new();
         for id in &self.item_tick_order {
             ensure!(
-                ids.contains(id) && ticks.insert(*id),
+                item_ids.contains(id) && ticks.insert(*id),
                 "invalid saved item tick order"
             );
         }
@@ -800,6 +945,7 @@ impl EntityCheckpoint {
     }
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         self.validate_structure()?;
+        self.require_persisted_world_proof()?;
         let body = serde_json::to_vec(self)?;
         let bytes = serde_json::to_vec(&CheckpointEnvelope {
             sha256: digest(&body),
@@ -823,6 +969,7 @@ impl EntityCheckpoint {
             "native item checkpoint integrity mismatch"
         );
         file.checkpoint.validate_structure()?;
+        file.checkpoint.require_persisted_world_proof()?;
         Ok(file.checkpoint)
     }
     /// Decode/validate every item before making a new store visible. No tick,
@@ -848,6 +995,7 @@ impl EntityCheckpoint {
             next_entity_id: self.next_entity_id,
             time: self.time,
             item_tick_order: self.item_tick_order,
+            native_entities: self.native_entities,
         })
     }
 }

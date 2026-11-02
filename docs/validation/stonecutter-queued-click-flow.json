@@ -1,0 +1,47 @@
+{
+  "ok": false,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "login_mode": "offline-loopback",
+  "source_commit": "5553015344f939f6bb255f414439e1c3b022af5a",
+  "binary_sha256": "526842c949dd1ab039e0b71a017cb8ce794e0241d526c1344002ad6e4c922539",
+  "harness_sha256": "993480b2d0a86649cd5585588998e42c426bb55acc2958f90a6f69dec3d652d7",
+  "started_at": "2026-11-01T21:57:34.659585+00:00",
+  "synthetic_offline_profile_only": true,
+  "scope": "Isolated actual valid CreativeSlot reach mutation immediately followed in one TCP write by Stonecutter click. Require exact handler-triggered typed retirement, owned-input/cursor conservation, continued PLAY/world and graceful native save. No full custom attribute compatibility.",
+  "full_custom_attribute_support": false,
+  "checks": {},
+  "valid_modifier": {
+    "component_id": 12,
+    "attribute_id": 6,
+    "name": "cinderstone:reach_probe",
+    "amount": 1.0,
+    "operation": "add",
+    "slot_group": "main_hand",
+    "item_id": 848
+  },
+  "fixture_sha256": {
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/crafting-1.21.json": "0d7d5fce4f0e4e673b88039ae019ec539272a020d19843402d258fcf0d4d427e"
+  },
+  "failure": "TimeoutError()",
+  "completed_at": "2026-11-01T21:58:02.499401+00:00",
+  "source_tree": "adf8b3920e3a75b60fa7d19451602112539d1178",
+  "coverage_status": "unexercised: isolated click retry stopped during initial block-placement observation",
+  "failure_classification": "harness setup timeout before queued reach mutation/click",
+  "additional_observations": {
+    "timeout_phase": "await block-change and acknowledgement for real Stonecutter placement",
+    "queued_modifier_and_click_sent": false,
+    "saved_world_block": {
+      "x": 10,
+      "y": 64,
+      "z": 8,
+      "state": 18467,
+      "name": "stonecutter"
+    },
+    "server_internal_error_observed": false,
+    "click_handler_runtime_coverage": false,
+    "possible_visibility_or_ack_setup_precondition": "inference only; exact cause not established",
+    "further_timing_retries_performed": false
+  }
+}

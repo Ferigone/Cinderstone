@@ -1,0 +1,28 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "base_sha": "26c4d2ec13b885e51025e105f1edeb0fe78f6309",
+  "assignment": "https://github.com/Ferigone/Cinderstone/issues/43#issuecomment-6565302939",
+  "claim": "https://github.com/Ferigone/Cinderstone/issues/2#issuecomment-6566002973",
+  "source_sha256": {
+    "src/random_seed.rs": "2c68e042ef7a1d098b02a757b14d69484677e12e28d3a6572270e8594fdb8137",
+    "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353"
+  },
+  "existing_source_byte_identical_after_additive_export_removed": true,
+  "full_main_and_explicit_library_build_passed": true,
+  "existing_uniquifier_clock_order_failure_and_linux_factory_flows_passed": true,
+  "native_actual_export_smoke": {
+    "actual_export_called": true,
+    "xoroshiro_advances": true,
+    "high_seed_bits_preserved_by_constructor": true,
+    "existing_legacy_factory_callable": true
+  },
+  "build_log_sha256": "f83ba048ce1c93b0d1e49d1e3093dbec26b9f70c6945a143fc73537db5a1252a",
+  "source_evidence": "Direct javap dzn generateUniqueSeed, dzz(long), duz decoration factory. No REA execution.",
+  "limits": [
+    "Host clock-derived numeric seeds are not expected to match across processes.",
+    "The existing injected-clock helpers verify ordering/failure; the new public export is a direct shared-owner call and exposes no injected clock.",
+    "No decorator, placement, Main, FEATURES, FULL or checklist completion follows."
+  ],
+  "success": true
+}

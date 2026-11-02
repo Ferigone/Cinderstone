@@ -10,6 +10,43 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native Anvil falling runtime
+
+The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. Source is published in [PR97](https://github.com/Ferigone/Cinderstone/pull/97); release review is pending.
+
+The primary path supports the native Anvil/flat/creative profile. Active fluid/fire/redstone/BE callbacks, generic falling types, passenger graphs and survival damage remain open here. A separate mid-flight restore attempt was interrupted by automatic execution review and has no persistence result. Future sand/gravel/WATER/placement/codec source has a compiler check, not primary runtime evidence.
+
+## Native Grindstone and Anvil integration
+
+The Grindstone Main path passed a [bounded actual protocol flow](docs/validation/grindstone-flow-supported.json): real enchantment removal, XP orb, level event1042, item drop, menu lifetime and native cold-checkpoint conservation. The [source and limits](docs/reference/grindstone-production.md) retain the separate earlier failure at unsupported equipped-enchantment effects. The supported flow keeps an inert stone selected; this is not unrestricted enchanted-equipment support.
+
+The earlier Anvil placement blocker is resolved by the separately published bounded Falling runtime above. Grindstone/current-menu PR84 is merged as `f19197a`; Railway `7f39646a-63ba-4218-9419-e6f7cc70005b` reached SUCCESS/native offline listening at `2026-11-02T01:19:07.247485044Z`, one running replica and the retained volume. Partial workstation stages do not complete an aggregate checklist row.
+
+## Native Loom Main
+
+The Loom uses actual configured banner patterns/template tags, canonical inputs,
+source-phased callbacks and the existing item/sound owners. Full Main build and
+[local protocol flow](docs/validation/loom-flow.json) passed: patterned banner
+component49, ingredient consumption, sound1429 and close/disconnect/native restart
+conserved owned items without duplicating the preview. See
+[production scope](docs/reference/loom-production.md). A current-kernel recheck
+also passed: stale window0 clicks do not mutate the inactive menu, and all seven
+fixture stones remain owned. Source phases retain the real inventory-counter
+timeline; internal counter instrumentation is not claimed. [PR81](https://github.com/Ferigone/Cinderstone/pull/81) is merged as `26c4d2e`. Railway deployment `7e85486e-40a8-4fce-89e0-78b794fa815a` reached SUCCESS and native offline listening at `2026-11-02T00:03:45.613716489Z`, with one running replica and retained volume. Public PLAY is unverified; templates/custom and broader runtime paths remain open.
+
+## Native Smithing Main
+
+The three-input Smithing controller is connected to actual Main owners. A full
+Main build and [local protocol flow](docs/validation/smithing-flow.json) passed:
+netherite-sword transformation, actual level event1044, crafted statistics,
+current-menu close, disconnect and native cold restart preserved owned items.
+[Production scope](docs/reference/smithing-production.md) separates that observed
+path from unexercised trim, custom component, pickup and range contexts. Its
+[PR78](https://github.com/Ferigone/Cinderstone/pull/78) merged as `005e759`.
+Railway deployment `138fde42-f5ce-467f-8970-b306eaa21c3e` reached SUCCESS and
+native offline listening at `2026-11-01T22:24:46.700522705Z`, one running replica,
+retained volume and no pending work. Public gameplay remains unverified.
+
 ## Native Stonecutter Main
 
 The native Stonecutter now uses the real shared player inventory, recipe book,
@@ -20,8 +57,11 @@ passed the same flow and the equipped-range retirement regression.
 See [production scope and exact evidence](docs/reference/stonecutter-production.md).
 Custom component reference identity, custom interaction ranges and arbitrary
 reentrant callbacks remain unsupported; this is a bounded workstation delivery.
-Its Railway release is pending verification. Smithing Main is the next assembly
-stage. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
+Railway deployment `f1add0f5-552d-41f5-9dd6-e1aa36a1b201` for master
+`dddc0e7` reached SUCCESS and native offline listening at
+`2026-11-01T22:05:31.290410832Z`, with one running replica and the existing volume.
+The external status probe still fails DNS resolution; public gameplay remains
+unverified. Smithing Main has separately passed its local flow. The fixed scope1 checklist remains **56/100 code**, **51/100 Main**.
 
 ## Native connection transport
 

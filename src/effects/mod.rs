@@ -12,3 +12,9 @@ mod instance;
 pub use instance::{EffectInstance, EffectTickHost};
 
 pub mod retained;
+pub mod actor_ops;
+pub mod attribute_transfer;
+pub mod attribute_persistence;
+pub mod tick;
+pub mod callbacks;
+pub mod refresh;

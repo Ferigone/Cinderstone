@@ -20,7 +20,7 @@ use crate::{
     random::LegacyRandomSource,
     replication::EntitySnapshot,
     runtime_collision::CollisionEntity,
-    runtime_entity_index::{EntityHandle, EntityKind, RuntimeEntityIndex},
+    runtime_entity_index::{EntityHandle, EntityKind, PersistentEntityIndexOrder, RuntimeEntityIndex},
     runtime_item_world::{ItemWorldFacts, RuntimeItemEffect, RuntimeItemHost, RuntimeItemWorld},
     runtime_world::RuntimeWorld,
 };
@@ -53,6 +53,27 @@ pub struct EffectDelivery {
     /// Audience captured synchronously at the original world callback.
     pub recipients: Vec<i32>,
     pub packet: Packet,
+}
+
+/// Native-only checkpoint cohort. Historical sender hash layout and chunk
+/// readiness are deliberately absent: native resume creates fresh senders.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PersistentEntityOrder {
+    pub index: PersistentEntityIndexOrder,
+    pub ticking: Vec<EntityHandle>,
+}
+impl PersistentEntityOrder {
+    pub fn validate_entries(&self, entries: &[(i32, EntityKind, Vec3)]) -> Result<()> {
+        self.index.validate_entries(entries)?;
+        let by_id = self.index.registrations.iter().map(|entry| (entry.handle.id, entry.handle)).collect::<BTreeMap<_, _>>();
+        let mut seen = std::collections::BTreeSet::new();
+        for handle in &self.ticking {
+            ensure!(by_id.get(&handle.id) == Some(handle) && seen.insert(*handle),
+                "invalid persistent tick-order reference");
+        }
+        Ok(())
+    }
 }
 
 /// Facts from the actual player's connection-phase Player.aiStep call.
@@ -140,6 +161,100 @@ struct PreparedItem {
     tracking: Option<(ItemReplication, EntitySnapshot<ItemState>)>,
 }
 
+/// Read-only registration facts captured from the actual external XP owner.
+/// The physical state, per-entity RNG and packet sender stay with that owner;
+/// this token does not create another orb or expose an arbitrary index write.
+#[derive(Clone, Copy, Debug)]
+pub struct ExperienceOrbRegistration {
+    entity_id: i32,
+    position: Vec3,
+}
+
+impl ExperienceOrbRegistration {
+    pub fn from_state(state: &crate::experience::ExperienceOrbState) -> Result<Self> {
+        state.validate()?;
+        // Validate the actual outgoing representations before a menu/world
+        // transaction can commit. Encoding does not drain the owner's dirties.
+        state.spawn_packet(state.position)?;
+        crate::entity::velocity_packet(state.entity_id, state.velocity)?;
+        ensure!(!state.removed, "cannot register a removed experience orb");
+        Ok(Self {
+            entity_id: state.entity_id,
+            position: state.position_vec(),
+        })
+    }
+}
+
+/// One actual source-ordered native addition. Cloning this proposal preserves
+/// captured identities; only consuming a prepared batch registers live owners.
+#[derive(Clone, Debug)]
+pub enum NativeEntityAddition {
+    Item(ItemState, LegacyRandomSource),
+    ExperienceOrb(ExperienceOrbRegistration),
+}
+
+enum PreparedNativeEntity {
+    Item(PreparedItem),
+    ExperienceOrb(ExperienceOrbRegistration),
+}
+
+/// The before/registered pair surrounds each real insertion, including the
+/// item's tracking outbox publication or the XP section/tracking/tick entry.
+/// Source effects without an insertion run in Before or Complete. A callback
+/// receives no mutable store and cannot add an unvalidated identity.
+#[derive(Clone, Copy, Debug)]
+pub enum NativeEntityBatchEvent {
+    Before { ordinal: usize },
+    Registered { ordinal: usize, handle: EntityHandle, kind: EntityKind },
+    Complete { len: usize },
+}
+
+/// A complete mixed Item/XP registration plan retaining the actual store's
+/// exclusive borrow. Dropping it changes no index, outbox, tick owner or RNG.
+pub struct PreparedNativeEntityBatch<'a> {
+    store: &'a mut RuntimeEntities,
+    entries: Vec<PreparedNativeEntity>,
+}
+
+impl PreparedNativeEntityBatch<'_> {
+    /// Callbacks must use previously validated canonical owners and infallible
+    /// prepared actions. XP state/merge/delivery checkpoints stay with the XP
+    /// owner and are installed at the corresponding source event; Registered
+    /// supplies the handle from this actual insertion, never a guessed one.
+    /// Level RNG was consumed during synchronous staging and is installed once
+    /// under this exclusive borrow. The independent sound owner remains live.
+    pub fn commit_with_world_random_ordered(
+        self,
+        random: LegacyRandomSource,
+        mut publish: impl FnMut(NativeEntityBatchEvent, &mut ItemBatchPublication<'_>),
+    ) -> Vec<EntityHandle> {
+        let Self { store, entries } = self;
+        store.world_random = random;
+        let len = entries.len();
+        let mut handles = Vec::with_capacity(len);
+        for (ordinal, entry) in entries.into_iter().enumerate() {
+            publish(NativeEntityBatchEvent::Before { ordinal }, &mut ItemBatchPublication {
+                sound_random: &mut store.sound_random,
+            });
+            let (handle, kind) = match entry {
+                PreparedNativeEntity::Item(item) => (store.insert_prepared_item(item), EntityKind::Item),
+                PreparedNativeEntity::ExperienceOrb(registration) => (
+                    store.register_experience_orb(registration.entity_id, registration.position)
+                        .expect("exclusive mixed preparation preserves validated XP identities and capacity"),
+                    EntityKind::ExperienceOrb,
+                ),
+            };
+            publish(NativeEntityBatchEvent::Registered { ordinal, handle, kind },
+                &mut ItemBatchPublication { sound_random: &mut store.sound_random });
+            handles.push(handle);
+        }
+        publish(NativeEntityBatchEvent::Complete { len }, &mut ItemBatchPublication {
+            sound_random: &mut store.sound_random,
+        });
+        handles
+    }
+}
+
 /// Validated items held with an exclusive store borrow until the menu commits.
 /// Dropping this token publishes nothing and consumes no store generation/RNG.
 pub struct PreparedItemBatch<'a> {
@@ -205,63 +320,7 @@ impl PreparedItemBatch<'_> {
                     sound_random: &mut store.sound_random,
                 },
             );
-            let PreparedItem {
-                state,
-                random,
-                tracking,
-            } = item;
-            let handle = store
-                .index
-                .register(
-                    state.entity_id,
-                    EntityKind::Item,
-                    state.position_vec(),
-                    false,
-                    |chunk| {
-                        store
-                            .chunk_visibility
-                            .get(&chunk)
-                            .copied()
-                            .unwrap_or(Visibility::Hidden)
-                    },
-                )
-                .expect("exclusive prepared insertion preserves validated identities and capacity");
-            store.items.insert(
-                handle.id,
-                RuntimeItem {
-                    handle,
-                    state,
-                    random,
-                },
-            );
-            if let Some((sender, snapshot)) = tracking {
-                store.tracking.insert(
-                    handle.id,
-                    TrackedItem {
-                        handle,
-                        sender,
-                        last_section: crate::entity_spatial::section_at(
-                            snapshot.entity.position_vec(),
-                        ),
-                    },
-                );
-                store.tracking_order.insert(handle.id, handle);
-                let revision = next_revision(&mut store.outbox.revision)
-                    .expect("prepared tracking publication capacity");
-                store.outbox.send(RuntimeEntityEvent::Update {
-                    revision,
-                    snapshot: Box::new(snapshot),
-                    packets: vec![],
-                });
-            }
-            // onEntityAdded starts tracking before ticking, matching onMove.
-            if store
-                .index
-                .visibility(handle)
-                .is_some_and(Visibility::ticking)
-            {
-                store.ticks.add(handle.id, handle);
-            }
+            let handle = store.insert_prepared_item(item);
             handles.push(handle);
         }
         before_item(
@@ -284,6 +343,8 @@ pub struct RuntimeEntities {
     world_random: LegacyRandomSource,
     sound_random: Option<LegacyRandomSource>,
     outbox: EntityOutbox,
+    native_tick_resume_order: Vec<EntityHandle>,
+    native_tick_resume_seen: std::collections::BTreeSet<EntityHandle>,
 }
 type EntityPublisher = Arc<dyn Fn(RuntimeEntityEvent) + Send + Sync>;
 #[derive(Default)]
@@ -323,6 +384,8 @@ impl RuntimeEntities {
             world_random,
             sound_random: None,
             outbox: EntityOutbox::default(),
+            native_tick_resume_order: Vec::new(),
+            native_tick_resume_seen: std::collections::BTreeSet::new(),
         }
     }
     /// Consume the actual independent Level.threadSafeRandom stream. The host
@@ -354,6 +417,78 @@ impl RuntimeEntities {
     }
     pub fn entity_kind(&self, handle: EntityHandle) -> Option<EntityKind> {
         self.index.get(handle).map(|entry| entry.kind)
+    }
+    pub fn capture_persistent_entity_order(&self) -> Result<PersistentEntityOrder> {
+        let index = self.index.capture_persistent_order()?;
+        let ticking = self.ticks.ordered_entries().filter_map(|(_, handle)|
+            self.index.get(handle).filter(|entry| entry.kind != EntityKind::Player).map(|_| handle)).collect();
+        let order = PersistentEntityOrder { index, ticking };
+        let by_id = order.index.registrations.iter().map(|entry| (entry.handle.id, entry.handle)).collect::<BTreeMap<_, _>>();
+        let mut seen = std::collections::BTreeSet::new();
+        for handle in &order.ticking {
+            ensure!(by_id.get(&handle.id) == Some(handle) && seen.insert(*handle), "invalid actual native tick-order owner");
+        }
+        Ok(order)
+    }
+    /// All source-cohort validation in validate_entries must also run against
+    /// checkpoint physical payloads before registering any restored bodies.
+    /// Here the complete actual fresh cohort is checked before index mutation.
+    pub fn restore_persistent_entity_order(&mut self, order: &PersistentEntityOrder) -> Result<()> {
+        let prepared = self.index.prepare_persistent_order(&order.index)?;
+        let by_id = order.index.registrations.iter().map(|entry| (entry.handle.id, entry.handle)).collect::<BTreeMap<_, _>>();
+        let mut seen = std::collections::BTreeSet::new();
+        let mut ticking = Vec::with_capacity(order.ticking.len());
+        for handle in &order.ticking {
+            ensure!(by_id.get(&handle.id) == Some(handle) && seen.insert(*handle), "invalid saved native tick order");
+            let actual = self.index.by_id(handle.id).context("actual restored tick owner missing")?;
+            ticking.push(actual.handle);
+        }
+        ensure!(self.ticks.is_empty() && self.tracking_order.is_empty()
+            && self.index.entries().all(|entry| self.index.visibility(entry.handle) == Some(Visibility::Hidden)),
+            "native order restore requires fresh hidden tick/sender owners");
+        self.index.apply_persistent_order(prepared)?;
+        self.native_tick_resume_order = ticking;
+        self.native_tick_resume_seen.clear();
+        Ok(())
+    }
+
+    /// Only actual confirmed ticking callbacks activate saved members. Restore
+    /// their native subsequence without moving new Players' positions or
+    /// invalidating an in-progress EntityTickList copy-on-write pass. Once all
+    /// saved members first activate/disappear, ordinary source ordering resumes.
+    fn reconcile_native_tick_resume_order(&mut self) {
+        if self.native_tick_resume_order.is_empty() { return; }
+        // A captured member can be removed before its chunk ever activates.
+        // Retire that source reference before applying a later activation's
+        // priority; otherwise an already completed cohort could reorder again.
+        for &handle in &self.native_tick_resume_order {
+            if self.index.get(handle).is_none() { self.native_tick_resume_seen.insert(handle); }
+        }
+        if self.native_tick_resume_seen.len() == self.native_tick_resume_order.len() {
+            self.native_tick_resume_order.clear();
+            self.native_tick_resume_seen.clear();
+            return;
+        }
+        let mut current = self.ticks.ordered_entries().collect::<Vec<_>>();
+        let cohort = self.native_tick_resume_order.iter().copied().collect::<std::collections::BTreeSet<_>>();
+        let slots = current.iter().enumerate().filter_map(|(slot, (_, handle))| cohort.contains(handle).then_some(slot)).collect::<Vec<_>>();
+        let active = self.native_tick_resume_order.iter().copied()
+            .filter(|handle| self.ticks.get(handle.id) == Some(*handle)).collect::<Vec<_>>();
+        for (slot, handle) in slots.into_iter().zip(active) { current[slot] = (handle.id, handle); }
+        let before = self.ticks.ordered_entries().collect::<Vec<_>>();
+        if current != before {
+            for (id, _) in &before { self.ticks.remove(*id); }
+            for (id, handle) in current { self.ticks.add(id, handle); }
+        }
+        for &handle in &self.native_tick_resume_order {
+            if self.ticks.get(handle.id) == Some(handle) || self.index.get(handle).is_none() {
+                self.native_tick_resume_seen.insert(handle);
+            }
+        }
+        if self.native_tick_resume_seen.len() == self.native_tick_resume_order.len() {
+            self.native_tick_resume_order.clear();
+            self.native_tick_resume_seen.clear();
+        }
     }
     /// A temporary preflight copy contains index ownership facts only. The
     /// caller must discard it and commit against the actual exclusive owner.
@@ -498,6 +633,61 @@ impl RuntimeEntities {
         self.entity_kind(handle) == Some(EntityKind::ExperienceOrb)
             && self.ticks.get(handle.id) == Some(handle)
     }
+    /// A falling-block owner retains its canonical state/RNG/sender separately;
+    /// only the real shared section, generation, tracking and tick owners live
+    /// here. Call only after the actual addFreshEntity admission accepts it.
+    pub fn register_falling_block(&mut self, id: i32, position: Vec3) -> Result<EntityHandle> {
+        ensure!(position.x.is_finite() && position.y.is_finite() && position.z.is_finite(),
+            "nonfinite falling block position");
+        let visibility = &self.chunk_visibility;
+        let handle = self.index.register(id, EntityKind::FallingBlock, position, false, |chunk| {
+            visibility.get(&chunk).copied().unwrap_or(Visibility::Hidden)
+        })?;
+        let visibility = self.index.visibility(handle).context("registered falling block section missing")?;
+        if visibility.accessible() { self.tracking_order.insert(id, handle); }
+        if visibility.ticking() { self.ticks.add(id, handle); }
+        Ok(handle)
+    }
+    /// Invoke synchronously at the actual actor's setPosRaw/onMove boundary,
+    /// not once after its entire movement/landing callback sequence.
+    pub fn move_falling_block(&mut self, handle: EntityHandle, position: Vec3) -> Result<()> {
+        ensure!(position.x.is_finite() && position.y.is_finite() && position.z.is_finite(),
+            "nonfinite falling block position");
+        let entry = self.index.get(handle).context("falling block handle is not registered")?;
+        ensure!(entry.kind == EntityKind::FallingBlock, "expected falling block handle");
+        let visibility = &self.chunk_visibility;
+        if let Some(transition) = self.index.position_changed(handle, position, |chunk| {
+            visibility.get(&chunk).copied().unwrap_or(Visibility::Hidden)
+        })? {
+            if transition.was_ticking() != transition.is_ticking() {
+                if transition.is_ticking() { self.ticks.add(handle.id, handle); }
+                else { self.ticks.remove(handle.id); }
+            }
+            if transition.previous.accessible() != transition.current.accessible() {
+                if transition.current.accessible() { self.tracking_order.insert(handle.id, handle); }
+                else { self.tracking_order.remove(handle.id); }
+            }
+        }
+        Ok(())
+    }
+    /// The actual discard callback calls this immediately, even when source
+    /// landing/drop callbacks continue to use the same now-removed object.
+    pub fn remove_falling_block(&mut self, handle: EntityHandle) -> Result<()> {
+        let Some(entry) = self.index.get(handle) else { return Ok(()); };
+        ensure!(entry.kind == EntityKind::FallingBlock, "expected falling block handle");
+        self.index.remove(handle);
+        self.ticks.remove(handle.id);
+        self.tracking_order.remove(handle.id);
+        Ok(())
+    }
+    pub fn falling_block_visibility(&self, handle: EntityHandle) -> Option<Visibility> {
+        self.index.get(handle).filter(|entry| entry.kind == EntityKind::FallingBlock)
+            .and_then(|_| self.index.visibility(handle))
+    }
+    pub fn falling_block_is_ticking(&self, handle: EntityHandle) -> bool {
+        self.entity_kind(handle) == Some(EntityKind::FallingBlock)
+            && self.ticks.get(handle.id) == Some(handle)
+    }
     /// The same insertion-ordered level list used by item/player simulation.
     /// The external XP owner must retain this sequence rather than sort by ID.
     pub fn level_tick_entries(&self) -> impl Iterator<Item = (EntityHandle, EntityKind)> + '_ {
@@ -525,6 +715,15 @@ impl RuntimeEntities {
                     current_bounds(handle)
                 }
             })
+    }
+    /// One real shared section query for source entity predicates. Physical
+    /// bounds remain with the actual class owners supplied by the caller.
+    pub fn query_native_entities(&mut self, bounds: Aabb, except: i32,
+        mut inspect: impl FnMut(EntityHandle, EntityKind) -> Result<Option<Aabb>>,
+    ) -> Result<Vec<EntityHandle>> {
+        self.index.query_with_kind(bounds, None, |handle, kind| {
+            if handle.id == except { Ok(None) } else { inspect(handle, kind) }
+        })
     }
     /// The current level tick list, including stale-but-still-scheduled items.
     /// Tracking visibility and published snapshots are not a simulation gate.
@@ -569,6 +768,84 @@ impl RuntimeEntities {
     pub fn highest_registered_entity_id(&self) -> Option<i32> {
         self.index.entries().map(|entry| entry.handle.id).max()
     }
+    fn prepare_item(&self, state: ItemState, random: LegacyRandomSource) -> Result<PreparedItem> {
+        state.validate()?;
+        ensure!(!state.removed, "cannot register a removed item");
+        let sender = ItemReplication::new(&state)?;
+        // Hidden entities satisfy the same sender contract before a later
+        // visibility transition can create their actual live tracker.
+        let snapshot = sender.snapshot(&state)?;
+        state.spawn_packets()?;
+        let section = crate::entity_spatial::section_coordinates(
+            crate::entity_spatial::section_at(state.position_vec()),
+        );
+        let accessible = self.chunk_visibility.get(&(section.0, section.2))
+            .copied().unwrap_or(Visibility::Hidden).accessible();
+        let tracking = if accessible { Some((sender, snapshot)) } else { None };
+        Ok(PreparedItem { state, random, tracking })
+    }
+
+    fn insert_prepared_item(&mut self, item: PreparedItem) -> EntityHandle {
+        let PreparedItem {
+            state,
+            random,
+            tracking,
+        } = item;
+        let visibility = &self.chunk_visibility;
+        let handle = self
+            .index
+            .register(
+                state.entity_id,
+                EntityKind::Item,
+                state.position_vec(),
+                false,
+                |chunk| {
+                    visibility
+                        .get(&chunk)
+                        .copied()
+                        .unwrap_or(Visibility::Hidden)
+                },
+            )
+            .expect("exclusive prepared insertion preserves validated identities and capacity");
+        self.items.insert(
+            handle.id,
+            RuntimeItem {
+                handle,
+                state,
+                random,
+            },
+        );
+        if let Some((sender, snapshot)) = tracking {
+            self.tracking.insert(
+                handle.id,
+                TrackedItem {
+                    handle,
+                    sender,
+                    last_section: crate::entity_spatial::section_at(
+                        snapshot.entity.position_vec(),
+                    ),
+                },
+            );
+            self.tracking_order.insert(handle.id, handle);
+            let revision = next_revision(&mut self.outbox.revision)
+                .expect("prepared tracking publication capacity");
+            self.outbox.send(RuntimeEntityEvent::Update {
+                revision,
+                snapshot: Box::new(snapshot),
+                packets: vec![],
+            });
+        }
+        // onEntityAdded starts tracking before ticking, matching onMove.
+        if self
+            .index
+            .visibility(handle)
+            .is_some_and(Visibility::ticking)
+        {
+            self.ticks.add(handle.id, handle);
+        }
+        handle
+    }
+
     pub fn prepare_items(
         &mut self,
         entries: Vec<(ItemState, LegacyRandomSource)>,
@@ -578,41 +855,53 @@ impl RuntimeEntities {
         let mut items = Vec::with_capacity(entries.len());
         let mut publications = 0_u64;
         for (state, random) in entries {
-            state.validate()?;
-            ensure!(!state.removed, "cannot register a removed item");
-            let sender = ItemReplication::new(&state)?;
-            // Hidden entities must satisfy the same sender contract before a
-            // later visibility transition can create their live tracker.
-            let snapshot = sender.snapshot(&state)?;
-            // Check the actual outgoing representation while failure can still
-            // roll back the menu. No dirty state is drained by this encoding.
-            state.spawn_packets()?;
-            let section = crate::entity_spatial::section_coordinates(
-                crate::entity_spatial::section_at(state.position_vec()),
-            );
-            let accessible = self
-                .chunk_visibility
-                .get(&(section.0, section.2))
-                .copied()
-                .unwrap_or(Visibility::Hidden)
-                .accessible();
-            let tracking = if accessible {
+            let item = self.prepare_item(state, random)?;
+            if item.tracking.is_some() {
                 publications += 1;
-                Some((sender, snapshot))
-            } else {
-                None
-            };
-            items.push(PreparedItem {
-                state,
-                random,
-                tracking,
-            });
+            }
+            items.push(item);
         }
         self.outbox
             .revision
             .checked_add(publications)
             .context("item revision exhausted")?;
         Ok(PreparedItemBatch { store: self, items })
+    }
+
+    /// Preflight the whole original mixed insertion sequence before any menu,
+    /// RNG, shared index or sender state changes. The actual exclusive borrow
+    /// prevents intervening registrations or visibility changes until commit.
+    /// XP's physical/sender owner must retain the exact state used to create
+    /// its registration and preflight all corresponding merge/packet phases.
+    pub fn prepare_native_entities(
+        &mut self,
+        additions: Vec<NativeEntityAddition>,
+    ) -> Result<PreparedNativeEntityBatch<'_>> {
+        self.index.validate_registration_batch(additions.iter().map(|entry| match entry {
+            NativeEntityAddition::Item(state, _) => state.entity_id,
+            NativeEntityAddition::ExperienceOrb(registration) => registration.entity_id,
+        }))?;
+        let mut entries = Vec::with_capacity(additions.len());
+        let mut publications = 0_u64;
+        for addition in additions {
+            entries.push(match addition {
+                NativeEntityAddition::Item(state, random) => {
+                    let item = self.prepare_item(state, random)?;
+                    if item.tracking.is_some() { publications += 1; }
+                    PreparedNativeEntity::Item(item)
+                }
+                NativeEntityAddition::ExperienceOrb(registration) => {
+                    ensure!(registration.position.x.is_finite()
+                        && registration.position.y.is_finite()
+                        && registration.position.z.is_finite(),
+                        "nonfinite prepared experience orb position");
+                    PreparedNativeEntity::ExperienceOrb(registration)
+                }
+            });
+        }
+        self.outbox.revision.checked_add(publications)
+            .context("mixed item revision exhausted")?;
+        Ok(PreparedNativeEntityBatch { store: self, entries })
     }
     pub fn revision(&self) -> u64 {
         self.outbox.revision
@@ -711,7 +1000,7 @@ impl RuntimeEntities {
                     state,
                     (transition.previous, transition.current),
                 )?;
-            } else if transition.entity.kind == EntityKind::ExperienceOrb
+            } else if matches!(transition.entity.kind, EntityKind::ExperienceOrb | EntityKind::FallingBlock)
                 && transition.previous.accessible() != transition.current.accessible()
             {
                 let handle = transition.entity.handle;
@@ -722,6 +1011,7 @@ impl RuntimeEntities {
                 }
             }
         }
+        self.reconcile_native_tick_resume_order();
         Ok(())
     }
     pub fn insert_item(
@@ -854,6 +1144,7 @@ impl RuntimeEntities {
             world_random: _,
             sound_random,
             outbox,
+            ..
         } = self;
         ticks
             .try_for_each(|ticks, handle| {
@@ -919,6 +1210,7 @@ impl RuntimeEntities {
             world_random: _,
             sound_random,
             outbox,
+            ..
         } = self;
         simulate_level_entry_inner(
             TickParts {
@@ -986,7 +1278,9 @@ impl RuntimeEntities {
         let items = &self.items;
         self.index
             .query_with_kind(bounds, None, |handle, kind| match kind {
-                EntityKind::Player => Ok(None),
+                // FallingBlockEntity inherits the no-op playerTouch; it is
+                // never represented as an Item or awarded as an XP pickup.
+                EntityKind::Player | EntityKind::FallingBlock => Ok(None),
                 EntityKind::Item => Ok(items
                     .get(&handle.id)
                     .filter(|entry| entry.handle == handle && !entry.state.removed)
@@ -1181,7 +1475,7 @@ fn simulate_level_entry_inner<H: RuntimeEntityHost>(
         EntityKind::Player => return parts.host.level_player_tick(handle),
         // An external owner must dispatch this entry in the same pass. The
         // item adapter never fabricates an ItemState for an experience orb.
-        EntityKind::ExperienceOrb => return Ok(()),
+        EntityKind::ExperienceOrb | EntityKind::FallingBlock => return Ok(()),
         EntityKind::Item => {}
     }
     let Some(mut current) = parts.items.remove(&handle.id) else {

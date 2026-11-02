@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "inner_jar_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "mappings_sha1": "31c77994d96f05ba25a870ada70f47f315330437",
+  "placement_catalog_sha256": "e044d4bdf90cfcae62043b630b1c673bb3582025b684a7fbe5878fe6747e8a50",
+  "state_count": 26684,
+  "liquid_true_ranges": [
+    [
+      80,
+      111
+    ],
+    [
+      12960,
+      12961
+    ]
+  ],
+  "can_be_replaced_true_ranges": [
+    [
+      0,
+      0
+    ],
+    [
+      80,
+      111
+    ],
+    [
+      2005,
+      2010
+    ],
+    [
+      2360,
+      2872
+    ],
+    [
+      5772,
+      5779
+    ],
+    [
+      6837,
+      6996
+    ],
+    [
+      10367,
+      10398
+    ],
+    [
+      10755,
+      10758
+    ],
+    [
+      12549,
+      12549
+    ],
+    [
+      12958,
+      12961
+    ],
+    [
+      18594,
+      18595
+    ],
+    [
+      18665,
+      18665
+    ],
+    [
+      24900,
+      24901
+    ]
+  ],
+  "range_semantics": "Inclusive sorted nonoverlapping true-state ID ranges; every other ID inside the completely queried original domain is observed false. Foreign/out-of-domain IDs require explicit rejection, not false fallback.",
+  "provenance": {
+    "method": "Actual pinned original bootstrap followed by direct queries of every Block.BLOCK_STATE_REGISTRY ID; direct JDK 21 source inspection, not REA MCP or native gameplay.",
+    "java_runtime": "Microsoft OpenJDK 21.0.13.0.2+1",
+    "generator_source_sha256": "7376049aea0ef787d1e4768175723ab35caddd3ee120fd1a946207740a3b8122",
+    "capture_stdout_sha256": "592cfc710595f8e55fc1691d4baa704c87d6a2e42d997e7ca22e084177cafc31",
+    "actual_bootstrap_exit": 0,
+    "state_lookup": "Original Block.BLOCK_STATE_REGISTRY.byId(id), each ID0..size-1, requiring nonnull values.",
+    "liquid_query": "Original BlockStateBase.liquid(), obfuscated k(), official line971.",
+    "can_be_replaced_query": "Original BlockStateBase.canBeReplaced(), obfuscated r(), official line1205."
+  },
+  "verification": {
+    "queried_nonnull_state_count": 26684,
+    "placement_catalog_domain_fully_covered_once": true,
+    "placement_replaceable_mismatch_count": 0,
+    "placement_replaceable_mismatch_state_ids": [],
+    "liquid_vs_liquidblock_class_mismatch_count": 2
+  },
+  "scope": "Only original block-state liquid() and no-context canBeReplaced() predicates. Not a fluid-presence, contextual BlockPlaceContext replacement, isFree/FIRE-tag, scheduler, entity, or whole-native-world capability."
+}
