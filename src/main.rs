@@ -93,6 +93,14 @@ mod main_shutdown_chunks;
 mod main_furnace_notifications;
 mod main_server_timing;
 mod main_experience;
+mod main_falling_block;
+mod main_falling_block_world;
+mod main_falling_block_runtime;
+mod main_falling_block_persistence;
+mod main_falling_block_spawn;
+mod main_falling_block_physics;
+mod main_falling_block_damage;
+mod main_falling_block_dispatch;
 mod main_block_ticks;
 mod main_redstone;
 mod main_player_motion_hooks;
@@ -515,6 +523,7 @@ struct LivePlayers {
     grindstones: main_grindstone::GrindstoneRuntime,
     anvils: main_anvil::NativeAnvilRuntime,
     experience_runtime: main_experience::MainExperienceRuntime,
+    falling_blocks: main_falling_block_runtime::MainFallingBlockRuntime,
     block_runtime: main_block_ticks::MainBlockRuntime,
     redstone_runtime: main_redstone::MainRedstoneRuntime,
     containers: BTreeMap<i32, SharedContainer>,
@@ -781,6 +790,7 @@ impl LivePlayers {
             grindstones: main_grindstone::GrindstoneRuntime::default(),
             anvils: main_anvil::NativeAnvilRuntime::default(),
             experience_runtime: main_experience::MainExperienceRuntime::default(),
+            falling_blocks: main_falling_block_runtime::MainFallingBlockRuntime::default(),
             block_runtime: main_block_ticks::MainBlockRuntime::new(fresh_unedited),
             redstone_runtime: main_redstone::MainRedstoneRuntime::new(fresh_unedited),
             containers: BTreeMap::new(),
@@ -1483,7 +1493,7 @@ impl Server {
             .players
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
-        players.simulate_item_world_with_player_menus(&mut world, game_time, border, &self.entity_events,
+        players.simulate_native_entities_with_player_menus(&mut world, game_time, border, &self.entity_events,
             |players, world, id| {
                 self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;
@@ -1491,6 +1501,9 @@ impl Server {
                 self.tick_native_loom_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_grindstone_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_anvil_menu_for_player_locked(world, players, id, game_time, border)
+            },
+            |players, world, handle| {
+                self.tick_native_falling_block_locked(world, players, handle, game_time, border)
             })
     }
 
@@ -2159,6 +2172,7 @@ impl Server {
             observers,
             chunk_transports,
             experience_runtime,
+            falling_blocks,
             ..
         } = &mut *players;
         item_runtime.publish_tracking_with_external(
@@ -2169,6 +2183,12 @@ impl Server {
                     .in_entity_ticking_range(chunk)
             },
             |kind, handle| {
+                if kind == mc121_rust::runtime_entity_index::EntityKind::FallingBlock {
+                    return main_falling_block_dispatch::publish_falling_tracking(
+                        falling_blocks, handle, &chunk_runtime.manager,
+                        registry, observers, chunk_transports, &self.entity_events,
+                    );
+                }
                 if kind == mc121_rust::runtime_entity_index::EntityKind::ExperienceOrb {
                     return experience_runtime.publish_one(handle, registry, observers, chunk_transports, &self.entity_events);
                 }
@@ -2298,7 +2318,7 @@ impl Server {
             .clock
             .read()
             .map_err(|_| anyhow!("world clock lock poisoned"))?;
-        let (weather, entity_checkpoint, fluid_checkpoint, fluid_shapes, fire_checkpoint, random_position_value) = {
+        let (weather, mut entity_checkpoint, fluid_checkpoint, fluid_shapes, fire_checkpoint, block_checkpoint, random_position_value) = {
             let mut players = self
                 .players
                 .write()
@@ -2351,7 +2371,11 @@ impl Server {
             if players.entity_source.as_ref().is_some_and(|source| source.has_pending_edits()) {
                 players.complete_native_source_edits(&world)?;
             }
-            if players.item_runtime.item_count() != 0 || players.entity_source.as_ref().is_some_and(|source| source.is_supported()) {
+            if players.item_runtime.item_count() != 0
+                || players.experience_runtime.count() != 0
+                || players.falling_blocks.count() != 0
+                || players.entity_source.as_ref().is_some_and(|source| source.is_supported())
+            {
                 players.require_current_native_source(&world)?;
             }
             let fluid_checkpoint = players
@@ -2361,7 +2385,15 @@ impl Server {
                 &players.world_interactions.fluid_shapes,
             )?;
             let fire_checkpoint = players.fire_runtime.checkpoint(clock.game_time, players.fluid_runtime.sub_tick_order);
+            let block_checkpoint = players.block_runtime.checkpoint(clock.game_time);
             let random_position_value = players.level_random_position_value;
+            // Capture the actual external bodies under the SAME registry/world
+            // locks as the shared item/index/order owners. They belong to the
+            // atomic entity checkpoint, never a second unanchored world array.
+            let experience_orbs = players.experience_runtime.snapshot()?;
+            let falling_blocks = players.falling_blocks.snapshot()?;
+            ensure!(players.entity_source.is_some() || (experience_orbs.is_empty() && falling_blocks.is_empty()),
+                "cannot persist XP/falling bodies without the actual native entity source");
             let LivePlayers {
                 item_runtime,
                 entity_source,
@@ -2370,16 +2402,32 @@ impl Server {
             let checkpoint = entity_source
                 .as_mut()
                 .map(|source| {
-                    EntityCheckpoint::capture(
-                        item_runtime,
-                        source,
-                        &world,
-                        self.entities.load(Ordering::Relaxed),
-                        NativeWorldTime { clock, weather },
-                    )
+                    if source.is_supported() {
+                        EntityCheckpoint::capture_with_native_entities(
+                            item_runtime,
+                            source,
+                            &world,
+                            self.entities.load(Ordering::Relaxed),
+                            NativeWorldTime { clock, weather },
+                            experience_orbs,
+                            falling_blocks,
+                        )
+                    } else {
+                        // Preserve the existing empty, unsupported transport
+                        // profile as explicitly legacy. Do not certify it as
+                        // a newly complete empty native entity cohort.
+                        ensure!(item_runtime.item_count() == 0
+                            && experience_orbs.is_empty() && falling_blocks.is_empty(),
+                            "unsupported source has persistent native entities");
+                        EntityCheckpoint::capture(
+                            item_runtime, source, &world,
+                            self.entities.load(Ordering::Relaxed),
+                            NativeWorldTime { clock, weather },
+                        )
+                    }
                 })
                 .transpose()?;
-            (weather, checkpoint, fluid_checkpoint, fluid_shapes, fire_checkpoint, random_position_value)
+            (weather, checkpoint, fluid_checkpoint, fluid_shapes, fire_checkpoint, block_checkpoint, random_position_value)
         };
         match &mut *world {
             WorldBackend::Anvil(world) => {
@@ -2396,23 +2444,32 @@ impl Server {
                     fluid_shapes: Some(fluid_shapes),
                     fire_ticks: Some(fire_checkpoint),
                     native_block_entities: Some(world.native_block_entities().save(clock.game_time)?),
-                    experience_orbs: self.players.read().map_err(|_|anyhow!("player registry lock poisoned"))?.experience_runtime.snapshot()?,
-                    block_ticks: Some(self.players.read().map_err(|_|anyhow!("player registry lock poisoned"))?.block_runtime.checkpoint(clock.game_time)),
+                    // Legacy field retained for read compatibility only. The
+                    // atomic EntityCheckpoint now owns XP, including EMPTY.
+                    experience_orbs: Vec::new(),
+                    block_ticks: Some(block_checkpoint),
                     level_random_position_value: random_position_value,
                 };
+                // Serialize ONCE. Bind and write these identical bytes; a later
+                // parsed/pretty-printed equivalent is not this pairing proof.
+                let saved_bytes = serde_json::to_vec_pretty(&saved)?;
+                if let Some(checkpoint) = entity_checkpoint.as_mut() {
+                    checkpoint.bind_world_file_bytes(&saved_bytes)?;
+                }
                 let path = &self.options.world;
                 if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
                     fs::create_dir_all(parent).await?;
                 }
                 let temporary = path.with_extension("json.tmp");
-                fs::write(&temporary, serde_json::to_vec_pretty(&saved)?).await?;
+                fs::write(&temporary, &saved_bytes).await?;
                 fs::rename(temporary, path)
                     .await
                     .context("atomically replacing fixture world diffs")?;
             }
         }
         // The world image cannot change between checkpoint capture and the
-        // two writes. A torn pair is rejected by the checkpoint's exact image.
+        // two writes. New checkpoints additionally bind the exact world bytes,
+        // including scheduling data not represented by the block WorldImage.
         if let Some(checkpoint) = entity_checkpoint {
             self.entity_store.save(&checkpoint)?;
         }
@@ -2571,6 +2628,8 @@ async fn main() -> Result<()> {
     let mut fixture_world = FlatWorld::new(0, 1, 10, 9, 39);
     let mut initial_clock = TickClock::default();
     let mut initial_experience_orbs = Vec::new();
+    let mut initial_native_entities = None;
+    let mut initial_world_file_bytes = None;
     let mut initial_weather = WeatherState::default();
     let mut initial_fluid_runtime = main_fluid_simulation::MainFluidRuntime::default();
     let mut initial_fluid_random = None;
@@ -2586,7 +2645,9 @@ async fn main() -> Result<()> {
         if fs::metadata(&options.world).await?.len() > 16 * 1024 * 1024 {
             bail!("saved fixture world exceeds 16 MiB");
         }
-        let saved: SavedWorld = serde_json::from_slice(&fs::read(&options.world).await?)?;
+        let saved_bytes = fs::read(&options.world).await?;
+        let saved: SavedWorld = serde_json::from_slice(&saved_bytes)?;
+        initial_world_file_bytes = Some(saved_bytes);
         if saved.format != "mc121-flat-diffs-v1" || saved.minecraft != "1.21" {
             bail!("unsupported saved fixture world format");
         }
@@ -2687,8 +2748,21 @@ async fn main() -> Result<()> {
     let mut restored_entities = None;
     let mut entity_source = None;
     if let Some(checkpoint) = entity_store.load()? {
-        let item_count = checkpoint.item_count();
-        match checkpoint.restore(&world) {
+        let persistent_count = checkpoint.persistent_entity_count();
+        // An atomic cohort is authoritative even when empty. If its source
+        // proof fails, the older split world XP field must not resurrect an
+        // entity from another save interval through the legacy fallback.
+        let has_native_cohort = checkpoint.has_native_entity_cohort();
+        let restored = (|| {
+            if let Some(bytes) = initial_world_file_bytes.as_deref() {
+                checkpoint.require_world_file_bytes(bytes)?;
+            } else {
+                ensure!(!has_native_cohort,
+                    "atomic native entity cohort requires its actual saved world file");
+            }
+            checkpoint.restore(&world)
+        })();
+        match restored {
             Ok(restored) => {
                 // Include hidden items before adopting either restored time
                 // or the live runtime. Failure cannot enter legacy fallback.
@@ -2718,7 +2792,7 @@ async fn main() -> Result<()> {
                 initial_weather = restored.time.weather;
                 restored_entities = Some(restored);
             }
-            Err(error) if item_count == 0 => {
+            Err(error) if persistent_count == 0 && !has_native_cohort => {
                 eprintln!(
                     "{}",
                     json!({"event":"native_entity_resume_unavailable","scope":"legacy_profile_transport","reason":format!("{error:#}"),"saved_items":0})
@@ -2726,7 +2800,7 @@ async fn main() -> Result<()> {
             }
             Err(error) => {
                 return Err(error)
-                    .context("refusing to discard a nonempty native entity checkpoint")
+                    .context("refusing to discard an authoritative or nonempty native entity checkpoint")
             }
         }
     } else if fresh_unedited {
@@ -2829,10 +2903,12 @@ async fn main() -> Result<()> {
             let _ = publisher.send(PlayerEvent::Item(Arc::new(event)));
         }));
         entity_source = Some(restored.source);
+        initial_native_entities = restored.native_entities;
     }
     players.entity_source = entity_source;
-    players.experience_runtime = main_experience::MainExperienceRuntime::restore(initial_experience_orbs, &mut players.item_runtime)?;
-    ensure!(players.experience_runtime.max_entity_id().is_none_or(|id| id < next_entity_id), "persisted XP orb exceeds the shared entity counter");
+    main_falling_block_persistence::restore_native_entity_cohort(
+        &mut players, initial_native_entities, initial_experience_orbs, next_entity_id,
+    )?;
     if let Some(random) = initial_fluid_random {
         *players.item_runtime.world_random_mut() = random;
     }
@@ -2845,6 +2921,10 @@ async fn main() -> Result<()> {
         players.block_runtime=main_block_ticks::MainBlockRuntime::from_checkpoint(saved,supported_native_source)?;
     }
     players.block_runtime.adopt_legacy_fire(&mut players.fire_runtime,initial_clock.game_time)?;
+    if supported_native_source {
+        let falling_owner = main_falling_block_damage::NativeFallingDamageTypes::capture(&fixtures)?;
+        players.block_runtime.install_falling_owner(falling_owner)?;
+    }
     if let Some(cache) = initial_fluid_shapes {
         players.world_interactions.fluid_shapes = cache;
     }

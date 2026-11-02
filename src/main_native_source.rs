@@ -13,7 +13,7 @@ impl NativeBlockTickOwner for super::main_block_ticks::MainBlockRuntime {
         tick: &mc121_rust::placement::PlannedBlockTick,
     ) -> Result<bool> {
         self.require_healthy()?;
-        Ok((super::main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)&&(30..=39).contains(&tick.delay))||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5))
+        Ok((super::main_fire_simulation::MainFireRuntime::supports_scheduled_state(tick.state)&&(30..=39).contains(&tick.delay))||mc121_rust::redstone::owns_scheduled_callback(tick.state,tick.delay)?||self.owns_anvil_tick(tick.state,tick.delay)?||(mc121_rust::native_block_entities::container_kind(tick.state).is_some()&&tick.delay==5))
     }
 }
 
@@ -35,6 +35,7 @@ enum OwnedRemovalCallback {
     Container((i32, i32, i32)),
 }
 fn callbacks_can_complete_except_owned_removal(world: &WorldBackend, plan: &InteractionPlan, removal: Option<OwnedRemovalCallback>) -> Result<()> {
+    super::main_falling_block_spawn::validate_anvil_schedule_obligations(plan)?;
     let WorldBackend::Fixture(flat) = world else {
         bail!("imported source has no native callback owner");
     };
@@ -61,7 +62,9 @@ fn callbacks_can_complete_except_owned_removal(world: &WorldBackend, plan: &Inte
             // The dedicated removal host executes this exact old callback.
             // New-state onPlace still needs its actual fluid/redstone owner.
             let old = if own_removal { 0 } else { *old_state };
-            ensure!(mc121_rust::redstone::owns_change_callbacks_after_fluid(old,*state)?,"unported native onPlace/onRemove owner");
+            ensure!(mc121_rust::redstone::owns_change_callbacks_after_fluid(old,*state)?
+                || super::main_falling_block_spawn::represented_anvil_change(old,*state)?,
+                "unported native onPlace/onRemove owner");
         }
         if let InteractionEvent::NeighbourNotice {
             position,

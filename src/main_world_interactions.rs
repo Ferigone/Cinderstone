@@ -193,7 +193,17 @@ impl LivePlayers {
                             effect.fluid_callback_done = true;
                         }
                         if !effect.fire_callback_done {self.observe_fire_change(world,*position,*old_state,*state,now,border,events)?;effect.fire_callback_done=true;}
-                        if !effect.redstone_callback_done {self.observe_redstone_change(world,*position,*old_state,*state,now,border,events)?;effect.redstone_callback_done=true;}
+                        if !effect.redstone_callback_done {
+                            // The ordered plan already carries Anvil.onPlace's
+                            // one schedule attempt immediately after this write.
+                            // Its old callback is proved inherited/unchanged;
+                            // executing the redstone dispatcher would duplicate
+                            // the schedule or reject the real FallingBlock class.
+                            if !main_falling_block_spawn::represented_anvil_change(*old_state,*state)? {
+                                self.observe_redstone_change(world,*position,*old_state,*state,now,border,events)?;
+                            }
+                            effect.redstone_callback_done=true;
+                        }
                     },
                     InteractionEvent::FluidOnlyBlockChanged { position, old_state, state, flags } => {
                         if !effect.fluid_callback_done{self.observe_fluid_change(world,*position,*old_state,*state,*flags,now,border,events)?;effect.fluid_callback_done=true;}

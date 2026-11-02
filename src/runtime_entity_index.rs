@@ -11,16 +11,80 @@ use crate::{
 use anyhow::{ensure, Context, Result};
 use std::collections::BTreeMap;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
 pub struct EntityHandle {
     pub id: i32,
     pub generation: u64,
 }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum EntityKind {
     Player,
     Item,
     ExperienceOrb,
+    FallingBlock,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PersistentIndexedEntity {
+    pub handle: EntityHandle,
+    pub kind: EntityKind,
+    pub section: SectionKey,
+}
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PersistentSectionOrder {
+    pub section: SectionKey,
+    pub entities: Vec<EntityHandle>,
+}
+/// Actual native registration/section order. Players and network readiness are
+/// not persisted. Old generation references certify this checkpoint cohort;
+/// cold restore rebinds each reference to its actual freshly registered owner.
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PersistentEntityIndexOrder {
+    pub registrations: Vec<PersistentIndexedEntity>,
+    pub sections: Vec<PersistentSectionOrder>,
+}
+pub(crate) struct PreparedPersistentEntityIndexOrder {
+    spatial: EntitySectionStorage<EntityHandle>,
+    registrations: Vec<EntityHandle>,
+    expected: Vec<EntityHandle>,
+}
+impl PersistentEntityIndexOrder {
+    pub fn validate_entries(&self, entries: &[(i32, EntityKind, Vec3)]) -> Result<()> {
+        let mut expected = BTreeMap::new();
+        for &(id, kind, position) in entries {
+            ensure!(id > 0 && kind != EntityKind::Player, "invalid persistent native entity kind/ID");
+            ensure!([position.x, position.y, position.z].iter().all(|v| v.is_finite()), "nonfinite persistent entity position");
+            ensure!(expected.insert(id, (kind, entity_spatial::section_at(position))).is_none(), "duplicate persistent entity ID");
+        }
+        self.validate_cohort(&expected)
+    }
+    fn validate_cohort(&self, expected: &BTreeMap<i32, (EntityKind, SectionKey)>) -> Result<()> {
+        let mut actual = BTreeMap::new();
+        let mut generations = std::collections::BTreeSet::new();
+        for entry in &self.registrations {
+            ensure!(entry.kind != EntityKind::Player && entry.handle.id > 0 && entry.handle.generation != 0,
+                "invalid persistent registration reference");
+            ensure!(generations.insert(entry.handle.generation), "duplicate persistent generation");
+            ensure!(actual.insert(entry.handle.id, (entry.kind, entry.section)).is_none(), "duplicate persistent registration");
+        }
+        ensure!(&actual == expected, "persistent registration cohort differs from actual payload");
+        let by_id = self.registrations.iter().map(|entry| (entry.handle.id, entry)).collect::<BTreeMap<_, _>>();
+        let mut sections = std::collections::BTreeSet::new();
+        let mut seen = std::collections::BTreeSet::new();
+        for section in &self.sections {
+            ensure!(!section.entities.is_empty() && sections.insert(section.section), "invalid repeated/empty persistent section");
+            for &handle in &section.entities {
+                let entry = by_id.get(&handle.id).context("persistent section has an unknown entity")?;
+                ensure!(entry.handle == handle && entry.section == section.section && seen.insert(handle.id),
+                    "persistent section reference or encounter order is invalid");
+            }
+        }
+        ensure!(seen.len() == expected.len(), "persistent section order omits an entity");
+        Ok(())
+    }
 }
 impl EntityKind {
     fn class(self) -> u32 {
@@ -28,6 +92,7 @@ impl EntityKind {
             Self::Player => 1,
             Self::Item => 2,
             Self::ExperienceOrb => 3,
+            Self::FallingBlock => 4,
         }
     }
 }
@@ -57,6 +122,7 @@ pub struct RuntimeEntityIndex {
     records: BTreeMap<i32, IndexedEntity>,
     spatial: EntitySectionStorage<EntityHandle>,
     next_generation: u64,
+    registration_order: Vec<EntityHandle>,
 }
 impl Default for RuntimeEntityIndex {
     fn default() -> Self {
@@ -69,6 +135,7 @@ impl RuntimeEntityIndex {
             records: BTreeMap::new(),
             spatial: EntitySectionStorage::new(0),
             next_generation: 1,
+            registration_order: Vec::new(),
         }
     }
     pub fn get(&self, handle: EntityHandle) -> Option<IndexedEntity> {
@@ -111,6 +178,7 @@ impl RuntimeEntityIndex {
             records,
             spatial,
             next_generation: self.next_generation,
+            registration_order: self.registration_order.clone(),
         })
     }
     /// Validate an exclusive owner's whole insertion batch before committing
@@ -156,6 +224,7 @@ impl RuntimeEntityIndex {
                 always_ticking,
             },
         );
+        self.registration_order.push(handle);
         let records = &self.records;
         self.spatial
             .get_or_create_section(section, initial_visibility)
@@ -176,7 +245,58 @@ impl RuntimeEntityIndex {
         }
         self.spatial.remove_section_if_empty(entry.section);
         self.records.remove(&handle.id);
+        self.registration_order.retain(|value| *value != handle);
         true
+    }
+
+    pub fn capture_persistent_order(&self) -> Result<PersistentEntityIndexOrder> {
+        let registrations = self.registration_order.iter().filter_map(|handle| self.get(*handle))
+            .filter(|entry| entry.kind != EntityKind::Player)
+            .map(|entry| PersistentIndexedEntity { handle: entry.handle, kind: entry.kind, section: entry.section })
+            .collect::<Vec<_>>();
+        ensure!(registrations.len() == self.records.values().filter(|entry| entry.kind != EntityKind::Player).count(),
+            "native registration owner is incomplete");
+        let keys = registrations.iter().map(|entry| entry.section).collect::<std::collections::BTreeSet<_>>();
+        let mut sections = Vec::new();
+        for key in keys {
+            let section = self.spatial.section(key).context("persistent section is missing")?;
+            let entities = section.handles().iter().copied()
+                .filter(|handle| self.get(*handle).is_some_and(|entry| entry.kind != EntityKind::Player)).collect();
+            sections.push(PersistentSectionOrder { section: key, entities });
+        }
+        let order = PersistentEntityIndexOrder { registrations, sections };
+        let expected = order.registrations.iter().map(|entry| (entry.handle.id, (entry.kind, entry.section))).collect();
+        order.validate_cohort(&expected)?;
+        Ok(order)
+    }
+
+    /// Prepare every allocation/reference check before changing the actual
+    /// section owner. This is a cold native restore; no live Player is moved.
+    pub(crate) fn prepare_persistent_order(&self, order: &PersistentEntityIndexOrder)
+        -> Result<PreparedPersistentEntityIndexOrder> {
+        ensure!(self.records.values().all(|entry| entry.kind != EntityKind::Player), "persistent order restore has a live player");
+        let expected = self.records.values().map(|entry| (entry.handle.id, (entry.kind, entry.section))).collect();
+        order.validate_cohort(&expected)?;
+        let mut spatial = EntitySectionStorage::new(0);
+        for section in &order.sections {
+            let visibility = self.spatial.section(section.section).context("actual restore section missing")?.visibility();
+            let target = spatial.get_or_create_section(section.section, |_| visibility);
+            for old_handle in &section.entities {
+                let actual = self.records.get(&old_handle.id).expect("validated actual restored entity");
+                target.add(actual.handle, |class, handle| is_instance(&self.records, class, handle));
+            }
+        }
+        let registrations = order.registrations.iter().map(|entry|
+            self.records.get(&entry.handle.id).expect("validated actual restored registration").handle).collect();
+        let expected = self.records.values().map(|entry| entry.handle).collect();
+        Ok(PreparedPersistentEntityIndexOrder { spatial, registrations, expected })
+    }
+    pub(crate) fn apply_persistent_order(&mut self, prepared: PreparedPersistentEntityIndexOrder) -> Result<()> {
+        ensure!(self.records.values().map(|entry| entry.handle).collect::<Vec<_>>() == prepared.expected,
+            "actual entity cohort changed after order preparation");
+        self.spatial = prepared.spatial;
+        self.registration_order = prepared.registrations;
+        Ok(())
     }
     /// Call synchronously at each setPosRaw/onMove boundary, including a later
     /// rollback. Same-section motion retains its ClassInstanceMultiMap order.
