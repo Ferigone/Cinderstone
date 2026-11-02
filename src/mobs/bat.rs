@@ -486,7 +486,7 @@ pub fn hurt<H: BatHost>(host: &mut H, source: &H::Source, amount: f32) -> Result
     host.inherited_hurt(source, amount)
 }
 
-pub(super) fn java_floor(value: f64) -> i32 {
+pub(crate) fn java_floor(value: f64) -> i32 {
     let narrowed = value as i32;
     if value < f64::from(narrowed) {
         narrowed.wrapping_sub(1)
@@ -517,7 +517,7 @@ pub(super) fn steering_velocity(velocity: Vector, offset: Vector) -> Vector {
         velocity[2] + (java_signum(offset[2]) * 0.5 - velocity[2]) * 0.10000000149011612,
     ]
 }
-pub(super) fn wrap_degrees(value: f32) -> f32 {
+pub(crate) fn wrap_degrees(value: f32) -> f32 {
     let mut wrapped = value % 360.0_f32;
     if wrapped >= 180.0 {
         wrapped -= 360.0;
@@ -532,7 +532,7 @@ pub(super) fn wrap_degrees(value: f32) -> f32 {
 /// These are not platform atan2/sqrt approximations. The table bits below were
 /// read from unchanged original ayo's 257-entry asin/cos arrays under JDK21;
 /// MobMathProbe in external scratch records that source observation separately.
-pub(super) fn mth_atan2(mut y: f64, mut x: f64) -> f64 {
+pub(crate) fn mth_atan2(mut y: f64, mut x: f64) -> f64 {
     let squared_length = x * x + y * y;
     if squared_length.is_nan() {
         return f64::NAN;

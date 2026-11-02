@@ -5,7 +5,8 @@
 //! effect, registry, criterion or sound/RNG owner.
 
 use super::beacon_effects::{
-    activate_staged, apply_effects_staged, BeaconEffectsHost, BeaconSound,
+    activate_live, activate_staged, apply_effects_live, apply_effects_staged, BeaconEffectsHost,
+    BeaconSound,
 };
 use anyhow::{ensure, Result};
 
@@ -102,7 +103,12 @@ pub enum BeaconAction {
     LoadEffectFields,
 }
 
-/// Mandatory transaction over the actual BE and every owner a callback touches.
+/// Transaction for an explicitly proven RESTRICTED staged domain only.
+///
+/// Arbitrary live actor/effect graphs, source callbacks, constructor acquisition
+/// and rewards do not become detachable merely by implementing this trait. A
+/// live-only owner may honestly reject `require_actual_stage` and need not
+/// implement this transaction trait; it uses `BeaconLiveOwner` instead.
 ///
 /// `begin_stage` must detach all mutable state: BE, Level/tag/registry context,
 /// living effects, criterion rewards, threadSafeRandom and ordered outbox. A
@@ -122,6 +128,25 @@ pub trait BeaconTransactionHost: BeaconFields + Sized {
     fn publish_stage(&mut self, staged: Self, action: BeaconAction) -> Result<()>;
 }
 
+/// Owner-certified access to the actual retained BE and original call context.
+///
+/// The actual arena/owner retains the SAME canonical BE through this call,
+/// including removal, replacement at its position and reentrant mutations.
+/// Source field accesses keep using that retained object; they must not resolve
+/// a current BE index, reused ID or replacement at the same block position.
+/// The original tick Level and BlockPos argument leases are also retained:
+/// reattaching the BE to another Level must not redirect queries or callbacks.
+///
+/// This is an actual owner capability, not a caller Boolean or kernel-created
+/// counter. Rechecking it validates that retained capability, not a mutable
+/// version: the call's own mutations, reentry or removal do not make it stale.
+/// Admission validates required real world/tag/registry/effect/criterion/sound
+/// owners before mutation. There is no staged clone, rollback, deferred replay,
+/// global factory rewind or automatic retry after a source prefix executes.
+pub trait BeaconLiveOwner: BeaconFields {
+    fn require_actual_live(&self, action: BeaconAction) -> Result<()>;
+}
+
 /// Real contextual world queries, in the source's short-circuit order.
 ///
 /// `BlockState` is the actual state observed at the queried position. The beam
@@ -134,6 +159,9 @@ pub trait BeaconTransactionHost: BeaconFields + Sized {
 /// extent does not overflow Java int coordinates. Arbitrary i32-endpoint tuples
 /// outside that native world domain are unsupported; offset iteration below is
 /// equivalent to source endpoint loops within the admitted coordinate domain.
+/// Queries are certified read-only/nonreentrant. Arbitrary custom query reentry
+/// that mutates beam lists requires a retained current-section owner and is not
+/// claimed by this Vec representation.
 pub trait BeaconTickHost: BeaconTransactionHost + BeaconEffectsHost {
     type BlockState;
 
@@ -145,8 +173,30 @@ pub trait BeaconTickHost: BeaconTransactionHost + BeaconEffectsHost {
     fn is_beacon_base(&self, state: &Self::BlockState) -> Result<bool>;
 }
 
-/// Execute one admitted SERVER tick against detached actual owners. No scan,
-/// effect, RNG, criterion or packet is published if staging/preparation fails.
+/// Live queries of the retained BE's ORIGINAL tick Level/BlockPos context.
+///
+/// The state/interface/light/tag query contracts and admitted coordinates are
+/// the same as `BeaconTickHost`, but no transaction implementation is required.
+/// Queries must be actual read-only, nonreentrant source world observations.
+/// Java retains a current beam-section object local while scanning; this Vec
+/// kernel does not claim arbitrary custom query callbacks that mutate/reenter
+/// its beam lists. Effect, sound and criterion callbacks may reenter and mutate
+/// the actual retained owners at their source phases.
+pub trait BeaconLiveTickHost: BeaconLiveOwner + BeaconEffectsHost {
+    type BlockState;
+
+    fn world_surface_height(&mut self, x: i32, z: i32) -> Result<i32>;
+    fn block_state(&mut self, position: (i32, i32, i32)) -> Result<Self::BlockState>;
+    fn beam_color(&self, state: &Self::BlockState) -> Result<Option<u32>>;
+    fn light_block(&mut self, state: &Self::BlockState, position: (i32, i32, i32)) -> Result<i32>;
+    fn is_bedrock(&self, state: &Self::BlockState) -> Result<bool>;
+    fn is_beacon_base(&self, state: &Self::BlockState) -> Result<bool>;
+}
+
+/// Execute a SERVER tick ONLY in an explicitly proven restricted staged domain.
+/// That owner must actually support detachment and atomic publication of every
+/// reached mutation/callback. Ordinary live effects, RNG, rewards or reentry are
+/// not made rollbackable by Result; use `tick_live` for live source semantics.
 /// This entry does not register a ticker, attach a Level, mark dirty or save.
 pub fn tick<H: BeaconTickHost>(host: &mut H) -> Result<()> {
     ensure!(
@@ -159,11 +209,130 @@ pub fn tick<H: BeaconTickHost>(host: &mut H) -> Result<()> {
         !staged.is_client_side(),
         "beacon staged tick changed actual Level side"
     );
-    tick_staged(&mut staged)?;
+    tick_source::<H, StagedTickAccess>(&mut staged)?;
     host.publish_stage(staged, BeaconAction::Tick)
 }
 
-fn tick_staged<H: BeaconTickHost>(host: &mut H) -> Result<()> {
+/// Execute one live SERVER tick on the SAME canonical retained BE. Admission
+/// precedes mutation. A later error keeps ALL completed source mutations and
+/// callbacks; callers must not roll back, replay the call or automatically retry.
+/// No begin/publish stage, host clone, packet batch or replacement BE is made.
+pub fn tick_live<H: BeaconLiveTickHost>(host: &mut H) -> Result<()> {
+    host.require_actual_live(BeaconAction::Tick)?;
+    ensure!(
+        !host.is_client_side(),
+        "beacon live server tick requires an actual server Level"
+    );
+    tick_source::<H, LiveTickAccess>(host)
+}
+
+// Static dispatch adapters share one source algorithm without forwarding the
+// complete field/owner host or forcing a live owner to implement transactions.
+trait TickAccess<H: BeaconFields> {
+    type BlockState;
+    fn world_surface_height(host: &mut H, x: i32, z: i32) -> Result<i32>;
+    fn block_state(host: &mut H, position: (i32, i32, i32)) -> Result<Self::BlockState>;
+    fn beam_color(host: &H, state: &Self::BlockState) -> Result<Option<u32>>;
+    fn light_block(
+        host: &mut H,
+        state: &Self::BlockState,
+        position: (i32, i32, i32),
+    ) -> Result<i32>;
+    fn is_bedrock(host: &H, state: &Self::BlockState) -> Result<bool>;
+    fn is_beacon_base(host: &H, state: &Self::BlockState) -> Result<bool>;
+    fn apply_effects(
+        host: &mut H,
+        levels: i32,
+        primary: Option<&H::Effect>,
+        secondary: Option<&H::Effect>,
+    ) -> Result<()>;
+    fn play_sound(host: &mut H, sound: BeaconSound) -> Result<()>;
+    fn activate(host: &mut H) -> Result<()>;
+}
+
+struct StagedTickAccess;
+impl<H: BeaconTickHost> TickAccess<H> for StagedTickAccess {
+    type BlockState = H::BlockState;
+    fn world_surface_height(host: &mut H, x: i32, z: i32) -> Result<i32> {
+        host.world_surface_height(x, z)
+    }
+    fn block_state(host: &mut H, position: (i32, i32, i32)) -> Result<Self::BlockState> {
+        host.block_state(position)
+    }
+    fn beam_color(host: &H, state: &Self::BlockState) -> Result<Option<u32>> {
+        host.beam_color(state)
+    }
+    fn light_block(
+        host: &mut H,
+        state: &Self::BlockState,
+        position: (i32, i32, i32),
+    ) -> Result<i32> {
+        host.light_block(state, position)
+    }
+    fn is_bedrock(host: &H, state: &Self::BlockState) -> Result<bool> {
+        host.is_bedrock(state)
+    }
+    fn is_beacon_base(host: &H, state: &Self::BlockState) -> Result<bool> {
+        host.is_beacon_base(state)
+    }
+    fn apply_effects(
+        host: &mut H,
+        levels: i32,
+        primary: Option<&H::Effect>,
+        secondary: Option<&H::Effect>,
+    ) -> Result<()> {
+        apply_effects_staged(host, levels, primary, secondary)
+    }
+    fn play_sound(host: &mut H, sound: BeaconSound) -> Result<()> {
+        host.play_sound(sound)
+    }
+    fn activate(host: &mut H) -> Result<()> {
+        activate_staged(host)
+    }
+}
+
+struct LiveTickAccess;
+impl<H: BeaconLiveTickHost> TickAccess<H> for LiveTickAccess {
+    type BlockState = H::BlockState;
+    fn world_surface_height(host: &mut H, x: i32, z: i32) -> Result<i32> {
+        host.world_surface_height(x, z)
+    }
+    fn block_state(host: &mut H, position: (i32, i32, i32)) -> Result<Self::BlockState> {
+        host.block_state(position)
+    }
+    fn beam_color(host: &H, state: &Self::BlockState) -> Result<Option<u32>> {
+        host.beam_color(state)
+    }
+    fn light_block(
+        host: &mut H,
+        state: &Self::BlockState,
+        position: (i32, i32, i32),
+    ) -> Result<i32> {
+        host.light_block(state, position)
+    }
+    fn is_bedrock(host: &H, state: &Self::BlockState) -> Result<bool> {
+        host.is_bedrock(state)
+    }
+    fn is_beacon_base(host: &H, state: &Self::BlockState) -> Result<bool> {
+        host.is_beacon_base(state)
+    }
+    fn apply_effects(
+        host: &mut H,
+        levels: i32,
+        primary: Option<&H::Effect>,
+        secondary: Option<&H::Effect>,
+    ) -> Result<()> {
+        apply_effects_live(host, levels, primary, secondary)
+    }
+    fn play_sound(host: &mut H, sound: BeaconSound) -> Result<()> {
+        host.play_sound(sound)
+    }
+    fn activate(host: &mut H) -> Result<()> {
+        activate_live(host)
+    }
+}
+
+fn tick_source<H: BeaconFields, A: TickAccess<H>>(host: &mut H) -> Result<()> {
     let (x, y, z) = host.position();
     let mut scan_y = if host.scan().last_check_y < y {
         let scan = host.scan_mut();
@@ -173,15 +342,15 @@ fn tick_staged<H: BeaconTickHost>(host: &mut H) -> Result<()> {
     } else {
         host.scan().last_check_y.wrapping_add(1)
     };
-    let surface_y = host.world_surface_height(x, z)?;
+    let surface_y = A::world_surface_height(host, x, z)?;
 
     for _ in 0..10 {
         if scan_y > surface_y {
             break;
         }
         let position = (x, scan_y, z);
-        let block = host.block_state(position)?;
-        if let Some(color) = host.beam_color(&block)? {
+        let block = A::block_state(host, position)?;
+        if let Some(color) = A::beam_color(host, &block)? {
             let scan = host.scan_mut();
             if scan.checking.len() <= 1 {
                 scan.checking.push(BeaconBeamSection { color, height: 1 });
@@ -200,7 +369,7 @@ fn tick_staged<H: BeaconTickHost>(host: &mut H) -> Result<()> {
             // Source does not query contextual opacity with no current section,
             // nor test BEDROCK when the light-block result is already below15.
             let passes = !host.scan().checking.is_empty()
-                && (host.light_block(&block, position)? < 15 || host.is_bedrock(&block)?);
+                && (A::light_block(host, &block, position)? < 15 || A::is_bedrock(host, &block)?);
             let scan = host.scan_mut();
             if !passes {
                 scan.checking.clear();
@@ -219,15 +388,15 @@ fn tick_staged<H: BeaconTickHost>(host: &mut H) -> Result<()> {
     let previous_levels = host.levels();
     if host.game_time() % 80 == 0 {
         if !host.scan().committed.is_empty() {
-            let levels = update_base_staged(host, (x, y, z))?;
+            let levels = update_base_source::<H, A>(host, (x, y, z))?;
             host.set_levels_raw(levels);
         }
         if host.levels() > 0 && !host.scan().committed.is_empty() {
             let levels = host.levels();
             let primary = host.primary().cloned();
             let secondary = host.secondary().cloned();
-            apply_effects_staged(host, levels, primary.as_ref(), secondary.as_ref())?;
-            host.play_sound(BeaconSound::Ambient)?;
+            A::apply_effects(host, levels, primary.as_ref(), secondary.as_ref())?;
+            A::play_sound(host, BeaconSound::Ambient)?;
         }
     }
 
@@ -242,15 +411,18 @@ fn tick_staged<H: BeaconTickHost>(host: &mut H) -> Result<()> {
         let was_active = previous_levels > 0;
         let is_active = host.levels() > 0;
         if !was_active && is_active {
-            activate_staged(host)?;
+            A::activate(host)?;
         } else if was_active && !is_active {
-            host.play_sound(BeaconSound::Deactivate)?;
+            A::play_sound(host, BeaconSound::Deactivate)?;
         }
     }
     Ok(())
 }
 
-fn update_base_staged<H: BeaconTickHost>(host: &mut H, (x, y, z): (i32, i32, i32)) -> Result<i32> {
+fn update_base_source<H: BeaconFields, A: TickAccess<H>>(
+    host: &mut H,
+    (x, y, z): (i32, i32, i32),
+) -> Result<i32> {
     let mut levels = 0;
     for layer in 1_i32..=4 {
         let below_y = y.wrapping_sub(layer);
@@ -259,12 +431,11 @@ fn update_base_staged<H: BeaconTickHost>(host: &mut H, (x, y, z): (i32, i32, i32
         }
         for offset_x in -layer..=layer {
             for offset_z in -layer..=layer {
-                let block = host.block_state((
-                    x.wrapping_add(offset_x),
-                    below_y,
-                    z.wrapping_add(offset_z),
-                ))?;
-                if !host.is_beacon_base(&block)? {
+                let block = A::block_state(
+                    host,
+                    (x.wrapping_add(offset_x), below_y, z.wrapping_add(offset_z)),
+                )?;
+                if !A::is_beacon_base(host, &block)? {
                     return Ok(levels);
                 }
             }
@@ -612,6 +783,331 @@ mod tests {
             )
         );
         assert_eq!(average_argb(0xff00_0001, 0x8000_01ff), 0xbf00_0080);
+        Ok(())
+    }
+
+    struct LiveBe {
+        scan: BeaconScanState,
+        levels: i32,
+        primary: Option<Arc<u8>>,
+        secondary: Option<Arc<u8>>,
+        removed: bool,
+        attached_level: usize,
+    }
+
+    impl LiveBe {
+        fn new(attached_level: usize) -> Self {
+            Self {
+                scan: BeaconScanState::default(),
+                levels: 0,
+                primary: None,
+                secondary: None,
+                removed: false,
+                attached_level,
+            }
+        }
+    }
+
+    struct LiveLevel {
+        time: i64,
+        height: i32,
+    }
+
+    struct BeLease {
+        slot: usize,
+        address: *const LiveBe,
+    }
+
+    #[derive(Debug, PartialEq, Eq)]
+    struct LiveSoundObservation {
+        sound: BeaconSound,
+        levels: i32,
+        published_sections: usize,
+        removed: bool,
+        current_slot: usize,
+        dimension_height: i32,
+    }
+
+    // Controlled canonical fixture arena: actual boxes retain their identity
+    // while its current-position index changes. This is deliberately non-Clone
+    // and has NO BeaconTransactionHost/BeaconTickHost implementation. It tests
+    // bridge ownership/error semantics, not a production BE/Level/sound owner.
+    // No living actor, sound RNG, packet or criterion success is fabricated.
+    struct LiveHost {
+        arena: Vec<Box<LiveBe>>,
+        retained: BeLease,
+        current_slot: usize,
+        level_arena: Vec<Box<LiveLevel>>,
+        captured_level: *const LiveLevel,
+        observations: Vec<LiveSoundObservation>,
+    }
+
+    impl LiveHost {
+        fn fixture() -> Self {
+            let mut be = Box::new(LiveBe::new(0));
+            be.scan.after_set_level(0);
+            be.scan.committed = vec![
+                BeaconBeamSection {
+                    color: 0xffff_ffff,
+                    height: 1,
+                },
+                BeaconBeamSection {
+                    color: 0xffff_0000,
+                    height: 1,
+                },
+                BeaconBeamSection {
+                    color: 0xff7f_007f,
+                    height: 1,
+                },
+            ];
+            let retained = BeLease {
+                slot: 0,
+                address: be.as_ref(),
+            };
+            let level = Box::new(LiveLevel {
+                time: 80,
+                height: 64,
+            });
+            let captured_level = level.as_ref() as *const LiveLevel;
+            Self {
+                arena: vec![be],
+                retained,
+                current_slot: 0,
+                level_arena: vec![
+                    level,
+                    Box::new(LiveLevel {
+                        time: 1,
+                        height: 16,
+                    }),
+                ],
+                captured_level,
+                observations: Vec::new(),
+            }
+        }
+
+        fn retained_be(&self) -> &LiveBe {
+            &self.arena[self.retained.slot]
+        }
+        fn retained_be_mut(&mut self) -> &mut LiveBe {
+            &mut self.arena[self.retained.slot]
+        }
+        fn original_level(&self) -> &LiveLevel {
+            &self.level_arena[0]
+        }
+    }
+
+    impl BeaconFields for LiveHost {
+        type Effect = Arc<u8>;
+
+        fn require_actual_stage(&self, _action: BeaconAction) -> Result<()> {
+            anyhow::bail!("controlled live owner has no detached-stage capability")
+        }
+        fn position(&self) -> (i32, i32, i32) {
+            (0, 10, 0)
+        }
+        fn is_client_side(&self) -> bool {
+            false
+        }
+        fn game_time(&self) -> i64 {
+            self.original_level().time
+        }
+        fn min_build_height(&self) -> i32 {
+            0
+        }
+        fn dimension_height(&self) -> i32 {
+            self.original_level().height
+        }
+        fn scan(&self) -> &BeaconScanState {
+            &self.retained_be().scan
+        }
+        fn scan_mut(&mut self) -> &mut BeaconScanState {
+            &mut self.retained_be_mut().scan
+        }
+        fn levels(&self) -> i32 {
+            self.retained_be().levels
+        }
+        fn set_levels_raw(&mut self, levels: i32) {
+            self.retained_be_mut().levels = levels;
+        }
+        fn primary(&self) -> Option<&Self::Effect> {
+            self.retained_be().primary.as_ref()
+        }
+        fn secondary(&self) -> Option<&Self::Effect> {
+            self.retained_be().secondary.as_ref()
+        }
+        fn set_primary_raw(&mut self, effect: Option<Self::Effect>) {
+            self.retained_be_mut().primary = effect;
+        }
+        fn set_secondary_raw(&mut self, effect: Option<Self::Effect>) {
+            self.retained_be_mut().secondary = effect;
+        }
+        fn same_effect_holder(&self, left: &Self::Effect, right: &Self::Effect) -> Result<bool> {
+            Ok(Arc::ptr_eq(left, right))
+        }
+    }
+
+    impl BeaconLiveOwner for LiveHost {
+        fn require_actual_live(&self, action: BeaconAction) -> Result<()> {
+            ensure!(action == BeaconAction::Tick, "fixture only admits Tick");
+            ensure!(
+                std::ptr::eq(self.retained_be(), self.retained.address),
+                "retained fixture BE lease lost"
+            );
+            ensure!(
+                std::ptr::eq(self.original_level(), self.captured_level),
+                "original fixture Level lease lost"
+            );
+            // Deliberately no current_slot, removed, attached_level or mutable
+            // revision check: none can redirect/invalidate this retained call.
+            Ok(())
+        }
+    }
+
+    impl BeaconSoundHost for LiveHost {
+        fn play_sound(&mut self, sound: BeaconSound) -> Result<()> {
+            self.observations.push(LiveSoundObservation {
+                sound,
+                levels: self.levels(),
+                published_sections: self.scan().committed_sections().len(),
+                removed: self.retained_be().removed,
+                current_slot: self.current_slot,
+                dimension_height: self.dimension_height(),
+            });
+            match sound {
+                BeaconSound::Ambient => {
+                    // Controlled reentrant removal/replacement of the current
+                    // arena index, and reattachment of the retained BE. Its Box
+                    // stays canonical and alive for the rest of this call.
+                    let retained = self.retained_be_mut();
+                    retained.removed = true;
+                    retained.attached_level = 1;
+                    retained.levels = 2;
+                    self.arena.push(Box::new(LiveBe::new(1)));
+                    self.current_slot = self.arena.len() - 1;
+                    Ok(())
+                }
+                BeaconSound::Activate => {
+                    anyhow::bail!("injected live failure at activation callback")
+                }
+                _ => anyhow::bail!("unexpected controlled sound callback"),
+            }
+        }
+    }
+
+    enum NoFixtureActor {}
+    impl BeaconEffectsHost for LiveHost {
+        type Player = NoFixtureActor;
+        type ServerPlayer = NoFixtureActor;
+        fn players_in_effect_box(&mut self, _bounds: Aabb) -> Result<Vec<Self::Player>> {
+            anyhow::bail!("controlled fixture must not query actors")
+        }
+        fn server_players_in_activation_box(
+            &mut self,
+            _bounds: Aabb,
+        ) -> Result<Vec<Self::ServerPlayer>> {
+            anyhow::bail!("controlled failure precedes actor query")
+        }
+        fn add_beacon_effect(
+            &mut self,
+            _player: &Self::Player,
+            _application: BeaconEffectApplication<'_, Self::Effect>,
+        ) -> Result<()> {
+            anyhow::bail!("controlled fixture must not apply effects")
+        }
+        fn trigger_construct_beacon(
+            &mut self,
+            _player: &Self::ServerPlayer,
+            _levels: i32,
+        ) -> Result<()> {
+            anyhow::bail!("controlled fixture must not trigger criteria")
+        }
+    }
+
+    impl BeaconLiveTickHost for LiveHost {
+        type BlockState = Block;
+        fn world_surface_height(&mut self, x: i32, z: i32) -> Result<i32> {
+            ensure!((x, z) == (0, 0), "fixture column unavailable");
+            Ok(10)
+        }
+        fn block_state(&mut self, position: (i32, i32, i32)) -> Result<Block> {
+            Ok(if position == (0, 10, 0) {
+                Block::Beam(0xffff_ffff)
+            } else if position.1 == 9 && position.0.abs() <= 1 && position.2.abs() <= 1 {
+                Block::Base
+            } else {
+                Block::Air
+            })
+        }
+        fn beam_color(&self, state: &Block) -> Result<Option<u32>> {
+            Ok(match state {
+                Block::Beam(color) => Some(*color),
+                _ => None,
+            })
+        }
+        fn light_block(&mut self, state: &Block, _position: (i32, i32, i32)) -> Result<i32> {
+            Ok(if matches!(state, Block::Opaque | Block::Base) {
+                15
+            } else {
+                0
+            })
+        }
+        fn is_bedrock(&self, _state: &Block) -> Result<bool> {
+            Ok(false)
+        }
+        fn is_beacon_base(&self, state: &Block) -> Result<bool> {
+            Ok(matches!(state, Block::Base))
+        }
+    }
+
+    #[test]
+    fn live_only_retained_owner_continues_after_replacement_and_keeps_failure_prefix() -> Result<()>
+    {
+        let mut host = LiveHost::fixture();
+        assert!(host.require_actual_stage(BeaconAction::Tick).is_err());
+        let error = tick_live(&mut host).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("injected live failure at activation"));
+        assert_eq!(
+            host.observations,
+            vec![
+                LiveSoundObservation {
+                    sound: BeaconSound::Ambient,
+                    levels: 1,
+                    published_sections: 3,
+                    removed: false,
+                    current_slot: 0,
+                    dimension_height: 64,
+                },
+                LiveSoundObservation {
+                    sound: BeaconSound::Activate,
+                    levels: 2,
+                    published_sections: 1,
+                    removed: true,
+                    current_slot: 1,
+                    dimension_height: 64,
+                },
+            ]
+        );
+        // Prefix remains on the original retained object and original context;
+        // the replacement at the same position stays untouched. No retry occurs.
+        host.require_actual_live(BeaconAction::Tick)?;
+        assert!(host.retained_be().removed);
+        assert_eq!(host.retained_be().attached_level, 1);
+        assert_eq!(host.retained_be().levels, 2);
+        assert_eq!(host.retained_be().scan.last_check_y(), -1);
+        assert_eq!(
+            host.retained_be().scan.committed_sections(),
+            &[BeaconBeamSection {
+                color: 0xffff_ffff,
+                height: 1
+            },]
+        );
+        assert_eq!(host.current_slot, 1);
+        assert_eq!(host.arena[1].levels, 0);
+        assert!(host.arena[1].scan.committed_sections().is_empty());
+        assert_eq!(host.dimension_height(), 64);
+        assert_eq!(host.level_arena[1].height, 16);
         Ok(())
     }
 }

@@ -64,6 +64,9 @@ this is not a full behavioral-compatibility or performance claim.
 - [x] Shared BLOCK scheduling, including fire and supported container/redstone ticks.
 - [x] Supported random ticks for grass/mycelium, farmland moisture and crop growth.
 - [x] Native world/player/item checkpoint and restart owners.
+- [x] Bounded native Anvil and ordinary sand/red_sand/gravel falling through actual constructor, scheduler, physics and tracker owners; actual ordinary falls and WATER landing are recorded in [source/runtime evidence](reference/ordinary-falling-runtime.md).
+- [x] Single airborne native Falling checkpoint/hidden readiness/PLAY resume with retained body, UUID and RNG and one actual landing; [exact scope](reference/falling-midflight-local-keys.md).
+- [ ] Complete special falling classes, active fire/redstone/block-entity neighborhoods, survival victims and Java entity/chunk-save interoperability.
 - [ ] Complete entity and chunk unload/reload lifecycle.
 - [ ] Complete all world phases, dimensions and saved-data owners.
 - [ ] Support the remaining block callbacks and runtime block entities.
@@ -125,6 +128,7 @@ core logic; `player_motion.3` and `survival_combat.2` remain incomplete.
       passed for the recorded source and binary.
 - [x] Retention of the window0 cursor/grid across external menu
       opening and window0-before-external removal during disconnect cleanup.
+- [x] Bounded source save-before-menu-removal with persistent-only inventory projection, real leave_game and once-only cleanup ownership; [observed conservation and remaining runtime limits](reference/ordinary-falling-runtime.md).
 - [x] Verify the shared menu-close stage's optimized hosted release and native
       offline startup, with one instance and the existing persistent volume.
 - [x] Bounded creative removal of a closed single dry chest or

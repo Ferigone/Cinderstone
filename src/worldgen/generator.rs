@@ -1,12 +1,13 @@
 //! NoiseBasedChunkGenerator material composition and retained staged terrain.
 //!
 //! The initial supported boundary is an actually empty new ProtoChunk with
-//! empty Blender and structure beardifier. Those are caller-owned facts, not
-//! defaults. Paired staged adapters retain actual BIOMES and AIR carver data;
+//! observed-empty or actual retained Blender and empty structure beardifier.
+//! Those are caller-owned facts, not defaults. Paired staged adapters retain actual BIOMES and AIR carver data;
 //! feature placement, scheduling and FULL publication remain external.
 use super::{
     aquifer::{Aquifer, AquiferBlock, AquiferContext, AquiferNoise, FluidStatus},
     biome_temperature::BiomeTemperature,
+    blending::Blender,
     carver::{
         self, AirCarvingContext, CarverHost, CarvingMask, CarvingReport, CarvingTargetHost,
         RawBiomeManager,
@@ -54,6 +55,27 @@ impl FreshGenerationContext {
             self.blender == GenerationInfluence::ObservedEmpty,
             "nonempty or unavailable Blender context is unsupported"
         );
+        ensure!(
+            self.structure_beardifier == GenerationInfluence::ObservedEmpty,
+            "nonempty or unavailable structure-beardifier context is unsupported"
+        );
+        Ok(())
+    }
+}
+
+/// Actual calculated old-generation Blender for an observed new target chunk.
+/// Existing target blocks/retrogen and structures remain separate unsupported
+/// contexts; an unavailable Blender cannot be replaced by this owner.
+#[derive(Debug, Clone)]
+pub struct BlendedGenerationContext {
+    pub initial_blocks: GenerationInfluence,
+    pub structure_beardifier: GenerationInfluence,
+    pub blender: Arc<Blender>,
+}
+impl BlendedGenerationContext {
+    fn validate(&self) -> Result<()> {
+        ensure!(self.initial_blocks == GenerationInfluence::ObservedEmpty,
+            "NOISE requires an actually empty new ProtoChunk; existing/unknown blocks are unsupported");
         ensure!(
             self.structure_beardifier == GenerationInfluence::ObservedEmpty,
             "nonempty or unavailable structure-beardifier context is unsupported"
@@ -213,6 +235,84 @@ impl NoiseGenerator {
         })
     }
 
+    /// Prepare the same retained job with the actual old-generation Blender.
+    pub fn prepare_chunk_with_blender(
+        self: &Arc<Self>,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: BlendedGenerationContext,
+    ) -> Result<PreparedGeneration> {
+        let (noise, aquifer) =
+            self.begin_noise_with_blender(chunk_x, chunk_z, level_min_y, level_height, context)?;
+        Ok(PreparedGeneration {
+            generator: Arc::clone(self),
+            noise: noise.into_retained(),
+            aquifer,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+        })
+    }
+
+    /// Source no-cell early return also precedes dependency observation checks
+    /// on this entry. No terrain, retained Blender or status is returned then.
+    pub fn fill_from_noise_with_blender(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: BlendedGenerationContext,
+    ) -> Result<NoiseFillOutcome<'_>> {
+        let level_max_y = validate_level_height(level_min_y, level_height)?;
+        let settings = self.graph.grid().context("missing noise settings")?;
+        let min_y = settings.min_y.max(level_min_y);
+        let height = (settings.min_y + settings.height).min(level_max_y) - min_y;
+        let cell_count_y = height.div_euclid(settings.cell_height);
+        if cell_count_y <= 0 {
+            return Ok(NoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            });
+        }
+        self.fill_noise_with_blender(chunk_x, chunk_z, level_min_y, level_height, context)
+            .map(NoiseFillOutcome::Generated)
+    }
+
+    pub fn fill_from_noise_owned_with_blender(
+        self: &Arc<Self>,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: BlendedGenerationContext,
+    ) -> Result<OwnedNoiseFillOutcome> {
+        match self.fill_from_noise_with_blender(
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            context,
+        )? {
+            NoiseFillOutcome::Generated(terrain) => self
+                .retain_terrain(terrain)
+                .map(OwnedNoiseFillOutcome::Generated),
+            NoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            } => Ok(OwnedNoiseFillOutcome::NoCells {
+                min_y,
+                height,
+                cell_count_y,
+            }),
+        }
+    }
+
     /// Mirror fillFromNoise's early no-cell return without inventing a terrain
     /// image. Clamping and the floor division happen before querying Blender,
     /// structures or block contents. A skipped result leaves the caller's
@@ -337,6 +437,35 @@ impl NoiseGenerator {
         })
     }
 
+    pub fn fill_noise_with_blender(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: BlendedGenerationContext,
+    ) -> Result<NoiseTerrain<'_>> {
+        let (mut noise, mut aquifer) =
+            self.begin_noise_with_blender(chunk_x, chunk_z, level_min_y, level_height, context)?;
+        let image = self.fill_noise_image(
+            &mut noise,
+            aquifer.as_mut(),
+            (chunk_x, chunk_z),
+            (level_min_y, level_height),
+        )?;
+        Ok(NoiseTerrain {
+            noise,
+            aquifer,
+            graph: &self.graph,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            image,
+            stage: TerrainStage::Noise,
+        })
+    }
+
     fn begin_noise(
         &self,
         chunk_x: i32,
@@ -344,6 +473,28 @@ impl NoiseGenerator {
         level_min_y: i32,
         level_height: i32,
         context: FreshGenerationContext,
+    ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
+        context.validate()?;
+        self.begin_noise_with_blender(
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            BlendedGenerationContext {
+                initial_blocks: context.initial_blocks,
+                structure_beardifier: context.structure_beardifier,
+                blender: Blender::empty(),
+            },
+        )
+    }
+
+    fn begin_noise_with_blender(
+        &self,
+        chunk_x: i32,
+        chunk_z: i32,
+        level_min_y: i32,
+        level_height: i32,
+        context: BlendedGenerationContext,
     ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
         context.validate()?;
         validate_level_height(level_min_y, level_height)?;
@@ -354,7 +505,14 @@ impl NoiseGenerator {
                 && (-33_554_384..=33_554_383).contains(&origin_z),
             "chunk lies outside representable generation BlockPos range"
         );
-        let noise = NoiseChunk::new(&self.graph, chunk_x, chunk_z, level_min_y, level_height)?;
+        let noise = NoiseChunk::new_with_blender(
+            &self.graph,
+            chunk_x,
+            chunk_z,
+            level_min_y,
+            level_height,
+            context.blender,
+        )?;
         let grid = noise.grid();
         let aquifer = if self.aquifers_enabled {
             Aquifer::noise_based(
@@ -638,6 +796,11 @@ pub struct PreparedGeneration {
     level_height: i32,
 }
 impl PreparedGeneration {
+    /// Clone only the actual retained Blender handle, without rebuilding data,
+    /// noise, aquifer, interpolation or resolver history.
+    pub fn blender(&self) -> Result<Arc<Blender>> {
+        self.noise.blender_for(self.generator.graph())
+    }
     pub fn chunk(&self) -> (i32, i32) {
         (self.chunk_x, self.chunk_z)
     }

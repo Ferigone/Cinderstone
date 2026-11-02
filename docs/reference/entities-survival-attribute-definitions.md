@@ -1,0 +1,41 @@
+# Native Attribute/RangedAttribute value owner — 2026-11-02
+
+Claim issue4 comment6566884842; branch teams/entities-survival/es-20261101-1425-a7c3/attribute-owners; base96b4bad622155e2891d9d8a249f8e233721d34c8. Worktree `/workspace/cinderstone-attribute-owners-es-20261101-1425-a7c3`. ONLY repository file edited by effects_lifecycle: NEW `src/effects/definitions.rs`. Root owns exports/docs/Git/full Cargo/Main; tracking_persistence owns companion supplier.rs. No source/shared/Git/Cargo mutations outside the one assigned file.
+
+READY formatted source SHA256 `2af4383c2065bb4fe3736c66c934ec29b2cbaa8e1fc8f52c44a5c45eba0314e5`.
+
+## Native types/API
+
+- `AttributeValue` is the actual raw source value, separate from registration. Owns raw default, lossless nullable JavaString description, source range bounds for Ranged variant, and one shared mutable sync/sentiment owner. It deliberately has no Clone or value-equality implementation. Actual source identity is retained by Arc, not by copying fields or creating per-actor definitions.
+- `AttributeValue::new`/`with_nullable_description`: base Attribute constructor, raw default/no numeric validation, sync=false, sentiment=Positive. `ranged`/`ranged_with_nullable_description` retain raw bounds/default and perform exact source validation order. `RangeError` carries exact original IllegalArgumentException message alternatives.
+- Getter bodies: default_value, description_id, bounds/min/max, is_client_syncable, sentiment, style. Mutation bodies set_syncable/set_sentiment/set_nullable_sentiment mutate the SAME actual value and return that receiver. Nullable sentiment is accepted by source setter; subsequent style returns typed NullSentiment (source NPE boundary), not a fallback color or setter preflight error.
+- Sentiment::style returns the actual ChatFormatting Blue/Gray/Red alternatives for Positive/Neutral/Negative and source positive argument.
+- sanitize_value: base identity; Ranged input NaN→raw min, else exact Mth.clamp double comparison+Java Math.min, preserving zero/NaN-bound/infinity behavior. It never modifies raw base/default/persisted amount.
+- `RegisteredAttributeOwner` must resolve actual already-registered Holder→the same Arc<AttributeValue> and return actual binding/unbound errors. `BoundAttribute<H>::from_registered` is the only binding constructor; it does not accept a caller-supplied potentially mismatched value. `.holder()`/`.value()` retain true canonical handles/pointer. Existing AttributeDefinition<Key=H> and MapAttributeDefinition are implemented by delegating to that shared value. No registry, Holder, ResourceKey, protocol ID, Java identity hash or arena locator is generated.
+- `AttributeSpec` + `BUILTIN_ATTRIBUTE_SPECS[31]` are actual Attributes12–42 registration VALUE data in original global order, with exact descriptions/defaults/ranges/sync/sentiment. create_value constructs a raw Ranged source value only. No registry or holder is instantiated, no implicit bootstrap runs. MAX_HEALTH remains definition20 and FOLLOW_RANGE32; Bat6/Mob16 are later source supplier base overrides, not definition replacements. The table is not a renumbered Bat19 registry.
+
+Mutable source booleans/enum fields use relaxed atomics to permit Rust shared ownership of the same Arc without an unsound data race. This makes no extra source scheduler/volatile/concurrency-order claim; runtime still serializes actual source mutations/callbacks. Changing sync/sentiment does not dirty/recompute instances or remove previously queued Sync entries.
+
+## Exact source evidence
+
+Pinned original1.21 inner jar SHA256 `8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01`; official mappings SHA1 `31c77994d96f05ba25a870ada70f47f315330437`. Direct original javap analysis, not REA MCP or a new original actor probe.
+
+- Attribute `bur`19–24 initializes Positive sentiment, raw default and description (null permitted by constructor); sync field defaultfalse. getDefault27, sync32, setSync36–37 same receiver, setSentiment41–42 same receiver/no null validation, sanitize46 identity, description50, style54 current sentiment virtual enum policy.
+- RangedAttribute `buy`10–23: assign bounds then check min>max first, default<min second, default>max third. Java NaN comparisons do not introduce a rejection. getMin26/getMax30. sanitize35–38: if Double.isNaN(input) return min; else Mth.clamp(input,min,max).
+- Mth `ayo.a(DDD)`: if input<min return min, else Java Math.min(input,max). Do not use Rust f64 min/clamp (NaN suppression or reversed-bound assertions differ).
+- Sentiment `bur$a`64–67: Positive positive→BLUE/negative→RED; Neutral alwaysGRAY; Negative positive→RED/negative→BLUE. Official ChatFormatting (`n`) j=BLUE,h=GRAY,m=RED. Null sentiment dereference occurs at Attribute.getStyle, not setSentiment.
+- Attributes `buw`12–42 original31 registrations, `register`45 real registry/ResourceLocation/registerForHolder; these actual providers are NOT supplied by this value module. Jump strength exact double0.41999998688697815 retained. Burning/fall multipliers negative sentiment; gravity/scale neutral; other source flags preserved.
+
+Source material scratch: `oracle/nov2-attribute-definition.javap`, `nov2-ranged-attribute.javap`, `nov2-attributes-definitions.javap`, `ayo.javap`; Sentiment was inspected directly from original bur$a with `java --module jdk.jdeps/com.sun.tools.javap.Main -c -p -l`. No raw disassembly or Java artifact enters Git. Independent original definitions probe, if root delegates one, is additional evidence and should be reported separately.
+
+## Focused validation
+
+After formatting, stable rustc1.99.1 `--edition=2021 -D warnings --test` compiles actual existing AttributeInstance/AttributeMap/transfer/persistence files and new definitions.rs; actual unmodified nbt.rs is linked from the earlier real-module scratch rlib (current actual source SHA256 a08ff9f1dd2a4379b3b396bb9e3130bb30ab6ef9c2ccffb5ab4dfba18dd65ba6). No placeholder NBT/attribute types or formula stubs. Harness `attribute-definitions-harness.rs`, executable `attribute-definitions-tests` in scratch; relevant existing/new native flows pass. git diff --check clean.
+
+New focused flows use retained controlled holder/value identity + actual native AttributeInstance/AttributeMap listener and cache. They prove two bound definitions and actual instances share SAME value pointer; raw negative base persists while actual range sanitizer computes min; sync flag mutation is visible to both, introduces no cache dirtying itself, changes later native Sync insertion and does not retroactively remove old Sync entries; NaN raw base stays raw while native calculated cache maps to min. Constructor order, NaN defaults/bounds, signedzero/infinite sanitization, all sentiment directions, same receiver returns, allowed null description/sentiment with late style failure, unbound owner error before binding, real later successful bound pointer, exact jump double and raw31 spec construction also checked. No test count is a progress/completion metric.
+
+## Remaining owners / limits
+
+The actual built-in registry registration and freeze phase, canonical Holder.Reference/ResourceKey/Java object/hash/network-ID providers, shared SupplierBuilder/default instances and frozen listeners, actor map/arena/equipment/effects, metadata/tracker packets and Main callsites remain mandatory external owners. This adapter's registered binding is the actual stable built-in ATTRIBUTE binding; it does not model arbitrary registry remapping/rebinding or invent a live registry. JavaString retains its source UTF16 value; general Java String interning/reference equality is not introduced by the repository's value-string type. Actual supplied definitions are base Attribute/RangedAttribute; arbitrary user subclass sanitizer dispatch is not fabricated.
+
+Supplier may remain generic over existing D traits or bind native BoundAttribute<H>. Its actual definition owner must call from_registered only after real binding is valid, preserving raw construction before bind and original error prefix. Every per-actor instance keeps that same AttributeValue object and reads current sync policy. No actual Bat actor, whole entities/effects/survival delivery, packet codec, or Main proof is claimed by this source value milestone.

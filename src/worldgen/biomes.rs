@@ -2,12 +2,14 @@
 //!
 //! Resolver traversal matches ChunkAccess/LevelChunkSection, while storage is
 //! canonical quart Y/Z/X. This module supplies data, never a ChunkStatus or a
-//! completed runtime chunk. Retrogen and nonempty blending remain unsupported.
+//! completed runtime chunk. The prepared owner supplies actual old-generation
+//! blending; present or unavailable target retrogen remains unsupported.
 use super::{
     biome_context::BuiltinBiomeSurfaceContext,
     biome_source::{select_end_biome, BuiltinMultiNoiseBiomeSource},
     biome_temperature::BiomeTemperature,
     biome_zoom::{BiomeZoom, QuartBiomeProvider},
+    blending::BlendedBiomeResolver,
     generator::{OwnedNoiseTerrain, PreparedGeneration},
     surface::SurfaceReport,
 };
@@ -22,8 +24,10 @@ pub enum RetrogenContext {
     Unavailable,
 }
 
-/// The actual resolver is supplied the same mutable prepared sampler for every
-/// query. Missing registry/source/dependency owners must return errors. A fixed
+/// Supply the actual source resolver before Blender/retrogen wrapping; the
+/// staged fill applies its retained Blender itself. The resolver receives the
+/// same mutable prepared sampler for every fallback query. Missing owners must
+/// return errors. A fixed
 /// biome, raw graph or a fresh sampler is not an implicit replacement.
 pub trait BiomeResolver {
     fn get_noise_biome(
@@ -263,7 +267,9 @@ impl PreparedBiomes {
     ) -> Result<Self> {
         ensure!(retrogen == RetrogenContext::ObservedAbsent,
             "BIOMES requires observed absent BelowZeroRetrogen; present or unavailable retrogen is unsupported");
-        let biomes = BiomeImage::fill(&mut prepared, resolver)?;
+        let blender = prepared.blender()?;
+        let mut resolver = BlendedBiomeResolver::new(&blender, resolver);
+        let biomes = BiomeImage::fill(&mut prepared, &mut resolver)?;
         Ok(Self { prepared, biomes })
     }
     pub fn biomes(&self) -> &BiomeImage {
