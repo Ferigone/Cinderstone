@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage and completion (WP-E3 stages 1-4)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion and the command-tree packet (WP-E3 stages 1-5)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-4
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-5
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -88,12 +88,33 @@ Stage 4 (completion suggestions, `src/commands/suggestion.rs`, `java_text.rs`):
   strings compare by code point while a Latin-1 operand makes it compare by UTF-16 unit) and
   `toLowerCase(Locale.ROOT)`.
 
+Stage 5 (`src/commands/tree_packet.rs`, argument type network forms): `encode_commands_packet(tree,
+root)` writes the body of `ClientboundCommandsPacket` (no packet id) for a Brigadier tree.
+- Nodes are numbered by the original's breadth-first walk (children in insertion order, redirect
+  targets queued after them), keyed by `CommandNode.equals`: kind, literal or argument name, the
+  argument type's `equals`, the `Command` **instance** and the children (not the requirement, the
+  redirect or the suggestion provider). Structurally equal nodes therefore share one index and the first
+  one reached supplies the entry. `StringArgumentType` and `BoolArgumentType` keep `Object.equals`
+  (only the same instance is equal); the four numeric types compare their bounds with `==`.
+- An entry is the flags byte (`1` literal, `2` argument, `4` executable, `8` redirect, `16` custom
+  suggestions), the child index array, the redirect index when flagged and the name; an argument adds the
+  `ArgumentTypeInfos` registry id, the serialized template and, when flagged, the suggestion provider's
+  name. Registry ids and templates exist for the six Brigadier types (`bool` 0, `float` 1, `double` 2,
+  `integer` 3, `long` 4, `string` 5; numeric templates are a flag byte for the non-default bounds followed
+  by those bounds, big-endian; `string` is the `StringType` ordinal). An unregistered provider is reported
+  as `minecraft:ask_server`; `ArgumentBuilder::suggests_named` carries a registered name
+  (`all_recipes`, `available_sounds`, `summonable_entities`).
+- A type with no network form (`ArgumentType::network_info` is `None`) is rejected, as the original throws
+  for an unregistered one. The packet carries no permission information: the original builds the tree sent
+  to a player from the nodes that player may use, which stays the caller's job.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
-Minecraft argument types and their serialization (`ArgumentTypeInfos`), selectors,
+Minecraft argument types (entity, game profile, message, coordinates, ... and their `ArgumentTypeInfos`
+templates), selectors,
 `CommandSourceStack`, the command catalog and the migration of the administration commands.
 The wrapping of unchecked exceptions thrown by an argument parser into `command.exception`
 cannot occur in this port (a panic is a bug here, not an input error).
@@ -144,6 +165,19 @@ oracle class (`tools/brigadier_suggest_generate.py`, seed 20261104) with two kin
   `hashCode()` and `apply(command)` are compared too. Deliberately breaking the hash spreading, the
   load-factor resize or the chain resize makes the suite fail.
 
+Stage 5. `fixtures/commands-brigadier-tree-packet-vectors.json` (270 KB, `tools/brigadier_tree_packet_generate.py`,
+`tools/brigadier_tree_packet_oracle.java`, seed 20261105) holds the bytes the dedicated server's own
+`ClientboundCommandsPacket` writes for 160 seeded random trees (every Brigadier argument type, executable
+nodes with shared and distinct `Command` instances, plain redirects, registered and unregistered suggestion
+providers, copies of whole subtrees planted under other nodes). The harness runs against the pinned server
+jar remapped to the official names by `tools/loot_oracle_setup.py` (`server-named.jar` and `cp.txt`, outside
+git) because it needs `Bootstrap` and the real registries. `cargo test --locked --lib
+commands::tree_packet_tests` rebuilds each tree with the Rust dispatcher and compares the bytes, with checks
+that merging, redirects, custom suggestions and registered provider names all occur. Ignoring the `Command`
+instance in node equality or the custom-suggestion flag makes the test fail. Redirect-before-children queue
+order cannot be told apart by these trees (a node with both a redirect and children does not arise from the
+builders), so that detail rests on the bytecode reading.
+
 Reproduce (the oracle directory must stay outside git):
 
 ```text
@@ -151,6 +185,8 @@ python3 tools/bootstrap_oracle.py --oracle-dir /path/outside/git
 python3 tools/brigadier_generate.py --oracle-dir /path/outside/git
 python3 tools/brigadier_dispatch_generate.py --oracle-dir /path/outside/git
 python3 tools/brigadier_suggest_generate.py --oracle-dir /path/outside/git
+python3 tools/loot_oracle_setup.py --oracle-dir /path/outside/git    # server-named.jar for stage 5
+python3 tools/brigadier_tree_packet_generate.py --oracle-dir /path/outside/git
 cargo test --locked --lib commands::
 ```
 
