@@ -9,6 +9,100 @@ use crate::density::{ChunkDensity, DensityGraph, DensityPoint, NoiseGrid};
 use anyhow::{anyhow, bail, ensure, Result};
 use std::sync::Arc;
 
+/// The separate generation window passed to NoiseBasedChunkGenerator.doFill.
+///
+/// NoiseChunk.forChunk clamps against the chunk's build accessor, while
+/// fillFromNoise clamps against getHeightAccessorForGeneration. Neither clamp
+/// rounds its minimum or height to a cell boundary. This plan does not own or
+/// allocate a target, NoiseChunk, aquifer, section or heightmap.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NoiseFillPlan {
+    grid: NoiseGrid,
+    min_cell_y: i32,
+    cell_count_y: i32,
+}
+
+impl NoiseFillPlan {
+    /// Clamp the original noise settings to the actual generation accessor.
+    /// A negative clamped height is retained for the source no-cell return.
+    pub fn new(settings: NoiseGrid, generation_min_y: i32, generation_height: i32) -> Result<Self> {
+        ensure!(
+            generation_height >= 0,
+            "generation height must not be negative"
+        );
+        ensure!(
+            settings.height >= 0,
+            "noise-settings height must not be negative"
+        );
+        let generation_max_y = generation_min_y
+            .checked_add(generation_height)
+            .ok_or_else(|| anyhow!("generation vertical extent overflows"))?;
+        let settings_max_y = settings
+            .min_y
+            .checked_add(settings.height)
+            .ok_or_else(|| anyhow!("noise-settings vertical extent overflows"))?;
+        let min_y = generation_min_y.max(settings.min_y);
+        let height = generation_max_y
+            .min(settings_max_y)
+            .checked_sub(min_y)
+            .ok_or_else(|| anyhow!("clamped generation height overflows"))?;
+        Self::from_grid(NoiseGrid {
+            min_y,
+            height,
+            ..settings
+        })
+    }
+
+    fn from_grid(grid: NoiseGrid) -> Result<Self> {
+        ensure!(
+            grid.cell_width > 0 && grid.cell_height > 0,
+            "noise-cell dimensions must be positive"
+        );
+        Ok(Self {
+            grid,
+            min_cell_y: grid.min_y.div_euclid(grid.cell_height),
+            cell_count_y: grid.height.div_euclid(grid.cell_height),
+        })
+    }
+
+    /// Unrounded generation clamp, not the retained NoiseChunk build grid.
+    pub fn grid(&self) -> NoiseGrid {
+        self.grid
+    }
+    pub fn min_cell_y(&self) -> i32 {
+        self.min_cell_y
+    }
+    pub fn cell_count_y(&self) -> i32 {
+        self.cell_count_y
+    }
+    pub fn has_cells(&self) -> bool {
+        self.cell_count_y > 0
+    }
+    /// First Y traversed geometrically; it can lie below the logical minimum.
+    pub fn first_block_y(&self) -> i32 {
+        self.min_cell_y.wrapping_mul(self.grid.cell_height)
+    }
+    /// Traversed height when positive; a nonpositive count is a no-cell plan.
+    pub fn block_height(&self) -> i32 {
+        self.cell_count_y.wrapping_mul(self.grid.cell_height)
+    }
+    /// Absolute inclusive section Ys, top then bottom, acquired descending.
+    ///
+    /// The source uses the unrounded clamped minimum here, rather than the
+    /// first traversed block. The actual target converts these to its section
+    /// indices and retains/releases those original section owners.
+    pub fn section_lock_span(&self) -> Option<(i32, i32)> {
+        self.has_cells().then(|| {
+            let top_y = self
+                .grid
+                .min_y
+                .wrapping_add(self.block_height())
+                .wrapping_sub(1);
+            (top_y >> 4, self.grid.min_y >> 4)
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum TraversalPhase {
     Ready,
@@ -78,11 +172,10 @@ impl std::fmt::Debug for NoiseChunk<'_> {
 }
 
 impl<'g> NoiseChunk<'g> {
-    /// Clamp the selected noise settings to the level's actual height accessor.
-    ///
-    /// A native delivery currently requires complete aligned cells. Rejecting a
-    /// partial custom cell keeps unfilled coordinates explicit rather than
-    /// publishing a truncated terrain image as complete.
+    /// Clamp the selected noise settings to the chunk's actual build accessor.
+    /// The unrounded grid controls all retained interpolation/aquifer caches.
+    /// The material callback must own actual physical sections: traversal of a
+    /// partial bottom cell can reach below the logical accessor minimum.
     pub fn new(
         graph: &'g DensityGraph,
         chunk_x: i32,
@@ -139,10 +232,6 @@ impl<'g> NoiseChunk<'g> {
             cell_width: settings.cell_width,
             cell_height: settings.cell_height,
         };
-        ensure!(
-            grid.min_y.rem_euclid(grid.cell_height) == 0 && grid.height % grid.cell_height == 0,
-            "partial noise cells in the level height accessor are unsupported"
-        );
         let origin_x = chunk_x.wrapping_shl(4);
         let origin_z = chunk_z.wrapping_shl(4);
         let mut density = ChunkDensity::new_with_blender(
@@ -212,19 +301,43 @@ impl<'g> NoiseChunk<'g> {
     /// discard its privately staged terrain, retaining the original error.
     pub fn visit_blocks(
         &mut self,
+        visit: impl FnMut(&DensityGraph, &mut ChunkDensity, DensityPoint) -> Result<()>,
+    ) -> Result<()> {
+        let plan = NoiseFillPlan::from_grid(self.grid)?;
+        self.visit_blocks_with_plan(&plan, visit)
+    }
+
+    /// Traverse the separate source generation window over this exact owner.
+    ///
+    /// Full slices and cell caches retain the chunk-build grid. Cell selection
+    /// is relative from zero, while block Y uses the plan's minimum cell Y, as
+    /// in doFill. No coordinate is clipped to logical or physical target bounds;
+    /// the actual section owner handles writes or rejects an unavailable index.
+    /// A no-cell plan leaves even an already traversed owner's state unchanged.
+    pub fn visit_blocks_with_plan(
+        &mut self,
+        plan: &NoiseFillPlan,
         mut visit: impl FnMut(&DensityGraph, &mut ChunkDensity, DensityPoint) -> Result<()>,
     ) -> Result<()> {
+        if !plan.has_cells() {
+            return Ok(());
+        }
         if self.phase != TraversalPhase::Ready {
             bail!("noise traversal has already started or finished");
         }
+        ensure!(
+            plan.grid.cell_width == self.grid.cell_width
+                && plan.grid.cell_height == self.grid.cell_height,
+            "generation plan belongs to different noise-cell dimensions"
+        );
         self.phase = TraversalPhase::Visiting;
         let result: Result<()> = (|| {
             self.density.initialize_first_cell_x(self.graph)?;
             let width = self.grid.cell_width;
             let height = self.grid.cell_height;
             let count_xz = 16 / width;
-            let count_y = self.grid.height / height;
-            let first_cell_y = self.grid.min_y.div_euclid(height);
+            let count_y = plan.cell_count_y;
+            let first_cell_y = plan.min_cell_y;
             for cell_x in 0..count_xz {
                 self.density.advance_cell_x(self.graph, cell_x)?;
                 for cell_z in 0..count_xz {
@@ -235,7 +348,10 @@ impl<'g> NoiseChunk<'g> {
                             cell_z as usize,
                         )?;
                         for local_y in (0..height).rev() {
-                            let y = (first_cell_y + cell_y) * height + local_y;
+                            let y = first_cell_y
+                                .wrapping_add(cell_y)
+                                .wrapping_mul(height)
+                                .wrapping_add(local_y);
                             self.density
                                 .update_for_y(y, f64::from(local_y) / f64::from(height));
                             for local_x in 0..width {
@@ -345,18 +461,106 @@ mod tests {
     }
 
     #[test]
-    fn partial_cells_are_explicitly_unsupported() {
+    fn partial_cells_keep_unrounded_owner_metadata_and_source_write_coordinates() {
         let graph = DensityGraph::builtin(0, "overworld").unwrap();
-        assert!(NoiseChunk::new(&graph, 0, 0, -63, 383).is_err());
-        let clamped = NoiseChunk::new(&graph, 0, 0, 0, 128).unwrap();
+        let mut chunk = NoiseChunk::new(&graph, 0, 0, 1, 17).unwrap();
         assert_eq!(
-            clamped.grid(),
+            chunk.grid(),
             NoiseGrid {
-                min_y: 0,
-                height: 128,
+                min_y: 1,
+                height: 17,
                 cell_width: 4,
                 cell_height: 8,
             }
         );
+        let mut lowest = i32::MAX;
+        let mut highest = i32::MIN;
+        chunk
+            .visit_blocks(|_, _, point| {
+                lowest = lowest.min(point.y);
+                highest = highest.max(point.y);
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!((lowest, highest), (0, 15));
+        assert_eq!(chunk.density().grid(), chunk.grid());
+    }
+
+    #[test]
+    fn generation_clamps_preserve_source_floor_division_and_distinct_lock_span() {
+        let settings = NoiseGrid {
+            min_y: -64,
+            height: 384,
+            cell_width: 4,
+            cell_height: 8,
+        };
+        // Source fillFromNoise/doFill examples. Locks use clamped minY, while
+        // writes use floorDiv(minY, cellHeight) * cellHeight.
+        for (min_y, height, first, count, locks) in [
+            (1, 127, 0, 15, (7, 0)),
+            (-63, 127, -64, 15, (3, -4)),
+            (7, 17, 0, 2, (1, 0)),
+        ] {
+            let plan = NoiseFillPlan::new(settings, min_y, height).unwrap();
+            assert_eq!((plan.grid().min_y, plan.grid().height), (min_y, height));
+            assert_eq!(plan.first_block_y(), first);
+            assert_eq!(plan.cell_count_y(), count);
+            assert_eq!(plan.block_height(), count * 8);
+            assert_eq!(plan.section_lock_span(), Some(locks));
+        }
+        let disjoint = NoiseFillPlan::new(settings, 384, 16).unwrap();
+        assert_eq!((disjoint.grid().min_y, disjoint.grid().height), (384, -64));
+        assert_eq!(disjoint.cell_count_y(), -8);
+        assert!(!disjoint.has_cells());
+        assert_eq!(disjoint.section_lock_span(), None);
+    }
+
+    #[test]
+    fn separate_generation_window_keeps_full_build_slices_and_relative_cache_cells() {
+        let graph = DensityGraph::builtin(123456789, "nether").unwrap();
+        let mut chunk = NoiseChunk::new(&graph, 0, 0, 0, 128).unwrap();
+        let plan = NoiseFillPlan::new(graph.grid().unwrap(), 8, 16).unwrap();
+        let allocations = chunk.density().allocation_fingerprint();
+        let mut first = None;
+        let mut lowest = i32::MAX;
+        let mut highest = i32::MIN;
+        chunk
+            .visit_blocks_with_plan(&plan, |_, density, point| {
+                first.get_or_insert((point, density.state().base_y, density.state().in_y));
+                lowest = lowest.min(point.y);
+                highest = highest.max(point.y);
+                Ok(())
+            })
+            .unwrap();
+        // Source selects cache cell 1 relative to build minCellY=0, but emits
+        // the first world Y using generation minCellY=1.
+        assert_eq!(first, Some((DensityPoint::new(0, 23, 0), 8, 15)));
+        assert_eq!((lowest, highest), (8, 23));
+        assert_eq!((chunk.grid().min_y, chunk.grid().height), (0, 128));
+        assert_eq!(chunk.density().allocation_fingerprint(), allocations);
+        assert!(!chunk.density().state().interpolating);
+    }
+
+    #[test]
+    fn no_cell_plan_preserves_ready_and_finished_noise_owners() {
+        let graph = DensityGraph::builtin(0, "nether").unwrap();
+        let mut chunk = NoiseChunk::new(&graph, 0, 0, 0, 8).unwrap();
+        let plan = NoiseFillPlan::new(graph.grid().unwrap(), 128, 8).unwrap();
+        for finished in [false, true] {
+            if finished {
+                chunk.visit_blocks(|_, _, _| Ok(())).unwrap();
+            }
+            let state = chunk.density().state();
+            let allocations = chunk.density().allocation_fingerprint();
+            let phase = chunk.phase;
+            chunk
+                .visit_blocks_with_plan(&plan, |_, _, _| {
+                    panic!("no-cell plan called the material owner")
+                })
+                .unwrap();
+            assert_eq!(chunk.density().state(), state);
+            assert_eq!(chunk.density().allocation_fingerprint(), allocations);
+            assert_eq!(chunk.phase, phase);
+        }
     }
 }

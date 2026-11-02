@@ -17,11 +17,15 @@ pub mod feature;
 pub mod noise_chunk;
 pub mod random_state;
 pub mod surface;
+pub mod target;
+pub mod retrogen;
 
 pub use generator::{
     resolve_block_state, BlendedGenerationContext, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
     NoiseGenerator, NoiseTerrain, OwnedNoiseFillOutcome, OwnedNoiseTerrain, PreparedGeneration,
     SurfaceContext, TerrainStage,
+    TargetClimateSampler, TargetGeneration, TargetGenerationPhase, TargetNoiseOutcome,
+    TargetSurfaceOutcome,
 };
 
 pub use biome_context::BuiltinBiomeSurfaceContext;
