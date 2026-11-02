@@ -88,3 +88,26 @@ The new actual-empty-owner paired runner has not executed at this note's initial
 handoff. It does not establish negative-overlap support, arbitrary dimensions,
 nonempty structures, scheduler behavior, saved-world import, Main, persistence
 or FULL delivery.
+
+## Current catalog dependency
+
+Central PR114 corrected30 flowing-water flags in the placement catalog, changing
+its SHA256 frome044d4bd to97d79958. The earlier native state-facts capture still
+pinned the old catalog, so the first actual-empty-owner native replay correctly
+failed its strict registry guard. The original phase run alone had succeeded;
+that partial attempt is not a successful pair. An earlier helper compile also
+failed because the original obfuscated class `it` shadows a qualified package
+name; an explicit ObjectArrayList import fixes the helper without target edits.
+Both failed attempts and process records remain external.
+
+The actual unchanged original registry exporter was rerun against the current
+catalog:4.999s, exit0, reaped. All26684 state predicate rows and defaults match
+the previous capture exactly; the verified catalog SHA is the only changed
+field. The published fixture is byte-identical to that actual export, SHA256
+`3ba567d241f2387f85c5444adf312218090f3d64f93306ba7b192e54e0e282d3`.
+The strict native guard is unchanged. Source-only WorldgenTargetFactsBootstrap
+and the components fixture record reproducible invocation and exact artifact,
+source, execution and capture hashes. The full library/server compiler check
+and explicit library rebuild passed again after this data dependency changed.
+Historical paired reports retain their old source/catalog/facts pins; they are
+not relabeled as observations of the current catalog.
