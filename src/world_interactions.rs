@@ -35,6 +35,23 @@ const UPDATE_LIMIT: usize = 65_536;
 /// are inherited from PlacementWorld and cannot default to fabricated values.
 pub trait InteractionWorld: PlacementWorld {
     fn unobstructed(&mut self, state: u32, position: BlockPosition) -> Result<bool>;
+    fn plan_concrete_powder_placement(&mut self, _placing: u32, _context: &PlacementContext,
+        _overlay: &BTreeMap<BlockPosition, u32>, _read_set: &mut BTreeMap<BlockPosition, u32>,
+    ) -> Result<placement::PlacementResult> {
+        Ok(placement::PlacementResult::Unsupported("actual_concrete_powder_placement_owner"))
+    }
+    fn plan_concrete_powder_shape(&mut self,
+        _update: crate::falling_block::block::ShapeUpdate<'_, u32>,
+        _overlay: &BTreeMap<BlockPosition, u32>, _read_set: &mut BTreeMap<BlockPosition, u32>,
+    ) -> Result<ConcretePowderShapePlan> {
+        bail!("actual concrete-powder shape planning owner is unavailable")
+    }
+}
+
+/// Returned source-order obligations, never an immediate planner-side enqueue.
+pub struct ConcretePowderShapePlan {
+    pub state: u32,
+    pub scheduled_ticks: Vec<PlannedBlockTick>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -329,6 +346,11 @@ struct Planner<'a, W> {
     updates: usize,
 }
 impl<W: InteractionWorld> PlacementWorld for Planner<'_, W> {
+    fn concrete_powder_placement(&mut self, placing: u32, context: &PlacementContext)
+        -> Result<placement::PlacementResult> {
+        self.world.plan_concrete_powder_placement(placing, context,
+            &self.overlay, &mut self.plan.read_set)
+    }
     fn block(&mut self, p: BlockPosition) -> Result<u32> {
         if let Some(&state) = self.overlay.get(&p) {
             return Ok(state);
@@ -461,6 +483,17 @@ impl<'a, W: InteractionWorld> Planner<'a, W> {
         next: u32,
     ) -> Result<u32> {
         let b = facts(state)?;
+        if b.class == "dhk" {
+            let update = crate::falling_block::block::ShapeUpdate {
+                state: &state, direction, neighbor_state: &next,
+                position: p, neighbor_position: step(p, direction),
+            };
+            let result = self.world.plan_concrete_powder_shape(update,
+                &self.overlay, &mut self.plan.read_set)?;
+            self.plan.events.extend(result.scheduled_ticks.into_iter()
+                .map(InteractionEvent::ScheduleBlockTick));
+            return Ok(result.state);
+        }
         if let Some(delay) = crate::falling_block::block::source_delay(state)? {
             // FallingBlock.updateShape schedules in EVERY direction, even
             // when the inherited superclass returns this unchanged state.

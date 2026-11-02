@@ -44,8 +44,114 @@ fn catalog() -> &'static Value {
             ]]}]},
             {"name":"description","type":"anonymousNbt"}
         ]]);
+        bind_block_state_owner_facts(&mut data)
+            .expect("pinned original block/state owner facts match existing canonical catalogs");
         data
     })
+}
+
+/// Validate source-data capture once, then attach its metadata to the SAME
+/// inventory catalogue being initialized. No independently addressable block
+/// registry, second catalogue parse/cache, guessed Property class or order.
+fn bind_block_state_owner_facts(data: &mut Value) -> Result<()> {
+    let mut facts: Value = serde_json::from_str(include_str!(
+        "../fixtures/block-state-owner-facts-1.21.json"))?;
+    ensure!(facts["minecraft"] == "1.21" && facts["protocol"] == 767
+        && facts["method"] == "original_1.21_bootstrap_registry_property_and_all_state_capture_v1"
+        && facts["original_server_sha1"] == "450698d1863ab5180c25d7c804ef0fe6369dd1ba"
+        && facts["original_inner_sha256"] == "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01"
+        && facts["official_mappings_sha1"] == "31c77994d96f05ba25a870ada70f47f315330437",
+        "foreign original block-state owner capture");
+    for (field, bytes) in [
+        ("inventory_catalog_sha256", include_bytes!("../fixtures/items-1.21.json").as_slice()),
+        ("placement_catalog_sha256", include_bytes!("../fixtures/placement-1.21.json").as_slice()),
+        ("extractor_source_sha256", include_bytes!("../tools/block_state_owner_facts.java").as_slice()),
+    ] {
+        let hash = openssl::sha::sha256(bytes).iter().map(|byte| format!("{byte:02x}"))
+            .collect::<String>();
+        ensure!(facts[field].as_str() == Some(hash.as_str()), "original owner capture {field} differs");
+    }
+    let placement = crate::placement::canonical_placement_catalog();
+    ensure!(placement.minecraft_version() == "1.21"
+        && placement.original_inner_sha256() == facts["original_inner_sha256"].as_str().unwrap()
+        && placement.blocks().len() == 1060 && placement.state_count() == 26684,
+        "actual retained placement catalogue differs from source capture");
+    let Value::Array(rows) = facts.as_object_mut().context("owner facts are not an object")?
+        .remove("blocks").context("owner facts lack blocks")? else {
+        bail!("owner facts blocks are not an array");
+    };
+    let blocks = data["blocks"].as_object_mut().context("existing state catalog lacks blocks")?;
+    ensure!(rows.len() == 1060 && blocks.len() == rows.len()
+        && facts["block_count"] == 1060 && facts["state_count"] == 26684,
+        "original owner capture has an incomplete block/state domain");
+    let mut ids = std::collections::BTreeSet::new();
+    let mut keys = std::collections::BTreeSet::new();
+    let mut states = std::collections::BTreeSet::new();
+    for row in rows {
+        let key = row["key"].as_str().context("owner capture lacks block key")?;
+        let name = key.strip_prefix("minecraft:").context("owner capture has foreign namespace")?;
+        let id = block_catalog_u32(&row, "registry_id")?;
+        let minimum = block_catalog_u32(&row, "minimum_state")?;
+        let maximum = block_catalog_u32(&row, "maximum_state")?;
+        let default = block_catalog_u32(&row, "default_state")?;
+        ensure!(ids.insert(id) && keys.insert(key.to_owned()), "duplicate actual block identity");
+        ensure!(minimum <= maximum && maximum < 26684, "foreign original state range");
+        for state in minimum..=maximum {
+            ensure!(states.insert(state), "overlapping original state ranges");
+        }
+        ensure!(row["verified_states"].as_u64() == Some(u64::from(maximum - minimum) + 1),
+            "not every actual state was checked for property values/order");
+        let native = blocks.get_mut(name).context("actual Block absent from canonical inventory catalog")?;
+        ensure!(block_catalog_u32(native, "id")? == id
+            && block_catalog_u32(native, "min_state")? == minimum
+            && block_catalog_u32(native, "max_state")? == maximum
+            && block_catalog_u32(native, "default_state")? == default,
+            "actual Block id/state range/default differs from canonical inventory");
+        let placed = placement.state_definition(minimum)?;
+        ensure!(placed.key == key && placed.minimum_state == minimum
+            && placed.maximum_state == maximum && placed.default_state == default,
+            "actual Block key/state range/default differs from retained placement");
+        let actual_properties = row["properties"].as_array().context("actual property definitions absent")?;
+        let properties = native["properties"].as_array_mut().context("canonical property definitions absent")?;
+        ensure!(actual_properties.len() == properties.len(), "actual property count differs");
+        let mut property_names = std::collections::BTreeSet::new();
+        for (property, actual) in properties.iter_mut().zip(actual_properties) {
+            let actual_names = actual["values"].as_array().context("actual property domain absent")?;
+            let kind = property["type"].as_str().context("canonical property kind absent")?;
+            ensure!(property["name"] == actual["name"] && kind == actual["kind"].as_str().unwrap_or("")
+                && property["num_values"].as_u64() == Some(actual_names.len() as u64),
+                "actual property name/kind/domain order differs from canonical state encoding");
+            if kind == "bool" {
+                ensure!(actual_names.len() == 2 && actual_names[0] == "true" && actual_names[1] == "false",
+                    "actual boolean state-encoding domain differs");
+            } else {
+                ensure!(property["values"].as_array() == Some(actual_names),
+                    "actual serialized property domain differs from canonical state encoding");
+            }
+            let name = actual["name"].as_str().context("actual property name absent")?;
+            ensure!(property_names.insert(name.to_owned()), "duplicate actual property name");
+            ensure!(actual["original_class"].is_string() && actual["original_value_class"].is_string(),
+                "actual Property class capture absent");
+            property["original_class"] = actual["original_class"].clone();
+            property["original_value_class"] = actual["original_value_class"].clone();
+            property["original_serialized_values"] = actual["values"].clone();
+        }
+        let order = row["state_holder_property_entry_order"].as_array()
+            .context("actual StateHolder entry order absent")?;
+        let ordered_names = order.iter().map(|name| name.as_str().map(str::to_owned)
+            .context("actual StateHolder property name is not a string"))
+            .collect::<Result<Vec<_>>>()?;
+        ensure!(ordered_names.len() == property_names.len()
+            && ordered_names.iter().cloned().collect::<std::collections::BTreeSet<_>>() == property_names,
+            "actual StateHolder order lacks its complete unique property domain");
+        native["state_holder_property_entry_order"] = row["state_holder_property_entry_order"].clone();
+        native["original_verified_states"] = row["verified_states"].clone();
+    }
+    ensure!(ids.len() == 1060 && ids.first() == Some(&0) && ids.last() == Some(&1059)
+        && states.len() == 26684 && states.first() == Some(&0) && states.last() == Some(&26683),
+        "original owner capture has incomplete raw IDs/states");
+    data["block_state_owner_proof"] = facts;
+    Ok(())
 }
 
 fn prototype_wire() -> &'static BTreeMap<i32, BTreeMap<i32, Vec<u8>>> {
@@ -735,6 +841,187 @@ fn block_state_catalog_entry(state: u32) -> Option<(&'static str, &'static Value
     let (_, entry) = index.range(..=state).next_back()?;
     (state <= entry.1["max_state"].as_u64()? as u32).then_some(*entry)
 }
+
+/// Borrowed identity/view of the SAME existing inventory/state OnceLock owner.
+/// Equality is owner identity, not JSON equality. The original bootstrap facts
+/// are validated/attached during that same owner's initialization. This is not
+/// a configured-tag capability, new registry or second catalogue parse/cache.
+#[derive(Clone, Copy)]
+pub struct BlockStateCatalog {
+    data: &'static Value,
+}
+impl PartialEq for BlockStateCatalog {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.data, other.data)
+    }
+}
+impl Eq for BlockStateCatalog {}
+impl std::fmt::Debug for BlockStateCatalog {
+    fn fmt(&self, output: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        output.write_str("BlockStateCatalog(existing inventory OnceLock)")
+    }
+}
+
+pub fn block_state_catalog() -> BlockStateCatalog {
+    BlockStateCatalog { data: catalog() }
+}
+
+impl BlockStateCatalog {
+    pub fn minecraft_version(self) -> Option<&'static str> {
+        self.data["version"].as_str()
+    }
+    pub fn protocol_version(self) -> Option<i32> {
+        i32::try_from(self.data["protocol"].as_i64()?).ok()
+    }
+    /// Captured metadata, including its actual upstream/report provenance.
+    /// Absent source fields are not synthesized from an unrelated fixture.
+    pub fn source_metadata(self) -> &'static Value {
+        &self.data["source"]
+    }
+    /// Actual original bootstrap capture provenance, checked against the
+    /// embedded extractor, canonical source files, keys, raw IDs and states.
+    pub fn original_owner_facts_metadata(self) -> &'static Value {
+        &self.data["block_state_owner_proof"]
+    }
+    /// Registry encounter order is NOT certified by this object iterator.
+    /// Each row carries its explicit source id; never use iteration ordinal.
+    pub fn block_definitions(self) -> impl Iterator<Item = Result<BlockStateDefinitionRef>> {
+        self.data["blocks"].as_object().expect("existing generated block catalog")
+            .iter().map(|(name, block)| block_state_definition_ref(name, block))
+    }
+    pub fn state_definition(self, state: u32) -> Result<Option<BlockStateDefinitionRef>> {
+        block_state_catalog_entry(state)
+            .map(|(name, block)| block_state_definition_ref(name, block)).transpose()
+    }
+    /// Existing canonical decoder, sharing this unchanged OnceLock owner.
+    /// The returned BTreeMap has no StateHolder encounter-order meaning.
+    pub fn state_properties(self, state: u32) -> Option<BTreeMap<String, String>> {
+        block_state_properties(state)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct BlockStateDefinitionRef {
+    /// Existing unqualified minecraft key, e.g. "oak_log".
+    pub name: &'static str,
+    /// Explicit stored Block registry id, now checked against the original
+    /// BuiltInRegistries.BLOCK capture; never a sorted-name ordinal.
+    pub registry_id: u32,
+    pub minimum_state: u32,
+    pub maximum_state: u32,
+    pub default_state: u32,
+    properties: &'static [Value],
+    state_holder_order: &'static [Value],
+}
+impl BlockStateDefinitionRef {
+    /// The original array's mixed-radix state-ID encoding order, checked against
+    /// actual StateDefinition properties, classes and serialized value domains.
+    pub fn properties(self) -> impl Iterator<Item = Result<BlockStatePropertyDefinitionRef>> {
+        self.properties.iter().map(block_state_property_definition_ref)
+    }
+    /// Actual captured StateHolder.getValues().entrySet order, shared for this
+    /// block ONLY after the extractor verified every actual raw state has it.
+    pub fn state_holder_property_entry_order(self) -> Option<BlockStatePropertyEntryOrderRef> {
+        Some(BlockStatePropertyEntryOrderRef { names: self.state_holder_order })
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct BlockStatePropertyEntryOrderRef {
+    names: &'static [Value],
+}
+impl BlockStatePropertyEntryOrderRef {
+    pub fn len(self) -> usize { self.names.len() }
+    pub fn is_empty(self) -> bool { self.names.is_empty() }
+    pub fn get(self, ordinal: usize) -> Option<&'static str> {
+        self.names.get(ordinal)?.as_str()
+    }
+    pub fn iter(self) -> impl ExactSizeIterator<Item = &'static str> {
+        self.names.iter().map(|name| name.as_str().expect("validated original property name"))
+    }
+}
+
+/// State-encoding categories validated against the original Property family.
+/// The separate original_class field retains the exact runtime subclass.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CatalogBlockPropertyKind { Boolean, Integer, Enum }
+
+#[derive(Clone, Copy, Debug)]
+pub struct BlockStatePropertyDefinitionRef {
+    pub name: &'static str,
+    pub kind: CatalogBlockPropertyKind,
+    pub values: BlockStatePropertyValuesRef,
+    pub original_class: &'static str,
+    pub original_value_class: &'static str,
+}
+
+/// Serialized domains in state-encoding order. Canonical definition exports
+/// borrow their actual original capture through Serialized, including Boolean.
+/// Boolean retains the explicit existing decoder domain; it is not an absent
+/// source-data fallback and is never substituted by the definition reader.
+#[derive(Clone, Copy, Debug)]
+pub enum BlockStatePropertyValuesRef {
+    Boolean,
+    Serialized(&'static [Value]),
+}
+impl BlockStatePropertyValuesRef {
+    pub fn len(self) -> usize {
+        match self { Self::Boolean => 2, Self::Serialized(values) => values.len() }
+    }
+    pub fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+    pub fn get(self, ordinal: usize) -> Option<&'static str> {
+        match self {
+            Self::Boolean => match ordinal { 0 => Some("true"), 1 => Some("false"), _ => None },
+            Self::Serialized(values) => values.get(ordinal)?.as_str(),
+        }
+    }
+}
+
+fn block_catalog_u32(value: &Value, field: &str) -> Result<u32> {
+    u32::try_from(value[field].as_u64().with_context(|| format!("block catalog lacks {field}"))?)
+        .with_context(|| format!("block catalog {field} exceeds u32"))
+}
+fn block_state_definition_ref(name: &'static str, block: &'static Value)
+    -> Result<BlockStateDefinitionRef> {
+    let definition = BlockStateDefinitionRef {
+        name,
+        registry_id: block_catalog_u32(block, "id")?,
+        minimum_state: block_catalog_u32(block, "min_state")?,
+        maximum_state: block_catalog_u32(block, "max_state")?,
+        default_state: block_catalog_u32(block, "default_state")?,
+        properties: block["properties"].as_array().context("block catalog lacks property array")?,
+        state_holder_order: block["state_holder_property_entry_order"].as_array()
+            .context("actual StateHolder property entry order was not captured")?,
+    };
+    ensure!((definition.minimum_state..=definition.maximum_state).contains(&definition.default_state),
+        "block catalog default is outside its state domain");
+    Ok(definition)
+}
+fn block_state_property_definition_ref(property: &'static Value)
+    -> Result<BlockStatePropertyDefinitionRef> {
+    let kind = match property["type"].as_str() {
+        Some("bool") => CatalogBlockPropertyKind::Boolean,
+        Some("int") => CatalogBlockPropertyKind::Integer,
+        Some("enum") => CatalogBlockPropertyKind::Enum,
+        _ => bail!("unknown declared block property encoding kind"),
+    };
+    let captured = property["original_serialized_values"].as_array()
+        .context("actual block property domain was not captured")?;
+    ensure!(captured.iter().all(Value::is_string), "actual property domain lacks serialized names");
+    let values = BlockStatePropertyValuesRef::Serialized(captured);
+    ensure!(property["num_values"].as_u64() == Some(values.len() as u64),
+        "block property domain cardinality differs from its encoding");
+    Ok(BlockStatePropertyDefinitionRef {
+        name: property["name"].as_str().context("block property name was not captured")?,
+        kind,
+        values,
+        original_class: property["original_class"].as_str().context("actual Property class absent")?,
+        original_value_class: property["original_value_class"].as_str().context("actual Property value class absent")?,
+    })
+}
+
 pub fn block_state_name(state: u32) -> Option<&'static str> {
     block_state_catalog_entry(state).map(|(name, _)| name)
 }

@@ -23,6 +23,17 @@ impl<A> SensingState<A> {
             mob,
         }
     }
+    /// Callback-free storage conversion of the SAME Mob reference. Aggregate
+    /// actors use this once, before publication, to encode an internal backlink.
+    /// Every outward Sensing lease must retain that aggregate; this is never a
+    /// substitute for a retained public source Mob handle.
+    pub fn map_mob<B>(self, map: impl FnOnce(A) -> B) -> SensingState<B> {
+        SensingState {
+            seen: self.seen,
+            unseen: self.unseen,
+            mob: map(self.mob),
+        }
+    }
 }
 
 pub trait SensingHost {

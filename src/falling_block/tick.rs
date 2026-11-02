@@ -75,6 +75,20 @@ pub trait FallingBlockTickHost {
         state: u32,
         flags: i32,
     ) -> Result<bool>;
+    /// Native landing admission may retain the already captured original
+    /// Block and replaced state across setBlock, broadcast/discard and onLand.
+    /// Existing hosts still execute their same actual setBlock operation.
+    fn set_block_for_landing(
+        &mut self,
+        actor: &mut FallingBlockState,
+        _original_block: &Self::Block,
+        position: BlockPosition,
+        state: u32,
+        _captured_replaced: u32,
+        flags: i32,
+    ) -> Result<bool> {
+        self.set_block(actor, position, state, flags)
+    }
     /// Actual server ChunkMap.broadcast(actor, new BlockUpdatePacket(position,
     /// Level.getBlockState(position))). The reread is deliberately in tick().
     fn broadcast_block_update(
@@ -199,7 +213,8 @@ fn server_after_move<H: FallingBlockTickHost>(
                         actor.block_state = host.with_waterlogged(actor.block_state, true)?;
                     }
                     let carried_to_place = actor.block_state;
-                    if host.set_block(actor, position, carried_to_place, 3)? {
+                    if host.set_block_for_landing(actor, original_block, position,
+                        carried_to_place, replaced, 3)? {
                         let actual_state = host.block_state(position)?;
                         host.broadcast_block_update(actor, position, actual_state)?;
                         host.discard(actor)?;

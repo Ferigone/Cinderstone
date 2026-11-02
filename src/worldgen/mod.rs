@@ -4,6 +4,7 @@
 //! The integration coordinator must supply the actual world identity, biome
 //! owner and generation-status dependencies before publishing their output.
 pub mod aquifer;
+pub mod beardifier;
 pub mod biome_context;
 pub mod biome_source;
 pub mod biomes;
@@ -17,11 +18,17 @@ pub mod feature;
 pub mod noise_chunk;
 pub mod random_state;
 pub mod surface;
+// Keep the public API while avoiding build-output directory exclusion rules.
+#[path = "chunk_target/mod.rs"]
+pub mod target;
+pub mod retrogen;
 
 pub use generator::{
     resolve_block_state, BlendedGenerationContext, FreshGenerationContext, GenerationInfluence, NoiseFillOutcome,
     NoiseGenerator, NoiseTerrain, OwnedNoiseFillOutcome, OwnedNoiseTerrain, PreparedGeneration,
     SurfaceContext, TerrainStage,
+    TargetClimateSampler, TargetGeneration, TargetGenerationPhase, TargetNoiseOutcome,
+    TargetSurfaceOutcome,
 };
 
 pub use biome_context::BuiltinBiomeSurfaceContext;

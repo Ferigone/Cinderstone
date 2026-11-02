@@ -1,6 +1,6 @@
-//! NoiseChunk marker caches, Blender wrappers and interpolation phase state.
+//! NoiseChunk marker caches, retained influence owners and interpolation state.
 use super::*;
-use crate::worldgen::blending::Blender;
+use crate::worldgen::{beardifier::Beardifier, blending::Blender};
 use std::{
     collections::{HashMap, HashSet},
     fmt,
@@ -106,6 +106,7 @@ pub struct ChunkDensity {
     first_quart_z: i32,
     quart_count: usize,
     blender: Arc<Blender>,
+    beardifier: Arc<Beardifier>,
     blend_alpha: Vec<Vec<f64>>,
     blend_offset: Vec<Vec<f64>>,
     last_blending_pos: i64,
@@ -146,6 +147,26 @@ impl ChunkDensity {
         cell_count_xz: usize,
         blender: Arc<Blender>,
     ) -> ChunkResult<Self> {
+        Self::new_with_influences(
+            grid,
+            origin_x,
+            origin_z,
+            cell_count_xz,
+            blender,
+            Beardifier::empty(),
+        )
+    }
+
+    /// Capture the actual chunk influence owners before mapping any density
+    /// functions. Their identities cannot change after marker/cache creation.
+    pub fn new_with_influences(
+        grid: NoiseGrid,
+        origin_x: i32,
+        origin_z: i32,
+        cell_count_xz: usize,
+        blender: Arc<Blender>,
+        beardifier: Arc<Beardifier>,
+    ) -> ChunkResult<Self> {
         if grid.cell_width <= 0
             || grid.cell_height <= 0
             || grid.height < 0
@@ -184,6 +205,7 @@ impl ChunkDensity {
             first_quart_z,
             quart_count,
             blender,
+            beardifier,
             blend_alpha,
             blend_offset,
             last_blending_pos: pack_xz(1_875_066, 1_875_066),
@@ -252,6 +274,11 @@ impl ChunkDensity {
     /// Same immutable Blender owner retained with this NoiseChunk's caches.
     pub fn blender(&self) -> &Arc<Blender> {
         &self.blender
+    }
+
+    /// Same immutable structure-influence owner retained with this chunk.
+    pub fn beardifier(&self) -> &Arc<Beardifier> {
+        &self.beardifier
     }
 
     /// Bounds of the actual visited function, without mutating RandomState's
@@ -770,6 +797,21 @@ impl DensityContext for ChunkDensity {
             value
         }
     }
+    fn beardifier(&mut self, _id: NodeId, point: DensityPoint) -> f64 {
+        // The wrapped function captures this structure owner independently of
+        // whether its sampling context is this chunk or an external point.
+        self.beardifier.compute(point)
+    }
+    fn beardifier_fill(
+        &mut self,
+        graph: &DensityGraph,
+        id: NodeId,
+        values: &mut [f64],
+    ) -> ChunkResult<()> {
+        // Actual Beardifier inherits SimpleFunction: delegate to the current
+        // provider, including external SinglePoint contexts and empty owners.
+        self.fill_direct(graph, id, values)
+    }
     fn rewritten_constant_argument(&self, id: NodeId) -> Option<(NodeId, f64)> {
         self.rewritten_arithmetic.get(id.0).copied().flatten()
     }
@@ -1066,6 +1108,10 @@ fn visited_bounds(
     let child = |id: NodeId| visited[id.0];
     match &graph.nodes[id.0] {
         DensityNode::Reference(input) | DensityNode::Marker(_, input) => child(*input),
+        // NoiseChunk.wrapNew replaces the raw zero-bound marker with its
+        // actual Beardifier owner. Even empty structure lists have unbounded
+        // declared metadata; parent MIN/MAX shortcuts must see those bounds.
+        DensityNode::Beardifier => DensityBounds::new(f64::NEG_INFINITY, f64::INFINITY),
         DensityNode::BlendAlpha if nonempty_blender => DensityBounds::new(0.0, 1.0),
         DensityNode::BlendOffset if nonempty_blender => {
             DensityBounds::new(f64::NEG_INFINITY, f64::INFINITY)
@@ -1324,6 +1370,66 @@ mod tests {
             std::iter::empty::<(i64, Arc<crate::worldgen::blending::BlendingData>)>(),
         )
         .unwrap()
+    }
+
+    #[test]
+    fn actual_empty_beardifier_preserves_visited_bounds_and_provider_lifecycle() {
+        // The original zero-list Beardifier witness uses this exact expression:
+        // its infinite bounds force MIN to evaluate the interpolator, whereas
+        // the deliberate raw-marker control returns -1 without evaluating it.
+        let mut graph = DensityGraph::new(0, false, BTreeMap::new(), BTreeMap::new());
+        let beard = graph
+            .parse(&serde_json::json!({"type":"minecraft:beardifier"}))
+            .unwrap();
+        let minimum = graph
+            .parse(&serde_json::json!({
+                "type":"minecraft:min", "argument1":-1.0,
+                "argument2":{
+                    "type":"minecraft:add",
+                    "argument1":{"type":"minecraft:beardifier"},
+                    "argument2":{"type":"minecraft:interpolated", "argument":0.0}
+                }
+            }))
+            .unwrap();
+        let point = DensityPoint::new(0, 0, 0);
+        assert_eq!(graph.bounds(beard), DensityBounds::constant(0.0));
+        assert_eq!(graph.bounds(minimum), DensityBounds::constant(-1.0));
+        assert_eq!(graph.eval(minimum, point), -1.0);
+        let mut chunk = ChunkDensity::new(
+            NoiseGrid {
+                min_y: 0,
+                height: 16,
+                cell_width: 4,
+                cell_height: 8,
+            },
+            0,
+            0,
+            4,
+        )
+        .unwrap();
+        chunk.wrap(&graph, minimum).unwrap();
+        assert_eq!(
+            chunk.wrapped_bounds(beard).unwrap(),
+            DensityBounds::new(f64::NEG_INFINITY, f64::INFINITY)
+        );
+        assert_eq!(
+            chunk.wrapped_bounds(minimum).unwrap(),
+            DensityBounds::new(f64::NEG_INFINITY, -1.0)
+        );
+        assert_eq!(chunk.sample_external(&graph, minimum, point).unwrap(), -1.0);
+        assert_eq!(
+            chunk.sample(&graph, minimum).unwrap_err(),
+            ChunkDensityError::SampleOutsideInterpolation
+        );
+        // The original actual empty owner's direct fill visits [0,1,2]. Its
+        // marker control uses Arrays.fill and has no provider calls. Column
+        // visits are observable through the same interpolation counter.
+        assert_eq!(chunk.fill_column(&graph, beard).unwrap(), [0.0; 3]);
+        assert_eq!(chunk.state.interpolation_counter, 3);
+        assert_eq!(chunk.state.array_index, 2);
+        assert_eq!(graph.bounds(beard), DensityBounds::constant(0.0));
+        assert_eq!(graph.bounds(minimum), DensityBounds::constant(-1.0));
+        assert_eq!(graph.fill_many(beard, &[point; 3]), [0.0; 3]);
     }
 
     #[test]

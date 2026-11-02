@@ -1,12 +1,15 @@
 //! Native falling-block movement over actual world, section and gameplay owners.
 use super::*;
 use super::{main_falling_block_damage::{MainFallingDamageHost, NativeFallingDamageTypes},
-    main_falling_block_runtime::FallingBlockPublication};
+    main_falling_block_clip_admission::PreparedNextTickClip,
+    main_falling_block_runtime::FallingBlockPublication,
+    main_falling_block_powder::{self, NativeConcretePowderOwner, PowderLandingAdmission}};
 use mc121_rust::{
     entity_move::{self, EntityMoveWorld, EntityMoveContext, MoverType, MovementEmission, ProfileEvent},
     entity_state::{java_floor, EntityPhysicalState},
-    falling_block::{FallingBlockState, damage::{self, FallingBlockDamageActor}},
-    fluid_physics::{FluidKind, FluidShapeCache, FluidWorld, RuntimeFluidWorld},
+    falling_block::{FallingBlockState, block::{self, NativeFallingClass},
+        damage::{self, FallingBlockDamageActor}},
+    fluid_physics::{FluidKind, FluidWorld, RuntimeFluidWorld},
     geometry::{self, EntityCollisionContext, VoxelShape},
     item_host::RuntimeGameplayHooks,
     player_physics::{CollisionQuery, WorldCollision},
@@ -15,22 +18,6 @@ use mc121_rust::{
     runtime_item_world::{ItemWorldFacts, RainAvailability},
     runtime_entity_index::EntityKind,
 };
-
-pub(super) struct MainFallingMoveServices<'a> {
-    pub(super) world: &'a mut WorldBackend,
-    pub(super) items: &'a mut RuntimeEntities,
-    pub(super) publication: &'a mut FallingBlockPublication,
-    pub(super) registry: &'a EntityRegistry,
-    pub(super) player_motion: &'a main_player_motion_hooks::MainPlayerMotionRuntime,
-    pub(super) gameplay: &'a mut MainItemGameplay,
-    pub(super) manager: &'a mc121_rust::runtime_chunk_manager::RuntimeChunkManager,
-    pub(super) query_region: main_chunk_runtime::CurrentChunkQueryRegion,
-    pub(super) fluid_shapes: &'a mut FluidShapeCache,
-    pub(super) rain: Option<&'a mut dyn RainExposure>,
-    pub(super) facts: ItemWorldFacts,
-    pub(super) damage_types: &'a NativeFallingDamageTypes,
-    pub(super) events: &'a broadcast::Sender<PlayerEvent>,
-}
 
 /// Only references to the genuine nonphysical actor fields used by damage.
 /// The physical reference supplied during Entity.move remains the SAME field.
@@ -58,20 +45,24 @@ impl FallingBlockDamageActor for FallingDamageBorrow<'_, '_> {
     fn set_cancel_drop(&mut self, value: bool) { *self.fields.cancel_drop = value; }
 }
 
-struct FallingMoveWorld<'a, 'fields> {
-    services: MainFallingMoveServices<'a>,
+struct FallingMoveWorld<'a, 'level, 'fields> {
+    services: &'a mut ActualFallingBlockEditServices<'level>,
+    publication: &'a mut FallingBlockPublication,
+    damage_types: &'a NativeFallingDamageTypes,
     fields: FallingDamageFields<'fields>,
     actor: CollisionActor,
     colliders: Vec<CollisionEntity>,
+    facts: ItemWorldFacts,
+    query_region: main_chunk_runtime::CurrentChunkQueryRegion,
 }
-impl FallingMoveWorld<'_, '_> {
+impl FallingMoveWorld<'_, '_, '_> {
     fn context(state: &EntityPhysicalState) -> EntityCollisionContext {
         EntityCollisionContext { bottom_y: state.position.y,
             descending: state.shared_flags & 2 != 0, fall_distance: state.fall_distance,
             is_falling_block: true, can_walk_on_powder_snow: false }
     }
     fn collision(&mut self) -> RuntimeCollision<'_> {
-        RuntimeCollision::new(self.services.world, self.actor, &self.colliders, self.services.facts.border)
+        RuntimeCollision::new(self.services.world, self.actor, &self.colliders, self.facts.border)
     }
     fn cells(bounds: Aabb, inward: f64) -> Result<((i32,i32,i32),(i32,i32,i32))> {
         ensure!([bounds.min_x,bounds.min_y,bounds.min_z,bounds.max_x,bounds.max_y,bounds.max_z]
@@ -88,23 +79,23 @@ impl FallingMoveWorld<'_, '_> {
         ensure!(class==expected,"unported falling {name} callback {class} for state{block}");Ok(())
     }
 }
-impl WorldCollision for FallingMoveWorld<'_, '_> {
+impl WorldCollision for FallingMoveWorld<'_, '_, '_> {
     fn block_collisions(&mut self,q:CollisionQuery)->Result<Vec<VoxelShape>>{self.collision().block_collisions(q)}
     fn entity_collisions(&mut self,q:CollisionQuery)->Result<Vec<VoxelShape>>{self.collision().entity_collisions(q)}
     fn border_collision(&mut self,q:CollisionQuery)->Result<Option<VoxelShape>>{self.collision().border_collision(q)}
     fn all_blocks_air(&mut self,b:Aabb)->Result<bool>{self.collision().all_blocks_air(b)}
 }
-impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
+impl EntityMoveWorld for FallingMoveWorld<'_, '_, '_> {
     fn profile(&mut self,event:ProfileEvent){
-        let mut frame=self.services.gameplay.frame_current(self.services.registry,self.services.manager,true,self.services.query_region);
+        let mut frame=self.services.gameplay.frame_current(self.services.registry,&self.services.chunks.manager,true,self.query_region);
         RuntimeGameplayHooks::profile(&mut frame,event);
     }
-    fn game_time(&mut self)->Result<i64>{Ok(self.services.facts.game_time)}
+    fn game_time(&mut self)->Result<i64>{Ok(self.facts.game_time)}
     fn set_position(&mut self,s:&mut EntityPhysicalState,p:Vec3)->Result<()>{entity_move::set_base_position(s,p,self)}
     fn position_changed(&mut self,s:&mut EntityPhysicalState)->Result<()>{
         ensure!(s.entity_id==self.actor.entity_id,"falling move actor changed");
         self.actor.position=s.position_vec();
-        self.services.publication.position_changed(s,self.services.items)
+        self.publication.position_changed(s,self.services.items)
     }
     fn reset_fall_distance(&mut self,s:&mut EntityPhysicalState)->Result<()>{s.fall_distance=0.;Ok(())}
     fn set_on_ground_with_movement(&mut self,s:&mut EntityPhysicalState,on:bool,m:Vec3)->Result<()>{
@@ -123,7 +114,7 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
                 let block_hit=entity_move::block_facts(block)?.fall_damage_resetting()
                     &&VoxelShape::from_aabb(Aabb::new(0.,0.,0.,1.,1.,1.)).clip(from,to,p).is_some();
                 let fluid_hit=if fluid.kind==FluidKind::Water{
-                    self.services.fluid_shapes.shape(&mut RuntimeFluidWorld{world:self.services.world},p,fluid)?
+                    self.services.interactions.fluid_shapes.shape(&mut RuntimeFluidWorld{world:self.services.world},p,fluid)?
                         .clip(from,to,p).is_some()
                 }else{false};
                 Ok(block_hit||fluid_hit)
@@ -143,15 +134,15 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
             if s.fall_distance>0.{
                 let hooks=entity_move::block_facts(block)?.callback_classes()?;
                 Self::inherited(block,"fallOn",&hooks.fall_on,"dfy")?;
-                ensure!(!self.services.facts.has_passengers,"actual falling passengers require their causeFallDamage owner");
+                ensure!(!self.facts.has_passengers,"actual falling passengers require their causeFallDamage owner");
                 let distance=s.fall_distance;
                 let mut actor=FallingDamageBorrow{physical:s,fields:&mut self.fields};
                 let mut host=MainFallingDamageHost{items:self.services.items,registry:self.services.registry,
-                    player_motion:self.services.player_motion,actor:self.services.publication.handle,
-                    damage_types:self.services.damage_types};
+                    player_motion:self.services.player_motion,actor:self.publication.handle,
+                    damage_types:self.damage_types};
                 damage::cause_fall_damage(&mut actor,distance,&mut host)?;
                 let affected=if let Some(p)=s.supporting_block{self.services.world.block(p.0,p.1,p.2)?}else{block};
-                let mut frame=self.services.gameplay.frame_current(self.services.registry,self.services.manager,true,self.services.query_region);
+                let mut frame=self.services.gameplay.frame_current(self.services.registry,&self.services.chunks.manager,true,self.query_region);
                 frame.hit_ground(s,affected)?;
             }
             self.reset_fall_distance(s)?;
@@ -170,18 +161,23 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
     fn try_check_inside_blocks(&mut self,s:&mut EntityPhysicalState)->Result<()>{
         let(min,max)=Self::cells(s.bounds,1e-7)?;
-        if max.1<self.services.facts.minimum_build_height||min.1>mc121_rust::world::MAX_Y{return Ok(())}
+        if max.1<self.facts.minimum_build_height||min.1>mc121_rust::world::MAX_Y{return Ok(())}
         if !(RuntimeFluidWorld{world:self.services.world}).has_chunks_at(min.0,min.2,max.0,max.2)?{return Ok(())}
         // The native dimension's actual existing FULL futures certify access;
         // this is not an invented successful hasChunksAt for arbitrary worlds.
-        self.services.manager.certify_full_region((min.0.div_euclid(16),min.2.div_euclid(16)),
+        self.services.chunks.manager.certify_full_region((min.0.div_euclid(16),min.2.div_euclid(16)),
             (max.0.div_euclid(16),max.2.div_euclid(16)))?;
         for x in min.0..=max.0{for y in min.1..=max.1{for z in min.2..=max.2{
             if s.removed{return Ok(())}
             let block=self.services.world.block(x,y,z)?;
-            Self::inherited(block,"entityInside",&entity_move::block_facts(block)?.callback_classes()?.entity_inside,"dtb")?;
-            // Verified inherited BlockBehaviour.entityInside and
-            // FallingBlockEntity's inherited Entity.onInsideBlock are empty.
+            let callbacks=entity_move::block_facts(block)?.callback_classes()?;
+            if callbacks.entity_inside=="dfm" {
+                main_falling_block_redstone::entity_inside(self.services,self.publication,s,(x,y,z))?;
+            } else {
+                Self::inherited(block,"entityInside",&callbacks.entity_inside,"dtb")?;
+            }
+            // FallingBlockEntity inherits Entity.onInsideBlock's literal
+            // empty body after the actual Block.entityInside callback.
         }}}
         Ok(())
     }
@@ -194,11 +190,14 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
     fn water_rain_or_bubble(&mut self,s:&EntityPhysicalState)->Result<bool>{
         if s.was_touching_water{return Ok(true)}
-        match self.services.facts.rain{
+        match self.facts.rain{
             RainAvailability::NotRaining=>{},
             RainAvailability::ExposureUnavailable=>{
-                if self.services.rain.as_deref_mut().context("actual falling rain exposure owner unavailable")?
-                    .is_in_rain(self.services.world,s)?{return Ok(true)}
+                let (lighting,manager)=self.services.chunks.native_lighting_parts()?;
+                let owner=self.services.rain.as_deref_mut()
+                    .context("actual falling rain exposure owner unavailable")?;
+                let mut exposure=mc121_rust::native_rain::NativeFlatPlainsRainFrame::new(owner,lighting,manager);
+                if exposure.is_in_rain(self.services.world,s)?{return Ok(true)}
             }
         }
         let p=s.block_position;
@@ -224,13 +223,16 @@ impl EntityMoveWorld for FallingMoveWorld<'_, '_> {
     }
 }
 
-pub(super) fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
-    mut services:MainFallingMoveServices<'_>)->Result<()>{
+fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
+    services:&mut ActualFallingBlockEditServices<'_>, publication:&mut FallingBlockPublication,
+    damage_types:&NativeFallingDamageTypes)->Result<()>{
     actor.validate()?;
-    ensure!(services.items.entity_kind(services.publication.handle)==Some(EntityKind::FallingBlock)
-        &&actor.entity_id==services.publication.handle.id,"falling motion actual handle mismatch");
+    ensure!(services.items.entity_kind(publication.handle)==Some(EntityKind::FallingBlock)
+        &&actor.entity_id==publication.handle.id,"falling motion actual handle mismatch");
     ensure!(matches!(services.world,WorldBackend::Fixture(_)),"native falling imported-world motion unavailable");
     services.gameplay.require_supported_floor()?;
+    let facts=services.context.item_facts(services.now,services.border,false)?;
+    let query_region=services.query_region.context("falling motion has no actual current query region")?;
     ensure!(actor.width==0.98_f32&&actor.height==0.98_f32,"actual falling dimensions mismatch");
     // All current native indexed classes inherit canBeCollidedWith=false.
     // Actually walk that same index; a future new class must update this match.
@@ -241,7 +243,7 @@ pub(super) fn move_falling_block(actor:&mut FallingBlockState,movement:Vec3,
         cancel_drop:&mut actor.cancel_drop,hurt_entities:&mut actor.hurt_entities,
         amount:&mut actor.fall_damage_per_distance,maximum:&mut actor.fall_damage_max};
     let mut world=FallingMoveWorld{actor:CollisionActor{entity_id:physical.entity_id,position:physical.position_vec()},
-        services,fields,colliders:Vec::new()};
+        services,publication,damage_types,fields,colliders:Vec::new(),facts,query_region};
     entity_move::move_entity(physical,MoverType::SelfMove,movement,
         EntityMoveContext{step_height:0.,descending:physical.shared_flags&2!=0,is_falling_block:true,
             can_walk_on_powder_snow:false,movement_emission:MovementEmission::None},&mut world)?;
@@ -258,6 +260,7 @@ use mc121_rust::{
 struct FallingCatalogue { blocks: Vec<FallingBlockFact> }
 #[derive(Deserialize)]
 struct FallingBlockFact {
+    class: String,
     min: u32,
     max: u32,
     item: i32,
@@ -273,6 +276,19 @@ fn falling_block_fact(state: u32) -> Result<&'static FallingBlockFact> {
         .context("falling state has no actual catalogue owner")
 }
 
+fn require_concrete_powder_binding(owner: &NativeConcretePowderOwner, state: u32) -> Result<()> {
+    ensure!(block::source_class(state)? == Some(NativeFallingClass::ConcretePowder),
+        "powder callback received an unported actual Block class");
+    let binding = owner.binding_for_state(state)?
+        .context("powder callback lacks its installed canonical Block association")?;
+    let hardened = block::concrete_powder_hardened_state(state)?
+        .context("powder source classifier lacks its captured concrete association")?;
+    ensure!(*binding.powder() == placement::placement_block_min_state(state)?
+        && *binding.concrete() == placement::placement_block_min_state(hardened)?,
+        "installed powder binding differs from its captured source association");
+    Ok(())
+}
+
 /// One synchronous source tick, retaining the canonical actor Box and borrowing
 /// all other owners from the real Level interval. No state is detached or
 /// installed into an ItemEntity proxy. The dispatcher calls this only for an
@@ -280,9 +296,38 @@ fn falling_block_fact(state: u32) -> Result<&'static FallingBlockFact> {
 pub(super) fn tick_falling_block(
     actor: &mut FallingBlockState,
     publication: &mut FallingBlockPublication,
-    mut services: ActualFallingBlockEditServices<'_>,
+    services: ActualFallingBlockEditServices<'_>,
     damage_types: &NativeFallingDamageTypes,
 ) -> Result<()> {
+    tick_falling_block_inner(actor, publication, services, damage_types, None)
+}
+
+/// The dispatcher supplies its once-installed actual configuration owner.
+/// Powder admission still requires every actual source/shape/landing owner.
+pub(super) fn tick_falling_block_with_powder(
+    actor: &mut FallingBlockState,
+    publication: &mut FallingBlockPublication,
+    services: ActualFallingBlockEditServices<'_>,
+    damage_types: &NativeFallingDamageTypes,
+    powder_owner: &NativeConcretePowderOwner,
+) -> Result<()> {
+    tick_falling_block_inner(actor, publication, services, damage_types, Some(powder_owner))
+}
+
+fn tick_falling_block_inner(
+    actor: &mut FallingBlockState,
+    publication: &mut FallingBlockPublication,
+    mut services: ActualFallingBlockEditServices<'_>,
+    damage_types: &NativeFallingDamageTypes,
+    powder_owner: Option<&NativeConcretePowderOwner>,
+) -> Result<()> {
+    let class = block::source_class(actor.block_state)?
+        .context("falling tick has no actual native Block class owner")?;
+    let is_powder = class == NativeFallingClass::ConcretePowder;
+    if is_powder {
+        require_concrete_powder_binding(powder_owner
+            .context("powder tick lacks its installed actual configuration/Block owner")?, actor.block_state)?;
+    }
     services.preflight_tick(actor)?;
     ensure!(services.items.entity_kind(publication.handle) == Some(EntityKind::FallingBlock)
         && actor.entity_id == publication.handle.id && !actor.removed,
@@ -290,15 +335,29 @@ pub(super) fn tick_falling_block(
     services.query_region.context("falling tick requires its actual current query region")?;
     services.external_entity_uuids.context("falling tick requires its actual external identity view")?;
     ensure!(actor.portal_process.is_none(), "active falling portal processing requires its actual owner");
+    // Issue the actual capability receipt as the final step before the one
+    // source begin-level transition. The core's first preflight consumes this
+    // same actor/owner phase; it does not rescan world shapes or prime caches.
+    let powder_clip = if is_powder {
+        Some(super::main_falling_block_clip_admission::preflight_next_tick_clip(
+            &mut services, publication, actor)?)
+    } else {None};
     actor.physical.begin_level_tick();
-    let mut host = MainFallingTickHost { services, publication, damage_types };
-    tick::tick(actor, &mut host)
+    let mut host = MainFallingTickHost { services, publication, damage_types,
+        powder_owner, powder_clip, powder_landing: None };
+    let result = tick::tick(actor, &mut host);
+    let complete = host.powder_landing.as_ref().map(PowderLandingAdmission::verify_complete)
+        .transpose().map(|_| ());
+    result.and(complete)
 }
 
 struct MainFallingTickHost<'a, 'level> {
     services: ActualFallingBlockEditServices<'level>,
     publication: &'a mut FallingBlockPublication,
     damage_types: &'a NativeFallingDamageTypes,
+    powder_owner: Option<&'a NativeConcretePowderOwner>,
+    powder_clip: Option<PreparedNextTickClip>,
+    powder_landing: Option<PowderLandingAdmission>,
 }
 impl MainFallingTickHost<'_, '_> {
     fn level_event(&mut self, event: i32, position: BlockPosition) -> Result<()> {
@@ -322,6 +381,12 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
     type Block = u32;
     type BlockEntity = std::convert::Infallible;
     fn preflight_tick(&mut self, actor: &FallingBlockState) -> Result<()> {
+        if block::source_class(actor.block_state)? == Some(NativeFallingClass::ConcretePowder) {
+            require_concrete_powder_binding(self.powder_owner
+                .context("powder tick has no retained actual Block owner")?, actor.block_state)?;
+            return self.powder_clip.take().context("powder preflight lacks its actual clip admission phase")?
+                .validate_after_begin(&self.services, self.publication, actor);
+        }
         self.services.preflight_tick(actor)
     }
     fn state_is_air(&mut self, state: u32) -> Result<bool> {
@@ -331,20 +396,7 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         placement::placement_block_min_state(state)
     }
     fn move_self(&mut self, actor: &mut FallingBlockState, movement: Vec3) -> Result<()> {
-        let facts = self.services.context.item_facts(self.services.now, self.services.border, false)?;
-        let region = self.services.query_region
-            .context("falling motion has no actual current query region")?;
-        let (lighting, manager) = self.services.chunks.native_lighting_parts()?;
-        let mut exposure = self.services.rain.as_deref_mut().map(|owner|
-            mc121_rust::native_rain::NativeFlatPlainsRainFrame::new(owner, lighting, manager));
-        let rain = exposure.as_mut().map(|owner| owner as &mut dyn RainExposure);
-        move_falling_block(actor, movement, MainFallingMoveServices {
-            world: self.services.world, items: self.services.items,
-            publication: self.publication, registry: self.services.registry,
-            player_motion: self.services.player_motion, gameplay: self.services.gameplay,
-            manager, query_region: region, fluid_shapes: &mut self.services.interactions.fluid_shapes,
-            rain, facts, damage_types: self.damage_types, events: self.services.events,
-        })
+        move_falling_block(actor,movement,&mut self.services,self.publication,self.damage_types)
     }
     fn handle_portal(&mut self, actor: &mut FallingBlockState) -> Result<()> {
         // Entity.handlePortal in a real ServerLevel calls processPortalCooldown
@@ -359,19 +411,25 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         Ok(false)
     }
     fn is_concrete_powder(&mut self, state: u32) -> Result<bool> {
-        ensure!(mc121_rust::falling_block::block::source_class(state)?.is_some(),
-            "falling subclass requires its actual concrete-powder owner");
-        // Actual AnvilBlock and ColoredFallingBlock classes are distinct from
-        // ConcretePowderBlock. Foreign/special subclasses are not guessed.
-        Ok(false)
+        match block::source_class(state)? {
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder identity lacks its retained actual Block owner")?, state)?;
+                Ok(true)
+            }
+            Some(NativeFallingClass::Anvil | NativeFallingClass::Ordinary) => Ok(false),
+            None => bail!("falling subclass requires its actual native Block owner"),
+        }
     }
     fn fluid_is_water(&mut self, position: BlockPosition) -> Result<bool> {
         let block = self.services.world.block(position.0, position.1, position.2)?;
         Ok(mc121_rust::fluid_physics::FluidState::from_block(block)?.kind == FluidKind::Water)
     }
-    fn clip_concrete_water(&mut self, _actor: &FallingBlockState, _from: Vec3, _to: Vec3)
+    fn clip_concrete_water(&mut self, actor: &FallingBlockState, from: Vec3, to: Vec3)
         -> Result<Option<BlockPosition>> {
-        bail!("concrete-powder water ray requires its actual generic falling owner")
+        super::main_falling_block_clip::clip_collider_source_only(
+            &mut self.services, self.publication, actor, from, to)
+            .map(|hit| hit.map(|hit| hit.block_position))
     }
     fn block_state(&mut self, position: BlockPosition) -> Result<u32> {
         self.services.world.block(position.0, position.1, position.2)
@@ -414,6 +472,20 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         state: u32, flags: i32) -> Result<bool> {
         self.services.set_block(actor, position, state, flags)
     }
+    fn set_block_for_landing(&mut self, actor: &mut FallingBlockState, original: &u32,
+        position: BlockPosition, state: u32, captured_replaced: u32, flags: i32) -> Result<bool> {
+        if block::source_class(*original)? != Some(NativeFallingClass::ConcretePowder) {
+            return self.set_block(actor, position, state, flags);
+        }
+        ensure!(self.powder_landing.is_none(), "powder tick attempted a second independent landing");
+        let owner = self.powder_owner.context("powder landing lacks its installed actual Block owner")?;
+        require_concrete_powder_binding(owner, *original)?;
+        let admission = main_falling_block_powder::prepare_landing(&mut self.services,
+            owner, actor, *original, position, state, captured_replaced, flags)?;
+        self.powder_landing = Some(admission);
+        self.powder_landing.as_mut().expect("retained actual powder landing")
+            .commit_first(&mut self.services)
+    }
     fn broadcast_block_update(&mut self, _actor: &FallingBlockState,
         position: BlockPosition, state: u32) -> Result<()> {
         let packet = Packet { id: 0x09, payload: world::try_block_update_payload(
@@ -425,28 +497,38 @@ impl FallingBlockTickHost for MainFallingTickHost<'_, '_> {
         self.publication.discard(actor, self.services.items, self.services.events)
     }
     fn on_land_if_fallable(&mut self, original: &u32, actor: &mut FallingBlockState,
-        position: BlockPosition, _carried: u32, _replaced: u32) -> Result<()> {
-        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
-        match source_class(*original)? {
+        position: BlockPosition, carried: u32, replaced: u32) -> Result<()> {
+        match block::source_class(*original)? {
             Some(NativeFallingClass::Anvil) => {
                 if !actor.silent { self.level_event(1031, position)?; }
                 Ok(())
             }
             // dhg inherits the literal return-only Fallable.onLand body.
             Some(NativeFallingClass::Ordinary) => Ok(()),
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder onLand lacks its installed actual Block owner")?, *original)?;
+                self.powder_landing.as_mut().context("powder onLand lacks its admitted first-write receipt")?
+                    .on_land(&mut self.services, actor, *original, position, carried, replaced)
+            }
             None => bail!("falling onLand requires its actual Fallable implementation"),
         }
     }
     fn on_broken_after_fall_if_fallable(&mut self, original: &u32,
         actor: &mut FallingBlockState, position: BlockPosition) -> Result<()> {
-        use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
-        match source_class(*original)? {
+        match block::source_class(*original)? {
             Some(NativeFallingClass::Anvil) => {
                 if !actor.silent { self.level_event(1029, position)?; }
                 Ok(())
             }
             // dhg inherits the literal return-only Fallable broken callback.
             Some(NativeFallingClass::Ordinary) => Ok(()),
+            Some(NativeFallingClass::ConcretePowder) => {
+                require_concrete_powder_binding(self.powder_owner
+                    .context("powder broken callback lacks its retained actual owner")?, *original)?;
+                // ConcretePowderBlock inherits Fallable's literal empty body.
+                Ok(())
+            }
             None => bail!("falling broken callback requires its actual Fallable implementation"),
         }
     }

@@ -14,3 +14,9 @@ pub mod sensing;
 pub mod lifecycle;
 pub mod goals;
 pub mod navigation;
+pub mod state;
+pub mod construction;
+pub mod actor;
+
+#[cfg(test)]
+mod actor_tests;

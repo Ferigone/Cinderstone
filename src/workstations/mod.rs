@@ -27,3 +27,7 @@ pub mod crafter;
 pub mod recipe_context;
 pub mod special_recipe_context;
 pub mod special_item_context;
+pub mod beacon_entity;
+pub mod beacon_entity_nbt;
+pub mod beacon_entity_data;
+pub mod beacon_menu_live;

@@ -1,0 +1,303 @@
+{
+  "minecraft": "1.21",
+  "protocol": 767,
+  "oracle_inner_sha256": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+  "production_sha256": {
+    "fixtures/density_builtin-1.21.json": "4bf8649303f74a80c45e95009432bfa33c7eb2cb2f099139004aceb1720acc1d",
+    "fixtures/item-components-1.21.json": "ab1cb9e5f4fc56b171fe5521152b94ba2edef06d2b414c00af0c2b4e822065f2",
+    "fixtures/items-1.21.json": "d2bdc81b2d69126f18b1518ffe674f55e362910bb7be118e548bcdd7815c61ea",
+    "fixtures/noise_parameters-1.21.json": "e969eaedde0a43b2bca3b3b43fd98af08824e8472ca2181cc10b16d86b9add0a",
+    "fixtures/placement-1.21.json": "97d799588bbb62449d74b12addcc4722358be7e5fcbce10082e81b058e1df412",
+    "fixtures/source-lock.json": "6c55cdb1f78724f51293f6c244323943ddd0d49b04f697fcd09f60469ad6e353",
+    "fixtures/world-generation-biome-climate.json": "1935dcef53e9445905cbfb62e173cbf5b7bdb13ab249a201f520afa93792a012",
+    "fixtures/world-generation-multinoise-parameters.json": "75b8d0185473cf6ccec8aeef229be086d63e2049be534ee6dcf62739184bb523",
+    "fixtures/world-generation-surface-rules.json": "fc6fe5ac86446e6aea7ca18fb13fdcb8eeae46775c8e613b239111e26c2785a5",
+    "fixtures/world-generation-target-state-facts.json": "3ba567d241f2387f85c5444adf312218090f3d64f93306ba7b192e54e0e282d3",
+    "src/chunk_readiness.rs": "3746e1c4dcc1852ba24db2bff60b5bfbccc07132ad065f5e150af2a16f99aa7a",
+    "src/density/chunk.rs": "35a027b6ccf33a4f655fb95ba4a04b386fc98773674e7af34f347e011284586b",
+    "src/density.rs": "fc051b11f71c420251a735233cddb75351e5a7d060d3c98bf50fdb680d05a566",
+    "src/geometry.rs": "1246833a74d8a2ad794f5f8f7c91e833ef09003f8dfac77cd29cb8e1bee5234b",
+    "src/hotspot_math.rs": "61130ee3c64f3aa7fa48c4ca96afa454e2e94bebde4f2cae4f787bc38777bc17",
+    "src/inventory.rs": "f40eaebe85e0947805ad089c0532cdaaeb92d84df041283949a720c7156c173a",
+    "src/lighting.rs": "0828ba4b55685724aba79734a05951e2bb6660ac5912b9d5b0bae02db345fc40",
+    "src/nbt.rs": "a08ff9f1dd2a4379b3b396bb9e3130bb30ab6ef9c2ccffb5ab4dfba18dd65ba6",
+    "src/noise.rs": "151878d794840d269ca4dead58490e7fc79ee7bb43cc0e151a78fc3337896660",
+    "src/placement.rs": "38004586e21ad23701d9b9220227051fd0997c8f5e5107f0d0b729954a51104c",
+    "src/random.rs": "417b2461a9f298c8ee17fb4932a22c3bbcdba0ddecdd130c30b3ce46fe21aa64",
+    "src/worldgen/aquifer.rs": "093ec26fc8fcbeaa6f9ca933ed29ce6f51f6bed5fb05cf86509b5221c9a7b759",
+    "src/worldgen/biome_context.rs": "4b22b4065e6deba4e984281610092d6b36614739a8b5bb0f642ed90d95a524d9",
+    "src/worldgen/biome_source.rs": "d86204cc9eda41b80233c2f4406b799b6e8369c657b61dd7463a9fe9ce72e23f",
+    "src/worldgen/biome_temperature.rs": "f755890782c556812f51dbfe2d9b171b569b7dfe9345d506e0161611dda37626",
+    "src/worldgen/biome_zoom.rs": "9c10618810ad86666ebd761266accad323c8bbc820cfc3e7d05db37170ec7507",
+    "src/worldgen/biomes.rs": "e858aaf5dbf35134031ee1a9dc919e1c865110f3cfc9b2ccd8e0651346922e3c",
+    "src/worldgen/blending/biome.rs": "cef3afa297b868daa79d26bd235b41c15c36012444a29ce78d70a3508f219b23",
+    "src/worldgen/blending/blender.rs": "35eb1a6df8ec1f2ba562837ac3e85535dbeb8ee32c204446dd5bc2eabb834865",
+    "src/worldgen/blending/data.rs": "e57900e855efaea7b1156ba482b8237a52966fefacd0c9c123d646e1be49e83c",
+    "src/worldgen/blending/density.rs": "9809833dc9dc03f5225e4228e9485aa096c12a4beef2ad03985dc4246ab3fb9e",
+    "src/worldgen/blending/mod.rs": "801f692b143a308acbc74ce625febd1c84473f4587ec68c44a923bcd3a585c49",
+    "src/worldgen/blending/ordered_map.rs": "7ba809d672a7b3d1ff6384c6ab17ca58a4a0b0e7bb284e8c5af818bd02527d27",
+    "src/worldgen/carver/canyon.rs": "c3a09f7aad37b9b617b67f778463158a49fb06d0001882a539136f1e4a66096d",
+    "src/worldgen/carver/cave.rs": "d182623cc9e59f3772c9fe2737250d0b6674261b58bb4b74225daeb864a23134",
+    "src/worldgen/carver/config.rs": "73d9197562dbacf5c94d6421f8f39ebb9669394b7edb86cc6c8e6e79d5cbf780",
+    "src/worldgen/carver/host.rs": "c8312afff074154cf4d12277f0a8ada5f7c918207b2a2239eecd0b282fdccb30",
+    "src/worldgen/carver/mask.rs": "6e485f2fab619e58dbd11c68a92fa3f545db2addeb68fbe84149d2bcd50954a3",
+    "src/worldgen/carver/mod.rs": "28655620b53ef726b0b955e60643118ed75e80a0169d0b6551efcd3fd3911b3d",
+    "src/worldgen/carver/nether.rs": "7409d8f57cbaa9fdf7de261fe0918cd2842ed3a9d70741ad476020e85b936a16",
+    "src/worldgen/carver/providers.rs": "5b854da0ed4f930fa4e643a83908e336fa251bd546526dad522ba197442aa2f4",
+    "src/worldgen/carver/world_carver.rs": "aa17a7617cca501c2c163221a5eadc1c49ba04124bd14b6c4a20f2a18d2454f5",
+    "src/worldgen/chunk_target/facts.rs": "edb13e3c576f538a10c985e418f50378a5850cd049d38d1e4b462ebfcc43478a",
+    "src/worldgen/chunk_target/host.rs": "eb58ab7654c597592f94f8d657fe2d516b55407e74f890dba21f99e65557c331",
+    "src/worldgen/chunk_target/mod.rs": "e61066d51705f2a5925293591953dd8b6723424a7cb28bcb01700613a3ab4566",
+    "src/worldgen/chunk_target/native.rs": "5cbc33d97299c406534b62fc261bd4eb1fa1e3c09775d03aa2df4b5cc1ad68c7",
+    "src/worldgen/climate.rs": "fc2e065e673a3e77bed06b0529812b24eac0b88adbbab5a4b558a09879674556",
+    "src/worldgen/feature/config.rs": "f04a5e78d1e633b49aaea7c0d584cae8771df18396c4e6a8cc459e270e200307",
+    "src/worldgen/feature/host.rs": "09298b8afd53153d32572a44f4a827cd102d72dc976f6a84f1525a043e3f87e0",
+    "src/worldgen/feature/mod.rs": "fe0ab7cd56a32e2590043b1c1d0533d78d379c0bb868a9b1a2186fb479b9d0ab",
+    "src/worldgen/feature/ore.rs": "1336530fdff03ff3ffd0a46aa2da8989c759c59cf8426e90720d37551492442d",
+    "src/worldgen/feature/scattered_ore.rs": "f8d3bdf0e3504e149c9eb46b270fd72c0d6ffe0299f621247d354bbb42433f19",
+    "src/worldgen/generator.rs": "5ab2c42c23ac516da2ed5899e163d3507d12141fd97e9b57e079ab0f525de4e2",
+    "src/worldgen/mod.rs": "1faf920c1e16ee331a1ce5fbc1618ab2218d699d10c32eeee55c4ad9fe01050a",
+    "src/worldgen/noise_chunk.rs": "f986c4fcb889eb8a6943a02ea8de117cf08fa0bf2e3d84a4fbae00b8fb6d0bea",
+    "src/worldgen/random_state.rs": "048144db7e25704a6e3dc256b5b30e4af2110cad917c894edafb5fe651835523",
+    "src/worldgen/retrogen.rs": "00f64db879d499abf0151875cf3c6bf59c564aafedac27b002b5ef7681d89eb4",
+    "src/worldgen/surface/mod.rs": "41a59896a1d1788499161e830f9aef3f62b3f587c1cc56c717bcb7c31aeeadb0",
+    "src/worldgen/surface/rules.rs": "292cc4b35136e2310b38c38813b1e47ab64ed5752cf88c183efacf0970b66d3f",
+    "src/worldgen/target_generation.rs": "ab6ac069fdc8e64a4edc5c5168f18207eaaad80d978bfe3c99710c420f5ff382",
+    "src/worldgen/target_surface.rs": "83dde2733ca20e68b37db8962218dd5cd906e83ff69253875bf1aa83d9dc11e9"
+  },
+  "probe_sha256": {
+    "src/worldgen/validation/check_existing_target.py": "528db88ade6d578de0bb2727aac80bc9e1513d483bf24869bb74cccd035045bb",
+    "src/worldgen/validation/WorldgenSurfaceOracle.java": "800ce0add17160ba0a74e3b56eeaf73f756473b2049cd00d52cf44112aad7de8",
+    "src/worldgen/validation/WorldgenBiomeStageOracle.java": "a73658f21bdb40468a6f015122a71ea615d527f38c09c22812c3adf63873f179",
+    "src/worldgen/validation/WorldgenExistingTargetOracle.java": "8b81b3ac6eab9ed618cccbfd59203e50ecdd8b6ac9c694a71e8483d12dad417d",
+    "src/worldgen/validation/existing_target_probe.rs": "675f1feee97a107a30969cf3998701ac41190eb00d81a346d7394cb25e3a72f2",
+    "src/worldgen/validation/check_zero_overlap.py": "bcdcf1f1d60da6da96e014a487189c1fa4b709a8db96e85106a4eea64f4b5b59"
+  },
+  "artifact_sha256": {
+    "server-1.21.jar": "c96394da86f9d9f9ef7ca2d2ee1f2f0980c29b7aa5c94b43c02c50435dbcf53f",
+    "server-1.21-mappings.txt": "c9d9fda3143c100fa0566099074fc5d912b8b7ef3cb5b84c87eab411bd5bfb51",
+    "server-inner-1.21.jar": "8d47de9a76ab47186deba6c9beda6f9345c6f73618fa5a157c57608be0505a01",
+    "libraries/com/github/oshi/oshi-core/6.4.10/oshi-core-6.4.10.jar": "fef001a7a13515c273f30915915580782afbc45273cc07aa15994e51563ef310",
+    "libraries/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar": "4241c14a7727c34feea6507ec801318a3d4a90f070e4525681079fb94ee4c593",
+    "libraries/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar": "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26",
+    "libraries/com/google/guava/guava/32.1.2-jre/guava-32.1.2-jre.jar": "bc65dea7cfd9e4dacf8419d8af0e741655857d27885bb35d943d7187fc3a8fce",
+    "libraries/com/mojang/authlib/6.0.54/authlib-6.0.54.jar": "319ea7b53b5e52f62ad3e2b81e9db7f0751240edac548bd74f5f19e35dc21a3b",
+    "libraries/com/mojang/brigadier/1.2.9/brigadier-1.2.9.jar": "1f46f6c679ad59ad5d6228e7b91962217a588f25bd259e0691bc9c5a54b68bcd",
+    "libraries/com/mojang/datafixerupper/8.0.16/datafixerupper-8.0.16.jar": "ffc138bc2596c291781b0d5e211ccac51f0f2345f27fc2742f335cedf7e2870d",
+    "libraries/com/mojang/logging/1.2.7/logging-1.2.7.jar": "3dc3190204bac5f4184d8405bfe1f724f73a6a15a0d3f36ec7f69e6872c1a76c",
+    "libraries/commons-io/commons-io/2.15.1/commons-io-2.15.1.jar": "a58af12ee1b68cfd2ebb0c27caef164f084381a00ec81a48cc275fd7ea54e154",
+    "libraries/io/netty/netty-buffer/4.1.97.Final/netty-buffer-4.1.97.Final.jar": "a4393f5b395486cc74d0325c9b41311abb9513ba0fd7ef8cf46e9345c3bffbea",
+    "libraries/io/netty/netty-codec/4.1.97.Final/netty-codec-4.1.97.Final.jar": "bcc96737a0f912fcf031cf8c45ebda352a90a40437db0832caad3d5a63618b38",
+    "libraries/io/netty/netty-common/4.1.97.Final/netty-common-4.1.97.Final.jar": "a8aca0c8e9347acc75c885ecc749195d9775369aa520b9276f2d1128210a6c17",
+    "libraries/io/netty/netty-handler/4.1.97.Final/netty-handler-4.1.97.Final.jar": "bd4771d19149cbc9c7464ed2d58035d79cdfed7adb59d38718b0d8e7a3dcc2de",
+    "libraries/io/netty/netty-resolver/4.1.97.Final/netty-resolver-4.1.97.Final.jar": "38a018c6d9fb2cb11b72881354782b45080bbd20b9a0ad6cde28b80d431ed0b1",
+    "libraries/io/netty/netty-transport/4.1.97.Final/netty-transport-4.1.97.Final.jar": "197fd2d6c6b4afe677d9e95bf2e36b49a0bcabdfce0583683fb73f29a3f5a407",
+    "libraries/io/netty/netty-transport-classes-epoll/4.1.97.Final/netty-transport-classes-epoll-4.1.97.Final.jar": "ee65fa17fe65f18fd22269f92bddad85bfb3a263cf65eba01e116a2f30b86ff5",
+    "libraries/io/netty/netty-transport-native-epoll/4.1.97.Final/netty-transport-native-epoll-4.1.97.Final-linux-x86_64.jar": "1e83fc9f82e5415cdbb688c6a5c6bbbd7d198e9fdd6fdf64b3dc5d54dd1acfd0",
+    "libraries/io/netty/netty-transport-native-epoll/4.1.97.Final/netty-transport-native-epoll-4.1.97.Final-linux-aarch_64.jar": "93b5fe8f3829dcb5e033d8d40d59159366ff4cf8266c903bbd6a4aeed9e59bac",
+    "libraries/io/netty/netty-transport-native-unix-common/4.1.97.Final/netty-transport-native-unix-common-4.1.97.Final.jar": "412fe140257c2dda5a5e15bee911298bd61928d03ee6be4db588e82c196c5dc6",
+    "libraries/it/unimi/dsi/fastutil/8.5.12/fastutil-8.5.12.jar": "b5543ee08d062d551cf0a5c9bc0fb70588b0382079029ba48941fa9c9be8a5d4",
+    "libraries/net/java/dev/jna/jna/5.14.0/jna-5.14.0.jar": "34ed1e1f27fa896bca50dbc4e99cf3732967cec387a7a0d5e3486c09673fe8c6",
+    "libraries/net/java/dev/jna/jna-platform/5.14.0/jna-platform-5.14.0.jar": "ae4caceb3840730c2537f9b7fb55a01baba580286b4122951488bcee558c2449",
+    "libraries/net/sf/jopt-simple/jopt-simple/5.0.4/jopt-simple-5.0.4.jar": "df26cc58f235f477db07f753ba5a3ab243ebe5789d9f89ecf68dd62ea9a66c28",
+    "libraries/org/apache/commons/commons-lang3/3.14.0/commons-lang3-3.14.0.jar": "7b96bf3ee68949abb5bc465559ac270e0551596fa34523fddf890ec418dde13c",
+    "libraries/org/apache/logging/log4j/log4j-api/2.22.1/log4j-api-2.22.1.jar": "5d7beae7ff15d8516d6517121d7f12a79a6ac180df64b5fcec55d5be21056e53",
+    "libraries/org/apache/logging/log4j/log4j-core/2.22.1/log4j-core-2.22.1.jar": "46dccecac556623d8e2ce8648496824a82951d139062a4e61148aff1a25ed18d",
+    "libraries/org/apache/logging/log4j/log4j-slf4j2-impl/2.22.1/log4j-slf4j2-impl-2.22.1.jar": "1920cd69d8682c7ef249bb407a3d0685723aa1785867cf4c53258da6bf14da97",
+    "libraries/org/joml/joml/1.10.5/joml-1.10.5.jar": "cac9f22f83a7aa33eebda73c16ff5261e3cb4911b6bafcf4c79ea486099d0c9a",
+    "libraries/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar": "d74a3334fb35195009b338a951f918203d6bbca3d1d359033dc33edd1cadc9ef",
+    "libraries/org/slf4j/slf4j-api/2.0.9/slf4j-api-2.0.9.jar": "0818930dc8d7debb403204611691da58e49d42c50b6ffcfdce02dadb7c3c2b6c"
+  },
+  "bootstrap_sha256": "35f18ccc575cbdfacf94d6fe19684c8bcc80b976c1235cced197f581435fdcbb",
+  "native_rlib_sha256": {
+    "mc121_rust": "967d753e703532059d580d4ef08df2f32f90e24601c5568d4ce10c429de27843",
+    "anyhow": "e01710828739293a17c6b392e17e1b763e8e623fe3a5cf09ae3b5e1313f1a230",
+    "serde_json": "a5ae0bb37aa2cdb10d163f361635a0109833659384dcef24cc4e096164c4ce82",
+    "openssl": "e42d7c6f4a31db8ceb9b3c0890bc597478bdae8df680e11d2ae8530b283833e0"
+  },
+  "native_probe_sha256": "591ddfe7776c18ba832df028d2aa978401f1813700afe055415828ad80b968fa",
+  "java_versions": {
+    "java": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-deb13u1-Debian)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-deb13u1-Debian, mixed mode, sharing)\n",
+    "javac": "javac 21.0.12.1\n"
+  },
+  "input_phase_separation": "Java first; native receives only query plus actual original INITIAL",
+  "child_timeout_seconds": 55,
+  "term_grace_seconds": 5,
+  "success": true,
+  "cases": [
+    {
+      "id": "zero_nether",
+      "complete_phase_arrays_palettes_metadata_equal": true,
+      "phases": [
+        "initial",
+        "biomes",
+        "noise_before_retrogen",
+        "noise",
+        "surface"
+      ],
+      "actual_noise_changed_blocks": 0,
+      "actual_below_logical_noise_writes": 0,
+      "actual_noise_added_posts": 0,
+      "actual_preserved_gold_inside_noise_span": 0,
+      "actual_preserved_tail_gold": 23,
+      "actual_bedrock_to_deepslate_changes": 0,
+      "actual_masked_to_air_changes": 0,
+      "actual_surface_changed_blocks": 16361,
+      "actual_surface_added_posts": 0,
+      "surface_quart_queries": 256,
+      "surface_foreign_quart_queries": 29,
+      "native_phase": "Surface",
+      "native_box_section_state_map_postarray_identity": true,
+      "native_private_aquifer_identity_observed": false,
+      "phase_sha256": {
+        "initial": {
+          "blocks": "3b476526da5f9ceb4b0eefab5be309e80c3c2b40b6b95307ae71017d50ff64a4",
+          "biomes": "4177ea8fdadbe8071a2c149700d4b30ac79127d18297ae8fd78f0681a9151784"
+        },
+        "biomes": {
+          "blocks": "3b476526da5f9ceb4b0eefab5be309e80c3c2b40b6b95307ae71017d50ff64a4",
+          "biomes": "52bf773aa907143b3afeedce1ac0446a26dff1d0210d49284bdc28b3aa06b83b"
+        },
+        "noise_before_retrogen": {
+          "blocks": "3b476526da5f9ceb4b0eefab5be309e80c3c2b40b6b95307ae71017d50ff64a4",
+          "biomes": "52bf773aa907143b3afeedce1ac0446a26dff1d0210d49284bdc28b3aa06b83b"
+        },
+        "noise": {
+          "blocks": "3b476526da5f9ceb4b0eefab5be309e80c3c2b40b6b95307ae71017d50ff64a4",
+          "biomes": "52bf773aa907143b3afeedce1ac0446a26dff1d0210d49284bdc28b3aa06b83b"
+        },
+        "surface": {
+          "blocks": "fd30dc56a675fef5fdfd64fce91121a669aa6ed6f61369c1668e77866e25e283",
+          "biomes": "52bf773aa907143b3afeedce1ac0446a26dff1d0210d49284bdc28b3aa06b83b"
+        }
+      },
+      "actual_biome_query_count": 256,
+      "original_noise_grid_min_y": 0,
+      "original_noise_grid_height": 0,
+      "native_private_noise_grid_observed": false,
+      "profile": "zero_overlap_retained_cache",
+      "noise_target_data_unchanged": true,
+      "retained_biomes_cache_after_skipped_fill": true,
+      "original_beardifier_input_kind": "actual_empty_beardifier"
+    },
+    {
+      "id": "zero_overworld",
+      "complete_phase_arrays_palettes_metadata_equal": true,
+      "phases": [
+        "initial",
+        "biomes",
+        "noise_before_retrogen",
+        "noise",
+        "surface"
+      ],
+      "actual_noise_changed_blocks": 0,
+      "actual_below_logical_noise_writes": 0,
+      "actual_noise_added_posts": 0,
+      "actual_preserved_gold_inside_noise_span": 0,
+      "actual_preserved_tail_gold": 23,
+      "actual_bedrock_to_deepslate_changes": 0,
+      "actual_masked_to_air_changes": 0,
+      "actual_surface_changed_blocks": 730,
+      "actual_surface_added_posts": 0,
+      "surface_quart_queries": 256,
+      "surface_foreign_quart_queries": 30,
+      "native_phase": "Surface",
+      "native_box_section_state_map_postarray_identity": true,
+      "native_private_aquifer_identity_observed": false,
+      "phase_sha256": {
+        "initial": {
+          "blocks": "0bcc5c1a91a8185157f4b837110761247a00340165b5343edaa7bfe0f2904f0f",
+          "biomes": "4177ea8fdadbe8071a2c149700d4b30ac79127d18297ae8fd78f0681a9151784"
+        },
+        "biomes": {
+          "blocks": "0bcc5c1a91a8185157f4b837110761247a00340165b5343edaa7bfe0f2904f0f",
+          "biomes": "5e5fef974f883b1eaf9042f3090de90cac7cf94625d49c33499b035ee9229ea8"
+        },
+        "noise_before_retrogen": {
+          "blocks": "0bcc5c1a91a8185157f4b837110761247a00340165b5343edaa7bfe0f2904f0f",
+          "biomes": "5e5fef974f883b1eaf9042f3090de90cac7cf94625d49c33499b035ee9229ea8"
+        },
+        "noise": {
+          "blocks": "0bcc5c1a91a8185157f4b837110761247a00340165b5343edaa7bfe0f2904f0f",
+          "biomes": "5e5fef974f883b1eaf9042f3090de90cac7cf94625d49c33499b035ee9229ea8"
+        },
+        "surface": {
+          "blocks": "3a828515a65a1cc201db71f953d363d28eee74b20d373e17b9dc3b35cea7b2a8",
+          "biomes": "5e5fef974f883b1eaf9042f3090de90cac7cf94625d49c33499b035ee9229ea8"
+        }
+      },
+      "actual_biome_query_count": 256,
+      "original_noise_grid_min_y": 320,
+      "original_noise_grid_height": 0,
+      "native_private_noise_grid_observed": false,
+      "profile": "zero_overlap_retained_cache",
+      "noise_target_data_unchanged": true,
+      "retained_biomes_cache_after_skipped_fill": true,
+      "original_beardifier_input_kind": "actual_empty_beardifier"
+    },
+    {
+      "id": "aligned_existing",
+      "complete_phase_arrays_palettes_metadata_equal": true,
+      "phases": [
+        "initial",
+        "biomes",
+        "noise_before_retrogen",
+        "noise",
+        "surface"
+      ],
+      "actual_noise_changed_blocks": 28627,
+      "actual_below_logical_noise_writes": 0,
+      "actual_noise_added_posts": 1250,
+      "actual_preserved_gold_inside_noise_span": 92,
+      "actual_preserved_tail_gold": 0,
+      "actual_bedrock_to_deepslate_changes": 0,
+      "actual_masked_to_air_changes": 0,
+      "actual_surface_changed_blocks": 15749,
+      "actual_surface_added_posts": 0,
+      "surface_quart_queries": 5023,
+      "surface_foreign_quart_queries": 424,
+      "native_phase": "Surface",
+      "native_box_section_state_map_postarray_identity": true,
+      "native_private_aquifer_identity_observed": false,
+      "phase_sha256": {
+        "initial": {
+          "blocks": "f43da96305d0c2798cb3c0ef822fc3f681ffa839fe8747954d8a4a53c28488a9",
+          "biomes": "c32503cfdcaae9e91a8075bfc4737bedc423d99eeab5ad98b053d25ba6900aca"
+        },
+        "biomes": {
+          "blocks": "f43da96305d0c2798cb3c0ef822fc3f681ffa839fe8747954d8a4a53c28488a9",
+          "biomes": "c3e94ecd58888b6ed9f31c39b0709694653fe43d9266336a3d7fe027b9857273"
+        },
+        "noise_before_retrogen": {
+          "blocks": "5599d557cdb984795f451fef7019444c00e4f4a1eccd4e9a97cdaf0956011fe2",
+          "biomes": "c3e94ecd58888b6ed9f31c39b0709694653fe43d9266336a3d7fe027b9857273"
+        },
+        "noise": {
+          "blocks": "5599d557cdb984795f451fef7019444c00e4f4a1eccd4e9a97cdaf0956011fe2",
+          "biomes": "c3e94ecd58888b6ed9f31c39b0709694653fe43d9266336a3d7fe027b9857273"
+        },
+        "surface": {
+          "blocks": "a790eca4c7af459822fbcf51f8d17ddef0ceacc34a7b7b9f3f5a78b5d7291569",
+          "biomes": "c3e94ecd58888b6ed9f31c39b0709694653fe43d9266336a3d7fe027b9857273"
+        }
+      },
+      "profile": "aligned_positive_noise_control",
+      "actual_biome_query_count": 1536,
+      "original_beardifier_input_kind": "actual_empty_beardifier"
+    }
+  ],
+  "scope": "Two controlled zero-overlap retained-cache flows and one aligned positive-NOISE control, each original BIOMES/task continuation/SURFACE paired with native live target.",
+  "reuse_scope": "Existing-target oracle/probe and shared artifact/process/snapshot/comparison/sanitization helpers; no duplicate generator.",
+  "beardifier_scope": "All three queries require the actual original empty Beardifier owner, class dyl. Historical RAW BeardifierMarker observations are not this run's acceptance evidence.",
+  "grid_scope": "Zero-height retained grid fields are observed in original only. Native private grid/AQ/cache pointers and runtime acquisition order are not observed; cache-presence/storage/lease guards are separate.",
+  "storage_scope": "Complete physical states/palettes, WG first-available values, counters, status/generation/unsaved/debug fields and ordered posts/allocation are compared. Unused WG bits and global inter-section post order are not measured.",
+  "context_scope": "Original targets retain persisted EMPTY. SURFACE uses declared registered stored-center/foreign palettes through the explicit base-ChunkAccess view; no WorldGenRegion, scheduler or historical save.",
+  "not_verified": [
+    "Negative-height overlap or arbitrary dimension/registry inputs.",
+    "Nonempty structures, full status scheduling, Main, persistence or FULL publication.",
+    "Native private aquifer/cache/grid identities or runtime acquisition order.",
+    "Positive SURFACE-only fluid insertion unless observed in actual output."
+  ],
+  "native_source_commit": "dbbc19d591ec6221dd91789a4ed1bff740485fae",
+  "instance_id": "worldgen-20261101-c4e7"
+}

@@ -1,4 +1,4 @@
-//! Actual base FallingBlock scheduling for ordinary sand/red sand/gravel.
+//! Actual base FallingBlock scheduling for ordinary blocks and concrete powder.
 //! Construction, flags3 source callbacks and world-add share the Anvil owner;
 //! only the source virtual falling hook differs and does not enable damage.
 use super::*;
@@ -6,18 +6,46 @@ use mc121_rust::{
     block_ticks,
     falling_block::block::{self, FallingBlockAction, FallingBlockHost,
         NativeFallingClass, OrdinaryFallingBlockHost, ShapeUpdate},
+    falling_block::concrete_powder,
     placement::{self, BlockPosition}, tick::TickPriority,
 };
 use super::main_falling_block_runtime::ConstructedFallingBlock;
 
-struct NativeOrdinaryFallingHost<'a> {
+struct NativeBaseFallingHost<'a> {
     server: &'a Server,
     world: &'a mut WorldBackend,
     players: &'a mut LivePlayers,
     now: i64,
     border: CollisionBorder,
 }
-impl FallingBlockHost for NativeOrdinaryFallingHost<'_> {
+impl NativeBaseFallingHost<'_> {
+    /// Pure source/association admission. Concrete powder requires the actual
+    /// retained configuration owner before any constructor entropy or write.
+    fn require_base_binding(&self, block: u32, state: u32) -> Result<()> {
+        ensure!(placement::placement_block_min_state(state)? == block,
+            "base falling callback received a foreign Block singleton");
+        ensure!(block::inherits_base_falling_hook(state)?,
+            "base falling callback lacks its literal inherited falling hook");
+        match block::source_class(state)? {
+            Some(NativeFallingClass::Ordinary) => Ok(()),
+            Some(NativeFallingClass::ConcretePowder) => {
+                let owner = self.players.block_runtime.concrete_powder_owner()?;
+                let binding = owner.binding_for_state(state)?
+                    .context("powder callback lacks its retained actual Block binding")?;
+                let hardened = block::concrete_powder_hardened_state(state)?
+                    .context("powder callback lacks its captured concrete association")?;
+                ensure!(*binding.powder() == block
+                    && *binding.concrete() == placement::placement_block_min_state(hardened)?,
+                    "powder callback differs from its installed actual Block association");
+                ensure!(self.players.block_runtime.owns_falling_tick(state, 2)?,
+                    "powder callback lacks its configured shared BLOCK/save owner");
+                Ok(())
+            }
+            _ => bail!("base falling hook has no actual inherited source implementation"),
+        }
+    }
+}
+impl FallingBlockHost for NativeBaseFallingHost<'_> {
     type Block = u32;
     type BlockState = u32;
     type FallingEntity = ConstructedFallingBlock;
@@ -25,9 +53,7 @@ impl FallingBlockHost for NativeOrdinaryFallingHost<'_> {
         position: BlockPosition) -> Result<()> {
         self.players.require_current_native_source(self.world)?;
         self.players.block_runtime.falling_damage_types()?;
-        ensure!(placement::placement_block_min_state(*state)? == *block
-            && block::source_class(*state)? == Some(NativeFallingClass::Ordinary),
-            "base falling callback received a foreign Block singleton");
+        self.require_base_binding(*block, *state)?;
         ensure!(self.players.block_runtime.queue.chunk(block_ticks::pos(position).chunk()).is_some(),
             "actual base FallingBlock queue is not loaded");
         if action == FallingBlockAction::FallingEntity {
@@ -46,8 +72,8 @@ impl FallingBlockHost for NativeOrdinaryFallingHost<'_> {
     }
     fn superclass_update_shape(&mut self, update: ShapeUpdate<'_, u32>) -> Result<u32> {
         placement::placement_block_name(*update.state)?;
-        // These actual ColoredFallingBlock instances inherit the literal
-        // unchanged BlockBehaviour superclass return after scheduleTick.
+        // This is the inherited base delegate only. A powder updateShape must
+        // enter its real hardening kernel before delegating the dry branch.
         Ok(*update.state)
     }
     fn block_state(&mut self, position: BlockPosition) -> Result<u32> {
@@ -68,6 +94,7 @@ impl FallingBlockHost for NativeOrdinaryFallingHost<'_> {
     }
     fn minimum_build_height(&mut self) -> Result<i32> { Ok(self.players.world_context.dimension.min_y) }
     fn fall_block(&mut self, position: BlockPosition, state: &u32) -> Result<ConstructedFallingBlock> {
+        self.require_base_binding(placement::placement_block_min_state(*state)?, *state)?;
         self.server.construct_native_falling_block_locked(self.world, self.players,
             position, *state, self.now, self.border)
     }
@@ -79,16 +106,14 @@ impl FallingBlockHost for NativeOrdinaryFallingHost<'_> {
         Ok(())
     }
 }
-impl OrdinaryFallingBlockHost for NativeOrdinaryFallingHost<'_> {
+impl OrdinaryFallingBlockHost for NativeBaseFallingHost<'_> {
     fn inherited_falling(&mut self, block: &u32, state: &u32,
         entity: &mut ConstructedFallingBlock) -> Result<()> {
-        ensure!(block::source_class(*state)? == Some(NativeFallingClass::Ordinary)
-            && placement::placement_block_min_state(*state)? == *block,
-            "ordinary falling hook has no actual inherited source body");
+        self.require_base_binding(*block, *state)?;
         let actual = self.players.falling_blocks.object_state(entity)?;
         ensure!(actual.block_state == main_falling_block_world::carried_state_for_fall(*state)?,
             "ordinary falling hook did not resolve its actual constructed object");
-        // Direct pinned dhg/diu inspection: inherited FallingBlock.falling is
+        // Direct pinned dhg/dhk/diu inspection: inherited FallingBlock.falling is
         // literally return-only. No hurt2/40, RNG draw or second entity occurs.
         Ok(())
     }
@@ -103,9 +128,20 @@ impl Server {
                 self.tick_native_anvil_block_locked(world, players, position, state, now, border),
             Some(NativeFallingClass::Ordinary) => {
                 let singleton = placement::placement_block_min_state(state)?;
-                block::scheduled_tick(&mut NativeOrdinaryFallingHost {
+                block::scheduled_tick(&mut NativeBaseFallingHost {
                     server: self, world, players, now, border,
                 }, &singleton, &state, position)?;
+                Ok(())
+            }
+            Some(NativeFallingClass::ConcretePowder) => {
+                // Clone only the retained Arc handle, never a Block registry,
+                // actor or RNG. This binding is the installed actual owner.
+                let owner = players.block_runtime.concrete_powder_owner()?.clone();
+                let binding = owner.binding_for_state(state)?
+                    .context("scheduled powder lacks its retained actual Block association")?;
+                concrete_powder::scheduled_tick(&mut NativeBaseFallingHost {
+                    server: self, world, players, now, border,
+                }, binding, &state, position)?;
                 Ok(())
             }
             None => bail!("scheduled falling subclass has no actual native source owner"),

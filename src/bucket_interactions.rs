@@ -249,6 +249,15 @@ pub fn static_outline_shape(state: u32) -> Result<VoxelShape> {
 }
 pub fn static_interaction_shape(state: u32) -> Result<VoxelShape> {
     let f = state_facts(state)?;
+    if f.3 == "dmo" {
+        // Pinned ScaffoldingBlock.getInteractionShape80 is literally
+        // Shapes.block(), independent of state/world/entity/position. Keep
+        // its canonical one-cell FULL grid, not an AABB-derived approximation
+        // or the context-dependent scaffolding COLLIDER/outline shape.
+        return VoxelShape::new(
+            vec![0., 1.], vec![0., 1.], vec![0., 1.], vec![true],
+        ).map_err(|error| anyhow!(error));
+    }
     ensure!(f.3 == "dtb", "live interaction shape required for {}", f.3);
     shape(f.2)
 }

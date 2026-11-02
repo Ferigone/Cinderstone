@@ -81,6 +81,21 @@ pub enum RuntimeItemEffect {
     },
 }
 pub trait RuntimeItemHost {
+    /// Optional concrete world capabilities. Absence is an explicit error,
+    /// never an empty shape, dry weather or ignored pressure callback.
+    fn fluid_shape(&mut self, _world: &mut RuntimeWorld, _position: BlockPosition,
+        _fluid: fluid_physics::FluidState) -> Result<VoxelShape> {
+        bail!("actual method-local fluid shape owner is unavailable")
+    }
+    fn rain_exposure(&mut self, _world: &mut RuntimeWorld,
+        _state: &EntityPhysicalState) -> Result<bool> {
+        bail!("actual method-local rain exposure owner is unavailable")
+    }
+    fn pressure_plate_inside(&mut self, _world: &mut RuntimeWorld,
+        _state: &mut EntityPhysicalState, _position: BlockPosition,
+        _block_state: u32) -> Result<()> {
+        bail!("actual pressure-plate entityInside owner is unavailable")
+    }
     /// Original EntityInLevelCallback.onMove: update the entity-section index
     /// now, before a later merge query. Called before the AABB is rebuilt.
     /// Do not retain a host borrow/guard after this synchronous call returns.
@@ -110,15 +125,26 @@ pub trait RuntimeItemHost {
     ) -> Result<()>;
 }
 
-/// Source guard shares this literal implemented-dispatch policy. It does not
-/// allow arbitrary overrides merely because a block has a static shape.
+/// Source guard shares this literal implemented-dispatch policy. This classifies
+/// source states, not an attached runtime capability: dfm still requires the
+/// actual synchronous host (and otherwise returns an unsupported error).
+/// It does not allow arbitrary overrides merely because a block has a static shape.
 pub fn supports_block_callbacks(state: u32) -> Result<bool> {
     let callbacks = entity_move::block_facts(state)?.callback_classes()?;
     Ok(callbacks.fall_on == "dfy"
         && callbacks.after_fall == "dfy"
         && callbacks.step_on == "dfy"
         && (callbacks.entity_inside == "dtb"
+            || (callbacks.entity_inside == "dfm" && pressure_plate_inside_state(state)?)
             || (callbacks.entity_inside == "dfl" && fire_inside_damage(state)?.is_some())))
+}
+fn pressure_plate_inside_state(state: u32) -> Result<bool> {
+    let block = crate::redstone::block(state)?;
+    Ok(block.pressed_time > 0 && match block.class.as_str() {
+        "dlw" => block.max_weight == 0,
+        "dpp" => block.max_weight > 0,
+        _ => false,
+    })
 }
 fn fire_inside_damage(state: u32) -> Result<Option<f32>> {
     Ok(match placement::placement_block_name(state)? {
@@ -503,11 +529,13 @@ impl<R: RandomSource, H: RuntimeItemHost> EntityMoveWorld for RuntimeItemWorld<'
                 // BlockGetter.clip obtains both shapes before selecting a hit;
                 // a resetting block must not short circuit the fluid query.
                 let fluid_hit = if fluid.kind == FluidKind::Water {
-                    let cache = self.fluid_shape_cache.as_deref_mut().with_context(|| {
-                        format!("fluid ray shape cache history unavailable at {p:?}")
-                    })?;
-                    cache
-                        .shape(&mut RuntimeFluidWorld { world: self.world }, p, fluid)?
+                    let shape = if let Some(cache) = self.fluid_shape_cache.as_deref_mut() {
+                        cache.shape(&mut RuntimeFluidWorld { world: self.world }, p, fluid)?
+                    } else {
+                        self.host.fluid_shape(self.world, p, fluid)
+                            .with_context(|| format!("fluid ray shape cache history unavailable at {p:?}"))?
+                    };
+                    shape
                         .clip(from, to, p)
                         .is_some()
                 } else {
@@ -619,7 +647,11 @@ impl<R: RandomSource, H: RuntimeItemHost> EntityMoveWorld for RuntimeItemWorld<'
                     }
                     let block = self.world.block(x, y, z)?;
                     let callbacks = entity_move::block_facts(block)?.callback_classes()?;
-                    if callbacks.entity_inside == "dfl" {
+                    if callbacks.entity_inside == "dfm" {
+                        self.host.pressure_plate_inside(self.world, state, (x, y, z), block)?;
+                        // The concrete owner executes BasePressurePlateBlock
+                        // here; the inherited Item/XP onInsideBlock is empty.
+                    } else if callbacks.entity_inside == "dfl" {
                         let amount = fire_inside_damage(block)?
                             .context("unported BaseFireBlock entityInside type")?;
                         if self.experience_orb {
@@ -704,11 +736,13 @@ impl<R: RandomSource, H: RuntimeItemHost> EntityMoveWorld for RuntimeItemWorld<'
         match self.facts.rain {
             RainAvailability::NotRaining => {}
             RainAvailability::ExposureUnavailable => {
-                let exposure = self
-                    .rain_exposure
-                    .as_deref_mut()
-                    .context("item rain exposure unavailable")?;
-                if exposure.is_in_rain(self.world, state)? {
+                let exposed = if let Some(exposure) = self.rain_exposure.as_deref_mut() {
+                    exposure.is_in_rain(self.world, state)?
+                } else {
+                    self.host.rain_exposure(self.world, state)
+                        .context("item rain exposure unavailable")?
+                };
+                if exposed {
                     return Ok(true);
                 }
             }
