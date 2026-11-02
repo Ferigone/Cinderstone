@@ -17,6 +17,8 @@ pub mod feature;
 pub mod noise_chunk;
 pub mod random_state;
 pub mod surface;
+// Keep the public API while avoiding build-output directory exclusion rules.
+#[path = "chunk_target/mod.rs"]
 pub mod target;
 pub mod retrogen;
 
