@@ -123,13 +123,14 @@ pub(super) fn save_recipe_book(book: &ServerRecipeBook) -> Result<Vec<u8>> {
     book.to_nbt().encode_network_anonymous()
 }
 
-/// Data origin determines whether a real saved-data load occurs. Retained
-/// snapshots follow restoreFrom, not a second load of their serialized fields.
+/// Data origin determines whether this actual new Player loads saved fields.
+/// Disk and pending-save proposals, including reconfiguration, are SavedData.
+/// A future actual ServerPlayer.restoreFrom path must use the separate typed
+/// seed-copy operation; it is not an admission origin implemented here.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum EnchantmentSeedAdmission {
     NewPlayer,
     SavedData,
-    RestoredPlayer,
 }
 
 /// Preserve only available original XpSeed provenance for an old native record.
@@ -168,10 +169,6 @@ pub(super) fn admit_enchantment_seed<R: RandomSource + ?Sized>(
                 let source_value = seed.get();
                 seed.load_xp_seed(source_value, player_random);
             }
-        }
-        EnchantmentSeedAdmission::RestoredPlayer => {
-            // The snapshot contains the previous player's actual field. Copy
-            // it unconditionally, including zero/unknown, without load redraw.
         }
     }
     if lifecycle.enchantment_seed.is_none() {

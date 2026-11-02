@@ -316,7 +316,7 @@ struct ClientInformation {
 
 enum PlayExit {
     Disconnected,
-    Reconfigure(Option<ClientInformation>, Box<PlayerData>),
+    Reconfigure(Option<ClientInformation>),
 }
 
 async fn fixtures(path: &Path) -> Result<Fixtures> {
@@ -2354,18 +2354,7 @@ impl Server {
         let admission = self.player_admission.lock().await;
         self.cleanup_player_admitted(id, reason, &admission).await
     }
-    async fn cleanup_player_admitted(&self, id: i32, reason: Option<&'static str>, admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
-        self.cleanup_player_admitted_with_restore(id, reason, admission, false).await.map(|_| ())
-    }
-    async fn cleanup_player_for_reconfiguration(&self, id: i32) -> Result<PlayerData> {
-        let _operation = self.chat_dispatch.lock().await;
-        let admission = self.player_admission.lock().await;
-        self.cleanup_player_admitted_with_restore(id, None, &admission, true).await?
-            .context("reconfiguration lost its actual previous player snapshot")
-    }
-    async fn cleanup_player_admitted_with_restore(&self, id: i32, reason: Option<&'static str>,
-        _admission: &tokio::sync::MutexGuard<'_, ()>, capture_restore: bool,
-    ) -> Result<Option<PlayerData>> {
+    async fn cleanup_player_admitted(&self, id: i32, reason: Option<&'static str>, _admission: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
         let now = self.clock.read().map_err(|_|anyhow!("clock poisoned"))?.game_time;
         let b = self.border.read().map_err(|_|anyhow!("border poisoned"))?.bounds(self.epoch.elapsed().as_millis() as i64);
         let border = CollisionBorder { min_x:b.min_x,min_z:b.min_z,max_x:b.max_x,max_z:b.max_z };
@@ -2378,7 +2367,7 @@ impl Server {
             ensure!(!players.stonecutters.has_open(id), "orphan stonecutter menu retained");
             ensure!(!players.smithing_tables.has_open(id), "orphan smithing menu retained");
             ensure!(!players.looms.has_open(id), "orphan loom menu retained");
-            return Ok(None);
+            return Ok(());
         }
         if let Some(reason)=reason {
             if let Some(disconnect)=players.disconnects.get(&id) { disconnect.send_replace(Some(reason)); }
@@ -2409,11 +2398,6 @@ impl Server {
             self.native_menu_action_with_close_context_locked(&mut world,&mut players,id,None,Some(window),false,now,border,mc121_rust::container::MenuCloseContext::DeadOrDisconnected)?;
         }
         self.save_player_locked(&mut players,id)?;
-        // Capture after the real InventoryMenu/external-menu removals, while
-        // the same world/player/admission interval still owns this actor. The
-        // same-connection restoreFrom path must not reload known seed0 from
-        // disk and consume a replacement random sample.
-        let restored = if capture_restore { self.capture_player_locked(&mut players, id)? } else { None };
         players.remove_runtime_player(id)?;
         if let Some(event)=players.registry.remove(id) {
             players.motion.remove(&id);
@@ -2428,7 +2412,7 @@ impl Server {
             players.unavailable_pose.remove(&id);
             players.publish(event,&self.entity_events);
         }
-        Ok(restored)
+        Ok(())
     }
 }
 impl Drop for PresenceGuard {
@@ -3241,13 +3225,12 @@ async fn connection_session(
     let mut client_information = main_configuration::configure(
         &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, None, true,
     ).await?;
-    let mut restored_player = None;
     loop {
         server.wait_secure_chat_enforcement().await?;
         main_connection::phase(main_connection::OutboundPhase::Play);
         match play(
             &mut packets, &mut writer, codec.clone(), Arc::clone(&server), profile.clone(),
-            client_information, restored_player.take(), admission, address, &mut protocol, &mut packs,
+            client_information, admission, address, &mut protocol, &mut packs,
         ).await? {
             PlayExit::Disconnected => {
                 // Retain the actual framing reader while half-closing output.
@@ -3262,8 +3245,7 @@ async fn connection_session(
                 }).await;
                 return Ok(());
             },
-            PlayExit::Reconfigure(info, restored) => {
-                restored_player = Some(restored);
+            PlayExit::Reconfigure(info) => {
                 client_information = main_configuration::configure(
                     &mut packets, &mut writer, &codec, &server, &mut protocol, &mut packs, info, false,
                 ).await?;
@@ -3302,7 +3284,6 @@ async fn play(
     server: Arc<Server>,
     profile: PlayerProfile,
     client_information: Option<ClientInformation>,
-    restored_player: Option<Box<PlayerData>>,
     admission: u64,
     address: SocketAddr,
     protocol: &mut Reconfiguration,
@@ -3361,14 +3342,11 @@ async fn play(
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
         let uuid = profile.uuid;
         let mut seed_admission = main_player_data::EnchantmentSeedAdmission::SavedData;
-        let mut saved = if let Some(restored) = restored_player {
-            seed_admission = main_player_data::EnchantmentSeedAdmission::RestoredPlayer;
-            Some(*restored)
-        } else if let Some(data) = players.pending_player_saves.get(&uuid) {
-            seed_admission = main_player_data::EnchantmentSeedAdmission::RestoredPlayer;
-            Some(data.clone())
-        } else {
-            server.player_store.load(uuid)?
+        // Pending writes are saved-data proposals for this new Player too.
+        // Reconfiguration does not retain/copy the old Player object.
+        let mut saved = match players.pending_player_saves.get(&uuid) {
+            Some(data) => Some(data.clone()),
+            None => server.player_store.load(uuid)?,
         };
         if saved.is_none() {
             if let Some(root)=&server.options.anvil_world {
@@ -3416,8 +3394,9 @@ async fn play(
             "saved player dimension is unsupported by this world host"
         );
         // This is the one real local Player.random created for this admission.
-        // Disk data loads seed0 once; new construction and retained restoreFrom
-        // snapshots never resample. Move this advanced RNG into runtime below.
+        // Every actual saved-data admission, including reconfiguration and a
+        // pending native save, loads seed0 once. A genuinely new player keeps
+        // constructor zero. Move this advanced RNG into runtime below.
         main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
         position = player.position;
@@ -3470,11 +3449,6 @@ async fn play(
         players
             .player_lifecycle
             .insert(uuid, login_lifecycle.clone());
-        if seed_admission == main_player_data::EnchantmentSeedAdmission::RestoredPlayer {
-            // ServerPlayer.restoreFrom also invalidates this actual cache
-            // after copying XP/seed state (aqv.cR, offsets286–288).
-            *players.experience_runtime.last_sent_experience_mut(entity_id)? = -1;
-        }
         players.recipe_books.insert(uuid, book);
         if login_lifecycle.abilities.flying && login_lifecycle.abilities.may_fly {
             players.flying.insert(entity_id);
@@ -3687,13 +3661,13 @@ async fn play(
             request = configuration_requests.recv() => {
                 match request {
                     Ok(requested) if requested == entity_id => {
-                        // switchToConfig removes the actual old ServerPlayer.
-                        // Retain its post-removal snapshot for restoreFrom;
-                        // re-entry is not another saved-data seed load.
-                        let restored = server.cleanup_player_for_reconfiguration(entity_id).await?;
+                        // switchToConfig removes/saves the old ServerPlayer.
+                        // Configuration completion constructs a new Player and
+                        // uses normal saved-data loading, not restoreFrom.
+                        server.cleanup_player(entity_id, None).await?;
                         let terminal = protocol.begin_reconfiguration(server.epoch.elapsed().as_millis() as i64)?;
                         send(&codec, &mut writer, terminal.id, terminal.payload).await?;
-                        return Ok(PlayExit::Reconfigure(current_information, Box::new(restored)));
+                        return Ok(PlayExit::Reconfigure(current_information));
                     }
                     Ok(_) => {},
                     Err(broadcast::error::RecvError::Lagged(_)) => bail!("configuration control history lost"),

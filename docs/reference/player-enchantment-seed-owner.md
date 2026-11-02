@@ -96,14 +96,17 @@ never perform a replacement draw.
 
 ## Actual admission and restore ordering
 
-`main_player_data::EnchantmentSeedAdmission` explicitly distinguishes three
-source operations:
+`main_player_data::EnchantmentSeedAdmission` distinguishes the two operations
+actually invoked by Main admission:
 
 | Admission origin | Seed and RNG behavior |
 | --- | --- |
 | `NewPlayer` | Require the genuine known constructor zero; consume no seed draw |
 | `SavedData` | After optional provenance migration, load the actual known saved value; zero consumes one unbounded sample from the actual local Player RNG, nonzero consumes none; unknown stays unknown |
-| `RestoredPlayer` | Retain the authoritative previous-player snapshot's field unconditionally, including known zero or unknown; perform no saved-data replacement draw |
+
+Disk records and pending native-save proposals are both `SavedData`. A pending
+write is serialized state to be loaded into a new player; it is not the previous
+live Player object and does not imply `ServerPlayer.restoreFrom`.
 
 Main first obtains the actual retained player RNG from
 `random_seed::create_player_random`, after the inherited UUID's two nextLong
@@ -115,20 +118,43 @@ Player RNG. `register_runtime_player` then moves that exact advanced RNG into th
 existing `players.player_random` owner. There is no replacement seeded source or
 extra draw in file parsing, capture, saving or getters.
 
-Pending authoritative player snapshots use `RestoredPlayer`. Reconfiguration
-also carries an explicit in-memory `PlayerData` through `PlayExit` and the
-connection loop. Cleanup removes the real InventoryMenu and external menu,
-saves, then captures the post-removal player state under the same admission,
-world and player locks before actor removal. The next PLAY admission receives
-that snapshot directly; it does not reopen the just-written disk record and
-mistake known zero for a fresh saved-data load. Failed configuration still leaves
-the normal persisted snapshot available for a later genuine login.
+### Reconfiguration performs a new saved-data load
 
-The seed copy is independent of XP/inventory retention choices, matching the
-unconditional `ServerPlayer.restoreFrom` seed assignment after its keep-state
-branches converge. A normal later disk admission is a genuine saved-data load:
-a stored known zero then follows the one-draw rule. The old record's lack of
-known seed ownership never becomes a fresh-player constructor call.
+Direct inspection of the pinned original establishes this call chain:
+
+| Original method | Actual operation |
+| --- | --- |
+| `ServerGamePacketListenerImpl.switchToConfig`, `aru.n`, source1578–1582 | Sets the switch state and invokes `removePlayerFromWorld` |
+| `removePlayerFromWorld`, `aru.q`, source1245–1253 | Calls `PlayerList.remove(oldPlayer)` at bytecode69 |
+| `PlayerList.remove`, `aur.c(aqv)`, source381–406 | Calls `PlayerList.save(oldPlayer)` at bytecode14; save source364–373 delegates to `PlayerDataStorage.save` |
+| Configuration acknowledgement, `aru.a(agv)`, source1898–1902 | Constructs the configuration listener with `CommonListenerCookie`, without a retained Player argument |
+| `CommonListenerCookie`, `arj` | Carries profile, latency, client information and transferred state; it does not carry the old Player |
+| `ServerConfigurationPacketListenerImpl.handleFinishConfiguration`, `ars.a(abl)`, source132–158 | Calls `PlayerList.getPlayerForLogin(profile, clientInformation)` at bytecode106, then `placeNewPlayer` at126 |
+| `PlayerList.getPlayerForLogin`, `aur.a(GameProfile,aqh)`, source444 | Constructs a new `ServerPlayer`; it does not call `restoreFrom` |
+| `PlayerList.placeNewPlayer`, `aur.a(vt,aqv,arj)`, source146–288 | Calls `PlayerList.load(newPlayer)` at bytecode74 before creating the game listener |
+| `PlayerList.load`, `aur.a(aqv)`, source350–360 | Uses the single-player embedded NBT branch or `PlayerDataStorage.load` at bytecode59 |
+
+Consequently, same-TCP reconfiguration uses the saved-data zero rule with the
+new Player's actual RNG. Main retains its ordinary cleanup/save and subsequent
+admission path; `PlayExit` carries client information, not a previous-player
+snapshot. The existing cleanup owner still handles real InventoryMenu and
+external-menu removal and saving. No second capture or separate inventory owner
+is introduced by seed handling.
+
+The inherited native cleanup currently removes InventoryMenu/current-menu state
+before saving. Original `PlayerList.remove` saves first, then
+`ServerLevel.removePlayerImmediately` reaches `Player.remove`,
+`InventoryMenu.removed` and the current menu's removal. Correcting that existing
+callback/save ordering is a separate integration task; the seed change does not
+establish equivalence of those removal callbacks or their persistence phases.
+
+A genuine `ServerPlayer.restoreFrom` call, such as the distinct respawn path,
+copies the seed unconditionally after the keep-state branches converge and
+consumes no replacement draw. The callable `PlayerEnchantmentSeed::restore_from`
+implements that operation, but this stage does not invoke it from Main or claim
+an integrated respawn. In particular, a pending save or reconfiguration cannot
+be relabeled as that operation. A native record with unknown seed provenance
+also never becomes a fresh-player constructor call.
 
 ## Actual experience-packet cache binding
 
@@ -136,9 +162,10 @@ The existing `MainExperienceRuntime.last_sent_experience` map remains the sole
 native owner of the ServerPlayer lastSentExp field. Actual runtime registration
 initializes its real entry to the pinned constructor value **-99,999,999**
 (`aqv.cR`, constructor offsets67–70). This differs from enchanting's later
-**-1** invalidation. `ServerPlayer.restoreFrom` also unconditionally assigns
--1 to this cache at offsets286–288, after its seed copy; `RestoredPlayer`
-admission performs that assignment through the same actual map entry.
+**-1** invalidation. The original `ServerPlayer.restoreFrom` also assigns -1
+at offsets286–288 after its seed copy, but no current Main admission invokes
+that distinct body. Reconfiguration constructs a new ServerPlayer, so its actual
+cache retains the constructor value rather than a fabricated restore sentinel.
 
 `last_sent_experience_mut(entity_id)` returns a fallible mutable reference to
 that real retained entry, suitable for the separately ported ServerPlayer
@@ -149,18 +176,22 @@ an explicit owner error.
 
 ## Validation boundary
 
-Direct pinned-source inspection and focused whitespace/diff inspection cover
-this isolated source stage. A second reviewer independently checked the numeric
-NBT conversion and the constructor/load/save/restore source contracts. Focused
-`cargo check --locked --offline --lib --bin mc121-rust` passed in a separate
-private target directory on isolated base
-`17f1fa6f73c3fed1688d8403e03a0507f6bcb549` (23.22s first check; 3.25s after the
-source-correct restoreFrom cache invalidation). This compiles the actual Main
-admission/persistence/cache paths and the three newly exported core owners.
-No broad tests or live admission/enchanting flow were run by this stage;
-focused runtime admission/reconfiguration/save observations remain required.
+The constructor, numeric NBT getter, load/save and standalone restore contracts
+were reviewed against direct pinned-source inspection. A later source review
+identified and corrected the initial erroneous assumption that same-TCP
+reconfiguration uses `restoreFrom`: the real call chain above constructs a new
+player and loads saved data. The old snapshot-carry classification and its
+restore-cache assignment were removed before merge. Earlier compiler results
+are historical and do not establish correctness of that superseded assumption.
 
-The native field, persistence and actual local RNG binding are now source-wired;
+The corrected source passed focused
+`cargo check --locked --offline --lib --bin mc121-rust` in a separate private
+target directory (exit0, 4.12s), composed on master `26c4d2e` with the seed
+publication source. No broad tests or live admission/enchanting flow are claimed
+for this correction; focused runtime admission/reconfiguration/save observations
+remain required.
+
+The native field, persistence and actual local RNG binding are source-wired;
 this does not establish a production EnchantingMenu, complete inherited Java
 player loading, arbitrary respawn policies, or whole-workstation compatibility.
 No performance or checklist-completion percentage follows from this stage.
