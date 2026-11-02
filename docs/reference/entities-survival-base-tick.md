@@ -67,8 +67,8 @@ Standalone original file rustc --edition=2021 --test exit0 (no diagnostics).
 /workspace/scratch/es-20261101-1425-a7c3/nov2-base-tick-tests exit0.
 Meaningful recorders exercise lethal suffocation continuing drown bubbles/block
 change/death/effects, exact48 entity RNG calls and preloop velocity despite RNG
-mutation, enchantment-before-parent and inherited virtual void dispatch, retained
-border receiver across argument mutation/current Level rereads, virtual air
+mutation, enchantment-before-parent and inherited virtual void dispatch, captured
+border query and subsequent current-Level rereads, virtual air
 shortcircuit and null second vehicle read/error prefix, wrapping attacker expiration,
 same canonical Rc<RefCell> actor reentry, effect-error committed counters/no later
 snapshots or profiler cleanup, OXYGEN thresholds/NaN/RNG gate/integer wrapping.
