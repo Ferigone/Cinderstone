@@ -14,17 +14,24 @@ pub fn is_gzip(bytes: &[u8]) -> bool {
 /// after the root are ignored, as `DataInputStream` leaves them unread.
 fn parse_named_compound(bytes: &[u8]) -> Result<Tag, SavedDataError> {
     let corrupt = |what: &str| SavedDataError::Corrupt(what.to_owned());
-    let (&id, rest) = bytes.split_first().ok_or_else(|| corrupt("empty NBT document"))?;
+    let (&id, rest) = bytes
+        .split_first()
+        .ok_or_else(|| corrupt("empty NBT document"))?;
     if id != 10 {
         return Err(corrupt("Root tag must be a named compound tag"));
     }
-    let length = rest.get(..2).ok_or_else(|| corrupt("truncated root name"))?;
+    let length = rest
+        .get(..2)
+        .ok_or_else(|| corrupt("truncated root name"))?;
     let length = usize::from(u16::from_be_bytes([length[0], length[1]]));
-    let payload = rest.get(2 + length..).ok_or_else(|| corrupt("truncated root name"))?;
+    let payload = rest
+        .get(2 + length..)
+        .ok_or_else(|| corrupt("truncated root name"))?;
     let mut anonymous = Vec::with_capacity(payload.len() + 1);
     anonymous.push(10);
     anonymous.extend_from_slice(payload);
-    let (tag, _) = Tag::decode_anonymous_prefix(&anonymous).map_err(|error| corrupt(&error.to_string()))?;
+    let (tag, _) =
+        Tag::decode_anonymous_prefix(&anonymous).map_err(|error| corrupt(&error.to_string()))?;
     Ok(tag)
 }
 
@@ -48,19 +55,28 @@ pub fn read_root(bytes: &[u8]) -> Result<Tag, SavedDataError> {
 
 /// `NbtIo.writeCompressed`: a gzip stream holding the root compound with an empty name.
 pub fn write_root(root: &Tag) -> Result<Vec<u8>, SavedDataError> {
-    let document = NbtRoot { name: "".into(), tag: root.clone() }
-        .encode()
-        .map_err(|error| SavedDataError::Corrupt(error.to_string()))?;
+    let document = NbtRoot {
+        name: "".into(),
+        tag: root.clone(),
+    }
+    .encode()
+    .map_err(|error| SavedDataError::Corrupt(error.to_string()))?;
     let mut encoder = GzEncoder::new(Vec::new(), Compression::default());
-    encoder.write_all(&document).map_err(|error| SavedDataError::Io(error.to_string()))?;
-    encoder.finish().map_err(|error| SavedDataError::Io(error.to_string()))
+    encoder
+        .write_all(&document)
+        .map_err(|error| SavedDataError::Io(error.to_string()))?;
+    encoder
+        .finish()
+        .map_err(|error| SavedDataError::Io(error.to_string()))
 }
 
 pub use crate::components::java::numeric_as_int;
 
 /// `NbtUtils.getDataVersion(tag, default)`: `DataVersion` when it is numeric, else the default.
 pub fn data_version(root: &Tag, default: i32) -> i32 {
-    root.get("DataVersion").and_then(numeric_as_int).unwrap_or(default)
+    root.get("DataVersion")
+        .and_then(numeric_as_int)
+        .unwrap_or(default)
 }
 
 /// `CompoundTag.getCompound`: the member when it is a compound, otherwise an empty compound.

@@ -290,6 +290,7 @@ def main():
         if result["ok"]:
             entry["nbt"] = result["nbt"]
             entry["json"] = result["json"]
+            entry["gson"] = result["json_gson"]
         else:
             entry["err"] = result.get("error", "")
         vectors.append(entry)
@@ -301,17 +302,17 @@ def main():
     }
     (ROOT / "fixtures/component-oracle-vectors.json").write_text(json.dumps({
         "format": "cinderstone-component-oracle-v1", "minecraft": "1.21", "source": source,
-        "result": "ok; nbt = hex of NbtIo.writeAnyTag of the CODEC's NbtOps encoding; json = GsonHelper.toStableString of its JsonOps encoding",
+        "result": "ok; nbt = hex of NbtIo.writeAnyTag of the CODEC's NbtOps encoding; json = GsonHelper.toStableString of its JsonOps encoding; gson = Component.Serializer.toJson text (member order as the original writes it)",
         "cases": vectors,
     }, separators=(",", ":"), ensure_ascii=False))
 
-    kept = [(m, r["ok"], r.get("nbt")) for index, (m, r) in enumerate(zip(generated, mutant_results)) if index % args.sample == 0]
+    kept = [(m, r["ok"], r.get("nbt"), r.get("json_gson")) for index, (m, r) in enumerate(zip(generated, mutant_results)) if index % args.sample == 0]
     accepted = sum(1 for r in mutant_results if r["ok"])
     (ROOT / "fixtures/component-parse-parity.json").write_text(json.dumps({
         "format": "cinderstone-component-parse-parity-v1", "minecraft": "1.21", "source": source,
         "sampling": f"every {args.sample}th of {len(generated)} generated mutants",
-        "result": "[input, accepted, nbt hex when accepted]",
-        "cases": [[m, ok, nbt] if ok else [m, ok] for m, ok, nbt in kept],
+        "result": "[input, accepted, nbt hex when accepted, Component.Serializer.toJson text when accepted]",
+        "cases": [[m, ok, nbt, gson] if ok else [m, ok] for m, ok, nbt, gson in kept],
     }, separators=(",", ":"), ensure_ascii=False))
     print(f"vectors={len(vectors)} (accepted {sum(1 for v in vectors if v['ok'])}) "
           f"mutants={len(generated)} accepted={accepted} rejected={len(generated) - accepted} kept={len(kept)}")

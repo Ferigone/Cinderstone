@@ -23,6 +23,9 @@ import net.minecraft.server.packs.*;
 import net.minecraft.server.packs.repository.*;
 import net.minecraft.server.packs.resources.*;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.scores.Objective;
+import net.minecraft.world.scores.ScoreHolder;
+import net.minecraft.world.scores.criteria.ObjectiveCriteria;
 import net.minecraft.world.damagesource.*;
 import net.minecraft.world.entity.*;
 import net.minecraft.world.flag.FeatureFlags;
@@ -190,6 +193,9 @@ public class loot_oracle {
         return null;
       }
       case "getServer": return stubServer;
+      case "getPlayerList": return scorePlayers;
+      case "broadcastAll": { if (a.length == 1) scoreBroadcasts.add((net.minecraft.network.protocol.Packet<?>) a[0]); return null; }
+      case "getPlayers": return new ArrayList<>();
       case "reloadableRegistries": return res.fullRegistries();
       case "registryAccess": return access;
       case "isLoaded": return Boolean.TRUE;
@@ -216,6 +222,210 @@ public class loot_oracle {
       }
       default: throw new IllegalStateException("unhooked " + name);
     }
+  }
+
+
+  // ---------------------------------------------------------------- scoreboard
+  static Object scorePlayers;
+  static final List<net.minecraft.network.protocol.Packet<?>> scoreBroadcasts = new ArrayList<>();
+
+  static net.minecraft.server.ServerScoreboard makeScoreboard() throws Throwable {
+    Loader loader = new Loader(loot_oracle.class.getClassLoader());
+    if (scorePlayers == null) {
+      ClassWriter pw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+      pw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/ScorePlayers", null, "net/minecraft/server/players/PlayerList", null);
+      hookMethod(pw, "broadcastAll", "(Lnet/minecraft/network/protocol/Packet;)V");
+      hookMethod(pw, "getPlayers", "()Ljava/util/List;");
+      pw.visitEnd();
+      scorePlayers = unsafe.allocateInstance(loader.define("oracle.ScorePlayers", pw.toByteArray()));
+    }
+    ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/ScoreServer", null, "net/minecraft/server/MinecraftServer", null);
+    hookMethod(cw, "getPlayerList", "()Lnet/minecraft/server/players/PlayerList;");
+    cw.visitEnd();
+    Class<?> c = new Loader(loot_oracle.class.getClassLoader()).define("oracle.ScoreServer", cw.toByteArray());
+    Object server = unsafe.allocateInstance(c);
+    return new net.minecraft.server.ServerScoreboard((net.minecraft.server.MinecraftServer) server);
+  }
+
+  static String frame(net.minecraft.network.protocol.Packet<?> packet) {
+    @SuppressWarnings("unchecked")
+    net.minecraft.network.ProtocolInfo<net.minecraft.network.protocol.game.ClientGamePacketListener> info =
+        net.minecraft.network.protocol.game.GameProtocols.CLIENTBOUND_TEMPLATE.bind(net.minecraft.network.RegistryFriendlyByteBuf.decorator(access));
+    ByteBuf buffer = Unpooled.buffer();
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    net.minecraft.network.codec.StreamCodec<ByteBuf, net.minecraft.network.protocol.Packet<? super net.minecraft.network.protocol.game.ClientGamePacketListener>> codec = (net.minecraft.network.codec.StreamCodec) info.codec();
+    codec.encode(buffer, (net.minecraft.network.protocol.Packet) packet);
+    byte[] bytes = new byte[buffer.readableBytes()];
+    buffer.readBytes(bytes);
+    return hex(bytes);
+  }
+
+  static ScoreHolder scoreHolder(JsonObject step) {
+    String name = step.get("holder").getAsString();
+    net.minecraft.network.chat.Component display = step.has("holder_display") ? parseComponent(step.get("holder_display")) : null;
+    return new ScoreHolder() {
+      public String getScoreboardName() { return name; }
+      public net.minecraft.network.chat.Component getDisplayName() { return display; }
+    };
+  }
+
+  static net.minecraft.network.chat.Component parseComponent(JsonElement e) {
+    return net.minecraft.network.chat.ComponentSerialization.CODEC.parse(jsonOps, e).getOrThrow(m -> new IllegalArgumentException(m));
+  }
+
+  static net.minecraft.network.chat.numbers.NumberFormat parseFormat(JsonElement e) {
+    if (e == null || e.isJsonNull()) return null;
+    return net.minecraft.network.chat.numbers.NumberFormatTypes.CODEC.parse(jsonOps, e).getOrThrow(m -> new IllegalArgumentException(m));
+  }
+
+  static String gson(net.minecraft.network.chat.Component c) {
+    return net.minecraft.network.chat.Component.Serializer.toJson(c, access);
+  }
+
+  static String formatHex(net.minecraft.network.chat.numbers.NumberFormat f) throws IOException {
+    if (f == null) return null;
+    return tagHex(net.minecraft.network.chat.numbers.NumberFormatTypes.CODEC.encodeStart(nbtOps, f).getOrThrow(m -> new IllegalStateException(m)));
+  }
+
+  static JsonObject dumpScoreboard(net.minecraft.server.ServerScoreboard sb) throws Exception {
+    JsonObject d = new JsonObject();
+    JsonArray objectives = new JsonArray();
+    for (Objective o : sb.getObjectives()) {
+      JsonObject j = new JsonObject();
+      j.addProperty("name", o.getName());
+      j.addProperty("criteria", o.getCriteria().getName());
+      j.addProperty("display", gson(o.getDisplayName()));
+      j.addProperty("render", o.getRenderType().getId());
+      j.addProperty("auto", o.displayAutoUpdate());
+      j.addProperty("format", formatHex(o.numberFormat()));
+      objectives.add(j);
+    }
+    d.add("objectives", objectives);
+    JsonObject slots = new JsonObject();
+    for (net.minecraft.world.scores.DisplaySlot slot : net.minecraft.world.scores.DisplaySlot.values()) {
+      Objective o = sb.getDisplayObjective(slot);
+      if (o != null) slots.addProperty(slot.getSerializedName(), o.getName());
+    }
+    d.add("slots", slots);
+    JsonArray scores = new JsonArray();
+    for (Objective o : sb.getObjectives()) {
+      for (net.minecraft.world.scores.PlayerScoreEntry e : sb.listPlayerScores(o)) {
+        JsonObject j = new JsonObject();
+        j.addProperty("objective", o.getName());
+        j.addProperty("owner", e.owner());
+        j.addProperty("value", e.value());
+        j.addProperty("display", e.display() == null ? null : gson(e.display()));
+        j.addProperty("format", formatHex(e.numberFormatOverride()));
+        j.addProperty("locked", sb.getPlayerScoreInfo(ScoreHolder.forNameOnly(e.owner()), o).isLocked());
+        scores.add(j);
+      }
+    }
+    d.add("scores", scores);
+    JsonArray tracked = new JsonArray();
+    for (ScoreHolder h : sb.getTrackedPlayers()) tracked.add(h.getScoreboardName());
+    d.add("tracked", tracked);
+    JsonArray teams = new JsonArray();
+    for (net.minecraft.world.scores.PlayerTeam t : sb.getPlayerTeams()) {
+      JsonObject j = new JsonObject();
+      j.addProperty("name", t.getName());
+      j.addProperty("display", gson(t.getDisplayName()));
+      j.addProperty("prefix", gson(t.getPlayerPrefix()));
+      j.addProperty("suffix", gson(t.getPlayerSuffix()));
+      j.addProperty("color", t.getColor().getName());
+      j.addProperty("friendly", t.isAllowFriendlyFire());
+      j.addProperty("invisibles", t.canSeeFriendlyInvisibles());
+      j.addProperty("nametag", t.getNameTagVisibility().name);
+      j.addProperty("death", t.getDeathMessageVisibility().name);
+      j.addProperty("collision", t.getCollisionRule().name);
+      JsonArray players = new JsonArray();
+      for (String p : t.getPlayers()) players.add(p);
+      j.add("players", players);
+      teams.add(j);
+    }
+    d.add("teams", teams);
+    return d;
+  }
+
+  static JsonObject scoreboardStep(net.minecraft.server.ServerScoreboard sb, JsonObject step, java.util.Map<String, Objective> unused) throws Throwable {
+    JsonObject r = new JsonObject();
+    String op = step.get("op").getAsString();
+    switch (op) {
+      case "objective_add": {
+        ObjectiveCriteria criteria = ObjectiveCriteria.byName(step.get("criteria").getAsString()).orElseThrow();
+        sb.addObjective(step.get("name").getAsString(), criteria, parseComponent(step.get("display")),
+            ObjectiveCriteria.RenderType.byId(step.get("render").getAsString()), step.get("auto").getAsBoolean(), parseFormat(step.get("format")));
+        break;
+      }
+      case "objective_remove": sb.removeObjective(sb.getObjective(step.get("name").getAsString())); break;
+      case "objective_set": {
+        Objective o = sb.getObjective(step.get("name").getAsString());
+        if (step.has("display")) o.setDisplayName(parseComponent(step.get("display")));
+        if (step.has("render")) o.setRenderType(ObjectiveCriteria.RenderType.byId(step.get("render").getAsString()));
+        if (step.has("auto")) o.setDisplayAutoUpdate(step.get("auto").getAsBoolean());
+        if (step.has("format")) o.setNumberFormat(parseFormat(step.get("format")));
+        break;
+      }
+      case "display": {
+        net.minecraft.world.scores.DisplaySlot slot = net.minecraft.world.scores.DisplaySlot.CODEC.byName(step.get("slot").getAsString());
+        Objective o = step.get("objective").isJsonNull() ? null : sb.getObjective(step.get("objective").getAsString());
+        sb.setDisplayObjective(slot, o);
+        break;
+      }
+      case "score_set": case "score_add": case "score_reset": case "score_lock": case "score_unlock": case "score_display": case "score_format": case "score_get": {
+        Objective o = sb.getObjective(step.get("objective").getAsString());
+        net.minecraft.world.scores.ScoreAccess access2 = sb.getOrCreatePlayerScore(scoreHolder(step), o, step.has("force") && step.get("force").getAsBoolean());
+        switch (op) {
+          case "score_set": access2.set(step.get("value").getAsInt()); break;
+          case "score_add": r.addProperty("ret", access2.add(step.get("value").getAsInt())); break;
+          case "score_reset": access2.reset(); break;
+          case "score_lock": access2.lock(); break;
+          case "score_unlock": access2.unlock(); break;
+          case "score_display": access2.display(step.get("display").isJsonNull() ? null : parseComponent(step.get("display"))); break;
+          case "score_format": access2.numberFormatOverride(parseFormat(step.get("format"))); break;
+          default: r.addProperty("ret", access2.get());
+        }
+        break;
+      }
+      case "score_remove": sb.resetSinglePlayerScore(scoreHolder(step), sb.getObjective(step.get("objective").getAsString())); break;
+      case "score_remove_all": sb.resetAllPlayerScores(scoreHolder(step)); break;
+      case "team_add": sb.addPlayerTeam(step.get("name").getAsString()); break;
+      case "team_remove": sb.removePlayerTeam(sb.getPlayerTeam(step.get("name").getAsString())); break;
+      case "team_set": {
+        net.minecraft.world.scores.PlayerTeam t = sb.getPlayerTeam(step.get("name").getAsString());
+        JsonElement v = step.get("value");
+        switch (step.get("field").getAsString()) {
+          case "display": t.setDisplayName(parseComponent(v)); break;
+          case "prefix": t.setPlayerPrefix(v.isJsonNull() ? null : parseComponent(v)); break;
+          case "suffix": t.setPlayerSuffix(v.isJsonNull() ? null : parseComponent(v)); break;
+          case "color": t.setColor(net.minecraft.ChatFormatting.getByName(v.getAsString())); break;
+          case "friendly": t.setAllowFriendlyFire(v.getAsBoolean()); break;
+          case "invisibles": t.setSeeFriendlyInvisibles(v.getAsBoolean()); break;
+          case "nametag": t.setNameTagVisibility(net.minecraft.world.scores.Team.Visibility.byName(v.getAsString())); break;
+          case "death": t.setDeathMessageVisibility(net.minecraft.world.scores.Team.Visibility.byName(v.getAsString())); break;
+          case "collision": t.setCollisionRule(net.minecraft.world.scores.Team.CollisionRule.byName(v.getAsString())); break;
+          case "options": t.unpackOptions(v.getAsInt()); break;
+          default: throw new IllegalArgumentException(step.get("field").getAsString());
+        }
+        break;
+      }
+      case "team_join": r.addProperty("ret", sb.addPlayerToTeam(step.get("player").getAsString(), sb.getPlayerTeam(step.get("team").getAsString()))); break;
+      case "team_leave": r.addProperty("ret", sb.removePlayerFromTeam(step.get("player").getAsString())); break;
+      case "team_leave_from": sb.removePlayerFromTeam(step.get("player").getAsString(), sb.getPlayerTeam(step.get("team").getAsString())); break;
+      case "track": sb.startTrackingObjective(sb.getObjective(step.get("objective").getAsString())); break;
+      case "untrack": sb.stopTrackingObjective(sb.getObjective(step.get("objective").getAsString())); break;
+      case "start_packets": case "stop_packets": {
+        Objective o = sb.getObjective(step.get("objective").getAsString());
+        JsonArray frames = new JsonArray();
+        for (net.minecraft.network.protocol.Packet<?> p : (op.equals("start_packets") ? sb.getStartTrackingPackets(o) : sb.getStopTrackingPackets(o))) frames.add(frame(p));
+        r.add("packets", frames);
+        break;
+      }
+      case "save": r.addProperty("data", tagHex(new net.minecraft.world.scores.ScoreboardSaveData(sb).save(new CompoundTag(), access))); break;
+      case "dump": r.add("dump", dumpScoreboard(sb)); break;
+      default: throw new IllegalArgumentException(op);
+    }
+    return r;
   }
 
   // ---------------------------------------------------------------- scenario object factories
@@ -639,6 +849,7 @@ public class loot_oracle {
               JsonElement json = net.minecraft.network.chat.ComponentSerialization.CODEC.encodeStart(jsonOps, c).getOrThrow(m -> new IllegalStateException(m));
               r.addProperty("json", net.minecraft.util.GsonHelper.toStableString(json));
               r.addProperty("string", c.getString());
+              r.addProperty("json_gson", net.minecraft.network.chat.Component.Serializer.toJson(c, access));
             }
           } catch (Throwable t) {
             r.addProperty("ok", false);
@@ -893,6 +1104,98 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("saved-data-mutants=" + outArr.size());
+        break;
+      }
+      case "scoreboard": {
+        // The original Scoreboard/ServerScoreboard driven by scripted operations. Input: JSON array
+        // of scenarios {steps:[{op,...}]} or {load: <hex of a scoreboard.dat payload>, steps:[...]};
+        // output per step: error, return value, broadcast packet frames (id + payload) and dumps.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject scenario = e.getAsJsonObject();
+          scoreBroadcasts.clear();
+          net.minecraft.server.ServerScoreboard sb = makeScoreboard();
+          JsonArray results = new JsonArray();
+          if (scenario.has("load")) {
+            JsonObject r = new JsonObject();
+            try {
+              CompoundTag payload = (CompoundTag) NbtIo.readAnyTag(new DataInputStream(new ByteArrayInputStream(unhex(scenario.get("load").getAsString()))), NbtAccounter.unlimitedHeap());
+              new net.minecraft.world.scores.ScoreboardSaveData(sb).load(payload, access);
+            } catch (Throwable t) {
+              r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+            }
+            results.add(r);
+          }
+          for (JsonElement stepElement : scenario.getAsJsonArray("steps")) {
+            JsonObject r;
+            scoreBroadcasts.clear();
+            try {
+              r = scoreboardStep(sb, stepElement.getAsJsonObject(), null);
+            } catch (Throwable t) {
+              r = new JsonObject();
+              r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+            }
+            JsonArray frames = new JsonArray();
+            for (net.minecraft.network.protocol.Packet<?> p : scoreBroadcasts) {
+              try { frames.add(frame(p)); } catch (Throwable t) { frames.add("ERROR"); }
+            }
+            if (frames.size() > 0) r.add("broadcast", frames);
+            results.add(r);
+          }
+          outArr.add(results);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("scoreboard=" + in.size());
+        break;
+      }
+      case "scoreboard-facts": {
+        // Registries behind stat criteria (`minecraft.mined:minecraft.stone`).
+        JsonObject facts = new JsonObject();
+        JsonArray types = new JsonArray();
+        for (net.minecraft.stats.StatType<?> type : net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE) {
+          JsonObject t = new JsonObject();
+          t.addProperty("id", net.minecraft.core.registries.BuiltInRegistries.STAT_TYPE.getKey(type).toString());
+          t.addProperty("registry", type.getRegistry().key().location().toString());
+          types.add(t);
+        }
+        facts.add("stat_types", types);
+        JsonArray custom = new JsonArray();
+        for (ResourceLocation id : net.minecraft.core.registries.BuiltInRegistries.CUSTOM_STAT.keySet()) custom.add(id.toString());
+        facts.add("custom_stats", custom);
+        JsonArray names = new JsonArray();
+        for (String n : ObjectiveCriteria.getCustomCriteriaNames()) names.add(n);
+        facts.add("custom_criteria", names);
+        Files.writeString(Path.of(a[1]), GSON.toJson(facts));
+        break;
+      }
+      case "scoreboard-load-mutants": {
+        // One-step mutants of scoreboard.dat payloads loaded by the original ScoreboardSaveData.
+        // Input: JSON array of payload hex strings. Output rows: {payload, error?, dump?}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        LinkedHashMap<String, Tag> payloads = new LinkedHashMap<>();
+        for (JsonElement e : in) {
+          Tag base = NbtIo.readAnyTag(new DataInputStream(new ByteArrayInputStream(unhex(e.getAsString()))), NbtAccounter.unlimitedHeap());
+          payloads.putIfAbsent(tagHex(base), base);
+          for (Tag mutant : nbtMutants(base)) payloads.putIfAbsent(tagHex(mutant), mutant);
+        }
+        JsonArray outArr = new JsonArray();
+        for (Map.Entry<String, Tag> payload : payloads.entrySet()) {
+          JsonObject r = new JsonObject();
+          r.addProperty("payload", payload.getKey());
+          try {
+            net.minecraft.server.ServerScoreboard sb = makeScoreboard();
+            if (!(payload.getValue() instanceof CompoundTag compound)) throw new IllegalArgumentException("not a compound");
+            new net.minecraft.world.scores.ScoreboardSaveData(sb).load(compound, access);
+            r.add("dump", dumpScoreboard(sb));
+            r.addProperty("data", tagHex(new net.minecraft.world.scores.ScoreboardSaveData(sb).save(new CompoundTag(), access)));
+          } catch (Throwable t) {
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("scoreboard-load-mutants=" + outArr.size());
         break;
       }
       case "export-facts": {

@@ -43,7 +43,8 @@ Behaviours the original showed (each pinned by a scenario):
   `random_sequences`: `RandomSequenceSettingsFix` at version 3565 wraps the old `data` in
   `{sequences: data}` for files with `DataVersion < 3565`. Newer data is returned unchanged.
   `DataFixType::update` implements exactly that; any other saved-data type will need the data
-  fixers of WP-G5, and an object that needs a fixer this library lacks is reported as
+  fixers of WP-G5 (the `scoreboard` type, added with the scoreboard model, accepts data already at the
+  current version and nothing older), and an object that needs a fixer this library lacks is reported as
   `SavedDataError::DataFixerRequired` instead of being cached as absent.
 - **`RandomSequences.load`.** `salt` is `getInt` (any numeric tag), the flags are read only when
   they are bytes, a sequence needs a `source` that `Codec.LONG_STREAM` reads as exactly two

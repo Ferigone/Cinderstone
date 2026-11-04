@@ -6,15 +6,15 @@
 //! `NbtOps` unwraps every `{"": element}` wrapper. Everything after that is one decoder.
 
 use super::text::{
-    reject, Arg, ClickAction, ClickEvent, Component, ComponentError, Contents, DataSource, HoverEvent, Primitive,
-    Result, Style, TextColor,
+    reject, Arg, ClickAction, ClickEvent, Component, ComponentError, Contents, DataSource,
+    HoverEvent, Primitive, Result, Style, TextColor,
 };
 use crate::nbt::Tag;
 use serde_json::{Number, Value};
 
 /// A decoded-input tree. Map members keep their order; lookups take the last duplicate.
 #[derive(Debug, Clone)]
-pub(super) enum Val {
+pub(crate) enum Val {
     Null,
     Bool(bool),
     /// A JSON number (type information is not known until it is narrowed).
@@ -27,20 +27,24 @@ pub(super) enum Val {
 }
 
 impl Val {
-    pub(super) fn from_json(value: &Value) -> Val {
+    pub(crate) fn from_json(value: &Value) -> Val {
         match value {
             Value::Null => Val::Null,
             Value::Bool(flag) => Val::Bool(*flag),
             Value::Number(number) => Val::JsonNumber(number.clone()),
             Value::String(text) => Val::Str(text.clone()),
             Value::Array(items) => Val::List(items.iter().map(Val::from_json).collect()),
-            Value::Object(map) => Val::Map(map.iter().map(|(key, value)| (key.clone(), Val::from_json(value))).collect()),
+            Value::Object(map) => Val::Map(
+                map.iter()
+                    .map(|(key, value)| (key.clone(), Val::from_json(value)))
+                    .collect(),
+            ),
         }
     }
 
     /// `NbtOps` view of a tag. A list of compounds unwraps `{"": element}` wrappers, as
     /// `NbtOps.getStream` does; arrays are lists of numbers.
-    pub(super) fn from_nbt(tag: &Tag) -> Result<Val> {
+    pub(crate) fn from_nbt(tag: &Tag) -> Result<Val> {
         let text = |value: &crate::nbt::JavaString| {
             value.as_str().map(str::to_owned).ok_or_else(|| {
                 ComponentError::Unsupported("a string with an unpaired UTF-16 surrogate".to_owned())
@@ -54,16 +58,36 @@ impl Val {
             Tag::Float(n) => Val::Number(Primitive::Float(*n)),
             Tag::Double(n) => Val::Number(Primitive::Double(*n)),
             Tag::String(value) => Val::Str(text(value)?),
-            Tag::ByteArray(values) => Val::List(values.iter().map(|n| Val::Number(Primitive::Byte(*n))).collect()),
-            Tag::IntArray(values) => Val::List(values.iter().map(|n| Val::Number(Primitive::Int(*n))).collect()),
-            Tag::LongArray(values) => Val::List(values.iter().map(|n| Val::Number(Primitive::Long(*n))).collect()),
-            Tag::List { element_type, values } => {
+            Tag::ByteArray(values) => Val::List(
+                values
+                    .iter()
+                    .map(|n| Val::Number(Primitive::Byte(*n)))
+                    .collect(),
+            ),
+            Tag::IntArray(values) => Val::List(
+                values
+                    .iter()
+                    .map(|n| Val::Number(Primitive::Int(*n)))
+                    .collect(),
+            ),
+            Tag::LongArray(values) => Val::List(
+                values
+                    .iter()
+                    .map(|n| Val::Number(Primitive::Long(*n)))
+                    .collect(),
+            ),
+            Tag::List {
+                element_type,
+                values,
+            } => {
                 let unwrap = *element_type == 10;
                 Val::List(
                     values
                         .iter()
                         .map(|element| match element {
-                            Tag::Compound(entries) if unwrap && entries.len() == 1 && entries[0].0 == "" => {
+                            Tag::Compound(entries)
+                                if unwrap && entries.len() == 1 && entries[0].0 == "" =>
+                            {
                                 Val::from_nbt(&entries[0].1)
                             }
                             other => Val::from_nbt(other),
@@ -81,7 +105,7 @@ impl Val {
     }
 
     /// `MapLike.get`: the last member of that name; a JSON `null` counts as absent.
-    fn get(&self, key: &str) -> Option<&Val> {
+    pub(crate) fn get(&self, key: &str) -> Option<&Val> {
         match self {
             Val::Map(entries) => entries
                 .iter()
@@ -93,7 +117,7 @@ impl Val {
         }
     }
 
-    fn string(&self) -> Option<&str> {
+    pub(crate) fn string(&self) -> Option<&str> {
         match self {
             Val::Str(text) => Some(text),
             _ => None,
@@ -102,7 +126,7 @@ impl Val {
 
     /// `Codec.BOOL`: `JsonOps` accepts only a boolean ("Not a boolean: 1"); `NbtOps` goes
     /// through `getNumberValue` and `Number.byteValue() != 0`.
-    fn boolean(&self) -> Option<bool> {
+    pub(crate) fn boolean(&self) -> Option<bool> {
         match self {
             Val::Bool(flag) => Some(*flag),
             Val::Number(number) => Some(
@@ -125,7 +149,9 @@ impl Val {
     /// so an object holding a JSON `null` member anywhere makes the argument fail.
     fn holds_null_member(&self) -> bool {
         match self {
-            Val::Map(entries) => entries.iter().any(|(_, value)| matches!(value, Val::Null) || value.holds_null_member()),
+            Val::Map(entries) => entries
+                .iter()
+                .any(|(_, value)| matches!(value, Val::Null) || value.holds_null_member()),
             Val::List(items) => items.iter().any(Val::holds_null_member),
             _ => false,
         }
@@ -157,7 +183,8 @@ fn optional_bool(map: &Val, key: &str) -> Result<Option<bool>> {
 }
 
 fn resource_location(text: &str) -> Result<String> {
-    super::java::resource_location(text).ok_or_else(|| ComponentError::Codec(format!("Not a valid resource location: {text}")))
+    super::java::resource_location(text)
+        .ok_or_else(|| ComponentError::Codec(format!("Not a valid resource location: {text}")))
 }
 
 /// `JsonOps.convertTo(JavaOps)` of a JSON number: `BigDecimal.longValueExact` narrowed to
@@ -167,7 +194,9 @@ fn resource_location(text: &str) -> Result<String> {
 fn number_primitive(number: &Number) -> Primitive {
     let exact_long = number.as_i64().or_else(|| {
         number.as_f64().and_then(|value| {
-            (value.fract() == 0.0 && value >= -9.223_372_036_854_775_808e18 && value < 9.223_372_036_854_775_808e18)
+            (value.fract() == 0.0
+                && value >= -9.223_372_036_854_775_808e18
+                && value < 9.223_372_036_854_775_808e18)
                 .then(|| value as i64)
         })
     });
@@ -230,13 +259,19 @@ fn parse_text(map: &Val) -> Result<Contents> {
 fn parse_translatable(map: &Val) -> Result<Contents> {
     let key = required_string(map, "translate")?;
     // `lenientOptionalFieldOf`: a wrong-typed fallback is ignored.
-    let fallback = map.get("fallback").and_then(|v| v.string().map(str::to_owned));
+    let fallback = map
+        .get("fallback")
+        .and_then(|v| v.string().map(str::to_owned));
     let args = match map.get("with") {
         None => Vec::new(),
         Some(Val::List(items)) => items.iter().map(decode_arg).collect::<Result<Vec<_>>>()?,
         Some(_) => return reject("with: expected a list"),
     };
-    Ok(Contents::Translatable { key, fallback, args })
+    Ok(Contents::Translatable {
+        key,
+        fallback,
+        args,
+    })
 }
 
 fn parse_keybind(map: &Val) -> Result<Contents> {
@@ -279,7 +314,10 @@ fn parse_data_source(map: &Val) -> Result<DataSource> {
             _ => reject("source: unknown data source type"),
         };
     }
-    entity(map).or_else(|_| block(map)).or_else(|_| storage(map)).or_else(|_| reject("No matching codec found"))
+    entity(map)
+        .or_else(|_| block(map))
+        .or_else(|_| storage(map))
+        .or_else(|_| reject("No matching codec found"))
 }
 
 fn parse_nbt(map: &Val) -> Result<Contents> {
@@ -290,12 +328,19 @@ fn parse_nbt(map: &Val) -> Result<Contents> {
         .get("separator")
         .and_then(|value| decode_component(value).ok())
         .map(Box::new);
-    Ok(Contents::Nbt { path, interpret, separator, source: parse_data_source(map)? })
+    Ok(Contents::Nbt {
+        path,
+        interpret,
+        separator,
+        source: parse_data_source(map)?,
+    })
 }
 
 fn parse_contents(map: &Val) -> Result<Contents> {
     if let Some(kind) = map.get("type") {
-        let name = kind.string().ok_or_else(|| ComponentError::Codec("type: expected a string".to_owned()))?;
+        let name = kind
+            .string()
+            .ok_or_else(|| ComponentError::Codec("type: expected a string".to_owned()))?;
         return match CONTENT_TYPES.iter().find(|(known, _)| *known == name) {
             Some((_, parse)) => parse(map),
             None => reject(format!("Unknown component type {name}")),
@@ -323,7 +368,10 @@ fn parse_click_event(value: &Val) -> Result<ClickEvent> {
         "open_file" => return reject("Action not allowed: OPEN_FILE"),
         other => return reject(format!("Unknown click action {other}")),
     };
-    Ok(ClickEvent { action, value: required_string(value, "value")? })
+    Ok(ClickEvent {
+        action,
+        value: required_string(value, "value")?,
+    })
 }
 
 fn parse_hover_event(value: &Val) -> Result<HoverEvent> {
@@ -343,14 +391,18 @@ fn parse_hover_event(value: &Val) -> Result<HoverEvent> {
                 (Err(_), Some(legacy)) => decode_component(legacy)?,
                 (Err(error), None) => return Err(error),
             };
-            Ok(HoverEvent { text: Box::new(text) })
+            Ok(HoverEvent {
+                text: Box::new(text),
+            })
         }
-        "show_item" | "show_entity" => Err(ComponentError::Unsupported("hoverEvent show_item/show_entity".to_owned())),
+        "show_item" | "show_entity" => Err(ComponentError::Unsupported(
+            "hoverEvent show_item/show_entity".to_owned(),
+        )),
         other => reject(format!("Unknown hover action {other}")),
     }
 }
 
-fn parse_style(map: &Val) -> Result<Style> {
+pub(crate) fn parse_style(map: &Val) -> Result<Style> {
     Ok(Style {
         color: match map.get("color") {
             Some(value) => Some(TextColor::parse(&string_of(value, "color")?)?),
@@ -363,7 +415,10 @@ fn parse_style(map: &Val) -> Result<Style> {
         obfuscated: optional_bool(map, "obfuscated")?,
         click_event: map.get("clickEvent").map(parse_click_event).transpose()?,
         hover_event: map.get("hoverEvent").map(parse_hover_event).transpose()?,
-        insertion: map.get("insertion").map(|v| string_of(v, "insertion")).transpose()?,
+        insertion: map
+            .get("insertion")
+            .map(|v| string_of(v, "insertion"))
+            .transpose()?,
         font: match map.get("font") {
             Some(value) => Some(resource_location(&string_of(value, "font")?)?),
             None => None,
@@ -371,14 +426,18 @@ fn parse_style(map: &Val) -> Result<Style> {
     })
 }
 
-pub(super) fn decode_component(value: &Val) -> Result<Component> {
+pub(crate) fn decode_component(value: &Val) -> Result<Component> {
     match value {
         Val::Str(text) => Ok(Component::literal(text.clone())),
         Val::List(items) => {
             if items.is_empty() {
                 return reject("List must have contents");
             }
-            let mut parts = items.iter().map(decode_component).collect::<Result<Vec<_>>>()?.into_iter();
+            let mut parts = items
+                .iter()
+                .map(decode_component)
+                .collect::<Result<Vec<_>>>()?
+                .into_iter();
             let mut first = parts.next().expect("non-empty");
             first.siblings.extend(parts);
             Ok(first)
@@ -387,12 +446,17 @@ pub(super) fn decode_component(value: &Val) -> Result<Component> {
             let contents = parse_contents(value)?;
             let siblings = match value.get("extra") {
                 None => Vec::new(),
-                Some(Val::List(items)) if !items.is_empty() => {
-                    items.iter().map(decode_component).collect::<Result<Vec<_>>>()?
-                }
+                Some(Val::List(items)) if !items.is_empty() => items
+                    .iter()
+                    .map(decode_component)
+                    .collect::<Result<Vec<_>>>()?,
                 Some(_) => return reject("extra: expected a non-empty list"),
             };
-            Ok(Component { contents, siblings, style: parse_style(value)? })
+            Ok(Component {
+                contents,
+                siblings,
+                style: parse_style(value)?,
+            })
         }
         _ => reject("expected a string, list or object"),
     }
