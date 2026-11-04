@@ -120,12 +120,13 @@ impl<A: FallingBlockDamageActor> FallingBlockDamageHost<A> for MainFallingDamage
     }
     fn fall_damage_source(&mut self, actor: &A) -> Result<Self::DamageSource> {
         use mc121_rust::falling_block::block::{source_class, NativeFallingClass};
-        // Actual AnvilBlock override selects falling_anvil. The ordinary
-        // family inherits Fallable's falling_block holder. Resolve either
+        // Actual AnvilBlock override selects falling_anvil. Ordinary and
+        // ConcretePowder inherit Fallable's falling_block holder. Resolve it
         // before Level.getEntities, even if the eventual victim list is empty.
         match source_class(actor.block_state())? {
             Some(NativeFallingClass::Anvil) => Ok(self.damage_types.anvil_source(self.actor)),
-            Some(NativeFallingClass::Ordinary) => Ok(self.damage_types.block_source(self.actor)),
+            Some(NativeFallingClass::Ordinary | NativeFallingClass::ConcretePowder) =>
+                Ok(self.damage_types.block_source(self.actor)),
             None => bail!("falling damage-source override is unavailable"),
         }
     }

@@ -10,6 +10,52 @@ native flat creative world with an unmounted player and no active status effects
 The goal is faithful behavior and strong performance. There is no benchmark yet
 showing a performance advantage over a Java server running equivalent gameplay.
 
+## Native concrete-powder Main
+
+Concrete powder now has a bounded native placement, scheduler, falling,
+hardening and resume path. The [real local flow](docs/reference/concrete-powder-runtime.md)
+placed white powder on dry support, saved it airborne, preserved its complete
+body/UUID/RNG through a hidden restart and resumed the same actor into water,
+leaving one concrete block without duplicate entities or items.
+
+Player operations require a single write and a fluid-quiescent neighborhood;
+direct-water/adjacent-fluid powder placement remains unsupported. Falling
+water handling uses its separate source-ordered phase. The short observed fall
+does not certify high-speed rays, arbitrary dynamic supports or mixed cascades.
+Recorded tick overloads remain explicit; no performance advantage is claimed.
+
+## Native registry and NBT owners
+
+Current fixture construction retains the same canonical inventory/placement
+owners and the actual configured Block tags. Original-server extraction certifies
+Block IDs, property classes/domains and state-property encounter order. The
+[initialization observation](docs/reference/native-owner-startup.md) reached
+STATUS/PING and normal shutdown with these real constructor paths; it did not
+enter PLAY or certify a Java importer.
+
+The library now includes genuine fresh CompoundTag history, decoder-issued
+immutable views, source `getCompound` defaults and the canonical EMPTY component
+branch. [BE contracts](docs/reference/enchanting-block-entity.md) and
+[SNBT limits](docs/reference/nbt-snbt.md) identify remaining owners and unsupported
+floating diagnostics. The bounded concrete-powder Main delivery above consumes
+the actual retained placement, scheduler, landing and clipping owners.
+
+The separate [flowing-fluid correction](docs/reference/placement-fluid-source-correction.md)
+fixes the original extractor's WATER/LAVA singleton mix-up; fresh original
+predicate capture binds the corrected data. These are bounded source deliveries,
+not full vanilla compatibility or fixed-checklist increments.
+
+## Native entity pressure callbacks
+
+Player, Item, XP and Falling callbacks now share the actual pressure kernel,
+entity index, sound RNG and BLOCK scheduler. An isolated full build and
+[one real Item activation/pickup/release flow](docs/reference/pressure-item-runtime.md)
+passed; the actual report retains a tick-overload observation and makes no timing
+or performance claim. Source and bounded callback ownership are documented in
+[the pressure ledger](docs/reference/falling-block-pressure-plates.md). XP/Falling,
+weighted/stone plate behavior and active networks have not been runtime-certified
+by that single Item flow. This feature stage does not complete a checklist row.
+
 ## Native Anvil falling runtime
 
 The [bounded native flow](docs/validation/falling-anvil-flow.json) passed: real Anvil placement, support removal, FallingBlock entity40, landing, rename/cost1/take, menu lifetime and native restart conserved owned blocks and swords. [Source evidence and limits](docs/reference/falling-anvil-runtime.md) pin the exact executable and callback/RNG owners. [PR97](https://github.com/Ferigone/Cinderstone/pull/97) merged as `68fba409`; automatic native offline startup was observed.

@@ -1,4 +1,9 @@
 # syntax=docker/dockerfile:1
+# Fast CI target: exercise the real ignore/COPY rules without compiling Rust.
+FROM scratch AS compile-input-check
+COPY src/worldgen/chunk_target/mod.rs /src/worldgen/chunk_target/mod.rs
+COPY tools/block_state_owner_facts.java /tools/block_state_owner_facts.java
+
 FROM rust:1.99.1-trixie AS builder
 
 WORKDIR /build
@@ -21,6 +26,8 @@ COPY tools/crafting_metadata.json \
      tools/storage_blockentity_factories.json \
      tools/player_physics_facts.json \
      tools/item_entity_physics_facts.json ./tools/
+# Inventory hashes this provenance source at compile time; no JVM is needed.
+COPY tools/block_state_owner_facts.java ./tools/
 
 RUN cargo build --locked --release --bin mc121-rust \
     && strip target/release/mc121-rust

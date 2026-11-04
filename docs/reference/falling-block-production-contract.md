@@ -196,3 +196,53 @@ This follow-up is source implementation awaiting the coordinator's focused
 compiler/runtime check. It does not establish an ordinary/water gameplay pass,
 generic concrete-powder/lava behavior, full FallingBlock compatibility or a
 fixed-checklist completion. No Java binary or raw disassembly is published.
+
+## Future retained pressure-plate parts
+
+The follow-up pressure host uses one `NativePressurePlateServices` interface
+with the actual `RuntimeEntityQuerySound` owner. Full Falling/XP callbacks lend
+the real RuntimeEntities; an Item callback can lend the actual TickParts index,
+remaining Item store and sound RNG through that same object-safe capability.
+The current actor is always its genuine physical reference plus its actual
+registered handle/kind, including when that actual Item is loaned outside its
+store. No proxy Item, fake Player, temporary entity store or synthetic excluded
+ID is inserted.
+
+Native pressure queries use the real shared section encounter order and actual
+Item bounds. Same-lock XP/Falling views carry actual handles, UUIDs and bounds;
+the current actor's newly moved physical bounds override its old view. Player
+bounds come from the actual motion owner. The source class/spectator/trigger
+predicates are independent of health: wooden/weighted plates include the
+actual admitted nonliving classes, stone's LivingEntity query currently has
+only Player in the explicit native class domain, and spectators are excluded.
+A still-indexed dead Player is not silently filtered. Falling blocks retain
+their actual blocksBuilding field; this is not a pressure-plate predicate.
+
+The pinned TOUCH_AABB is x/z1/16..15/16 and y0..1/4, replacing the old narrower
+Main helper. Source inspection by the physics owner also confirms sound
+volume1/pitch1, one actual threadSafeRandom seed, centered sound/game-event
+coordinates, radius16 for activate/deactivate, base delay20 and weighted delay10.
+These are the unchanged original1.21 artifact's values, not historical guesses.
+
+Both immediate entityInside and scheduled release use the original shared
+`check_plate` body. The scheduled branch is exposed without borrowing or moving
+the unrelated torch-burnout engine; its captured-state helper avoids a second
+world-state read. The Main notification executor is shared between old and new
+hosts, including configured limit and LIFO callback traversal. A real Server
+scheduled entry supplies actual publication references; it does not fabricate
+an allocator/channel to construct a parts frame.
+
+The first strict pressure parts profile requires actual native source, current
+light/query region, real empty game-event registry ownership, healthy BLOCK /
+redstone/fluid owners and real sound RNG before mutation. It admits inherited,
+dry, non-BE neighboring callbacks. Active controller/fluid/fire/BE networks
+remain errors before plate mutation. Plate flags2 edits use real atomic plans,
+source tokens, random-tick indexes, ordered BLOCK obligations, lighting,
+source completion and normal block publication, with no legacy item-count-based
+source fallback. The actual trigger reference remains the game-event context;
+certified-empty dispatch at the literal phase does not inspect its getters.
+
+This is source implementation awaiting focused compilation/runtime checks by
+the coordinator. The Item/XP callback cadence and genuine TickParts loan remain
+owned by their separate integration worker. No plate gameplay, whole-lifecycle
+or checklist completion follows merely from these adapters.

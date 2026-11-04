@@ -2,8 +2,73 @@
 use super::*;
 use mc121_rust::{
     entity_persistence::NativeEntityCohort,
+    falling_block::{block::{self, NativeFallingClass}, persistence::FallingBlockSnapshot, FallingBlockState},
+    placement,
     runtime_entity_index::EntityKind,
 };
+
+/// Class metadata alone is not native powder capability. Cold restore runs
+/// AFTER the final BLOCK owner has been restored and the actual configured
+/// damage/powder owners have been installed. No readiness or shape query is
+/// performed here; those belong to the real first activated entity tick.
+fn require_powder_owner(players: &LivePlayers, world: &WorldBackend, state: u32) -> Result<bool> {
+    if block::source_class(state)? != Some(NativeFallingClass::ConcretePowder) {
+        return Ok(false);
+    }
+    players.entity_source.as_ref().context("native powder resume has no actual source owner")?
+        .require_current_world(world)?;
+    players.block_runtime.falling_damage_types()?;
+    let owner = players.block_runtime.concrete_powder_owner()?;
+    let binding = owner.binding_for_state(state)?
+        .context("native powder resume lacks its installed actual Block association")?;
+    let hardened = block::concrete_powder_hardened_state(state)?
+        .context("native powder resume lacks its captured source concrete default")?;
+    ensure!(*binding.powder() == placement::placement_block_min_state(state)?
+        && *binding.concrete() == placement::placement_block_min_state(hardened)?,
+        "native powder resume owner differs from its actual source association");
+    Ok(true)
+}
+
+fn require_powder_payload(state: &FallingBlockState) -> Result<()> {
+    ensure!(state.physical.vehicle.is_none(), "native powder passenger/vehicle resume is unsupported");
+    ensure!(state.physical.portal_process.is_none(), "native powder resume lacks its actual portal processor");
+    ensure!(state.block_data.is_none(), "native powder resume lacks its actual retained block-data map owner");
+    // Native continuation retains the actual physical fields, signed time,
+    // StartPos and RNG. Do not reset those fields to positioned-ctor defaults
+    // or guess first-tick readiness from a saved position/time.
+    state.validate()
+}
+
+/// Capture only actual registered bodies under Main's existing SAME world /
+/// player / clock interval. The existing atomic entity cohort remains the sole
+/// persisted owner; no extra powder array, RNG or source summary is created.
+pub(super) fn snapshot_native_falling_blocks(
+    players: &LivePlayers, world: &WorldBackend,
+) -> Result<Vec<FallingBlockSnapshot>> {
+    let mut seen_uuids = BTreeSet::new();
+    let mut duplicate_uuids = BTreeSet::new();
+    let players_now = players.registry.snapshot();
+    for uuid in players.item_runtime.item_states().filter(|state| !state.removed).map(|state| state.uuid)
+        .chain(players.experience_runtime.physical_states().map(|state| state.uuid))
+        .chain(players.falling_blocks.registered().map(|(_, state)| state.uuid))
+        .chain(players_now.iter().map(|player| player.profile.uuid))
+    {
+        if !seen_uuids.insert(uuid) { duplicate_uuids.insert(uuid); }
+    }
+    for (handle, state) in players.falling_blocks.registered() {
+        if require_powder_owner(players, world, state.block_state)? {
+            ensure!(handle.id == state.entity_id
+                && players.item_runtime.entity_handle(state.entity_id) == Some(handle)
+                && players.item_runtime.entity_kind(handle) == Some(EntityKind::FallingBlock)
+                && players.falling_blocks.get(handle).is_some_and(|actual| actual.state.uuid == state.uuid),
+                "native powder snapshot is not its actual indexed Falling identity/generation");
+            ensure!(!duplicate_uuids.contains(&state.uuid),
+                "native powder snapshot UUID collides with an actual live entity owner");
+            require_powder_payload(state)?;
+        }
+    }
+    players.falling_blocks.snapshot()
+}
 
 /// Main calls this before publishing Server or accepting PLAY actors. The
 /// checkpoint decoder already validates its full source/world/time and cohort;
@@ -12,6 +77,7 @@ use mc121_rust::{
 /// restore over their actual NEW handles, with chunk visibility still hidden.
 pub(super) fn restore_native_entity_cohort(
     players: &mut LivePlayers,
+    world: &WorldBackend,
     native: Option<NativeEntityCohort>,
     legacy_experience: Vec<mc121_rust::experience::SavedExperienceOrb>,
     next_entity_id: i32,
@@ -57,24 +123,34 @@ pub(super) fn restore_native_entity_cohort(
             "duplicate identity across actual native entity owners");
         entries.push((orb.state.entity_id, EntityKind::ExperienceOrb, orb.state.position_vec()));
     }
-    for saved in &native.falling_blocks {
+    let mut falling_objects = Vec::with_capacity(native.falling_blocks.len());
+    for saved in native.falling_blocks {
         ensure!(saved.block_data.is_none(), "native falling restore lacks the actual retained block-data map owner");
-        let state = saved.clone().restore()?;
+        let is_powder = require_powder_owner(players, world, saved.block_state)?;
+        // Build the actual retained Box ONCE after owner admission, then keep
+        // that same object through complete cohort/index/order validation.
+        // Snapshot restore inverts the RNG scramble without sampling it; it
+        // invokes neither source Entity construction nor UUID generation.
+        let object = players.falling_blocks.restore_constructed(saved)?;
+        let state = players.falling_blocks.object_state(&object)?;
+        if is_powder { require_powder_payload(state)?; }
         ensure!(state.physical.vehicle.is_none(), "native entity passenger/vehicle graph restore is unsupported");
         ensure!(state.entity_id > 0 && state.entity_id < next_entity_id,
             "native falling block exceeds the shared entity counter");
         ensure!(ids.insert(state.entity_id) && uuids.insert(state.uuid),
             "duplicate identity across actual native entity owners");
         entries.push((state.entity_id, EntityKind::FallingBlock, state.position_vec()));
+        falling_objects.push(object);
     }
     native.order.validate_entries(&entries)?;
+    players.item_runtime.validate_entity_registration_batch(entries.iter()
+        .filter(|(_, kind, _)| *kind != EntityKind::Item).map(|(id, _, _)| *id))?;
 
     // Some is authoritative even when EMPTY. Never append stale legacy XP.
     players.experience_runtime = main_experience::MainExperienceRuntime::restore(
         native.experience_orbs, &mut players.item_runtime,
     )?;
-    for saved in native.falling_blocks {
-        let mut object = players.falling_blocks.restore_constructed(saved)?;
+    for mut object in falling_objects {
         players.falling_blocks.register_constructed(&mut players.item_runtime, &mut object)?;
     }
     players.item_runtime.restore_persistent_entity_order(&native.order)?;

@@ -8,16 +8,18 @@ use crate::{
     entity::{EntityRegistry, PlayerState},
     entity_move::ProfileEvent,
     entity_state::EntityPhysicalState,
-    geometry::{Aabb, Vec3},
+    geometry::{Aabb, Vec3, VoxelShape},
+    fluid_physics::FluidState,
     inventory::{ItemStack, PlayerInventory},
     item_effects,
     item_entity::{ItemState, Pickup},
     metadata::MetadataValue,
     player_inventory::SharedContainer,
     protocol::Packet,
-    runtime_entities::{EffectDelivery, PickupPlayer, RuntimeEntityHost},
+    runtime_entities::{EffectDelivery, PickupPlayer, RuntimeEntityHost, RuntimeEntityQuerySound},
     runtime_entity_index::EntityHandle,
     runtime_item_world::RuntimeItemEffect,
+    runtime_world::RuntimeWorld,
 };
 use anyhow::{ensure, Context, Result};
 use std::collections::BTreeMap;
@@ -96,6 +98,18 @@ pub enum ExternalMenuPickupResult {
     Packets(Vec<Packet>),
 }
 
+/// Explicit concrete world methods borrowing the SAME gameplay owner as the
+/// ordinary hooks. There are no successful defaults; a host without this
+/// attachment returns unsupported at the actual source callback.
+pub struct RuntimeInventoryWorldCallbacks<H: RuntimeGameplayHooks + ?Sized> {
+    pub pressure_plate_inside: fn(&mut H, &mut RuntimeWorld, &mut EntityPhysicalState,
+        EntityHandle, crate::placement::BlockPosition, u32,
+        &mut dyn RuntimeEntityQuerySound) -> Result<()>,
+    pub fluid_shape: fn(&mut H, &mut RuntimeWorld, crate::placement::BlockPosition,
+        FluidState) -> Result<VoxelShape>,
+    pub rain_exposure: fn(&mut H, &mut RuntimeWorld, &EntityPhysicalState) -> Result<bool>,
+}
+
 /// Internal transaction abort minted only for the explicit pre-add Refuse
 /// result. The shared-container rollback also preserves its publication
 /// revision: refusal is not a successful empty container transaction.
@@ -114,6 +128,7 @@ pub struct RuntimeInventoryHost<'a, H: RuntimeGameplayHooks + ?Sized> {
     hooks: &'a mut H,
     external_menu_player: Option<i32>,
     external_menu_sync: Option<ExternalMenuSync<'a, H>>,
+    world_callbacks: Option<RuntimeInventoryWorldCallbacks<H>>,
 }
 
 impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
@@ -128,7 +143,12 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
             hooks,
             external_menu_player: None,
             external_menu_sync: None,
+            world_callbacks: None,
         }
+    }
+    pub fn with_world_callbacks(mut self, callbacks: RuntimeInventoryWorldCallbacks<H>) -> Self {
+        self.world_callbacks = Some(callbacks);
+        self
     }
     /// The actual active block-menu owner already performed this player's
     /// ServerPlayer.tick menu broadcast/validity phase. Do not also broadcast
@@ -247,6 +267,24 @@ impl<'a, H: RuntimeGameplayHooks + ?Sized> RuntimeInventoryHost<'a, H> {
 }
 
 impl<H: RuntimeGameplayHooks + ?Sized> RuntimeEntityHost for RuntimeInventoryHost<'_, H> {
+    fn pressure_plate_inside(&mut self, world: &mut RuntimeWorld, state: &mut EntityPhysicalState,
+        handle: EntityHandle, position: crate::placement::BlockPosition, block_state: u32,
+        access: &mut dyn RuntimeEntityQuerySound) -> Result<()> {
+        let callback = self.world_callbacks.as_ref()
+            .context("actual inventory pressure world owner is not attached")?.pressure_plate_inside;
+        callback(&mut *self.hooks, world, state, handle, position, block_state, access)
+    }
+    fn fluid_shape(&mut self, world: &mut RuntimeWorld, position: crate::placement::BlockPosition,
+        fluid: FluidState) -> Result<VoxelShape> {
+        let callback = self.world_callbacks.as_ref()
+            .context("actual inventory fluid shape owner is not attached")?.fluid_shape;
+        callback(&mut *self.hooks, world, position, fluid)
+    }
+    fn rain_exposure(&mut self, world: &mut RuntimeWorld, state: &EntityPhysicalState) -> Result<bool> {
+        let callback = self.world_callbacks.as_ref()
+            .context("actual inventory rain owner is not attached")?.rain_exposure;
+        callback(&mut *self.hooks, world, state)
+    }
     fn level_player_tick(&mut self, player: EntityHandle) -> Result<()> {
         self.hooks.level_player_tick(player)?;
         if self.external_menu_player == Some(player.id) {

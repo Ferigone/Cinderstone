@@ -380,8 +380,8 @@ fn name<'a>(value: &'a Value, key: &str) -> Result<&'a str> {
 /// contexts delegate markers; chunk contexts own their cache/counter state.
 pub trait DensityContext: Sized {
     type Error;
-    /// Metadata of the actual visited function. NoiseChunk's Blender wrappers
-    /// change child bounds without changing the shared RandomState graph.
+    /// Metadata of the actual visited function. NoiseChunk's captured influence
+    /// owners change child bounds without changing the shared RandomState graph.
     fn bounds(&self, graph: &DensityGraph, id: NodeId) -> DensityBounds {
         graph.bounds(id)
     }
@@ -432,6 +432,23 @@ pub trait DensityContext: Sized {
     }
     fn blend_offset(&mut self, _id: NodeId, _point: DensityPoint) -> f64 {
         0.0
+    }
+    /// Raw BeardifierMarker has no structure owner and computes zero. A
+    /// NoiseChunk context captures its actual Beardifier during construction.
+    fn beardifier(&mut self, _id: NodeId, _point: DensityPoint) -> f64 {
+        0.0
+    }
+    /// The raw BeardifierMarker fills zero without visiting provider indices.
+    /// NoiseChunk replaces it with an actual Beardifier, whose SimpleFunction
+    /// fill uses the provider even when the selected structure lists are empty.
+    fn beardifier_fill(
+        &mut self,
+        _graph: &DensityGraph,
+        _id: NodeId,
+        values: &mut [f64],
+    ) -> std::result::Result<(), Self::Error> {
+        values.fill(0.0);
+        Ok(())
     }
     /// Raw/empty BlendAlpha and BlendOffset use Arrays.fill, without visiting
     /// provider indices. Nonempty NoiseChunk FlatCache wrappers override these.
@@ -1183,7 +1200,7 @@ impl DensityGraph {
             }
             DensityNode::BlendAlpha => context.blend_alpha(id, point),
             DensityNode::BlendOffset => context.blend_offset(id, point),
-            DensityNode::Beardifier => 0.0,
+            DensityNode::Beardifier => context.beardifier(id, point),
             DensityNode::Binary(kind, a, b) => {
                 if let Some((input, argument)) = context.rewritten_constant_argument(id) {
                     let value = self.eval_sampled(input, point, context)?;
@@ -1332,7 +1349,7 @@ impl DensityGraph {
             DensityNode::Constant(value) => values.fill(*value),
             DensityNode::BlendAlpha => context.blend_alpha_fill(self, id, values)?,
             DensityNode::BlendOffset => context.blend_offset_fill(self, id, values)?,
-            DensityNode::Beardifier => values.fill(0.0),
+            DensityNode::Beardifier => context.beardifier_fill(self, id, values)?,
             DensityNode::Reference(input) => self.fill_sampled(*input, values, context)?,
             DensityNode::Marker(kind, input) => {
                 context.marker_fill(self, id, *kind, *input, values)?

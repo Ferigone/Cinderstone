@@ -2,18 +2,117 @@
 //!
 //! Resolver traversal matches ChunkAccess/LevelChunkSection, while storage is
 //! canonical quart Y/Z/X. This module supplies data, never a ChunkStatus or a
-//! completed runtime chunk. The prepared owner supplies actual old-generation
-//! blending; present or unavailable target retrogen remains unsupported.
+//! completed runtime chunk. The fresh image path rejects target retrogen; the
+//! additive live-target path uses the actual retained payload and old palettes.
 use super::{
     biome_context::BuiltinBiomeSurfaceContext,
     biome_source::{select_end_biome, BuiltinMultiNoiseBiomeSource},
     biome_temperature::BiomeTemperature,
     biome_zoom::{BiomeZoom, QuartBiomeProvider},
-    blending::BlendedBiomeResolver,
+    blending::{biome::blend_biome, BlendedBiomeResolver, Blender},
     generator::{OwnedNoiseTerrain, PreparedGeneration},
     surface::SurfaceReport,
+    target::GenerationTargetHost,
 };
 use anyhow::{ensure, Context, Result};
+
+/// Value identity and the actual optional registry key of one source Holder.
+/// A display name is not proof of a bound key. Callers with direct/unbound
+/// holders must supply None even when the value resembles a retained cave.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedBiome {
+    pub identity: String,
+    pub registry_key: Option<String>,
+}
+impl ResolvedBiome {
+    pub fn from_holder(identity: String, registry_key: Option<String>) -> Self {
+        Self {
+            identity,
+            registry_key,
+        }
+    }
+}
+
+fn retained_retrogen_key(key: Option<&str>) -> bool {
+    matches!(
+        key,
+        Some("minecraft:lush_caves" | "minecraft:dripstone_caves" | "minecraft:deep_dark")
+    )
+}
+
+/// BIOMES over the actual existing target. The closure owns no replacement
+/// sampler: the generation session binds its retained NoiseChunk/climate owner.
+///
+/// Source order is resolver -> Blender -> retrogen. Blender's old-biome branch
+/// is lazy; retrogen always evaluates that combined candidate before checking
+/// its actual Holder key and possibly reading the same chunk at quart Y zero.
+/// Only the current generation accessor's sections are rewritten. Each source
+/// section publishes after its 64 resolver calls, preserving all other palettes
+/// and earlier completed-section effects if a later callback fails.
+pub fn fill_target_biomes<T: GenerationTargetHost + ?Sized>(
+    target: &mut T,
+    blender: &Blender,
+    mut resolve: impl FnMut(i32, i32, i32) -> Result<ResolvedBiome>,
+) -> Result<()> {
+    let retrogen = target.retrogen()?;
+    let (chunk_x, chunk_z) = target.chunk_pos();
+    let generation = target.generation_height()?;
+    let min_section = generation.min_section_y();
+    let max_section = generation.max_y()?.wrapping_sub(1).div_euclid(16) + 1;
+    let physical = target.build_height().physical_sections()?;
+    ensure!(
+        generation.height > 0
+            && min_section >= physical.min_section_y()
+            && max_section <= physical.max_y()?.div_euclid(16),
+        "BIOMES generation sections lie outside actual target storage"
+    );
+    let base_x = chunk_x.wrapping_shl(2);
+    let base_z = chunk_z.wrapping_shl(2);
+    for section in min_section..max_section {
+        // Unresolved temporary slots are private, not default biome values.
+        let mut values: [Option<String>; 64] = std::array::from_fn(|_| None);
+        let base_y = section.wrapping_mul(4);
+        for x in 0..4 {
+            for y in 0..4 {
+                for z in 0..4 {
+                    let qx = base_x.wrapping_add(x);
+                    let qy = base_y.wrapping_add(y);
+                    let qz = base_z.wrapping_add(z);
+                    let candidate = match blend_biome(blender, qx, qy, qz) {
+                        Some(identity) => {
+                            let registry_key = if retrogen.is_some() {
+                                target.biome_registry_key(&identity)?
+                            } else {
+                                None
+                            };
+                            ResolvedBiome::from_holder(identity, registry_key)
+                        }
+                        None => resolve(qx, qy, qz)?,
+                    };
+                    ensure!(
+                        !candidate.identity.is_empty(),
+                        "source resolver returned an empty biome identity"
+                    );
+                    let biome = if retrogen.is_some()
+                        && !retained_retrogen_key(candidate.registry_key.as_deref())
+                    {
+                        target.get_noise_biome(qx, 0, qz)?
+                    } else {
+                        candidate.identity
+                    };
+                    ensure!(
+                        !biome.is_empty(),
+                        "actual target returned an empty biome identity"
+                    );
+                    values[(y * 16 + z * 4 + x) as usize] = Some(biome);
+                }
+            }
+        }
+        let values = values.map(|value| value.expect("all source palette coordinates visited"));
+        target.commit_biome_section(section, Box::new(values))?;
+    }
+    Ok(())
+}
 
 /// An observation from the actual ProtoChunk/retrogen owner, not an inference
 /// from seed, coordinates or height. No default assumes absent retrogen.

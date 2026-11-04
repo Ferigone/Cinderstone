@@ -12,3 +12,6 @@ pub mod tick;
 pub mod damage;
 
 pub use state::FallingBlockState;
+pub mod concrete_powder;
+pub mod block_state_registry;
+pub mod block_state_load;

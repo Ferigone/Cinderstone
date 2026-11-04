@@ -95,12 +95,21 @@ mod main_server_timing;
 mod main_experience;
 mod main_falling_block;
 mod main_falling_block_generic;
+mod main_falling_block_powder;
+mod main_concrete_powder_placement;
+mod main_falling_block_sequence;
+mod main_falling_block_clip;
+mod main_falling_block_clip_admission;
+mod main_block_state_warnings;
 mod main_native_enchantments;
+mod main_block_state_registry;
 mod main_falling_block_world;
 mod main_falling_block_runtime;
 mod main_falling_block_persistence;
 mod main_falling_block_spawn;
 mod main_falling_block_physics;
+mod main_falling_block_redstone;
+mod main_pressure_plate_entities;
 mod main_falling_block_damage;
 mod main_falling_block_dispatch;
 mod main_block_ticks;
@@ -324,6 +333,7 @@ struct Capture {
 struct Fixtures {
     chat_type: i32,
     configuration: Vec<Packet>,
+    block_state_registry: main_block_state_registry::NativeBlockStateRegistry,
     dimension: i32,
     dimension_facts: DimensionFacts,
     seed_hash: i64,
@@ -446,9 +456,15 @@ async fn fixtures(path: &Path) -> Result<Fixtures> {
     )?;
     let seed_hash = ((u64::from(high as u32) << 32) | u64::from(low as u32)) as i64;
     let chat_type = main_chat_keys::captured_chat_type(&configuration)?;
+    let block_state_registry = main_block_state_registry::NativeBlockStateRegistry::capture(
+        &configuration,
+        inventory::block_state_catalog(),
+        mc121_rust::placement::canonical_placement_catalog(),
+    )?;
     Ok(Fixtures {
         chat_type,
         configuration,
+        block_state_registry,
         dimension,
         dimension_facts,
         seed_hash,
@@ -1604,7 +1620,7 @@ impl Server {
             .players
             .write()
             .map_err(|_| anyhow!("player registry lock poisoned"))?;
-        players.simulate_native_entities_with_player_menus(&mut world, game_time, border, &self.entity_events,
+        players.simulate_native_entities_with_player_menus(&mut world, game_time, border, &self.entity_events, Some(&self.changes),
             |players, world, id| {
                 self.tick_native_furnace_menu_for_player_locked(world, players, id, game_time, border)?;
                 self.tick_native_stonecutter_menu_for_player_locked(world, players, id, game_time, border)?;
@@ -2502,7 +2518,7 @@ impl Server {
             // locks as the shared item/index/order owners. They belong to the
             // atomic entity checkpoint, never a second unanchored world array.
             let experience_orbs = players.experience_runtime.snapshot()?;
-            let falling_blocks = players.falling_blocks.snapshot()?;
+            let falling_blocks = main_falling_block_persistence::snapshot_native_falling_blocks(&players, &world)?;
             ensure!(players.entity_source.is_some() || (experience_orbs.is_empty() && falling_blocks.is_empty()),
                 "cannot persist XP/falling bodies without the actual native entity source");
             let LivePlayers {
@@ -2763,6 +2779,7 @@ async fn main() -> Result<()> {
     let mut initial_weather = WeatherState::default();
     let mut initial_fluid_runtime = main_fluid_simulation::MainFluidRuntime::default();
     let mut initial_fluid_random = None;
+    let mut had_fluid_checkpoint = false;
     let mut fluid_checkpoint_clock = None;
     let mut initial_fluid_shapes = None;
     let mut initial_fire_runtime = None;
@@ -2780,6 +2797,12 @@ async fn main() -> Result<()> {
         initial_world_file_bytes = Some(saved_bytes);
         if saved.format != "mc121-flat-diffs-v1" || saved.minecraft != "1.21" {
             bail!("unsupported saved fixture world format");
+        }
+        // Inspect actual saved provenance before restoring blocks/BEs or
+        // binding/listening and creating the cold Level/Math RNG owners.
+        if saved.block_ticks.as_ref().is_some_and(main_block_ticks::SavedBlockRuntime::requires_shared_counter) {
+            ensure!(saved.fluid_ticks.is_some() && saved.clock.is_some(),
+                "saved BLOCK use or pending/stale ticks require a paired clock/FLUID shared-counter checkpoint before world restoration");
         }
         fixture_world.apply_changes(&saved.changes)?;
         initial_clock = saved.clock.unwrap_or_default();
@@ -2802,7 +2825,7 @@ async fn main() -> Result<()> {
             .transpose()
             .context("restoring actual singleton fluid-shape history")?
             .unwrap_or_else(mc121_rust::fluid_physics::FluidShapeCache::unknown);
-        let had_fluid_checkpoint = saved.fluid_ticks.is_some();
+        had_fluid_checkpoint = saved.fluid_ticks.is_some();
         if let Some(checkpoint) = saved.fluid_ticks {
             ensure!(saved.clock.is_some(), "native fluid checkpoint has no matching saved world clock");
             if first_fluid.is_some() {
@@ -2904,6 +2927,10 @@ async fn main() -> Result<()> {
                     "native source history requires its saved fire queue, including stale scheduled ticks");
                 ensure!(!restored.source.requires_block_checkpoint() || had_block_checkpoint,
                     "native source history requires its saved global BLOCK scheduler");
+                // BLOCK shares the FLUID checkpoint's level sub-tick counter,
+                // including historically used queues that are now empty.
+                ensure!(!restored.source.requires_block_checkpoint() || had_fluid_checkpoint,
+                    "native BLOCK source history requires its paired clock/FLUID shared-counter checkpoint");
                 ensure!(!restored.source.requires_fluid_checkpoint() || initial_fluid_random.is_some(),
                     "native source history requires its saved fluid queue, including stale scheduled ticks");
                 if restored.source.requires_fluid_checkpoint() {
@@ -3040,9 +3067,6 @@ async fn main() -> Result<()> {
         initial_native_entities = restored.native_entities;
     }
     players.entity_source = entity_source;
-    main_falling_block_persistence::restore_native_entity_cohort(
-        &mut players, initial_native_entities, initial_experience_orbs, next_entity_id,
-    )?;
     if let Some(random) = initial_fluid_random {
         *players.item_runtime.world_random_mut() = random;
     }
@@ -3055,10 +3079,22 @@ async fn main() -> Result<()> {
         players.block_runtime=main_block_ticks::MainBlockRuntime::from_checkpoint(saved,supported_native_source)?;
     }
     players.block_runtime.adopt_legacy_fire(&mut players.fire_runtime,initial_clock.game_time)?;
+    // Check the actual final owner too: this covers queued/stale records and
+    // legacy migration without an entity source, never a queue-derived counter.
+    // A present FLUID checkpoint already passed its saved-clock validation.
+    if players.block_runtime.was_used() || players.block_runtime.pending_count() != 0 {
+        ensure!(had_fluid_checkpoint,
+            "used or pending native BLOCK scheduler requires its paired clock/FLUID shared-counter checkpoint");
+    }
     if supported_native_source {
         let falling_owner = main_falling_block_damage::NativeFallingDamageTypes::capture(&fixtures)?;
+        let powder_owner = main_falling_block_powder::NativeConcretePowderOwner::capture(&fixtures)?;
         players.block_runtime.install_falling_owner(falling_owner)?;
+        players.block_runtime.install_concrete_powder_owner(powder_owner)?;
     }
+    main_falling_block_persistence::restore_native_entity_cohort(
+        &mut players, &world, initial_native_entities, initial_experience_orbs, next_entity_id,
+    )?;
     if let Some(cache) = initial_fluid_shapes {
         players.world_interactions.fluid_shapes = cache;
     }

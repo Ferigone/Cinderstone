@@ -2,7 +2,9 @@
 //!
 //! `Character.isWhitespace(char)` and `Double.toString` / `Float.toString` (the JDK 19+
 //! shortest-representation algorithm, Java 21 here) are reproduced and compared with the
-//! original JVM in `fixtures/commands-brigadier-vectors.json`.
+//! original JVM in `fixtures/commands-brigadier-vectors.json`. The case mapping, ordering,
+//! hashing and lower-casing used by completion suggestions (stage 4) are compared in
+//! `fixtures/commands-brigadier-suggest-vectors.json`.
 
 /// `Character.isWhitespace(char)` for one UTF-16 code unit (Java 21 / Unicode 15).
 ///
@@ -22,6 +24,169 @@ pub fn java_is_whitespace(unit: u16) -> bool {
             | 0x205F
             | 0x3000
     )
+}
+
+/// `Character.toUpperCase(int codePoint)`: the simple (one-to-one) mapping.
+///
+/// Rust only exposes the full mappings; a code point whose full mapping is a single scalar
+/// takes it, every other code point is kept, and `JAVA_CASE_EXCEPTIONS` lists the code points
+/// where Java 21 (Unicode 15.0) differs. Every Unicode scalar value is compared with the JVM.
+pub fn java_to_upper_code_point(code_point: u32) -> u32 {
+    if has_no_java_mapping(code_point) {
+        return code_point;
+    }
+    if let Some(&(_, upper, _)) = case_exception(code_point) {
+        return upper;
+    }
+    single_scalar(char::from_u32(code_point).map(|c| c.to_uppercase().collect::<Vec<_>>()), code_point)
+}
+
+/// `Character.toLowerCase(int codePoint)`; see [`java_to_upper_code_point`].
+pub fn java_to_lower_code_point(code_point: u32) -> u32 {
+    if has_no_java_mapping(code_point) {
+        return code_point;
+    }
+    if let Some(&(_, _, lower)) = case_exception(code_point) {
+        return lower;
+    }
+    single_scalar(char::from_u32(code_point).map(|c| c.to_lowercase().collect::<Vec<_>>()), code_point)
+}
+
+/// `Character.toUpperCase(char)` for one UTF-16 code unit.
+pub fn java_to_upper_char(unit: u16) -> u16 {
+    java_to_upper_code_point(u32::from(unit)) as u16
+}
+
+/// `Character.toLowerCase(char)` for one UTF-16 code unit.
+pub fn java_to_lower_char(unit: u16) -> u16 {
+    java_to_lower_code_point(u32::from(unit)) as u16
+}
+
+fn single_scalar(mapped: Option<Vec<char>>, code_point: u32) -> u32 {
+    match mapped.as_deref() {
+        Some([single]) => u32::from(*single),
+        _ => code_point,
+    }
+}
+
+fn case_exception(code_point: u32) -> Option<&'static (u32, u32, u32)> {
+    JAVA_CASE_EXCEPTIONS
+        .binary_search_by_key(&code_point, |entry| entry.0)
+        .ok()
+        .map(|index| &JAVA_CASE_EXCEPTIONS[index])
+}
+
+fn has_no_java_mapping(code_point: u32) -> bool {
+    JAVA_UNMAPPED.iter().any(|&(first, last)| (first..=last).contains(&code_point))
+}
+
+/// Inclusive code point ranges whose letters Rust's newer Unicode data maps (Latin and Beria
+/// Erfe additions of Unicode 16) while Java 21, on Unicode 15.0, leaves them unchanged.
+const JAVA_UNMAPPED: &[(u32, u32)] = &[(411, 411), (612, 612), (7305, 7306), (42955, 42959), (42962, 42965), (42970, 42972), (68944, 68965), (68976, 68997), (93856, 93880), (93883, 93907)];
+
+/// `(code point, Character.toUpperCase, Character.toLowerCase)` where Java's simple mapping
+/// is not what the derivation gives: `U+0130` (Java's simple lower case is `i`) and the Greek
+/// letters whose only mapping in Rust is a multi-character one (the `ᾀ`..`ᾯ` and
+/// `ᾳ`/`ῃ`/`ῳ` families). Sorted by code point.
+const JAVA_CASE_EXCEPTIONS: &[(u32, u32, u32)] = &[
+    (304, 304, 105),
+    (8064, 8072, 8064),
+    (8065, 8073, 8065),
+    (8066, 8074, 8066),
+    (8067, 8075, 8067),
+    (8068, 8076, 8068),
+    (8069, 8077, 8069),
+    (8070, 8078, 8070),
+    (8071, 8079, 8071),
+    (8080, 8088, 8080),
+    (8081, 8089, 8081),
+    (8082, 8090, 8082),
+    (8083, 8091, 8083),
+    (8084, 8092, 8084),
+    (8085, 8093, 8085),
+    (8086, 8094, 8086),
+    (8087, 8095, 8087),
+    (8096, 8104, 8096),
+    (8097, 8105, 8097),
+    (8098, 8106, 8098),
+    (8099, 8107, 8099),
+    (8100, 8108, 8100),
+    (8101, 8109, 8101),
+    (8102, 8110, 8102),
+    (8103, 8111, 8103),
+    (8115, 8124, 8115),
+    (8131, 8140, 8131),
+    (8179, 8188, 8179),
+];
+
+fn code_point_at(units: &[u16], index: usize) -> (u32, usize) {
+    let first = units[index];
+    if (0xD800..0xDC00).contains(&first) {
+        if let Some(&second) = units.get(index + 1) {
+            if (0xDC00..0xE000).contains(&second) {
+                return (0x10000 + ((u32::from(first) - 0xD800) << 10) + (u32::from(second) - 0xDC00), 2);
+            }
+        }
+    }
+    (u32::from(first), 1)
+}
+
+/// `String.compareToIgnoreCase` (JDK 21).
+///
+/// Which JDK routine runs depends on the compact-string coder of the operands: when either
+/// string is Latin-1 (every unit `<= 0xFF`) the comparison walks UTF-16 units, when both are
+/// UTF-16 it walks code points (`StringUTF16.compareToCI`). In both walks the first pair that
+/// differs after upper-casing and then lower-casing decides by difference, otherwise the
+/// UTF-16 length difference does. Compared with the JVM in the suggestion fixture.
+pub fn java_compare_to_ignore_case(a: &[u16], b: &[u16]) -> i32 {
+    let latin1 = |units: &[u16]| units.iter().all(|unit| *unit <= 0xFF);
+    let by_code_point = !latin1(a) && !latin1(b);
+    let limit = a.len().min(b.len());
+    let mut k = 0;
+    while k < limit {
+        let ((mut c1, width), (mut c2, _)) = if by_code_point {
+            (code_point_at(a, k), code_point_at(b, k))
+        } else {
+            ((u32::from(a[k]), 1), (u32::from(b[k]), 1))
+        };
+        if c1 != c2 {
+            c1 = java_to_upper_code_point(c1);
+            c2 = java_to_upper_code_point(c2);
+            if c1 != c2 {
+                c1 = java_to_lower_code_point(c1);
+                c2 = java_to_lower_code_point(c2);
+                if c1 != c2 {
+                    return c1 as i32 - c2 as i32;
+                }
+            }
+        }
+        k += width;
+    }
+    a.len() as i32 - b.len() as i32
+}
+
+/// `String.compareTo`: the first differing UTF-16 unit decides by difference, otherwise the
+/// length difference does.
+pub fn java_compare_to(a: &[u16], b: &[u16]) -> i32 {
+    let limit = a.len().min(b.len());
+    for k in 0..limit {
+        if a[k] != b[k] {
+            return i32::from(a[k]) - i32::from(b[k]);
+        }
+    }
+    a.len() as i32 - b.len() as i32
+}
+
+/// `String.hashCode()` over UTF-16 code units.
+pub fn java_string_hash(units: &[u16]) -> i32 {
+    units.iter().fold(0i32, |hash, unit| hash.wrapping_mul(31).wrapping_add(i32::from(*unit)))
+}
+
+/// `String.toLowerCase(Locale.ROOT)`. Rust implements the same full Unicode mapping
+/// including the final-sigma rule and `U+0130`; the Unicode version of the running
+/// toolchain, not Java 21's 15.0, decides characters added later.
+pub fn java_to_lower_case_root(text: &str) -> String {
+    text.to_lowercase()
 }
 
 /// `Double.toString(double)`.

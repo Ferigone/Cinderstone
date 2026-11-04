@@ -9,6 +9,7 @@ use super::{
 };
 use mc121_rust::{
     entity_spatial,
+    falling_block::block::{self, NativeFallingClass},
     runtime_chunk_manager::RuntimeChunkManager,
     runtime_entity_index::{EntityHandle, EntityKind},
 };
@@ -27,6 +28,14 @@ impl Server {
         // This is the one installed configured holder owner, not a registry
         // reconstructed from a compiled fallback on each actor tick.
         let damage_types = players.block_runtime.falling_damage_types()?.clone();
+        let state = &players.falling_blocks.get(handle)
+            .context("falling level dispatch has no actual retained object")?.state;
+        let powder_owner = match block::source_class(state.block_state)? {
+            Some(NativeFallingClass::ConcretePowder) =>
+                Some(players.block_runtime.concrete_powder_owner()?.clone()),
+            Some(NativeFallingClass::Anvil | NativeFallingClass::Ordinary) => None,
+            None => bail!("falling level dispatch has no actual native Block class owner"),
+        };
         let physical = players.falling_blocks.physical(handle)
             .context("falling level dispatch has no actual physical owner")?;
         let (min, max) = item_query_chunk_range(physical)?;
@@ -42,11 +51,14 @@ impl Server {
             .filter(|state| !state.removed)
             .map(|state| (state.entity_id, state.uuid))
             .collect::<Vec<_>>();
+        let external_trigger_bodies=main_redstone::capture_external_trigger_bodies(
+            &players.item_runtime,players.experience_runtime.physical_states(),
+            players.falling_blocks.registered().map(|(_,actor)|actor))?;
         let result = {
             let LivePlayers {
                 falling_blocks, item_runtime, gameplay, registry,
                 player_motion_runtime, chunk_runtime, world_interactions,
-                entity_source, block_runtime, fluid_runtime, random_block_ticks,
+                entity_source, block_runtime, fluid_runtime, redstone_runtime, random_block_ticks,
                 world_revision, world_context, rain_context, ..
             } = &mut *players;
             let entry = falling_blocks.get_mut(handle)
@@ -55,19 +67,26 @@ impl Server {
                 world, items: item_runtime, gameplay, registry,
                 player_motion: player_motion_runtime, chunks: chunk_runtime,
                 interactions: world_interactions, source: entity_source,
-                block_runtime, fluid_runtime,
+                block_runtime, fluid_runtime, redstone_runtime,
                 random_ticks: random_block_ticks, world_revision,
                 context: world_context, rain: rain_context.as_mut(),
                 changes: &self.changes, events: &self.entity_events,
                 entities: &self.entities, now: game_time, border,
                 external_entity_uuids: Some(&external_entity_uuids),
+                external_trigger_bodies: Some(&external_trigger_bodies),
                 query_region: Some(query_region),
             };
             // tick_falling_block owns the literal physical begin-level phase;
             // no second begin or detached replacement body is supplied here.
-            main_falling_block_physics::tick_falling_block(
-                &mut entry.state, &mut entry.publication, services, &damage_types,
-            )
+            if let Some(owner) = powder_owner.as_ref() {
+                main_falling_block_physics::tick_falling_block_with_powder(
+                    &mut entry.state, &mut entry.publication, services, &damage_types, owner,
+                )
+            } else {
+                main_falling_block_physics::tick_falling_block(
+                    &mut entry.state, &mut entry.publication, services, &damage_types,
+                )
+            }
         };
         // Source discard already removed real index/tick/tracker ownership.
         // Destroy its Box only after all callbacks using that object returned.

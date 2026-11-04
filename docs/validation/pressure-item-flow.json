@@ -1,0 +1,159 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "49643deaea532a38ae01327213c4b821cb643215",
+  "source_tree": "1d76c8da562b9b01954e2f54b444188c7465b452",
+  "binary_sha256": "3cd05a5f8de8e29c8bc3e0ca3ec719638e761a0638867c8d1c2c5895ef3b15ed",
+  "started_at": "2026-11-02T03:29:48.451071+00:00",
+  "checks": {
+    "item_alone_triggers_actual_plate": {
+      "ok": true,
+      "spawn": {
+        "ordinal": 89,
+        "entity_id": 2,
+        "type": 58,
+        "position": [
+          10.5,
+          67.31999999284744,
+          8.5
+        ]
+      },
+      "block_publication": {
+        "ordinal": 94,
+        "position": [
+          10,
+          64,
+          8
+        ],
+        "state": 5716
+      },
+      "sound": {
+        "ordinal": 95,
+        "sound_id": 1568,
+        "category": 4,
+        "position_eighths": [
+          84,
+          516,
+          68
+        ],
+        "volume": 1.0,
+        "pitch": 1.0
+      },
+      "player_feet_during_trigger": [
+        10.5,
+        66.0,
+        8.5
+      ],
+      "player_outside_plate_touch_bounds": true
+    },
+    "pickup_then_scheduled_release": {
+      "ok": true,
+      "collect": {
+        "ordinal": 105,
+        "item_entity": 2,
+        "player_entity": 1,
+        "count": 1
+      },
+      "block_publication": {
+        "ordinal": 108,
+        "position": [
+          10,
+          64,
+          8
+        ],
+        "state": 5717
+      },
+      "sound": {
+        "ordinal": 109,
+        "sound_id": 1567,
+        "category": 4,
+        "position_eighths": [
+          84,
+          516,
+          68
+        ],
+        "volume": 1.0,
+        "pitch": 1.0
+      },
+      "player_pickup_position": [
+        11.35,
+        64.0,
+        8.5
+      ],
+      "player_min_x": 11.05,
+      "plate_touch_max_x": 10.9375,
+      "canonical_inventory_stone": 1,
+      "cursor_empty": true,
+      "spawn_count": 1,
+      "collect_count": 1
+    },
+    "normal_unedited_save_conserves_one_owned_item": {
+      "ok": true,
+      "player_stone": 1,
+      "world_item_stone": 0,
+      "item_owners": 0,
+      "owned_total": 1,
+      "cursor_empty": true,
+      "save_inputs_edited": false
+    }
+  },
+  "scope": "One actual ordinary Item/oak-pressure-plate trigger, pickup, scheduled release and ownership flow. No XP/Falling expansion or parity claim.",
+  "harness_sha256": "a455c1c836d2825ff83aaaacb94a73bbd0c88d18cbeb13871a5540f0dbf10e8c",
+  "synthetic_offline_profile_only": true,
+  "local_public_service_key_source": {
+    "fixture_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+    "server_sources": [
+      {
+        "stage": "pressure-item-one-flow",
+        "explicit_offline_loopback": true,
+        "local_public_key_file_sha256": "ba261e749d8c501b61f029f0a44e9f8d0a04ab3a7860949a9c8ba78225767962",
+        "selected_local_source_event_observed": true,
+        "actual_key_source_events": [
+          {
+            "event": "chat_service_key_source",
+            "network_refresh": false,
+            "source": "loopback-file"
+          },
+          {
+            "event": "chat_service_keys_attempt_complete",
+            "next_refresh_seconds": 86400,
+            "profile_keys": 0,
+            "source": "loopback-file"
+          }
+        ],
+        "official_source_event_observed": false
+      }
+    ],
+    "empty_trust_set_only": true,
+    "signed_certificate_validation_claim": false
+  },
+  "contract": {
+    "plate": "minecraft:oak_pressure_plate",
+    "position": [
+      10,
+      64,
+      8
+    ],
+    "powered_state": 5716,
+    "unpowered_state": 5717,
+    "sound_on": 1568,
+    "sound_off": 1567,
+    "pressed_time": 20,
+    "item_type": 58,
+    "drop_item": "minecraft:stone",
+    "drop_count": 1
+  },
+  "completed_at": "2026-11-02T03:30:13.880921+00:00",
+  "runtime_observations": {
+    "server_tick_overload": [
+      {
+        "behind_ms": 8143,
+        "event": "server_tick_overload",
+        "skipped_deadline_ticks": 162
+      }
+    ],
+    "wall_clock_performance_measured": false,
+    "scheduled_release_evidence": "Actual native scheduled callback path and publication order; exact elapsed game-tick interval was not instrumented."
+  }
+}

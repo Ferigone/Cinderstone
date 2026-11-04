@@ -2,10 +2,13 @@
 //!
 //! The initial supported boundary is an actually empty new ProtoChunk with
 //! observed-empty or actual retained Blender and empty structure beardifier.
+//! TargetGeneration additionally accepts actual ordered structure influences
+//! while retaining the same full-build NoiseChunk, density and aquifer owners.
 //! Those are caller-owned facts, not defaults. Paired staged adapters retain actual BIOMES and AIR carver data;
 //! feature placement, scheduling and FULL publication remain external.
 use super::{
     aquifer::{Aquifer, AquiferBlock, AquiferContext, AquiferNoise, FluidStatus},
+    beardifier::Beardifier,
     biome_temperature::BiomeTemperature,
     blending::Blender,
     carver::{
@@ -31,6 +34,12 @@ use std::{
     collections::BTreeMap,
     sync::{Arc, OnceLock},
 };
+
+#[path = "target_generation.rs"]
+mod target_generation;
+#[path = "target_surface.rs"]
+mod target_surface;
+pub use target_generation::*;
 
 /// Observations supplied by the actual generation dependency owner. This enum
 /// has no default: absence of an owner is not evidence of empty input.
@@ -498,6 +507,29 @@ impl NoiseGenerator {
     ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
         context.validate()?;
         validate_level_height(level_min_y, level_height)?;
+        self.validate_target_position((chunk_x, chunk_z))?;
+        // The legacy new-image entry cannot represent physical writes below a
+        // partial logical minimum. Its strict profile stays unchanged; the
+        // existing-target entry uses actual section storage and a fill plan.
+        let settings = self.graph.grid().context("density graph has no noise settings")?;
+        ensure!(settings.cell_height > 0, "unsupported noise-cell dimensions");
+        let min_y = level_min_y.max(settings.min_y);
+        let max_y = (level_min_y + level_height).min(settings.min_y + settings.height);
+        ensure!(max_y > min_y, "level and noise settings have no vertical overlap");
+        ensure!(
+            min_y.rem_euclid(settings.cell_height) == 0
+                && (max_y - min_y) % settings.cell_height == 0,
+            "partial noise cells in the level height accessor are unsupported"
+        );
+        self.create_target_noise_owners(
+            (chunk_x, chunk_z),
+            super::target::HeightRange { min_y: level_min_y, height: level_height },
+            context.blender,
+        )
+    }
+
+    fn validate_target_position(&self, chunk: (i32, i32)) -> Result<()> {
+        let (chunk_x, chunk_z) = chunk;
         let origin_x = chunk_x.checked_mul(16).context("chunk X overflows")?;
         let origin_z = chunk_z.checked_mul(16).context("chunk Z overflows")?;
         ensure!(
@@ -505,19 +537,46 @@ impl NoiseGenerator {
                 && (-33_554_384..=33_554_383).contains(&origin_z),
             "chunk lies outside representable generation BlockPos range"
         );
-        let noise = NoiseChunk::new_with_blender(
+        Ok(())
+    }
+
+    /// Build the retained owner against the real full chunk accessor. The
+    /// material-generation window is deliberately supplied separately later.
+    fn create_target_noise_owners(
+        &self,
+        chunk: (i32, i32),
+        build: super::target::HeightRange,
+        blender: Arc<Blender>,
+    ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
+        self.create_target_noise_owners_with_influences(chunk, build, blender, Beardifier::empty())
+    }
+
+    /// Capture the actual structure owner before wrapping the router. Its
+    /// selection/registry/region provenance belongs to the caller, separately
+    /// from the actual Blender and target build accessor.
+    fn create_target_noise_owners_with_influences(
+        &self,
+        chunk: (i32, i32),
+        build: super::target::HeightRange,
+        blender: Arc<Blender>,
+        beardifier: Arc<Beardifier>,
+    ) -> Result<(NoiseChunk<'_>, Box<Aquifer>)> {
+        validate_level_height(build.min_y, build.height)?;
+        self.validate_target_position(chunk)?;
+        let noise = NoiseChunk::new_with_influences(
             &self.graph,
-            chunk_x,
-            chunk_z,
-            level_min_y,
-            level_height,
-            context.blender,
+            chunk.0,
+            chunk.1,
+            build.min_y,
+            build.height,
+            blender,
+            beardifier,
         )?;
         let grid = noise.grid();
         let aquifer = if self.aquifers_enabled {
             Aquifer::noise_based(
-                chunk_x,
-                chunk_z,
+                chunk.0,
+                chunk.1,
                 grid.min_y,
                 grid.height,
                 self.randoms.aquifer_random(),
@@ -526,6 +585,34 @@ impl NoiseGenerator {
             Aquifer::Disabled
         };
         Ok((noise, Box::new(aquifer)))
+    }
+
+    /// Shared density/aquifer/ore selection for fresh images and live targets.
+    /// Callers retain the actual aquifer and perform source-ordered writes,
+    /// heightmap updates and fluid-flag reads after this returns.
+    fn material_state(
+        &self,
+        density: &mut ChunkDensity,
+        aquifer: &mut Aquifer,
+        point: DensityPoint,
+    ) -> Result<u32> {
+        let block_density = self.graph.block_density().context("missing wrapped block density")?;
+        let value = density.sample(&self.graph, block_density)?;
+        let mut context = MaterialContext {
+            graph: &self.graph,
+            density,
+            router: self.router,
+            sea_level: self.sea_level,
+            default_fluid: self.default_fluid,
+        };
+        let substance = aquifer.compute_substance(point, value, &mut context)?;
+        Ok(match substance {
+            Some(fluid) => self.palette.fluid(fluid),
+            None if self.ore_veins_enabled => self
+                .ore_state(context.density, point)?
+                .unwrap_or(self.default_block),
+            None => self.default_block,
+        })
     }
 
     // One material traversal for the borrowed fill and the prepared owned fill.
@@ -540,27 +627,8 @@ impl NoiseGenerator {
         let origin_x = chunk.0.checked_mul(16).context("chunk X overflows")?;
         let origin_z = chunk.1.checked_mul(16).context("chunk Z overflows")?;
         let mut image = TerrainImage::new(level.0, level.1, self.palette.air)?;
-        let block_density = self
-            .graph
-            .block_density()
-            .context("missing wrapped block density")?;
-        noise.visit_blocks(|graph, density, point| {
-            let value = density.sample(graph, block_density)?;
-            let mut context = MaterialContext {
-                graph,
-                density,
-                router: self.router,
-                sea_level: self.sea_level,
-                default_fluid: self.default_fluid,
-            };
-            let substance = aquifer.compute_substance(point, value, &mut context)?;
-            let state = match substance {
-                Some(fluid) => self.palette.fluid(fluid),
-                None if self.ore_veins_enabled => self
-                    .ore_state(context.density, point)?
-                    .unwrap_or(self.default_block),
-                None => self.default_block,
-            };
+        noise.visit_blocks(|_graph, density, point| {
+            let state = self.material_state(density, aquifer, point)?;
             if state != self.palette.air {
                 image.set(point.x - origin_x, point.y, point.z - origin_z, state)?;
                 if aquifer.should_schedule_fluid_update() && facts().has_fluid(state) {

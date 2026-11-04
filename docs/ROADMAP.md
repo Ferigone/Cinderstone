@@ -62,8 +62,23 @@ this is not a full behavioral-compatibility or performance claim.
 - [x] Native flat-world edits, scheduled water/lava and supported fire callbacks.
 - [x] Live lighting after edits, heightmaps and chunk readiness ownership.
 - [x] Shared BLOCK scheduling, including fire and supported container/redstone ticks.
+- [x] Bounded native pressure callbacks share actual Player/Item/XP/Falling query and sound owners, synchronous entityInside and scheduled Server release; [one Item runtime witness](reference/pressure-item-runtime.md) passed.
+- [ ] Complete active pressure/redstone networks, unsupported callback owners, and broader entity-family/weighted/stone runtime contexts.
 - [x] Supported random ticks for grass/mycelium, farmland moisture and crop growth.
 - [x] Native world/player/item checkpoint and restart owners.
+- [x] Reject used/pending/stale native BLOCK restores without their genuine clock/FLUID shared-counter checkpoint, before world restoration/binding/RNG; [finite restore/rejection evidence](reference/scaffolding-counter-owners.md).
+- [x] Source-certified canonical Block IDs/properties/state-entry order and actual retained configured Block-tag owner at fixture initialization.
+- [x] Bounded fresh CompoundTag history, decoder-issued NBT ownership, source getCompound defaults and canonical EMPTY component branch as callable prerequisites.
+- [ ] Connect complete Java block/entity import and full component/BlockEntity map/save/factory/menu owners.
+- [x] Bounded concrete-powder production placement/shape/scheduler/landing and native resume using real retained owners; [one actual white-powder water-hardening flow](reference/concrete-powder-runtime.md) passed.
+- [ ] Complete direct-water/adjacent-fluid player powder placement, mixed cascades, dynamic shape contexts, high-speed runtime coverage and full Java entity import.
+
+The exact scaffolding interaction full-grid provider is callable, with original
+topology and a focused constant-provider observation. Source-global static
+collision and bucket OUTLINE admission remain separate; this prerequisite does
+not establish new end-to-end scaffolding gameplay. The documented
+[synchronous player-water commit contract](reference/concrete-powder-player-commit-contract.md)
+is a future integration contract, not implemented admission.
 - [x] Bounded native Anvil and ordinary sand/red_sand/gravel falling through actual constructor, scheduler, physics and tracker owners; actual ordinary falls and WATER landing are recorded in [source/runtime evidence](reference/ordinary-falling-runtime.md).
 - [x] Single airborne native Falling checkpoint/hidden readiness/PLAY resume with retained body, UUID and RNG and one actual landing; [exact scope](reference/falling-midflight-local-keys.md).
 - [ ] Complete special falling classes, active fire/redstone/block-entity neighborhoods, survival victims and Java entity/chunk-save interoperability.

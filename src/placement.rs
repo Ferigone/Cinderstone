@@ -99,6 +99,95 @@ fn block(state: u32) -> Result<&'static Block> {
     Ok(b)
 }
 
+/// Opaque identity of the actual placement catalogue already used by placement.
+/// Equal-looking catalogue bytes are not a replacement for this retained owner.
+#[derive(Clone, Copy)]
+pub struct CanonicalPlacementCatalogIdentity {
+    catalog: &'static Catalog,
+}
+impl PartialEq for CanonicalPlacementCatalogIdentity {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self.catalog, other.catalog)
+    }
+}
+impl Eq for CanonicalPlacementCatalogIdentity {}
+impl std::fmt::Debug for CanonicalPlacementCatalogIdentity {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CanonicalPlacementCatalogIdentity")
+            .field("minecraft", &self.catalog.minecraft)
+            .finish_non_exhaustive()
+    }
+}
+
+/// Read-only values borrowed from one actual canonical placement row.
+/// This source catalogue stores state ranges, not raw Block registry IDs.
+/// `raw_registry_id` is therefore explicitly absent, never a row ordinal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CanonicalPlacementBlock<'a> {
+    pub key: &'a str,
+    pub minimum_state: u32,
+    pub maximum_state: u32,
+    pub default_state: u32,
+    pub raw_registry_id: Option<i32>,
+}
+impl<'a> CanonicalPlacementBlock<'a> {
+    fn borrowed(block: &'a Block) -> Self {
+        Self {
+            key: &block.name,
+            minimum_state: block.min,
+            maximum_state: block.max,
+            default_state: block.default,
+            raw_registry_id: None,
+        }
+    }
+}
+
+/// Borrowed access to the SAME immutable OnceLock catalogue as `block` and all
+/// normal placement operations. Construction remains private; no parse, cache,
+/// tag fallback, registry allocation or identity counter is introduced here.
+#[derive(Clone, Copy)]
+pub struct CanonicalPlacementCatalog {
+    catalog: &'static Catalog,
+}
+impl CanonicalPlacementCatalog {
+    pub fn identity(self) -> CanonicalPlacementCatalogIdentity {
+        CanonicalPlacementCatalogIdentity { catalog: self.catalog }
+    }
+    /// Actual retained provenance. Protocol/mappings IDs are not stored by
+    /// this catalogue and must be supplied by their genuine separate owner.
+    pub fn minecraft_version(self) -> &'static str {
+        &self.catalog.minecraft
+    }
+    pub fn original_inner_sha256(self) -> &'static str {
+        &self.catalog.jar_sha256
+    }
+    pub fn state_count(self) -> usize {
+        self.catalog.fluids.len()
+    }
+    pub fn blocks(self) -> impl ExactSizeIterator<Item = CanonicalPlacementBlock<'static>> {
+        self.catalog.blocks.iter().map(CanonicalPlacementBlock::borrowed)
+    }
+    pub fn state_definition(self, state: u32) -> Result<CanonicalPlacementBlock<'static>> {
+        let index = self.catalog.blocks.partition_point(|block| block.min <= state)
+            .checked_sub(1).ok_or_else(|| anyhow!("unknown block state"))?;
+        let block = &self.catalog.blocks[index];
+        ensure!(state <= block.max, "unknown block state");
+        Ok(CanonicalPlacementBlock::borrowed(block))
+    }
+}
+impl std::fmt::Debug for CanonicalPlacementCatalog {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.debug_struct("CanonicalPlacementCatalog")
+            .field("identity", &self.identity())
+            .field("blocks", &self.catalog.blocks.len())
+            .finish_non_exhaustive()
+    }
+}
+
+pub fn canonical_placement_catalog() -> CanonicalPlacementCatalog {
+    CanonicalPlacementCatalog { catalog: catalog() }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct PlacementContext {
     /// The final candidate block, after replacement/adjacent-target selection.
@@ -164,6 +253,12 @@ pub enum SupportType {
 /// dynamic facts fail explicitly; there is no assumed redstone/sky/border value.
 pub trait PlacementWorld {
     fn block(&mut self, position: BlockPosition) -> Result<u32>;
+    /// ConcretePowderBlock requires its actual Level-bound BlockPlaceContext
+    /// and retained concrete association, not a coordinate-only approximation.
+    fn concrete_powder_placement(&mut self, _placing: u32, _context: &PlacementContext)
+        -> Result<PlacementResult> {
+        Ok(PlacementResult::Unsupported("actual_concrete_powder_placement_owner"))
+    }
     fn max_build_height(&mut self) -> Result<i32> {
         bail!("maximum build height fact required")
     }
@@ -886,6 +981,9 @@ pub fn placement_state_in_world(
     world: &mut impl PlacementWorld,
 ) -> Result<PlacementResult> {
     let b = block(placing_state)?;
+    if b.placement_class == "dhk" {
+        return world.concrete_powder_placement(placing_state, context);
+    }
     let state = match b.placement_class.as_str() {
         "die" => {
             if context.position.1 >= world.max_build_height()?.wrapping_sub(1) {
@@ -2188,35 +2286,7 @@ pub fn placement_state(
             b.default,
             &[("facing", context.horizontal_direction.opposite().name())],
         )?,
-        "dhk" => {
-            let mut harden = is_water(current);
-            if !harden {
-                for direction in [
-                    Direction::Up,
-                    Direction::North,
-                    Direction::South,
-                    Direction::West,
-                    Direction::East,
-                ] {
-                    let next = get(neighbour(context.position, direction))?;
-                    if is_water(next) {
-                        let Some(sturdy) = block_support_face(next, direction.opposite()) else {
-                            return Ok(PlacementResult::Unsupported("dynamic_neighbor_support"));
-                        };
-                        if !sturdy {
-                            harden = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            if harden {
-                b.hardened_state
-                    .ok_or_else(|| anyhow!("concrete powder target missing"))?
-            } else {
-                b.default
-            }
-        }
+        "dhk" => return Ok(PlacementResult::Unsupported("actual_concrete_powder_placement_owner")),
         _ => return Ok(PlacementResult::Unsupported(&b.placement_class)),
     };
     Ok(PlacementResult::State(result))

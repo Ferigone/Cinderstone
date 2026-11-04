@@ -466,13 +466,26 @@ impl Server {
         })??;
         let secondary = player.metadata.flags & 0x02 != 0;
         if (!secondary||both_empty)&&players.use_redstone_block(&mut world,target,id,now,border,&self.entity_events)?{return Ok(MainInteractionResult::Applied);}
-        let mut query = RuntimeInteractionWorld::new(
+        let powder_owner = players.block_runtime.concrete_powder_owner()?.clone();
+        let powder_operation = if player.gamemode == 1 && !stack.is_empty() {
+            Some(main_concrete_powder_placement::prepare_player_operation(
+                &world, players.entity_source.as_ref().context("native placement source is absent")?,
+                &players.registry, id, hand, &stack,
+            )?)
+        } else { None };
+        let mut base_query = RuntimeInteractionWorld::new(
             &mut world,
             world::MIN_Y,
             world::MAX_Y + 1,
             border,
             |state, at| unobstructed_by_native_entities(&mut players, state, at),
         )?;
+        let mut query = match powder_operation {
+            Some(operation) => main_concrete_powder_placement::PowderPlanningWorld::for_player(
+                &mut base_query, &powder_owner, operation),
+            None => main_concrete_powder_placement::PowderPlanningWorld::for_edit(
+                &mut base_query, &powder_owner),
+        };
         if !query.inside_world_border(target)? {
             return Ok(MainInteractionResult::Rejected);
         }
@@ -551,6 +564,12 @@ impl Server {
                 }
             }
         };
+        let powder_used = query.used_powder();
+        drop(query);
+        drop(base_query);
+        if powder_used {
+            main_concrete_powder_placement::require_player_commit(&mut world, &plan)?;
+        }
         self.commit_world_interaction(&mut world, &mut players, id, plan)
     }
 
@@ -588,13 +607,18 @@ impl Server {
         if !can_reach_block(player.position, player.metadata, at) {
             return Ok(MainInteractionResult::Rejected);
         }
-        let mut query = RuntimeInteractionWorld::new(
+        let powder_owner = players.block_runtime.concrete_powder_owner()?.clone();
+        players.entity_source.as_ref().context("native edit source is absent")?
+            .require_owned_callback_world(&world)?;
+        let mut base_query = RuntimeInteractionWorld::new(
             &mut world,
             world::MIN_Y,
             world::MAX_Y + 1,
             border,
             |state, at| unobstructed_by_native_entities(&mut players, state, at),
         )?;
+        let mut query = main_concrete_powder_placement::PowderPlanningWorld::for_edit(
+            &mut base_query, &powder_owner);
         if !query.inside_world_border(at)? {
             return Ok(MainInteractionResult::Rejected);
         }
@@ -607,15 +631,23 @@ impl Server {
         };
         if removing && mc121_rust::native_block_entities::furnace_kind(old_state).is_some() {
             drop(query);
+            drop(base_query);
             let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
             return self.try_remove_native_furnace_locked(&mut world, &mut players, id, at, now, border);
         }
         if removing && mc121_rust::native_block_entities::container_kind(old_state).is_some() {
             drop(query);
+            drop(base_query);
             let now = self.clock.read().map_err(|_| anyhow!("clock poisoned"))?.game_time;
             return self.try_remove_native_container_locked(&mut world, &mut players, id, at, now, border);
         }
         let plan = world_interactions::plan_edit(at, state, 3, &mut query)?;
+        let powder_used = query.used_powder();
+        drop(query);
+        drop(base_query);
+        if powder_used {
+            main_concrete_powder_placement::require_player_commit(&mut world, &plan)?;
+        }
         self.commit_world_interaction(&mut world, &mut players, id, plan)
     }
 
