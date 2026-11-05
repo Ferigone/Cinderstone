@@ -1,10 +1,10 @@
-// Executed Minecraft argument-type oracle for WP-E3 stages 6-7 (docs/reference/commands-brigadier.md).
+// Executed Minecraft argument-type oracle for WP-E3 stages 6-9 (docs/reference/commands-brigadier.md).
 //
 // Runs the UNCHANGED argument classes of the pinned 1.21 server (net.minecraft.commands.arguments.*)
 // on seeded inputs: the value parsed from a StringReader, the reader cursor afterwards, and for
 // coordinates the position / rotation / block position they resolve to for given command sources
-// (stage 6), and the values of the simple argument types of stage 7 (time, uuid, entity anchor, angle,
-// swizzle).
+// (stage 6), the values of the simple argument types of stage 7 (time, uuid, entity anchor, angle,
+// swizzle) and the int / float range arguments of stage 9 (MinMaxBounds with their squares).
 // The server classes come from the pinned jar remapped with the official mappings
 // (tools/loot_oracle_setup.py builds <oracle-dir>/server-named.jar and cp.txt); everything stays
 // OUTSIDE git. The exception provider installed is the server's own BrigadierExceptions.
@@ -25,12 +25,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumSet;
+import java.util.Optional;
 import java.util.UUID;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.BrigadierExceptions;
 import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.arguments.AngleArgument;
+import net.minecraft.commands.arguments.RangeArgument;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.commands.arguments.UuidArgument;
@@ -81,6 +84,8 @@ public final class mc_arguments_oracle {
             case "anchor": return EntityAnchorArgument.anchor();
             case "angle": return AngleArgument.angle();
             case "swizzle": return SwizzleArgument.swizzle();
+            case "int_range": return RangeArgument.intRange();
+            case "float_range": return RangeArgument.floatRange();
             case "vec3": return Vec3Argument.vec3();
             case "vec3_raw": return Vec3Argument.vec3(false);
             case "blockpos": return BlockPosArgument.blockPos();
@@ -129,6 +134,14 @@ public final class mc_arguments_oracle {
         return new CommandSourceStack(CommandSource.NULL, position, rotation, null, 0, "n", Component.literal("n"), null, null);
     }
 
+    private static JsonElement optional(Optional<? extends Number> value) {
+        return value.isPresent() ? new com.google.gson.JsonPrimitive(value.get().toString()) : com.google.gson.JsonNull.INSTANCE;
+    }
+
+    private static JsonElement optionalBits(Optional<Double> value) {
+        return value.isPresent() ? new com.google.gson.JsonPrimitive(bits(value.get().doubleValue())) : com.google.gson.JsonNull.INSTANCE;
+    }
+
     // Stage 7 values; coordinates keep their stage 6 description.
     private static JsonObject describeValue(Object value, JsonArray sources) {
         if (value instanceof Coordinates) {
@@ -148,6 +161,18 @@ public final class mc_arguments_oracle {
                 at.add(bits(((AngleArgument.SingleAngle) value).getAngle(source(element.getAsJsonObject()))));
             }
             o.add("at", at);
+        } else if (value instanceof MinMaxBounds.Ints) {
+            MinMaxBounds.Ints bounds = (MinMaxBounds.Ints) value;
+            o.add("min", optional(bounds.min()));
+            o.add("max", optional(bounds.max()));
+            o.add("minSq", optional(bounds.minSq()));
+            o.add("maxSq", optional(bounds.maxSq()));
+        } else if (value instanceof MinMaxBounds.Doubles) {
+            MinMaxBounds.Doubles bounds = (MinMaxBounds.Doubles) value;
+            o.add("min", optionalBits(bounds.min()));
+            o.add("max", optionalBits(bounds.max()));
+            o.add("minSq", optionalBits(bounds.minSq()));
+            o.add("maxSq", optionalBits(bounds.maxSq()));
         } else if (value instanceof EnumSet) {
             StringBuilder axes = new StringBuilder();
             for (Object axis : (EnumSet) value) {
