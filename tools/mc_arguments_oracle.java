@@ -1,10 +1,11 @@
-// Executed Minecraft argument-type oracle for WP-E3 stages 6-9 (docs/reference/commands-brigadier.md).
+// Executed Minecraft argument-type oracle for WP-E3 stages 6-10 (docs/reference/commands-brigadier.md).
 //
 // Runs the UNCHANGED argument classes of the pinned 1.21 server (net.minecraft.commands.arguments.*)
 // on seeded inputs: the value parsed from a StringReader, the reader cursor afterwards, and for
 // coordinates the position / rotation / block position they resolve to for given command sources
 // (stage 6), the values of the simple argument types of stage 7 (time, uuid, entity anchor, angle,
-// swizzle) and the int / float range arguments of stage 9 (MinMaxBounds with their squares).
+// swizzle), the int / float range arguments of stage 9 (MinMaxBounds with their squares) and the
+// scoreboard OperationArgument of stage 10 (applied to given score pairs, plus its suggestions).
 // The server classes come from the pinned jar remapped with the official mappings
 // (tools/loot_oracle_setup.py builds <oracle-dir>/server-named.jar and cp.txt); everything stays
 // OUTSIDE git. The exception provider installed is the server's own BrigadierExceptions.
@@ -21,8 +22,12 @@ import com.google.gson.JsonParser;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.ArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.suggestion.Suggestion;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.EnumSet;
 import java.util.Optional;
@@ -33,6 +38,7 @@ import net.minecraft.commands.CommandSource;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.advancements.critereon.MinMaxBounds;
 import net.minecraft.commands.arguments.AngleArgument;
+import net.minecraft.commands.arguments.OperationArgument;
 import net.minecraft.commands.arguments.RangeArgument;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.commands.arguments.TimeArgument;
@@ -48,6 +54,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.world.scores.ScoreAccess;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
@@ -86,6 +93,7 @@ public final class mc_arguments_oracle {
             case "swizzle": return SwizzleArgument.swizzle();
             case "int_range": return RangeArgument.intRange();
             case "float_range": return RangeArgument.floatRange();
+            case "operation": return OperationArgument.operation();
             case "vec3": return Vec3Argument.vec3();
             case "vec3_raw": return Vec3Argument.vec3(false);
             case "blockpos": return BlockPosArgument.blockPos();
@@ -112,11 +120,32 @@ public final class mc_arguments_oracle {
         JsonObject result = new JsonObject();
         try {
             Object value = type(c).parse(reader);
-            result.add("ok", describeValue(value, c.getAsJsonArray("sources")));
+            result.add("ok", describeValue(value, c.getAsJsonArray("sources"), c));
         } catch (CommandSyntaxException e) {
             result.add("err", describe(e));
         }
         result.addProperty("cursor", reader.getCursor());
+        if (c.has("suggestAt")) {
+            // The type's own listSuggestions (the operation argument does not look at the context).
+            try {
+                Suggestions suggestions = (Suggestions) ((java.util.concurrent.CompletableFuture) type(c).listSuggestions(null, new SuggestionsBuilder(c.get("input").getAsString(), c.get("suggestAt").getAsInt()))).join();
+                JsonObject listed = new JsonObject();
+                listed.addProperty("start", suggestions.getRange().getStart());
+                listed.addProperty("end", suggestions.getRange().getEnd());
+                JsonArray texts = new JsonArray();
+                for (Suggestion suggestion : suggestions.getList()) {
+                    JsonObject one = new JsonObject();
+                    one.addProperty("start", suggestion.getRange().getStart());
+                    one.addProperty("end", suggestion.getRange().getEnd());
+                    one.addProperty("text", suggestion.getText());
+                    texts.add(one);
+                }
+                listed.add("list", texts);
+                result.add("suggestions", listed);
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        }
         return result;
     }
 
@@ -143,11 +172,14 @@ public final class mc_arguments_oracle {
     }
 
     // Stage 7 values; coordinates keep their stage 6 description.
-    private static JsonObject describeValue(Object value, JsonArray sources) {
+    private static JsonObject describeValue(Object value, JsonArray sources, JsonObject c) {
         if (value instanceof Coordinates) {
             return describe((Coordinates) value, sources);
         }
         JsonObject o = new JsonObject();
+        if (value instanceof OperationArgument.Operation) {
+            return describeOperation((OperationArgument.Operation) value, c.has("pairs") ? c.getAsJsonArray("pairs") : new JsonArray());
+        }
         if (value instanceof Integer) {
             o.addProperty("v", (Integer) value);
         } else if (value instanceof UUID) {
@@ -182,6 +214,40 @@ public final class mc_arguments_oracle {
         } else {
             throw new IllegalArgumentException(value.getClass().getName());
         }
+        return o;
+    }
+
+    // A ScoreAccess holding one int; the other abstract methods are not used by the operations.
+    private static ScoreAccess score(int[] cell) {
+        return (ScoreAccess) Proxy.newProxyInstance(ScoreAccess.class.getClassLoader(), new Class<?>[] {ScoreAccess.class}, (proxy, method, args) -> {
+            switch (method.getName()) {
+                case "get": return cell[0];
+                case "set": cell[0] = (Integer) args[0]; return null;
+                default: throw new UnsupportedOperationException(method.getName());
+            }
+        });
+    }
+
+    // Applies the parsed operation to each (target, source) pair: the new pair, or the exception.
+    private static JsonObject describeOperation(OperationArgument.Operation operation, JsonArray pairs) {
+        JsonObject o = new JsonObject();
+        JsonArray results = new JsonArray();
+        for (JsonElement element : pairs) {
+            int[] target = {Integer.parseInt(element.getAsJsonArray().get(0).getAsString())};
+            int[] source = {Integer.parseInt(element.getAsJsonArray().get(1).getAsString())};
+            JsonObject entry = new JsonObject();
+            try {
+                operation.apply(score(target), score(source));
+                JsonArray now = new JsonArray();
+                now.add(Integer.toString(target[0]));
+                now.add(Integer.toString(source[0]));
+                entry.add("now", now);
+            } catch (CommandSyntaxException e) {
+                entry.add("err", describe(e));
+            }
+            results.add(entry);
+        }
+        o.add("applied", results);
         return o;
     }
 

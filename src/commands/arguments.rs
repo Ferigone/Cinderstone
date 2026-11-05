@@ -6,6 +6,7 @@
 //! Minecraft's own argument types (coordinates, selectors, ...) are later stages.
 
 use super::coordinates::Coordinates;
+use super::operation::ScoreOperation;
 use super::ranges::{MinMaxDoubles, MinMaxInts};
 use super::simple_arguments::{EntityAnchor, JavaUuid, SingleAngle, Swizzle};
 use super::dispatcher::CommandContext;
@@ -286,6 +287,8 @@ pub enum ArgumentValue {
     IntRange(MinMaxInts),
     /// `RangeArgument.Floats` (stage 9).
     DoubleRange(MinMaxDoubles),
+    /// `OperationArgument` (stage 10).
+    Operation(ScoreOperation),
 }
 
 macro_rules! argument_value_from {
@@ -298,7 +301,7 @@ macro_rules! argument_value_from {
     };
 }
 
-argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String, Coordinates => Coordinates, JavaUuid => Uuid, EntityAnchor => EntityAnchor, SingleAngle => Angle, Swizzle => Swizzle, MinMaxInts => IntRange, MinMaxDoubles => DoubleRange);
+argument_value_from!(bool => Bool, i32 => Integer, i64 => Long, f32 => Float, f64 => Double, String => String, Coordinates => Coordinates, JavaUuid => Uuid, EntityAnchor => EntityAnchor, SingleAngle => Angle, Swizzle => Swizzle, MinMaxInts => IntRange, MinMaxDoubles => DoubleRange, ScoreOperation => Operation);
 
 /// Object-safe `ArgumentType<?>` for command sources of type `S`: what a tree node holds so
 /// that nodes of different argument types can live in one command tree.

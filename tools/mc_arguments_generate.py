@@ -4,11 +4,14 @@
     python3 tools/loot_oracle_setup.py --oracle-dir /path/outside/git     # builds server-named.jar + cp.txt
     python3 tools/mc_arguments_generate.py --oracle-dir /path/outside/git
 
-WP-E3 stages 6-7. Stage 6 (position arguments): Vec3Argument (centred and raw), BlockPosArgument, Vec2Argument
+WP-E3 stages 6-10. Stage 6 (position arguments): Vec3Argument (centred and raw), BlockPosArgument, Vec2Argument
 (centred and raw) and ColumnPosArgument of the pinned 1.21 server are run on seeded inputs built from
 absolute, relative (`~`) and local (`^`) coordinate tokens, including malformed, mixed and truncated
 ones. For every successful parse the harness also resolves the coordinates for a few command sources
 (position and rotation), recording the position, rotation and block position the original computes.
+
+Stage 10 appends seeded cases for the scoreboard OperationArgument (parse, the result of applying the parsed
+operator to a grid of awkward int pairs, and its suggestions) after the stage 9 ones, from their own random stream.
 
 Stage 9 appends seeded cases for the int and float RangeArguments (MinMaxBounds, with the squares the distance
 checks use) after the stage 7 ones, from their own random stream.
@@ -32,6 +35,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SEED = 20261106
 VALUE_SEED = 20261107
 RANGE_SEED = 20261108
+OPERATION_SEED = 20261109
 
 TYPES = ["vec3", "vec3_raw", "blockpos", "vec2", "vec2_raw", "columnpos"]
 ABSOLUTE = ["0", "1", "-1", "7", "-12", "1.5", "-0.25", ".5", "-.5", "5.", "100.75", "-30000000", "29999999.5",
@@ -231,6 +235,57 @@ def build_range_cases(rng):
     return cases
 
 
+OPERATORS = ["=", "+=", "-=", "*=", "/=", "%=", "<", ">", "><"]
+NEAR_OPERATORS = ["", " ", "==", "+", "-", "*", "/", "%", "<=", ">=", "<>", "=<", "=+", "+==", "x", "X", "\uff1d", "\u2265", "><<",
+                  ">>", "<<", "+ =", "= ", "\t=", "=\t", "\u00e9", "\u00a0", "+=\u200b", "=\r", "\u03a3", "-=-", "%=%"]
+AWKWARD_INTS = [0, 1, -1, 2, -2, 3, -3, 7, -7, 10, 2147483647, -2147483648]
+SUGGEST_TEXTS = ["", "=", "+", "+=", "-", "-=", "*", "*=", "/", "/=", "%", "%=", "<", ">", "><", ">>", "<<", "=+", "x", "\u00c9", "\u03a3",
+                 ">=", "<>", " ", "=="]
+SUGGEST_LEADS = ["", "say ", "execute  ", "\u00e9", "\U0001f600"]
+
+
+def utf16_len(text):
+    return len(text.encode("utf-16-le")) // 2
+
+
+def build_operation_cases(rng):
+    cases = []
+    # the parsed operator applied to a grid of awkward pairs plus random ones (divisors of zero, wrap-around,
+    # Integer.MIN_VALUE / -1)
+    for symbol in OPERATORS:
+        for tail in ("", " 5"):
+            pairs = [[str(a), str(b)] for a in AWKWARD_INTS for b in AWKWARD_INTS]
+            pairs += [[str(rng.randint(-2**31, 2**31 - 1)), str(rng.randint(-2**31, 2**31 - 1))] for _ in range(30)]
+            pairs += [[str(rng.randint(-1000, 1000)), str(rng.randint(-12, 12))] for _ in range(30)]
+            cases.append({"type": "operation", "input": symbol + tail, "sources": [], "pairs": pairs})
+    # parse: operators, near misses and garbage with a trailing part and sometimes a start position
+    for _ in range(900):
+        roll = rng.random()
+        if roll < 0.35:
+            text = rng.choice(OPERATORS)
+        elif roll < 0.7:
+            text = rng.choice(NEAR_OPERATORS)
+        else:
+            text = "".join(rng.choice("=+-*/%<>xX 5\u00e9\u03a3.\U0001f600") for _ in range(rng.randint(0, 4)))
+        tail = rng.choice(["", "", " ", " 5", " foo", "  ", "\t", "x"])
+        lead = rng.choice(["", "", "", "say ", " "])
+        case = {"type": "operation", "input": lead + text + tail, "sources": []}
+        if lead:
+            case["cursor"] = utf16_len(lead)
+        cases.append(case)
+    # suggestions: the typed text starts at the builder's start offset; the parse of the same case starts there too
+    for lead in SUGGEST_LEADS:
+        for text in SUGGEST_TEXTS:
+            for tail in ("", " 5"):
+                start = utf16_len(lead)
+                cases.append({"type": "operation", "input": lead + text + tail, "sources": [], "suggestAt": start, "cursor": start})
+    for _ in range(200):
+        text = rng.choice(OPERATORS + NEAR_OPERATORS)
+        start = rng.randint(0, utf16_len(text))
+        cases.append({"type": "operation", "input": text, "sources": [], "suggestAt": start, "cursor": start})
+    return cases
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--oracle-dir", type=Path, required=True)
@@ -241,7 +296,7 @@ def main():
     if not classpath_file.exists():
         sys.exit("run tools/loot_oracle_setup.py --oracle-dir <dir> first (it builds server-named.jar and cp.txt)")
     classpath = classpath_file.read_text().strip()
-    cases = build_cases(random.Random(SEED)) + build_value_cases(random.Random(VALUE_SEED)) + build_range_cases(random.Random(RANGE_SEED))
+    cases = build_cases(random.Random(SEED)) + build_value_cases(random.Random(VALUE_SEED)) + build_range_cases(random.Random(RANGE_SEED)) + build_operation_cases(random.Random(OPERATION_SEED))
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         subprocess.run(["javac", "-proc:none", "-Xlint:none", "-cp", classpath, "-d", str(tmp), str(ROOT / "tools/mc_arguments_oracle.java")], check=True)

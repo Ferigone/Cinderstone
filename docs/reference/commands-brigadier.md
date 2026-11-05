@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value and range arguments (WP-E3 stages 1-9)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value, range and operation arguments (WP-E3 stages 1-10)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-9
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-10
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -161,6 +161,21 @@ Stage 9 (`src/commands/ranges.rs`, `RangeArgument.intRange()` and `floatRange()`
   integers, `double` for floats). The originals' `matches` methods belong to the selector stage.
 - Network forms from the executed `ArgumentTypeInfos`: `int_range` 38 and `float_range` 39, no template.
 
+Stage 10 (`src/commands/operation.rs`, `OperationArgument`): the scoreboard operators `=`, `+=`, `-=`, `*=`, `/=`, `%=`,
+`<`, `>` and `><`.
+- An empty remainder fails with `arguments.operation.invalid` *with* the reader's context. Any other text is read
+  up to the next space (not whitespace) and looked up exactly; an unknown operator fails with the same message
+  *without* context (no position, exception cursor -1) and the reader stays after the text it consumed.
+- `ScoreOperation::apply(target, source)` returns the new pair of ints, so no scoreboard binding is needed at
+  this stage: `=` takes the second, `+=`, `-=` and `*=` wrap like Java `int`, `/=` is `Math.floorDiv` and `%=`
+  is `Math.floorMod` (`Mth.floorDiv` / `Mth.positiveModulo` delegate to them), both failing with
+  `arguments.operation.div0` (without context) for a zero divisor, `<` and `>` are `Math.min` / `Math.max`, and
+  `><` swaps the two scores. Binding the pair to `src/scoreboard/**` score access is a later step.
+- Suggestions: the operators, in that order, that start with the lower-cased text typed so far
+  (`SharedSuggestionProvider.suggest`; its `matchesSubStr` also accepts a match after a `.` or `_`, which no
+  operator contains).
+- Network form from the executed `ArgumentTypeInfos`: `operation` 25, no template.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
@@ -279,6 +294,22 @@ and the value or the exception as for the earlier stages. Treating `..` as part 
 bounds to count as swapped, leaving the cursor where the failure happened, dropping the single-number copy,
 wrapping the squares in `int` or losing the empty check each make the test fail. The registry ids and templates
 come from two more fixed trees appended to the tree-packet fixture (the earlier 173 cases are unchanged).
+
+Stage 10. The same fixture and harness hold 1,368 more cases appended after the stage 9 ones from their own random
+stream (the earlier 7,820 cases are unchanged; seed 20261109): 430 parse and 938 fail with
+`arguments.operation.invalid`. 18 of them apply each operator, bare and with a trailing part, to a grid of awkward
+int pairs (zero, signs, 7, 10, `Integer.MAX_VALUE`, `Integer.MIN_VALUE`) plus 60 random pairs, 3,672 results in
+all, 53 of them the divide-by-zero exception. 900 are seeded operators, near misses (`==`, `<>`, `><<`, full-width
+and zero-width characters, tabs) and garbage with a trailing part and sometimes a start position; 450 ask for
+the suggestions at a builder start (after ASCII and non-BMP leads, inside the text, with upper-case input). The
+harness runs the unchanged `OperationArgument` with a `ScoreAccess` proxy that holds one int and records the pair
+afterwards. `cargo test --locked --lib commands::mc_arguments_tests` compares the cursor afterwards, the exception
+(key, typed arguments, `getMessage()`, context, exception cursor), the resulting pairs and the suggestion ranges
+and texts. Truncating division or remainder, saturating `+=` or `*=`, a swap that keeps the source, swapped
+`<` and `>`, reading to any whitespace instead of a space, creating the unknown-operator exception with
+context (or the empty one without), a wrong div0 message, substring suggestions and a wrong registry id each
+make a test fail (12 mutations, all caught). The registry id and the empty template come from one more fixed
+tree appended to the tree-packet fixture (the earlier 175 cases are unchanged).
 
 Reproduce (the oracle directory must stay outside git):
 
