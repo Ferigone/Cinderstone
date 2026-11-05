@@ -60,6 +60,8 @@ pub(super) fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType<i32>> {
         "anchor" => Rc::new(super::simple_arguments::EntityAnchorArgumentType),
         "angle" => Rc::new(super::simple_arguments::AngleArgumentType),
         "swizzle" => Rc::new(super::simple_arguments::SwizzleArgumentType),
+        "int_range" => Rc::new(super::ranges::IntRangeArgumentType),
+        "float_range" => Rc::new(super::ranges::FloatRangeArgumentType),
         other => panic!("unknown type {other}"),
     }
 }
@@ -77,6 +79,8 @@ fn value_text(value: &ArgumentValue) -> String {
         ArgumentValue::EntityAnchor(v) => format!("E{v:?}"),
         ArgumentValue::Angle(v) => format!("A{v:?}"),
         ArgumentValue::Swizzle(v) => format!("W{v:?}"),
+        ArgumentValue::IntRange(v) => format!("R{v:?}"),
+        ArgumentValue::DoubleRange(v) => format!("Q{v:?}"),
     }
 }
 

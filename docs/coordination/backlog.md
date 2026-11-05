@@ -3,7 +3,7 @@
 Planner record by instance `planner-20261101-d4b8`. The live source of truth is the
 [master plan issue #14](https://github.com/Ferigone/Cinderstone/issues/14) and the
 work-package issues it links; this file is a versioned snapshot taken against
-master `c1baf5c`. If they disagree, the issues win.
+master `874110c`. If they disagree, the issues win.
 
 This backlog does not change `scope_version: 1`, the 100-item denominator, any
 delivery definition or any completion flag. Only the integration coordinator
@@ -20,7 +20,7 @@ separately (WP-Q1, WP-Q2) and need evidence from equal workloads.
 | B workstations/inventory | I4 after team issue #3 | `src/workstations/**`, `src/container_workstation_*.rs` | team #3 |
 | C entities/survival/items | S1-S5, I1-I3 | `src/living_entities/**`, `src/combat/**`, `src/effects/**` | team #4 |
 | D mobs | M1-M5 | new `src/mobs/**`, `src/ai/**` | none yet |
-| E data-driven | E1-E8 | new `src/commands/**`, `src/datapack/**`, `src/loot/**`, `src/advancements/**`, `src/scoreboard/**` | none yet |
+| E data-driven | E1-E8 | new `src/commands/**`, `src/datapack/**`, `src/loot/**`, `src/advancements/**`, `src/scoreboard/**` | WP-E3 library stages (planner instance), WP-E4 stages 1-3 merged (#112); no team issue yet |
 | F blocks/simulation | F1-F10 | new `src/blocks/**`, `src/redstone/**`, `src/pistons/**` | none yet |
 | G world/persistence | G1-G6 | existing `storage.rs`, `level.rs`, `anvil.rs` only after an exact claim | coordinator for shared seams |
 | H central Main | H1-H4, P1-P3, Q1-Q2 | `src/main*.rs`, manifests, deployment | coordinator only |

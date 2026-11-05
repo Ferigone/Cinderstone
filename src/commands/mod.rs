@@ -14,6 +14,7 @@ pub mod coordinates;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
+pub mod ranges;
 pub mod simple_arguments;
 pub mod string_reader;
 pub mod suggestion;
@@ -30,6 +31,7 @@ pub use coordinates::{
 pub use dispatcher::{ArgumentBuilder, CommandContext, CommandDispatcher, ParseResults};
 pub use exception::{CommandArg, CommandMessage, CommandSyntaxException};
 pub use string_reader::StringReader;
+pub use ranges::{FloatRangeArgumentType, IntRangeArgumentType, MinMaxDoubles, MinMaxInts};
 pub use simple_arguments::{
     AngleArgumentType, EntityAnchor, EntityAnchorArgumentType, JavaUuid, SingleAngle, Swizzle, SwizzleArgumentType,
     TimeArgumentType, UuidArgumentType,

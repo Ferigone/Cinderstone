@@ -1,6 +1,6 @@
-# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value arguments (WP-E3 stages 1-8)
+# Brigadier reader, exceptions, primitive arguments, dispatcher core, usage, completion, the command-tree packet and Minecraft value and range arguments (WP-E3 stages 1-9)
 
-Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-8
+Scope: `commands_data.1` ("Komendy i uprawnienia operatorów") is **partial**. Stages 1-9
 port the lowest layers of the command system. Nothing is called by Main, the
 existing bounded administration commands keep their own parser
 (`admission_commands.rs`, `command_protocol.rs`), and the fixed checklist indicators
@@ -147,13 +147,27 @@ keyed by `CommandNode.equals` and seeded with the root (found in the bytecode, n
 resolves to the latest copied node *equal* to it, `put` overwrites an equal key, and a target with no copy yet
 drops the redirect. `usable_tree(tree, root, source)` returns a new tree for `encode_commands_packet`.
 
+Stage 9 (`src/commands/ranges.rs`, `RangeArgument.intRange()` and `floatRange()`): the `MinMaxBounds` forms `1..5`,
+`..5`, `3..` and `4`.
+- An empty remainder fails with `argument.range.empty` at the cursor before anything is read. The number
+  characters are `0-9`, `-` and `.`, except that a `.` followed by another `.` is the separator; no characters
+  is no bound, text that does not parse (`Integer.parseInt` / `Double.parseDouble`, so `99999999999`, `-` and
+  `1.5` for an integer range) fails with `parsing.int.invalid` / `parsing.double.invalid` carrying the text.
+  Without `..` the single number is both bounds; no bound at all is `argument.range.empty`; a minimum above
+  the maximum is `argument.range.swapped`.
+- Every failure after the first character check puts the cursor back to where the argument began and reports
+  that position (the original rethrows the exception with the start cursor).
+- The value (`MinMaxInts`, `MinMaxDoubles`) carries the optional bounds and their squares (`long` for
+  integers, `double` for floats). The originals' `matches` methods belong to the selector stage.
+- Network forms from the executed `ArgumentTypeInfos`: `int_range` 38 and `float_range` 39, no template.
+
 ## Not implemented (later WP-E3 stages)
 
 `ContextChain`'s
 stage helpers (`getStage`, `getTopContext`, `nextStage`, used by Minecraft's execution
 queue), custom `LiteralMessage` / `Dynamic*CommandExceptionType` exceptions, `findAmbiguities`,
 the remaining Minecraft argument types (entity, game profile, message, component, NBT, resource and
-registry arguments, the int and float range arguments, the scoreboard arguments, ... and their
+registry arguments, the scoreboard arguments, ... and their
 `ArgumentTypeInfos` templates), selectors,
 coordinate suggestions and the loaded / out-of-world checks of `BlockPosArgument.getLoadedBlockPos`,
 `CommandSourceStack`, the command catalog and the migration of the administration commands.
@@ -254,6 +268,17 @@ equal node elsewhere is usable, and equal nodes whose copies differ (requirement
 that the overwrite decides. `cargo test --locked --lib commands::tree_packet_tests` compares all of it. Keeping
 each node's own command, not seeding the root, resolving redirects by identity or letting the first equal node
 win each make the test fail. The earlier fields of the fixture (the 171 trees of stages 5-7) are unchanged.
+
+Stage 9. The same fixture and harness hold 1,800 more cases appended after the stage 7 ones from their own random
+stream (the earlier 6,020 cases are unchanged; seed 20261108): int ranges 251 parse, 649 fail (83 empty, 25
+swapped, 541 invalid numbers); float ranges 464 parse, 436 fail (75 empty, 91 swapped, 270 invalid numbers). The
+inputs mix single numbers, open and closed ranges, signs, leading zeros, trailing dots, `...` runs, values beyond
+the `int` range and plain garbage. The harness records the bounds and squared bounds (integers as decimal text,
+doubles as raw bits). `cargo test --locked --lib commands::mc_arguments_tests` compares the cursor afterwards
+and the value or the exception as for the earlier stages. Treating `..` as part of a number, allowing equal
+bounds to count as swapped, leaving the cursor where the failure happened, dropping the single-number copy,
+wrapping the squares in `int` or losing the empty check each make the test fail. The registry ids and templates
+come from two more fixed trees appended to the tree-packet fixture (the earlier 173 cases are unchanged).
 
 Reproduce (the oracle directory must stay outside git):
 

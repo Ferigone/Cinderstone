@@ -10,6 +10,9 @@ absolute, relative (`~`) and local (`^`) coordinate tokens, including malformed,
 ones. For every successful parse the harness also resolves the coordinates for a few command sources
 (position and rotation), recording the position, rotation and block position the original computes.
 
+Stage 9 appends seeded cases for the int and float RangeArguments (MinMaxBounds, with the squares the distance
+checks use) after the stage 7 ones, from their own random stream.
+
 Stage 7 appends seeded cases for TimeArgument, UuidArgument, EntityAnchorArgument, AngleArgument
 (resolved for command sources) and SwizzleArgument after the stage 6 cases, from their own random stream, so
 the stage 6 part of the fixture does not change.
@@ -28,6 +31,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SEED = 20261106
 VALUE_SEED = 20261107
+RANGE_SEED = 20261108
 
 TYPES = ["vec3", "vec3_raw", "blockpos", "vec2", "vec2_raw", "columnpos"]
 ABSOLUTE = ["0", "1", "-1", "7", "-12", "1.5", "-0.25", ".5", "-.5", "5.", "100.75", "-30000000", "29999999.5",
@@ -194,6 +198,39 @@ def build_value_cases(rng):
     return cases
 
 
+RANGE_NUMBERS = ["0", "1", "5", "-5", "10", "100", "-100", "2147483647", "-2147483648", "2147483648", "99999999999", "1.5", "-0.25", ".5", "5.",
+                 "-.5", "0.0", "00", "3.14159", "1000000.5", "-", "--1", "1-", "1-2", "1.2.3", "..5", "x", "1x"]
+
+
+def sample_range(rng):
+    low, high = rng.choice(RANGE_NUMBERS), rng.choice(RANGE_NUMBERS)
+    shape = rng.choices(["single", "both", "min_only", "max_only", "dots", "odd"], [18, 40, 12, 12, 6, 12])[0]
+    if shape == "single":
+        text = low
+    elif shape == "both":
+        text = f"{low}..{high}"
+    elif shape == "min_only":
+        text = f"{low}.."
+    elif shape == "max_only":
+        text = f"..{high}"
+    elif shape == "dots":
+        text = rng.choice(["..", ".", "...", "....", ". .", ".. ", " .."])
+    else:
+        text = rng.choice([f"{low}...{high}", f"{low}..{high}..{rng.choice(RANGE_NUMBERS)}", f"{low}.. {high}", f"{low} ..{high}",
+                           f"{low}..{high} junk", f"{low}.{high}", ""])
+    if rng.random() < 0.06 and text:
+        text = text[: rng.randint(0, len(text))]
+    return text
+
+
+def build_range_cases(rng):
+    cases = []
+    for kind in ("int_range", "float_range"):
+        for _ in range(900):
+            cases.append({"type": kind, "input": sample_range(rng), "sources": []})
+    return cases
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--oracle-dir", type=Path, required=True)
@@ -204,7 +241,7 @@ def main():
     if not classpath_file.exists():
         sys.exit("run tools/loot_oracle_setup.py --oracle-dir <dir> first (it builds server-named.jar and cp.txt)")
     classpath = classpath_file.read_text().strip()
-    cases = build_cases(random.Random(SEED)) + build_value_cases(random.Random(VALUE_SEED))
+    cases = build_cases(random.Random(SEED)) + build_value_cases(random.Random(VALUE_SEED)) + build_range_cases(random.Random(RANGE_SEED))
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         subprocess.run(["javac", "-proc:none", "-Xlint:none", "-cp", classpath, "-d", str(tmp), str(ROOT / "tools/mc_arguments_oracle.java")], check=True)

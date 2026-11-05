@@ -4,7 +4,8 @@
 //! arguments. For every input the test compares the cursor afterwards and either the exception (key,
 //! typed arguments, `getMessage()`, context, cursor) or the relative flags and, for two command
 //! sources each, the position, rotation and block position the coordinates resolve to. Stage 7: time,
-//! uuid, entity anchor, angle and swizzle, compared the same way on their parsed values.
+//! uuid, entity anchor, angle and swizzle, compared the same way on their parsed values. Stage 9: the
+//! int and float range arguments, compared on their bounds and squared bounds.
 
 use super::arguments::ArgumentType;
 use super::simple_arguments::{
@@ -13,6 +14,7 @@ use super::simple_arguments::{
 use super::coordinates::{
     BlockPosArgumentType, ColumnPosArgumentType, CoordinateSource, Coordinates, Vec2ArgumentType, Vec3ArgumentType,
 };
+use super::ranges::{FloatRangeArgumentType, IntRangeArgumentType};
 use super::string_reader::StringReader;
 use crate::geometry::Vec3;
 use serde_json::{json, Value};
@@ -195,5 +197,74 @@ fn simple_value_arguments_match_the_executed_original() {
     assert!(
         parsed > 600 && failed > 400 && scaled > 20 && relative_angles > 30 && lenient_uuids > 20,
         "{parsed} {failed} {scaled} {relative_angles} {lenient_uuids}"
+    );
+}
+
+/// The bounds the Java harness records: integers as decimal text, doubles as hex bits; an absent
+/// bound is an absent key (Gson drops the nulls).
+fn range_value(case: &Value, reader: &mut StringReader) -> Result<Value, super::exception::CommandSyntaxException> {
+    let mut out = serde_json::Map::new();
+    match case["type"].as_str().unwrap() {
+        "int_range" => {
+            let range = IntRangeArgumentType.parse(reader)?;
+            for (key, value) in [("min", range.min.map(i64::from)), ("max", range.max.map(i64::from)), ("minSq", range.min_sq()), ("maxSq", range.max_sq())] {
+                if let Some(value) = value {
+                    out.insert(key.to_string(), Value::from(value.to_string()));
+                }
+            }
+        }
+        "float_range" => {
+            let range = FloatRangeArgumentType.parse(reader)?;
+            for (key, value) in [("min", range.min), ("max", range.max), ("minSq", range.min_sq()), ("maxSq", range.max_sq())] {
+                if let Some(value) = value {
+                    out.insert(key.to_string(), Value::from(bits64(value)));
+                }
+            }
+        }
+        other => panic!("unknown type {other}"),
+    }
+    Ok(Value::Object(out))
+}
+
+#[test]
+fn range_arguments_match_the_executed_original() {
+    let document = fixture();
+    let (mut parsed, mut failed) = (0, 0);
+    let (mut single, mut open_min, mut open_max, mut both, mut empty, mut swapped, mut invalid) = (0, 0, 0, 0, 0, 0, 0);
+    for (index, case) in document["cases"].as_array().unwrap().iter().enumerate() {
+        let kind = case["type"].as_str().unwrap();
+        if kind != "int_range" && kind != "float_range" {
+            continue;
+        }
+        let input = case["input"].as_str().unwrap();
+        let context = format!("case {index} {kind} input={input:?}");
+        let mut reader = StringReader::new(input);
+        let result = range_value(case, &mut reader);
+        assert_eq!(reader.cursor() as i64, case["cursor"].as_i64().unwrap(), "{context}: cursor afterwards");
+        match (result, case.get("ok"), case.get("err")) {
+            (Ok(value), Some(expected), None) => {
+                parsed += 1;
+                assert_eq!(&value, expected, "{context}: bounds");
+                let (has_min, has_max) = (expected.get("min").is_some(), expected.get("max").is_some());
+                single += usize::from(!input.contains(".."));
+                open_min += usize::from(has_min && !has_max);
+                open_max += usize::from(!has_min && has_max);
+                both += usize::from(has_min && has_max && input.contains(".."));
+            }
+            (Err(error), None, Some(expected)) => {
+                failed += 1;
+                check_error(&error, expected, &context);
+                match expected["key"].as_str().unwrap() {
+                    "argument.range.empty" => empty += 1,
+                    "argument.range.swapped" => swapped += 1,
+                    _ => invalid += 1,
+                }
+            }
+            (result, ok, err) => panic!("{context}: {result:?} vs fixture ok={ok:?} err={err:?}"),
+        }
+    }
+    assert!(
+        parsed > 600 && failed > 900 && single > 100 && open_min > 50 && open_max > 50 && both > 150 && empty > 100 && swapped > 80 && invalid > 500,
+        "{parsed} {failed} {single} {open_min} {open_max} {both} {empty} {swapped} {invalid}"
     );
 }
