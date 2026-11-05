@@ -9,7 +9,7 @@ literals, typed Brigadier arguments, executable nodes, redirects, merged duplica
 built with the unchanged com.mojang.brigadier 1.2.9 builders and wrapped in the dedicated server's own
 ClientboundCommandsPacket; the bytes its StreamCodec writes are recorded (stage 8 adds, per permission level 0-4, the packet of the tree
 Commands.fillUsableCommands builds for a source of that level; stage 6 appends one fixed tree per
-Minecraft position argument type, stages 7 and 9 one per simple value or range argument). Extra decoration for this
+Minecraft position argument type, stages 7, 9 and 10 one per simple value, range or operation argument). Extra decoration for this
 stage: custom suggestion providers (registered names and an unregistered provider), and copies of whole
 subtrees planted under other nodes so that structurally equal nodes exist (the original numbers nodes
 with CommandNode.equals, so those must share one index).
@@ -97,6 +97,8 @@ def build_tests(rng):
     # stage 9: int and float range arguments (registry ids 38 and 39, no template)
     for spec in [{"k": "int_range"}, {"k": "float_range"}]:
         tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": spec, "cmd": 1}]}]})
+    # stage 10: the scoreboard operation argument (registry id 25, no template)
+    tests.append({"tree": [{"t": "lit", "name": "p", "children": [{"t": "arg", "name": "a", "type": {"k": "operation"}, "cmd": 1}]}]})
     return tests
 
 

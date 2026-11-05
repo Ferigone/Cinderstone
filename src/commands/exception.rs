@@ -124,6 +124,8 @@ fn english_template(key: &str) -> &'static str {
         "argument.angle.incomplete" => "Incomplete (expected 1 angle)",
         "argument.range.empty" => "Expected value or range of values",
         "argument.range.swapped" => "Min cannot be bigger than max",
+        "arguments.operation.invalid" => "Invalid operation",
+        "arguments.operation.div0" => "Cannot divide by zero",
         "arguments.swizzle.invalid" => "Invalid swizzle, expected combination of 'x', 'y' and 'z'",
         "command.unknown.command" => "Unknown or incomplete command, see below for error",
         "command.unknown.argument" => "Incorrect argument for command",

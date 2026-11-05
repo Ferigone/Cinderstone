@@ -62,6 +62,7 @@ pub(super) fn argument_type(spec: &Value) -> Rc<dyn ErasedArgumentType<i32>> {
         "swizzle" => Rc::new(super::simple_arguments::SwizzleArgumentType),
         "int_range" => Rc::new(super::ranges::IntRangeArgumentType),
         "float_range" => Rc::new(super::ranges::FloatRangeArgumentType),
+        "operation" => Rc::new(super::operation::OperationArgumentType),
         other => panic!("unknown type {other}"),
     }
 }
@@ -81,6 +82,7 @@ fn value_text(value: &ArgumentValue) -> String {
         ArgumentValue::Swizzle(v) => format!("W{v:?}"),
         ArgumentValue::IntRange(v) => format!("R{v:?}"),
         ArgumentValue::DoubleRange(v) => format!("Q{v:?}"),
+        ArgumentValue::Operation(v) => format!("O{v:?}"),
     }
 }
 

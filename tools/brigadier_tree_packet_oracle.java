@@ -1,4 +1,4 @@
-// Executed command-tree packet oracle for WP-E3 stages 5-9 (docs/reference/commands-brigadier.md).
+// Executed command-tree packet oracle for WP-E3 stages 5-10 (docs/reference/commands-brigadier.md).
 //
 // Builds command trees from JSON descriptions with the UNCHANGED com.mojang.brigadier 1.2.9
 // builders, wraps the root in the dedicated server's own ClientboundCommandsPacket and records
@@ -55,6 +55,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.AngleArgument;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
+import net.minecraft.commands.arguments.OperationArgument;
 import net.minecraft.commands.arguments.RangeArgument;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.commands.arguments.UuidArgument;
@@ -204,6 +205,8 @@ public final class brigadier_tree_packet_oracle {
             // stage 9: range arguments
             case "int_range": return RangeArgument.intRange();
             case "float_range": return RangeArgument.floatRange();
+            // stage 10: scoreboard operation
+            case "operation": return OperationArgument.operation();
             default: throw new IllegalArgumentException(t.get("k").getAsString());
         }
     }
