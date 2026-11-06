@@ -377,6 +377,30 @@ impl ContainerComponent {
     }
 }
 
+/// `NbtProvider`: where `copy_custom_data` reads from.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NbtSource {
+    Entity(EntityTarget),
+    BlockEntity,
+    Storage(String),
+}
+
+/// `CopyCustomDataFunction.MergeStrategy`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MergeStrategy {
+    Replace,
+    Append,
+    Merge,
+}
+
+/// `CopyCustomDataFunction.CopyOperation`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopyOperation {
+    pub source: crate::nbt_path::NbtPath,
+    pub target: crate::nbt_path::NbtPath,
+    pub op: MergeStrategy,
+}
+
 /// `CopyNameFunction.NameSource`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NameSource {
@@ -566,6 +590,7 @@ pub enum FunctionKind {
     SetBannerPattern { layers: Vec<BannerLayer>, append: bool },
     SetAttributes { modifiers: Vec<AttributeModifierSpec>, replace: bool },
     CopyName(NameSource),
+    CopyCustomData { source: NbtSource, ops: Vec<CopyOperation> },
     FillPlayerHead(EntityTarget),
     /// `SetCustomDataFunction`: the compound merged into `minecraft:custom_data`.
     SetCustomData(Tag),
@@ -1002,6 +1027,80 @@ impl Function {
                 new.encode(&mut writer);
                 if !stack.is_empty() {
                     set_component(&mut stack, FIREWORK_EXPLOSION, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::CopyCustomData { source, ops } => {
+                let tag = match source {
+                    NbtSource::Entity(target) => match ctx.entity(*target) {
+                        Some(entity) => entity.nbt_to_compare()?,
+                        None => return Ok(stack),
+                    },
+                    NbtSource::BlockEntity => match ctx.params.block_entity {
+                        Some(block_entity) => block_entity.full_nbt()?,
+                        None => return Ok(stack),
+                    },
+                    NbtSource::Storage(id) => ctx.level().command_storage(id)?,
+                };
+                // The item's custom data is copied lazily, on the first operation that finds
+                // something to copy.
+                let mut target: Option<Tag> = None;
+                for operation in ops {
+                    let Ok(found) = operation.source.get(&tag) else { continue };
+                    if found.is_empty() {
+                        continue;
+                    }
+                    let data = target.get_or_insert_with(|| match stack.effective_component_bytes(CUSTOM_DATA) {
+                        Some(bytes) => Tag::decode_anonymous(bytes).unwrap_or(Tag::Compound(Vec::new())),
+                        None => Tag::Compound(Vec::new()),
+                    });
+                    let result = match operation.op {
+                        MergeStrategy::Replace => operation.target.set(data, found.last().expect("non-empty")).map(|_| ()),
+                        MergeStrategy::Append => operation.target.get_or_create_and_modify(
+                            data,
+                            &|| Tag::List { element_type: 0, values: Vec::new() },
+                            &mut |list| {
+                                if let Tag::List { element_type, values } = list {
+                                    for value in &found {
+                                        // `ListTag.add` throws for a tag of another element type.
+                                        if value.tag_id() == 0 || (*element_type != 0 && *element_type != value.tag_id()) {
+                                            return Err(crate::nbt_path::PathError::Runtime("UnsupportedOperationException".to_owned()));
+                                        }
+                                        *element_type = value.tag_id();
+                                        values.push(value.clone());
+                                    }
+                                }
+                                Ok(())
+                            },
+                        ),
+                        MergeStrategy::Merge => operation.target.get_or_create_and_modify(data, &|| Tag::Compound(Vec::new()), &mut |compound| {
+                            if matches!(compound, Tag::Compound(_)) {
+                                for value in &found {
+                                    if matches!(value, Tag::Compound(_)) {
+                                        merge_compound(compound, value);
+                                    }
+                                }
+                            }
+                            Ok(())
+                        }),
+                    };
+                    match result {
+                        Ok(()) => {}
+                        // `CommandSyntaxException` is swallowed per operation; runtime exceptions escape.
+                        Err(crate::nbt_path::PathError::Runtime(what)) => return Err(LootError::Host(format!("copy_custom_data: {what}"))),
+                        Err(_) => {}
+                    }
+                }
+                if let Some(data) = target {
+                    if !stack.is_empty() {
+                        // `CustomData.set`: an empty compound removes the component.
+                        if matches!(&data, Tag::Compound(entries) if entries.is_empty()) {
+                            stack.components.retain(|c| c.type_id != CUSTOM_DATA);
+                        } else {
+                            let bytes = data.encode_network_anonymous().map_err(host)?;
+                            set_component(&mut stack, CUSTOM_DATA, bytes);
+                        }
+                    }
                 }
                 Ok(stack)
             }

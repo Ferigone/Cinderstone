@@ -516,12 +516,13 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     ));
     assert!(matches!(reject(r#"{"pools":[{"entries":[]}]}"#), LootError::Codec(_)));
 
-    // A registered but unported function parses, then fails explicitly.
+    // A registered function whose unported part is reached (the bundle manipulator) parses, then
+    // fails explicitly.
     let table = parse::table(
         &serde_json::from_str::<Value>(
             r#"{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[
                 {"type":"minecraft:item","name":"minecraft:stick",
-                 "functions":[{"function":"minecraft:copy_custom_data","source":"block_entity","ops":[]}]}]}]}"#,
+                 "functions":[{"function":"minecraft:set_contents","component":"minecraft:bundle_contents","entries":[]}]}]}]}"#,
         )
         .unwrap(),
     )
@@ -540,7 +541,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
     assert!(matches!(
         table.get_random_items(&mut ctx),
-        Err(LootError::Unsupported(what)) if what.contains("copy_custom_data")
+        Err(LootError::Unsupported(what)) if what.contains("bundle_contents")
     ));
 }
 
@@ -744,4 +745,71 @@ fn explore_parser_parity() {
     for (key, lines) in by_kind.iter().take(40) {
         eprintln!("{} x{}\n   {}", key, lines.len(), lines[0].chars().take(420).collect::<String>());
     }
+}
+
+/// `copy_custom_data` over a block entity whose saved NBT is fixed: every merge strategy, the
+/// lazy creation of the item's custom data, an empty result and an operation whose source path
+/// finds nothing. The path engine itself is checked against the original in `crate::nbt_path`.
+#[test]
+fn copy_custom_data_follows_the_merge_strategies() {
+    use super::parse;
+    use crate::nbt::Tag;
+    struct SavedBlockEntity(Tag);
+    impl LootBlockEntity for SavedBlockEntity {
+        fn collect_components(&self) -> Result<Vec<crate::inventory::Component>> {
+            Ok(Vec::new())
+        }
+        fn full_nbt(&self) -> Result<Tag> {
+            Ok(self.0.clone())
+        }
+    }
+    let saved = crate::tag_parser::parse_compound("{id:'minecraft:chest',x:1,Items:[{Slot:0b,id:'minecraft:stone'}],Lock:{a:1,b:{c:2}},Names:['x','y']}").unwrap();
+    let block_entity = SavedBlockEntity(saved);
+    let level = TestLevel {
+        blocks: Vec::new(),
+        biome: "minecraft:plains".to_owned(),
+        game_time: 0,
+        day_time: 0,
+        raining: false,
+        thundering: false,
+    };
+    let run = |function: &str, initial: Option<&str>| -> Option<Tag> {
+        let function = parse::function(&serde_json::from_str::<Value>(function).unwrap()).unwrap();
+        let mut stack = super::enchant::new_stack("minecraft:chest").unwrap();
+        if let Some(initial) = initial {
+            let bytes = crate::tag_parser::parse_compound(initial).unwrap().encode_network_anonymous().unwrap();
+            super::enchant::set_component(&mut stack, 0, bytes);
+        }
+        let mut params = LootParams::default();
+        params.origin = Some([0.0; 3]);
+        params.block_entity = Some(&block_entity);
+        let mut random = LegacyRandomSource::new(1);
+        let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
+        let stack = function.apply(stack, &mut ctx).unwrap();
+        stack.effective_component_bytes(0).map(|bytes| Tag::decode_anonymous(bytes).unwrap())
+    };
+    let snbt = |text: &str| crate::tag_parser::parse_compound(text).unwrap();
+    let same = |a: Option<Tag>, b: &str| crate::nbt_path::java_equals(&a.expect("custom data"), &snbt(b));
+    // replace: the last match is written to the target path (parents created).
+    assert!(same(
+        run(r#"{"function":"minecraft:copy_custom_data","source":"block_entity","ops":[{"source":"Items[0].id","target":"BlockEntityTag.first","op":"replace"}]}"#, None),
+        "{BlockEntityTag:{first:'minecraft:stone'}}"
+    ));
+    // append: matched tags are added to a list, created when missing.
+    assert!(same(
+        run(r#"{"function":"minecraft:copy_custom_data","source":{"type":"minecraft:context","target":"block_entity"},"ops":[{"source":"Names[]","target":"all","op":"append"}]}"#, Some("{all:['w']}")),
+        "{all:['w','x','y']}"
+    ));
+    // merge: compounds merge into the target compound; other matches are ignored.
+    assert!(same(
+        run(r#"{"function":"minecraft:copy_custom_data","source":"block_entity","ops":[{"source":"Lock","target":"lock","op":"merge"},{"source":"x","target":"lock","op":"merge"}]}"#, Some("{lock:{b:{d:3},z:1}}")),
+        "{lock:{a:1,b:{c:2,d:3},z:1}}"
+    ));
+    // A source path that finds nothing leaves the item untouched (no custom data is created).
+    assert!(run(r#"{"function":"minecraft:copy_custom_data","source":"block_entity","ops":[{"source":"missing","target":"a","op":"replace"}]}"#, None).is_none());
+    // Without the parameter the provider yields nothing.
+    let function = parse::function(&serde_json::from_str::<Value>(r#"{"function":"minecraft:copy_custom_data","source":"this","ops":[{"source":"a","target":"b","op":"replace"}]}"#).unwrap()).unwrap();
+    assert!(matches!(function.kind, super::function::FunctionKind::CopyCustomData { .. }));
+    // An unknown context name is rejected (`EntityTarget.getByName` throws).
+    assert!(parse::function(&serde_json::from_str::<Value>(r#"{"function":"minecraft:copy_custom_data","source":"nobody","ops":[]}"#).unwrap()).is_err());
 }

@@ -53,6 +53,7 @@ before it runs respectively; they are Main's ordering to preserve.
 | `LootLevel::score`, `LootEntity::scoreboard_name` | scoreboard | absent (`commands_data.3`) |
 | `LootEntity` | entity runtime: type ID, fire state, equipment, slime size, variants | entity facts exist per module; no unified view |
 | `LootEntity::custom_name_nbt`, `LootEntity::player_profile`, `LootBlockEntity::nameable_custom_name_nbt` | `copy_name`, `fill_player_head`: the entity's or block entity's custom name and a player's `ResolvableProfile` network bytes | defaults answer `Unsupported` |
+| `LootEntity::nbt_to_compare`, `LootBlockEntity::full_nbt`, `LootLevel::command_storage` | `copy_custom_data` sources: `NbtPredicate.getEntityTagToCompare`, `saveWithFullMetadata`, command storage (`saved_data::CommandStorage`) | defaults answer `Unsupported` |
 | `LootDamageSource` | damage pipeline | `src/living_damage.rs` / team-4 `src/combat` (source type + entities) |
 | `LootBlockEntity::collect_components` | native block entities (`BlockEntity.collectComponents`) | chest/barrel/furnace owners exist; components not exported |
 | `RandomSequences` persistence | `data/random_sequences.dat` saved-data lifecycle (`world_storage.4`) | type provided here; the file lifecycle is [`saved_data`](saved-data.md) (`random_sequences_factory(seed)` on a `DimensionDataStorage`), its Main call site is the coordinator's |

@@ -146,3 +146,4 @@ pub mod advancements;
 pub mod bossbar;
 pub mod level_data;
 pub mod tag_parser;
+pub mod nbt_path;

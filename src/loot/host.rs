@@ -9,6 +9,7 @@
 //! wrong answer.
 
 use super::{unsupported, LootTable, Result};
+use crate::nbt::Tag;
 use crate::inventory::{Component, ItemStack};
 
 /// `net.minecraft.world.entity.EquipmentSlot` in Java declaration order.
@@ -96,6 +97,10 @@ pub trait LootLevel {
     ) -> Result<ItemStack> {
         unsupported("level.exploration_map")
     }
+    /// `server.getCommandStorage().get(id)` (an empty compound when nothing is stored).
+    fn command_storage(&self, _id: &str) -> Result<Tag> {
+        unsupported("level.command_storage")
+    }
     /// Scoreboard value of a score holder for an objective, if tracked.
     fn score(&self, _holder: &str, _objective: &str) -> Result<Option<i32>> {
         unsupported("level.scoreboard")
@@ -146,6 +151,11 @@ pub trait LootEntity {
     }
     /// Variant string for `type_specific` variant predicates (`frog`, `cat`, …);
     /// `None` when the entity is not of that class.
+    /// `NbtPredicate.getEntityTagToCompare(entity)`: the entity's saved NBT (without its id), plus
+    /// the selected item for a player.
+    fn nbt_to_compare(&self) -> Result<Tag> {
+        unsupported("entity.nbt")
+    }
     /// `Entity.getCustomName()` (every entity is `Nameable`) as network NBT; `None` when unnamed.
     fn custom_name_nbt(&self) -> Result<Option<Vec<u8>>> {
         unsupported("entity.custom_name")
@@ -174,6 +184,10 @@ pub trait LootDamageSource {
 /// `BlockEntity.collectComponents()`.
 pub trait LootBlockEntity {
     fn collect_components(&self) -> Result<Vec<Component>>;
+    /// `BlockEntity.saveWithFullMetadata(registries)`.
+    fn full_nbt(&self) -> Result<Tag> {
+        unsupported("block_entity.nbt")
+    }
     /// `None` when the block entity is not `Nameable`; else its `getCustomName()` as network NBT.
     fn nameable_custom_name_nbt(&self) -> Result<Option<Option<Vec<u8>>>> {
         unsupported("block_entity.custom_name")

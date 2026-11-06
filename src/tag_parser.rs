@@ -52,6 +52,14 @@ pub fn parse_value_prefix(text: &str) -> Result<(Tag, usize)> {
     Ok((tag, parser.cursor))
 }
 
+/// `new TagParser(reader).readStruct()` on `chars` from `cursor` (used by NBT paths, which embed
+/// compound patterns): the compound and the cursor after it.
+pub(crate) fn read_struct_at(chars: &[char], cursor: usize) -> Result<(Tag, usize)> {
+    let mut parser = TagParser { chars: chars.to_vec(), cursor };
+    let tag = parser.read_struct()?;
+    Ok((tag, parser.cursor))
+}
+
 struct TagParser {
     chars: Vec<char>,
     cursor: usize,
