@@ -291,6 +291,8 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
         tree.literal(0, "seed", true);
+        let difficulty = tree.literal(0,"difficulty",true);
+        for name in crate::commands::difficulty_command::NAMES { tree.literal(difficulty,name,true); }
         let weather = tree.literal(0, "weather", false);
         for kind in ["clear", "rain", "thunder"] {
             let branch = tree.literal(weather, kind, true);
@@ -326,6 +328,14 @@ pub fn native_command_suggestions(
         if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
         let range = suggestions.range();
         return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
+    if input == "difficulty" || input.starts_with("difficulty ") {
+        let suggestions = crate::commands::difficulty_command::suggestions(input,permission_level)
+            .map_err(|error|anyhow::anyhow!("difficulty suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value|value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id,0,0,&[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
     }
     if input == "weather" || input.starts_with("weather ") {
         if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
@@ -488,6 +498,10 @@ fn administration_suggestions_with_time(
         && "seed".starts_with(&lowered) && remaining != "seed" {
         matches.push("seed".to_owned());
     }
+    if include_time && permission_level >= 2 && last_separator.is_none()
+        && "difficulty".starts_with(&lowered) && remaining != "difficulty" {
+        matches.push("difficulty".to_owned());
+    }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.
     matches.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
@@ -519,6 +533,26 @@ fn matches_substr(needle: &str, candidate: &str) -> bool {
 #[cfg(test)]
 mod native_weather_tests {
     use super::*;
+
+    #[test]
+    fn difficulty_prefix_preserves_deop_and_permission_ranges() {
+        for prefix in ["d", "/d"] {
+            for (permission, expected) in [(0,vec![]),(1,vec![]),(2,vec!["difficulty"]),
+                (3,vec!["deop","difficulty"]),(4,vec!["deop","difficulty"])] {
+                let packet=native_command_suggestions(&SuggestionRequest {id:10,command:prefix.into()},
+                    permission,&SuggestionContext::default()).unwrap();
+                let mut reader=Reader::new(&packet.payload);
+                assert_eq!(reader.varint().unwrap(),10);
+                let range=(reader.varint().unwrap(),reader.varint().unwrap());
+                let count=reader.varint().unwrap();
+                let mut texts=Vec::new();
+                for _ in 0..count {texts.push(reader.string(32767).unwrap());assert!(!reader.bool().unwrap());}
+                reader.finish().unwrap();
+                assert_eq!(texts,expected,"permission {permission}, {prefix}");
+                assert_eq!(range,if expected.is_empty(){(0,0)}else{(i32::from(prefix.starts_with('/')),1)});
+            }
+        }
+    }
 
     #[test]
     fn weather_root_completion_keeps_existing_whitelist_and_permissions() {

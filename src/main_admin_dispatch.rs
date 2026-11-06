@@ -170,10 +170,12 @@ impl Server {
         }
         let is_time = time_line.split_whitespace().next() == Some("time");
         let is_weather = time_line.split_whitespace().next() == Some("weather");
-        let outcome = if is_time || is_weather {
+        let is_difficulty = time_line.split_whitespace().next() == Some("difficulty");
+        let outcome = if is_time || is_weather || is_difficulty {
             drop(owner);
             if is_time { self.execute_time_command(time_line, source.permission_level)? }
-            else { self.execute_weather_command(time_line, source.permission_level)? }
+            else if is_weather { self.execute_weather_command(time_line, source.permission_level)? }
+            else { self.execute_difficulty_command(time_line, source.permission_level)? }
         } else {
             let outcome = owner.execute_line(line, &source, source_id, &online, wall_time_ms()?);
             drop(owner);
@@ -203,7 +205,7 @@ impl Server {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
                     } else if send_feedback {
-                        let component = if is_time || is_weather { main_time_command::feedback_component(&message)? } else { message.network_component()? };
+                        let component = if is_time || is_weather || is_difficulty { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
@@ -230,12 +232,19 @@ impl Server {
         if let Err(error) = outcome.result {
             if let Some(id) = source_id {
                 let component = match &error {
+                    admission_commands::CommandError::Message(message) if is_difficulty => {
+                        json!({"text":"","extra":[message.json_component()],"color":"red"})
+                    }
                     admission_commands::CommandError::Message(message) => {
                         let mut component=message.json_component(); component["color"]=json!("red"); component
                     }
                     _ => json!({"text":error.to_string(),"color":"red"}),
                 };
-                let packet=system_message(admission_commands::encode_component_json(&component)?);
+                let bytes = if is_difficulty {
+                    mc121_rust::components::text::Component::from_json(&component)
+                        .and_then(|value|value.to_network_nbt()).map_err(|error|anyhow!("{error}"))?
+                } else { admission_commands::encode_component_json(&component)? };
+                let packet=system_message(bytes);
                 let _=self.entity_events.send(PlayerEvent::WorldAudience {recipients:Arc::new(vec![id]), packets:Arc::new(vec![packet])});
             } else {
                 println!("{}",json!({"event":"administration_command_error","reason":error.to_string()}));

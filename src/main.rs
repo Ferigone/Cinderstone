@@ -79,6 +79,7 @@ mod main_border_login;
 mod main_time_command;
 mod main_weather_command;
 mod main_seed_command;
+mod main_difficulty_command;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -530,6 +531,7 @@ struct Server {
     epoch: Instant,
     level: Option<Mutex<LevelData>>,
     difficulty_locked: bool,
+    hardcore: bool,
     border: StdRwLock<WorldBorder>,
     player_store: PlayerDataStore,
     entity_store: EntityDataStore,
@@ -2643,7 +2645,9 @@ impl Server {
                 .read()
                 .map_err(|_| anyhow!("world border lock poisoned"))?
                 .settings(self.epoch.elapsed().as_millis() as i64);
+            let difficulty = main_difficulty_command::id(self.players.read().map_err(|_|anyhow!("players poisoned"))?.native_difficulty);
             let mut level = level.lock().await;
+            level.set_difficulty(difficulty)?;
             level.set_border_settings(&border)?;
             let wall_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64;
             level.update(clock, Some(weather), wall_ms)?;
@@ -2932,6 +2936,8 @@ async fn main() -> Result<()> {
         .map(LevelData::open)
         .transpose()?;
     let difficulty_locked = level.as_ref().is_some_and(LevelData::difficulty_locked);
+    let hardcore = level.as_ref().is_some_and(LevelData::hardcore);
+    if hardcore { options.difficulty = 3; }
     if let Some(level) = &level {
         initial_clock = level.clock()?;
     }
@@ -3188,6 +3194,7 @@ async fn main() -> Result<()> {
         epoch: Instant::now(),
         level: level.map(Mutex::new),
         difficulty_locked,
+        hardcore,
         border: StdRwLock::new(border),
         player_store,
         entity_store,
@@ -3966,7 +3973,7 @@ async fn play(
         }),
     )
     .await?;
-    send(&codec,&mut writer,0x0b,encoded(|w| {w.u8(server.options.difficulty as u8).bool(server.difficulty_locked);})).await?;
+    send_packets(&codec,&mut writer,vec![server.current_difficulty_packet()?]).await?;
     send_packets(&codec, &mut writer, server.administration_permission_packets(entity_id)?).await?;
     let (mut scoreboard_revision, scoreboard_packets) = server.scoreboard_join_packets()?;
     send_packets(&codec, &mut writer, scoreboard_packets).await?;
