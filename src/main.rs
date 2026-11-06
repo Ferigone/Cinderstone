@@ -75,6 +75,7 @@ use tokio::{
 };
 
 mod main_chunk_runtime;
+mod main_border_login;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -3914,6 +3915,11 @@ async fn play(
         }),
     )
     .await?;
+    let border_packet = {
+        let border = server.border.read().map_err(|_| anyhow!("world border lock poisoned"))?;
+        main_border_login::initialize(&border, server.epoch.elapsed().as_millis() as i64)
+    };
+    send(&codec, &mut writer, border_packet.id, border_packet.payload).await?;
     let initial_world = server.world_snapshot()?;
     tracker.world_revision = Some(initial_world.revision);
     send(
