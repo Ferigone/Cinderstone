@@ -104,7 +104,9 @@ The test `vanilla_tree_layout_and_packet_match_the_original` checks:
 - all 122 display positions (bit-exact, using the original's child order);
 - the visible sets the original reports for 60 sets of done advancements (from none to all,
   random densities);
-- the 186,085-byte packet, byte for byte.
+- the 186,085-byte packet, byte for byte, and three more single-progress packets. Two of these
+  carry fresh progress (the copied map starts empty, so the default 16-bucket table applies), and
+  one carries a single decoded criterion.
 
 ## What is implemented
 

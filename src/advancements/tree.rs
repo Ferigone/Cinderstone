@@ -519,9 +519,10 @@ fn write_progress(writer: &mut Writer, progress: &AdvancementProgress, granted_o
         }
     }
     let hashes: Vec<i32> = inserted.iter().map(|name| string_hash(name)).collect();
-    // `new HashMap<>(m)`: `tableSizeFor(m.size() / 0.75 + 1)`.
-    let initial = ((copied.len() as f32 / 0.75) + 1.0) as usize;
-    let order = hashmap_order_by_hash(&hashes, initial.next_power_of_two());
+    // `new HashMap<>(m)`: for a non-empty `m` a table of `tableSizeFor(m.size() / 0.75 + 1)`;
+    // copying an empty map allocates nothing, so the first `putIfAbsent` makes the default 16.
+    let initial = if copied.is_empty() { 16 } else { (((copied.len() as f32 / 0.75) + 1.0) as usize).next_power_of_two() };
+    let order = hashmap_order_by_hash(&hashes, initial);
     writer.varint(inserted.len() as i32);
     for index in order {
         let name = inserted[index];

@@ -121,28 +121,31 @@ fn vanilla_tree_layout_and_packet_match_the_original() {
         assert_eq!(visible, expected, "visibility with {} done", done.len());
     }
 
-    // The packet: every holder sorted by id, one removed id, one progress entry.
-    let spec = &oracle["progress_spec"];
-    let target = spec["advancement"].as_str().unwrap();
-    let mut progress = AdvancementProgress::from_json(&spec["progress"]).unwrap();
-    progress.update(advancements[target].requirements.clone());
-    let granted: Vec<&str> = spec["granted_order"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+    // The packets: the first carries every holder sorted by id; each has one removed id and one
+    // progress entry (decoded criteria, or fresh progress).
     let added: Vec<(&str, &Advancement, (f32, f32))> = advancements
         .iter()
         .map(|(id, a)| (id.as_str(), a, positions.get(id).copied().unwrap_or((0.0, 0.0))))
         .collect();
+    for (spec, expected) in oracle["progress_specs"].as_array().unwrap().iter().zip(oracle["packets"].as_array().unwrap()) {
+    let target = spec["advancement"].as_str().unwrap();
+    let mut progress = AdvancementProgress::from_json(&spec["progress"]).unwrap();
+    progress.update(advancements[target].requirements.clone());
+    let granted: Vec<&str> = spec["granted_order"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+    let all = spec["all_holders"].as_bool().unwrap_or(false);
     let bytes = update_advancements_packet(
-        true,
-        &added,
+        all,
+        if all { &added } else { &[] },
         &[spec["removed"].as_str().unwrap()],
         &[ProgressEntry { id: target, progress: &progress, granted_order: granted }],
     )
     .unwrap();
     let hex: String = bytes.iter().map(|b| format!("{b:02x}")).collect();
-    let expected = oracle["packet"].as_str().unwrap();
+    let expected = expected.as_str().unwrap();
     if hex != expected {
         let at = hex.bytes().zip(expected.bytes()).position(|(a, b)| a != b).unwrap_or(hex.len().min(expected.len()));
         panic!("packet differs at byte {} (ours {} bytes, original {}): ours …{}… original …{}…", at / 2, hex.len() / 2, expected.len() / 2,
             &hex[at.saturating_sub(40)..(at + 40).min(hex.len())], &expected[at.saturating_sub(40)..(at + 40).min(expected.len())]);
+    }
     }
 }

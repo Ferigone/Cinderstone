@@ -18,20 +18,28 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "fixtures" / "advancement-tree-1.21.json"
-PROGRESS = {
-    "advancement": "minecraft:adventure/kill_all_mobs",
-    "removed": "minecraft:story/mine_stone",
-    # Insertion order of the decoded criteria (a JSON object keeps it in the original).
-    "granted_order": ["minecraft:zombie", "minecraft:creeper", "minecraft:wither"],
-    "progress": {
-        "criteria": {
-            "minecraft:zombie": "2024-01-02 03:04:05 +0000",
-            "minecraft:creeper": "2023-12-31 23:59:59 +0100",
-            "minecraft:wither": "2024-06-01 12:00:00 +0000",
+PROGRESS = [
+    {
+        "advancement": "minecraft:adventure/kill_all_mobs",
+        "removed": "minecraft:story/mine_stone",
+        "all_holders": True,
+        # Insertion order of the decoded criteria (a JSON object keeps it in the original).
+        "granted_order": ["minecraft:zombie", "minecraft:creeper", "minecraft:wither"],
+        "progress": {
+            "criteria": {
+                "minecraft:zombie": "2024-01-02 03:04:05 +0000",
+                "minecraft:creeper": "2023-12-31 23:59:59 +0100",
+                "minecraft:wither": "2024-06-01 12:00:00 +0000",
+            },
+            "done": False,
         },
-        "done": False,
     },
-}
+    # Fresh progress (nothing decoded): the copied map starts empty.
+    {"advancement": "minecraft:adventure/kill_all_mobs", "removed": "minecraft:story/root", "granted_order": [], "progress": {"done": False}},
+    {"advancement": "minecraft:husbandry/bred_all_animals", "removed": "minecraft:story/root", "granted_order": [], "progress": {"done": False}},
+    {"advancement": "minecraft:adventure/adventuring_time", "removed": "minecraft:story/root", "granted_order": ["minecraft:plains"],
+     "progress": {"criteria": {"minecraft:plains": "2024-01-01 00:00:00 +0000"}, "done": False}},
+]
 
 
 def main():
@@ -68,11 +76,11 @@ def main():
         "format": "advancement-tree-v1",
         "oracle": "tools/loot_oracle.java advancement-tree (unchanged ServerAdvancementManager, TreeNodePosition and ClientboundUpdateAdvancementsPacket)",
         "generator": "tools/advancement_tree_generate.py",
-        "progress_spec": PROGRESS,
+        "progress_specs": PROGRESS,
         **tree,
     }
     OUT.write_text(json.dumps(doc, sort_keys=True, separators=(",", ":")) + "\n")
-    print(f"{len(tree['nodes'])} nodes, packet {len(tree['packet']) // 2} bytes, {len(tree['visibility'])} visibility cases -> {OUT}")
+    print(f"{len(tree['nodes'])} nodes, {len(tree['packets'])} packets, {len(tree['visibility'])} visibility cases -> {OUT}")
 
 
 if __name__ == "__main__":

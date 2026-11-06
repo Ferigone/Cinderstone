@@ -1534,16 +1534,21 @@ public class loot_oracle {
         out.add("nodes", nodes);
         List<net.minecraft.advancements.AdvancementHolder> holders = new ArrayList<>(mgr.getAllAdvancements());
         holders.sort(java.util.Comparator.comparing(h -> h.id().toString()));
-        JsonObject progressSpec = JsonParser.parseString(Files.readString(Path.of(a[2]))).getAsJsonObject();
-        net.minecraft.advancements.AdvancementHolder target = mgr.get(ResourceLocation.parse(progressSpec.get("advancement").getAsString()));
-        net.minecraft.advancements.AdvancementProgress progress = net.minecraft.advancements.AdvancementProgress.CODEC.parse(JsonOps.INSTANCE, progressSpec.get("progress")).getOrThrow();
-        progress.update(target.value().requirements());
-        net.minecraft.network.RegistryFriendlyByteBuf buf = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
-        net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket.STREAM_CODEC.encode(buf,
-            new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(true, holders, java.util.Set.of(ResourceLocation.parse(progressSpec.get("removed").getAsString())), java.util.Map.of(target.id(), progress)));
-        byte[] bytes = new byte[buf.readableBytes()];
-        buf.readBytes(bytes);
-        out.addProperty("packet", hex(bytes));
+        JsonArray packets = new JsonArray();
+        for (JsonElement specElement : JsonParser.parseString(Files.readString(Path.of(a[2]))).getAsJsonArray()) {
+          JsonObject progressSpec = specElement.getAsJsonObject();
+          net.minecraft.advancements.AdvancementHolder target = mgr.get(ResourceLocation.parse(progressSpec.get("advancement").getAsString()));
+          net.minecraft.advancements.AdvancementProgress progress = net.minecraft.advancements.AdvancementProgress.CODEC.parse(JsonOps.INSTANCE, progressSpec.get("progress")).getOrThrow();
+          progress.update(target.value().requirements());
+          net.minecraft.network.RegistryFriendlyByteBuf buf = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
+          boolean full = progressSpec.has("all_holders") && progressSpec.get("all_holders").getAsBoolean();
+          net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket.STREAM_CODEC.encode(buf,
+              new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(full, full ? holders : List.of(), java.util.Set.of(ResourceLocation.parse(progressSpec.get("removed").getAsString())), java.util.Map.of(target.id(), progress)));
+          byte[] bytes = new byte[buf.readableBytes()];
+          buf.readBytes(bytes);
+          packets.add(hex(bytes));
+        }
+        out.add("packets", packets);
         Files.writeString(Path.of(a[1]), GSON.toJson(out));
         System.out.println("advancement-tree nodes=" + nodes.size());
         break;
