@@ -1511,6 +1511,43 @@ public class loot_oracle {
         System.out.println("advancement-parse=" + outArr.size());
         break;
       }
+      case "advancement-tree": {
+        // The loaded vanilla tree: per node its parent, children in iteration order (identity-hash
+        // order in the original) and display position; and the bytes of an Update Advancements
+        // packet (every holder sorted by id, one removed id, one progress). Arguments: out, progress.json
+        net.minecraft.server.ServerAdvancementManager mgr = res.getAdvancements();
+        net.minecraft.advancements.AdvancementTree tree = mgr.tree();
+        JsonObject out = new JsonObject();
+        JsonArray roots = new JsonArray();
+        for (net.minecraft.advancements.AdvancementNode n : tree.roots()) roots.add(n.holder().id().toString());
+        out.add("roots", roots);
+        JsonObject nodes = new JsonObject();
+        for (net.minecraft.advancements.AdvancementNode n : tree.nodes()) {
+          JsonObject o = new JsonObject();
+          if (n.parent() != null) o.addProperty("parent", n.parent().holder().id().toString());
+          JsonArray ch = new JsonArray();
+          for (net.minecraft.advancements.AdvancementNode c : n.children()) ch.add(c.holder().id().toString());
+          o.add("children", ch);
+          n.advancement().display().ifPresent(d -> { o.addProperty("x", d.getX()); o.addProperty("y", d.getY()); });
+          nodes.add(n.holder().id().toString(), o);
+        }
+        out.add("nodes", nodes);
+        List<net.minecraft.advancements.AdvancementHolder> holders = new ArrayList<>(mgr.getAllAdvancements());
+        holders.sort(java.util.Comparator.comparing(h -> h.id().toString()));
+        JsonObject progressSpec = JsonParser.parseString(Files.readString(Path.of(a[2]))).getAsJsonObject();
+        net.minecraft.advancements.AdvancementHolder target = mgr.get(ResourceLocation.parse(progressSpec.get("advancement").getAsString()));
+        net.minecraft.advancements.AdvancementProgress progress = net.minecraft.advancements.AdvancementProgress.CODEC.parse(JsonOps.INSTANCE, progressSpec.get("progress")).getOrThrow();
+        progress.update(target.value().requirements());
+        net.minecraft.network.RegistryFriendlyByteBuf buf = new net.minecraft.network.RegistryFriendlyByteBuf(io.netty.buffer.Unpooled.buffer(), access);
+        net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket.STREAM_CODEC.encode(buf,
+            new net.minecraft.network.protocol.game.ClientboundUpdateAdvancementsPacket(true, holders, java.util.Set.of(ResourceLocation.parse(progressSpec.get("removed").getAsString())), java.util.Map.of(target.id(), progress)));
+        byte[] bytes = new byte[buf.readableBytes()];
+        buf.readBytes(bytes);
+        out.addProperty("packet", hex(bytes));
+        Files.writeString(Path.of(a[1]), GSON.toJson(out));
+        System.out.println("advancement-tree nodes=" + nodes.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the

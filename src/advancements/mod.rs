@@ -3,6 +3,7 @@
 //! progress are not ported. Evidence and limits: `docs/reference/advancements.md`.
 
 pub mod definition;
+pub mod tree;
 pub mod progress;
 pub mod requirements;
 pub mod time;
