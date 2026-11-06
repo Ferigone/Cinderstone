@@ -510,7 +510,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
         &serde_json::from_str::<Value>(
             r#"{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[
                 {"type":"minecraft:item","name":"minecraft:stick",
-                 "functions":[{"function":"minecraft:set_book_cover"}]}]}]}"#,
+                 "functions":[{"function":"minecraft:fill_player_head","entity":"this"}]}]}]}"#,
         )
         .unwrap(),
     )
@@ -529,7 +529,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
     assert!(matches!(
         table.get_random_items(&mut ctx),
-        Err(LootError::Unsupported(what)) if what.contains("set_book_cover")
+        Err(LootError::Unsupported(what)) if what.contains("fill_player_head")
     ));
 }
 

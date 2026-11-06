@@ -12,7 +12,8 @@ use super::entry::{Entry, LootPool, LootTable, SingletonKind, TableRef};
 use super::facts::{canonical, facts, HolderSet, Kind};
 use super::function::{
     component_id, BonusFormula, ComponentSource, Function, FunctionKind, ListOperation, NameTarget, StewEffect,
-    TextComponent, BLOCK_ENTITY_TYPES, TOOLTIP_TOGGLES,
+    TextComponent, BannerLayer, Filterable, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
+    DYE_COLORS, FIREWORK_SHAPES, TOOLTIP_TOGGLES,
 };
 use super::number::{IntRange, LevelBasedValue, NumberProvider, ScoreboardName};
 use super::predicate::*;
@@ -807,6 +808,99 @@ fn text_component(value: &Value) -> Result<TextComponent> {
     })
 }
 
+/// `Codec.string(0, max)`: the length is counted in UTF-16 units.
+fn bounded_string(value: &Value, max: usize, what: &str) -> Result<String> {
+    let text = string(value, what)?;
+    let length = text.encode_utf16().count();
+    if length > max {
+        return codec(format!("{what}: String \"{text}\" is too long: {length} > {max}"));
+    }
+    Ok(text.to_owned())
+}
+
+/// `Filterable.codec(inner)`: `{raw, filtered?}`, or else a bare value.
+fn filterable<T>(value: &Value, inner: impl Fn(&Value) -> Result<T>) -> Result<Filterable<T>> {
+    if let Value::Object(map) = value {
+        if let Some(raw) = optional(map, "raw") {
+            if let Ok(raw) = inner(raw) {
+                let filtered = optional(map, "filtered").map(&inner).transpose();
+                if let Ok(filtered) = filtered {
+                    return Ok(Filterable { raw, filtered });
+                }
+            }
+        }
+    }
+    inner(value).map(|raw| Filterable { raw, filtered: None })
+}
+
+/// `SetWrittenBookPagesFunction.PAGE_CODEC`: a component whose flat JSON form fits 32767 characters.
+fn book_page(value: &Value) -> Result<TextComponent> {
+    let component = text_component(value)?;
+    let length = component.to_json_string().encode_utf16().count();
+    if length > 32767 {
+        return codec(format!("page: String is too long: {length} > 32767"));
+    }
+    Ok(component)
+}
+
+/// A `StringRepresentable` enum by name, as its index.
+fn named_index(value: &Value, names: &[&str], what: &str) -> Result<i32> {
+    let name = string(value, what)?;
+    names
+        .iter()
+        .position(|n| *n == name)
+        .map(|i| i as i32)
+        .ok_or_else(|| LootError::Codec(format!("{what}: unknown element name {name}")))
+}
+
+/// `Codec.INT.listOf()`.
+fn int_list(value: &Value, what: &str) -> Result<Vec<i32>> {
+    value
+        .as_array()
+        .ok_or_else(|| LootError::Codec(format!("{what}: expected a list")))?
+        .iter()
+        .map(|v| int(v, what))
+        .collect()
+}
+
+/// `ExtraCodecs.UNSIGNED_BYTE`: `Codec.BYTE` (`Number.byteValue`) read as unsigned.
+fn unsigned_byte(value: &Value) -> Result<i32> {
+    match value {
+        Value::Number(n) => Ok(i32::from(crate::components::java::json_number_int_value(n) as u8)),
+        _ => codec("unsigned byte: expected a number"),
+    }
+}
+
+/// `BannerPattern.CODEC` (`RegistryFileCodec`): a registered id, or an inline pattern.
+fn banner_pattern(value: &Value) -> Result<BannerPatternRef> {
+    if let Value::String(text) = value {
+        if let Ok(id) = resource_location(text, "pattern") {
+            let path = id.strip_prefix("minecraft:");
+            return match path.and_then(|p| BANNER_PATTERNS.iter().position(|n| *n == p)) {
+                Some(index) => Ok(BannerPatternRef::Registered(index as i32)),
+                None => codec(format!("Failed to get element {id}")),
+            };
+        }
+    }
+    let map = object(value, "pattern")?;
+    Ok(BannerPatternRef::Direct {
+        asset_id: id(required(map, "asset_id", "pattern")?, "asset_id")?,
+        translation_key: string(required(map, "translation_key", "pattern")?, "translation_key")?.to_owned(),
+    })
+}
+
+/// `FireworkExplosion.CODEC`.
+fn firework_explosion(value: &Value) -> Result<FireworkExplosion> {
+    let map = object(value, "explosion")?;
+    Ok(FireworkExplosion {
+        shape: named_index(required(map, "shape", "explosion")?, &FIREWORK_SHAPES, "shape")?,
+        colors: optional(map, "colors").map(|v| int_list(v, "colors")).transpose()?.unwrap_or_default(),
+        fade_colors: optional(map, "fade_colors").map(|v| int_list(v, "fade_colors")).transpose()?.unwrap_or_default(),
+        trail: optional(map, "has_trail").map(|v| boolean(v, "has_trail")).transpose()?.unwrap_or(false),
+        twinkle: optional(map, "has_twinkle").map(|v| boolean(v, "has_twinkle")).transpose()?.unwrap_or(false),
+    })
+}
+
 /// `ListOperation.codec(max)`: the `mode` member and its fields, inlined in the function.
 fn list_operation(map: &Map<String, Value>, max: i32) -> Result<ListOperation> {
     let non_negative = |key: &str| -> Result<Option<i32>> {
@@ -1096,6 +1190,82 @@ pub fn function(value: &Value) -> Result<Function> {
                 return codec(format!("Unknown registry key in minecraft:block_entity_type: {kind}"));
             }
             FunctionKind::SetLootTable { name, seed }
+        }
+        "set_banner_pattern" => {
+            let list = required(map, "patterns", "set_banner_pattern")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("patterns: expected a list".to_owned()))?;
+            let mut layers = Vec::new();
+            for layer in list {
+                let layer = object(layer, "banner layer")?;
+                layers.push(BannerLayer {
+                    pattern: banner_pattern(required(layer, "pattern", "banner layer")?)?,
+                    color: named_index(required(layer, "color", "banner layer")?, &DYE_COLORS, "color")?,
+                });
+            }
+            FunctionKind::SetBannerPattern { layers, append: boolean(required(map, "append", "set_banner_pattern")?, "append")? }
+        }
+        "set_fireworks" => {
+            let explosions = match optional(map, "explosions") {
+                None => None,
+                Some(value) => {
+                    let standalone = object(value, "explosions")?;
+                    let values = required(standalone, "values", "explosions")?
+                        .as_array()
+                        .ok_or_else(|| LootError::Codec("values: expected a list".to_owned()))?;
+                    if values.len() > 256 {
+                        return codec(format!("values: List is too long: {}, expected range [0-256]", values.len()));
+                    }
+                    let values = values.iter().map(firework_explosion).collect::<Result<Vec<_>>>()?;
+                    Some((values, list_operation(standalone, 256)?))
+                }
+            };
+            FunctionKind::SetFireworks {
+                explosions,
+                flight_duration: optional(map, "flight_duration").map(unsigned_byte).transpose()?,
+            }
+        }
+        "set_firework_explosion" => FunctionKind::SetFireworkExplosion {
+            shape: optional(map, "shape").map(|v| named_index(v, &FIREWORK_SHAPES, "shape")).transpose()?,
+            colors: optional(map, "colors").map(|v| int_list(v, "colors")).transpose()?,
+            fade_colors: optional(map, "fade_colors").map(|v| int_list(v, "fade_colors")).transpose()?,
+            trail: optional(map, "trail").map(|v| boolean(v, "trail")).transpose()?,
+            twinkle: optional(map, "twinkle").map(|v| boolean(v, "twinkle")).transpose()?,
+        },
+        "set_book_cover" => FunctionKind::SetBookCover {
+            title: optional(map, "title").map(|v| filterable(v, |v| bounded_string(v, 32, "title"))).transpose()?,
+            author: optional(map, "author").map(|v| string(v, "author").map(str::to_owned)).transpose()?,
+            generation: match optional(map, "generation") {
+                None => None,
+                Some(v) => {
+                    let n = int(v, "generation")?;
+                    if !(0..=3).contains(&n) {
+                        return codec(format!("Value {n} outside of range [0:3]"));
+                    }
+                    Some(n)
+                }
+            },
+        },
+        "set_written_book_pages" => FunctionKind::SetWrittenBookPages {
+            pages: required(map, "pages", "set_written_book_pages")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("pages: expected a list".to_owned()))?
+                .iter()
+                .map(|v| filterable(v, book_page))
+                .collect::<Result<Vec<_>>>()?,
+            mode: list_operation(map, i32::MAX)?,
+        },
+        "set_writable_book_pages" => {
+            let pages = required(map, "pages", "set_writable_book_pages")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("pages: expected a list".to_owned()))?;
+            if pages.len() > 100 {
+                return codec(format!("pages: List is too long: {}, expected range [0-100]", pages.len()));
+            }
+            FunctionKind::SetWritableBookPages {
+                pages: pages.iter().map(|v| filterable(v, |v| bounded_string(v, 1024, "page"))).collect::<Result<Vec<_>>>()?,
+                mode: list_operation(map, 100)?,
+            }
         }
         "filtered" => FunctionKind::Filtered {
             filter: item_predicate(required(map, "item_filter", "filtered")?)?,

@@ -27,6 +27,11 @@ const ITEM_NAME: i32 = 6;
 const LORE: i32 = 7;
 const CUSTOM_MODEL_DATA: i32 = 13;
 const CONTAINER_LOOT: i32 = 56;
+const FIREWORK_EXPLOSION: i32 = 45;
+const WRITABLE_BOOK_CONTENT: i32 = 33;
+const WRITTEN_BOOK_CONTENT: i32 = 34;
+const FIREWORKS: i32 = 46;
+const BANNER_PATTERNS_COMPONENT: i32 = 49;
 const POTION_CONTENTS: i32 = 31;
 const SUSPICIOUS_STEW_EFFECTS: i32 = 32;
 const TRIM: i32 = 35;
@@ -158,6 +163,189 @@ impl ListOperation {
     }
 }
 
+/// `Registries.BANNER_PATTERN` of the vanilla data pack, in registry (load) order.
+pub const BANNER_PATTERNS: [&str; 43] = [
+    "base", "border", "bricks", "circle", "creeper", "cross", "curly_border", "diagonal_left",
+    "diagonal_right", "diagonal_up_left", "diagonal_up_right", "flow", "flower", "globe", "gradient",
+    "gradient_up", "guster", "half_horizontal", "half_horizontal_bottom", "half_vertical",
+    "half_vertical_right", "mojang", "piglin", "rhombus", "skull", "small_stripes", "square_bottom_left",
+    "square_bottom_right", "square_top_left", "square_top_right", "straight_cross", "stripe_bottom",
+    "stripe_center", "stripe_downleft", "stripe_downright", "stripe_left", "stripe_middle",
+    "stripe_right", "stripe_top", "triangle_bottom", "triangle_top", "triangles_bottom", "triangles_top",
+];
+
+/// `DyeColor`, by id.
+pub const DYE_COLORS: [&str; 16] = [
+    "white", "orange", "magenta", "light_blue", "yellow", "lime", "pink", "gray", "light_gray", "cyan",
+    "purple", "blue", "brown", "green", "red", "black",
+];
+
+/// `FireworkExplosion.Shape`, by id.
+pub const FIREWORK_SHAPES: [&str; 5] = ["small_ball", "large_ball", "star", "creeper", "burst"];
+
+/// A `Holder<BannerPattern>`: a registered pattern (its registry index) or an inline one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BannerPatternRef {
+    Registered(i32),
+    Direct { asset_id: String, translation_key: String },
+}
+
+/// `BannerPatternLayers.Layer`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BannerLayer {
+    pub pattern: BannerPatternRef,
+    pub color: i32,
+}
+
+impl BannerLayer {
+    fn encode(&self, writer: &mut Writer) {
+        match &self.pattern {
+            BannerPatternRef::Registered(index) => {
+                writer.varint(index + 1);
+            }
+            BannerPatternRef::Direct { asset_id, translation_key } => {
+                writer.varint(0).string(asset_id).string(translation_key);
+            }
+        }
+        writer.varint(self.color);
+    }
+}
+
+/// `FireworkExplosion`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FireworkExplosion {
+    pub shape: i32,
+    pub colors: Vec<i32>,
+    pub fade_colors: Vec<i32>,
+    pub trail: bool,
+    pub twinkle: bool,
+}
+
+impl FireworkExplosion {
+    fn encode(&self, writer: &mut Writer) {
+        writer.varint(self.shape).varint(self.colors.len() as i32);
+        for color in &self.colors {
+            writer.raw(&color.to_be_bytes());
+        }
+        writer.varint(self.fade_colors.len() as i32);
+        for color in &self.fade_colors {
+            writer.raw(&color.to_be_bytes());
+        }
+        writer.bool(self.trail).bool(self.twinkle);
+    }
+
+    fn decode(reader: &mut Reader<'_>) -> Result<Self> {
+        let shape = reader.varint().map_err(host)?;
+        let mut lists = [Vec::new(), Vec::new()];
+        for list in &mut lists {
+            let count = reader.varint().map_err(host)?;
+            for _ in 0..count {
+                let bytes = reader.bytes(4).map_err(host)?;
+                list.push(i32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]));
+            }
+        }
+        let [colors, fade_colors] = lists;
+        Ok(Self { shape, colors, fade_colors, trail: reader.bool().map_err(host)?, twinkle: reader.bool().map_err(host)? })
+    }
+}
+
+/// `Filterable<T>`: the raw value and an optional filtered one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Filterable<T> {
+    pub raw: T,
+    pub filtered: Option<T>,
+}
+
+/// One page of a written book as it is on the wire (raw and optional filtered component NBT).
+type WrittenPage = Vec<u8>;
+
+/// `WrittenBookContent` on the wire.
+struct WrittenBook {
+    title: Filterable<String>,
+    author: String,
+    generation: i32,
+    pages: Vec<WrittenPage>,
+    resolved: bool,
+}
+
+impl WrittenBook {
+    fn decode(bytes: Option<&[u8]>) -> Result<Self> {
+        let Some(bytes) = bytes else {
+            return Ok(Self {
+                title: Filterable { raw: String::new(), filtered: None },
+                author: String::new(),
+                generation: 0,
+                pages: Vec::new(),
+                resolved: true,
+            });
+        };
+        let mut reader = Reader::new(bytes);
+        let raw = reader.string(32).map_err(host)?;
+        let filtered = if reader.bool().map_err(host)? { Some(reader.string(32).map_err(host)?) } else { None };
+        let author = reader.string(32767).map_err(host)?;
+        let generation = reader.varint().map_err(host)?;
+        let count = reader.varint().map_err(host)?;
+        let mut pages = Vec::new();
+        for _ in 0..count {
+            let start = reader.remaining();
+            let (_, raw_len) = Tag::decode_anonymous_prefix(start).map_err(host)?;
+            let mut used = raw_len;
+            let has_filtered = start.get(used).copied().unwrap_or(0) != 0;
+            used += 1;
+            if has_filtered {
+                let (_, filtered_len) = Tag::decode_anonymous_prefix(&start[used..]).map_err(host)?;
+                used += filtered_len;
+            }
+            pages.push(start[..used].to_vec());
+            reader = Reader::new(&start[used..]);
+        }
+        let resolved = reader.bool().map_err(host)?;
+        reader.finish().map_err(host)?;
+        Ok(Self { title: Filterable { raw, filtered }, author, generation, pages, resolved })
+    }
+
+    fn encode(&self) -> Vec<u8> {
+        let mut writer = Writer::new();
+        writer.string(&self.title.raw);
+        match &self.title.filtered {
+            Some(filtered) => writer.bool(true).string(filtered),
+            None => writer.bool(false),
+        };
+        writer.string(&self.author).varint(self.generation).varint(self.pages.len() as i32);
+        for page in &self.pages {
+            writer.raw(page);
+        }
+        writer.bool(self.resolved);
+        writer.into_inner()
+    }
+}
+
+fn written_page(page: &Filterable<TextComponent>) -> Result<WrittenPage> {
+    let mut bytes = text_nbt(&page.raw)?;
+    match &page.filtered {
+        Some(filtered) => {
+            bytes.push(1);
+            bytes.extend(text_nbt(filtered)?);
+        }
+        None => bytes.push(0),
+    }
+    Ok(bytes)
+}
+
+fn writable_pages(bytes: Option<&[u8]>) -> Result<Vec<Filterable<String>>> {
+    let Some(bytes) = bytes else { return Ok(Vec::new()) };
+    let mut reader = Reader::new(bytes);
+    let count = reader.varint().map_err(host)?;
+    let mut pages = Vec::new();
+    for _ in 0..count {
+        let raw = reader.string(1024).map_err(host)?;
+        let filtered = if reader.bool().map_err(host)? { Some(reader.string(1024).map_err(host)?) } else { None };
+        pages.push(Filterable { raw, filtered });
+    }
+    reader.finish().map_err(host)?;
+    Ok(pages)
+}
+
 /// Components whose last network field is the `show_in_tooltip` flag (`ToggleTooltips.TOGGLES`).
 pub const TOOLTIP_TOGGLES: [&str; 9] = [
     "trim", "dyed_color", "enchantments", "stored_enchantments", "unbreakable", "can_break",
@@ -217,6 +405,18 @@ pub enum FunctionKind {
     SetCustomModelData(NumberProvider),
     SetLootTable { name: String, seed: i64 },
     Filtered { filter: ItemPredicate, modifier: Box<Function> },
+    SetBannerPattern { layers: Vec<BannerLayer>, append: bool },
+    SetBookCover { title: Option<Filterable<String>>, author: Option<String>, generation: Option<i32> },
+    SetWrittenBookPages { pages: Vec<Filterable<TextComponent>>, mode: ListOperation },
+    SetWritableBookPages { pages: Vec<Filterable<String>>, mode: ListOperation },
+    SetFireworks { explosions: Option<(Vec<FireworkExplosion>, ListOperation)>, flight_duration: Option<i32> },
+    SetFireworkExplosion {
+        shape: Option<i32>,
+        colors: Option<Vec<i32>>,
+        fade_colors: Option<Vec<i32>>,
+        trail: Option<bool>,
+        twinkle: Option<bool>,
+    },
     SetStewEffect { effects: Vec<StewEffect> },
     SetOminousBottleAmplifier { amplifier: NumberProvider },
     SetInstrument { options: HolderSet },
@@ -570,6 +770,119 @@ impl Function {
                 } else {
                     Ok(stack)
                 }
+            }
+            FunctionKind::SetBannerPattern { layers, append } => {
+                let mut writer = Writer::new();
+                if *append {
+                    // The old layers are kept as they are on the wire.
+                    let old = stack.effective_component_bytes(BANNER_PATTERNS_COMPONENT).unwrap_or(&[0]).to_vec();
+                    let mut reader = Reader::new(&old);
+                    let count = reader.varint().map_err(host)?;
+                    writer.varint(count + layers.len() as i32).raw(reader.remaining());
+                } else {
+                    writer.varint(layers.len() as i32);
+                }
+                for layer in layers {
+                    layer.encode(&mut writer);
+                }
+                if !stack.is_empty() {
+                    set_component(&mut stack, BANNER_PATTERNS_COMPONENT, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetFireworks { explosions, flight_duration } => {
+                let (old_flight, old) = match stack.effective_component_bytes(FIREWORKS) {
+                    None => (0, Vec::new()),
+                    Some(bytes) => {
+                        let mut reader = Reader::new(bytes);
+                        let flight = reader.varint().map_err(host)?;
+                        let count = reader.varint().map_err(host)?;
+                        let mut list = Vec::new();
+                        for _ in 0..count {
+                            list.push(FireworkExplosion::decode(&mut reader)?);
+                        }
+                        (flight, list)
+                    }
+                };
+                let list = match explosions {
+                    Some((values, operation)) => operation.apply(&old, values, usize::MAX),
+                    None => old,
+                };
+                if list.len() > 256 {
+                    return Err(LootError::Host(format!("Got {} explosions, but maximum is 256", list.len())));
+                }
+                let mut writer = Writer::new();
+                writer.varint(flight_duration.unwrap_or(old_flight)).varint(list.len() as i32);
+                for explosion in &list {
+                    explosion.encode(&mut writer);
+                }
+                if !stack.is_empty() {
+                    set_component(&mut stack, FIREWORKS, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetFireworkExplosion { shape, colors, fade_colors, trail, twinkle } => {
+                let old = match stack.effective_component_bytes(FIREWORK_EXPLOSION) {
+                    Some(bytes) => FireworkExplosion::decode(&mut Reader::new(bytes))?,
+                    None => FireworkExplosion { shape: 0, colors: Vec::new(), fade_colors: Vec::new(), trail: false, twinkle: false },
+                };
+                let new = FireworkExplosion {
+                    shape: shape.unwrap_or(old.shape),
+                    colors: colors.clone().unwrap_or(old.colors),
+                    fade_colors: fade_colors.clone().unwrap_or(old.fade_colors),
+                    trail: trail.unwrap_or(old.trail),
+                    twinkle: twinkle.unwrap_or(old.twinkle),
+                };
+                let mut writer = Writer::new();
+                new.encode(&mut writer);
+                if !stack.is_empty() {
+                    set_component(&mut stack, FIREWORK_EXPLOSION, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetBookCover { title, author, generation } => {
+                let mut book = WrittenBook::decode(stack.effective_component_bytes(WRITTEN_BOOK_CONTENT))?;
+                if let Some(title) = title {
+                    book.title = title.clone();
+                }
+                if let Some(author) = author {
+                    book.author = author.clone();
+                }
+                if let Some(generation) = generation {
+                    book.generation = *generation;
+                }
+                if !stack.is_empty() {
+                    set_component(&mut stack, WRITTEN_BOOK_CONTENT, book.encode());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetWrittenBookPages { pages, mode } => {
+                let mut book = WrittenBook::decode(stack.effective_component_bytes(WRITTEN_BOOK_CONTENT))?;
+                let new = pages.iter().map(written_page).collect::<Result<Vec<_>>>()?;
+                book.pages = mode.apply(&book.pages, &new, usize::MAX);
+                // `withReplacedPages` marks the content unresolved.
+                book.resolved = false;
+                if !stack.is_empty() {
+                    set_component(&mut stack, WRITTEN_BOOK_CONTENT, book.encode());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetWritableBookPages { pages, mode } => {
+                let old = writable_pages(stack.effective_component_bytes(WRITABLE_BOOK_CONTENT))?;
+                let list = mode.apply(&old, pages, 100);
+                let mut writer = Writer::new();
+                writer.varint(list.len() as i32);
+                for page in &list {
+                    writer.string(&page.raw);
+                    match &page.filtered {
+                        Some(filtered) => writer.bool(true).string(filtered),
+                        None => writer.bool(false),
+                    };
+                }
+                if !stack.is_empty() {
+                    set_component(&mut stack, WRITABLE_BOOK_CONTENT, writer.into_inner());
+                }
+                Ok(stack)
             }
             FunctionKind::SetStewEffect { effects } => {
                 if stack_item_id(&stack) == "minecraft:suspicious_stew" && !effects.is_empty() {
