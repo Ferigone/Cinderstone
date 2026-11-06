@@ -259,6 +259,7 @@ impl Server {
             .gameplay
             .stats_mut(player.profile.uuid)?
             .increment(stat, 1)?;
+        players.gameplay.award_scoreboard_stat(player.profile.uuid, stat, 1)?;
         players.crafting_tables.menus.insert(
             id,
             OpenCraftingTable {

@@ -126,7 +126,9 @@ feed is not whitespace.
 
 ## Not implemented (explicit)
 
-- `show_item` and `show_entity` hover events return `ComponentError::Unsupported` (they need
+- WP-E4 runtime now supports native player `show_entity` hovers for actual display-name
+  persistence (see `scoreboard-runtime.md`). `show_item`, non-player and legacy entity
+  hovers remain `ComponentError::Unsupported` (they need
   the item-stack and entity-tooltip codecs; the legacy string forms likewise).
 - Resolution (`ComponentUtils.updateForEntity`, selector/score/nbt contents), `getString`,
   legacy `§` formatting, `Style.applyTo`/`Style.applyFormat`, and the `ChatFormatting` enum.

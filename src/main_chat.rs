@@ -1,7 +1,7 @@
 //! Native production chat owners for actual admitted players/connections.
 //!
 //! Main supplies the configured registry holder, current service keys, time and
-//! operator state. This runtime represents the dedicated no-team, no external
+//! operator state. This runtime represents the dedicated no external
 //! text-filter profile; it never manufactures trust keys, a player or a session.
 use std::collections::BTreeMap;
 
@@ -164,6 +164,7 @@ pub(super) struct MainChatRuntime {
     /// Actual registration order, rather than guessing PlayerList ordering
     /// from asynchronously allocated entity IDs.
     registration_order: Vec<i32>,
+    pub decorated_names: BTreeMap<i32, Value>,
 }
 
 impl MainChatRuntime {
@@ -208,6 +209,7 @@ impl MainChatRuntime {
     /// A fresh PLAY listener after reconfiguration receives a fresh runtime
     /// entry; no acknowledgment window or signing decoder is persisted.
     pub fn remove(&mut self, entity_id: i32) {
+        self.decorated_names.remove(&entity_id);
         self.connections.remove(&entity_id);
         self.registration_order.retain(|id| *id != entity_id);
     }
@@ -278,7 +280,7 @@ impl MainChatRuntime {
     /// Uses the actual configured minecraft:chat registry holder supplied by
     /// Main. The supported TextFilter owner is the dedicated no-op filter; it
     /// genuinely yields pass-through rather than pretending an external filter
-    /// has run. Rich server decorators and scoreboard teams remain unsupported.
+    /// has run. Main supplies the current scoreboard-decorated sender name.
     pub fn handle_message(
         &mut self,
         entity_id: i32,
@@ -310,7 +312,7 @@ impl MainChatRuntime {
         };
         let bound = BoundChatType {
             registry_id: chat_type_registry_id,
-            name: admission_commands::default_player_display_component(&source),
+            name: self.decorated_names.get(&entity_id).cloned().unwrap_or_else(|| admission_commands::default_player_display_component(&source)),
             target_name: None,
         };
         self.broadcast(

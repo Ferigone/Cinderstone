@@ -118,6 +118,9 @@ pub struct DropStatEvent {
 pub struct PlayerStats {
     values: BTreeMap<StatKey, i32>,
     dirty: BTreeSet<StatKey>,
+    award_cursor: u64,
+    // Present only on prepared transaction copies. Never part of a save or a live counter log.
+    transaction_awards: Option<Vec<(u64, StatKey, i32)>>,
 }
 impl PlayerStats {
     pub fn get(&self, key: StatKey) -> i32 {
@@ -139,9 +142,37 @@ impl PlayerStats {
     pub fn increment(&mut self, key: StatKey, amount: i32) -> Result<i32> {
         // The long sum is clamped only above INT_MAX, then Java l2i wraps
         // values below INT_MIN. Saturating i32 addition would change this.
+        let next = self
+            .award_cursor
+            .checked_add(1)
+            .context("statistic award sequence exhausted")?;
         let value = (i64::from(self.get(key)) + i64::from(amount)).min(i64::from(i32::MAX)) as i32;
         self.set(key, value)?;
+        self.award_cursor = next;
+        if let Some(awards) = &mut self.transaction_awards {
+            awards.push((next, key, amount));
+        }
         Ok(value)
+    }
+    /// Capture original awards on a prepared copy; ordinary live counters keep no log.
+    pub fn for_transaction(&self) -> Self {
+        let mut staged = self.clone();
+        staged.transaction_awards.get_or_insert_with(Vec::new);
+        staged
+    }
+    pub fn award_cursor(&self) -> u64 {
+        self.award_cursor
+    }
+    pub fn awards_after(&self, cursor: u64) -> impl Iterator<Item = (StatKey, i32)> + '_ {
+        self.transaction_awards
+            .as_deref()
+            .unwrap_or(&[])
+            .iter()
+            .filter(move |(sequence, _, _)| *sequence > cursor)
+            .map(|(_, key, amount)| (*key, *amount))
+    }
+    pub fn finish_transaction(&mut self) {
+        self.transaction_awards = None;
     }
     pub fn mark_all_dirty(&mut self) {
         self.dirty.extend(self.values.keys().copied());

@@ -1,5 +1,10 @@
 # Scoreboard — objectives, scores, teams, packets and `scoreboard.dat`
 
+Current Main integration and its protocol/restart evidence are recorded in
+[scoreboard-runtime.md](scoreboard-runtime.md). This document retains the original
+library-stage oracle scope; that runtime record supersedes the library-only
+limitations below where the production callsites are now connected.
+
 Target: Minecraft Java **1.21**, protocol **767**. Primary evidence is the unchanged original
 `Scoreboard`, `ServerScoreboard`, `ScoreboardSaveData`, `NumberFormatTypes` and the five
 scoreboard packets, run through the local oracle (`tools/loot_oracle.java scoreboard` and

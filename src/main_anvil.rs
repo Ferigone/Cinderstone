@@ -143,10 +143,7 @@ impl PreparedAnvilCommit<'_> {
             |ordinal: usize, _: &mut ItemBatchPublication<'_>| {
                 if let Some(index) = pending_drop.take() {
                     // Player.drop awards after the actual entity world-add.
-                    *gameplay
-                        .stats_mut(uuid)
-                        .expect("validated anvil statistic owner") =
-                        stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     cursor = index + 1;
                 }
                 while cursor < observations.len() {
@@ -158,10 +155,7 @@ impl PreparedAnvilCommit<'_> {
                         pending_drop = Some(index);
                         return;
                     }
-                    *gameplay
-                        .stats_mut(uuid)
-                        .expect("validated anvil statistic owner") =
-                        stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     match observation {
                         NativeAnvilEvent::Sync {
                             event:

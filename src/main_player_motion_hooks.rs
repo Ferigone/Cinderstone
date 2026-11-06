@@ -477,6 +477,7 @@ impl PlayerMotionHooks for MainMotionHooks<'_> {
         ensure!(player_id == self.id, "movement statistic identity changed");
         self.gameplay.require_supported_floor()?;
         self.gameplay.stats_mut(self.uuid)?.increment(key, amount)?;
+        self.gameplay.award_scoreboard_stat(self.uuid, key, amount)?;
         Ok(())
     }
     fn hit_ground(&mut self, state: &EntityPhysicalState, _: u32) -> Result<()> {

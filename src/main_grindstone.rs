@@ -422,7 +422,7 @@ impl Replay<'_> {
             SourceEvent::Drop { ordinal: expected, statistics, .. } => {
                 assert_eq!(*expected, ordinal);
                 assert_eq!(kind, EntityKind::Item);
-                *self.gameplay.stats_mut(self.uuid).expect("actual grindstone statistic owner") = statistics.clone();
+                self.gameplay.replace_player_stats(self.uuid, statistics.clone()).expect("validated workstation scoreboard/statistic commit");
             }
             SourceEvent::Experience { award, .. } => {
                 assert_eq!(kind, EntityKind::ExperienceOrb);

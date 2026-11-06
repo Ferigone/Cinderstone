@@ -62,6 +62,11 @@ impl Server {
         let (context, permission) = self.actual_chat_context(entity_id)?;
         let (command, charge) = {
             let mut players = self.players.write().map_err(|_|anyhow!("players poisoned"))?;
+            if packet.id == 0x06 {
+                let profile = players.registry.get(entity_id).context("chat sender absent")?.profile.clone();
+                let decorated = main_scoreboard::decorated_name(&players.gameplay.scoreboard, &profile);
+                players.chat.decorated_names.insert(entity_id, decorated);
+            }
             let outcome = match packet.id {
                 0x03 => players.chat.handle_ack(entity_id, &packet.payload)?,
                 0x04 => {

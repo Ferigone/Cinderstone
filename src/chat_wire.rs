@@ -13,6 +13,7 @@ use crate::{
     chat_ack::{LastSeenUpdate, MessageSignature, MessageSignatureCache, PackedMessageSignature},
     chat_chain::{FilterMask, PlayerChatMessage},
     chat_crypto::ProfilePublicKeyData,
+    components::text::Component,
     entity::ChatSession,
     protocol::{Packet, Reader, Writer},
 };
@@ -250,10 +251,20 @@ fn write_chat_type(output: &mut Writer, chat_type: &BoundChatType) -> Result<()>
                 .checked_add(1)
                 .context("chat type registry index overflow")?,
         )
-        .raw(&encode_component_json(&chat_type.name)?)
+        .raw(
+            &Component::from_json(&chat_type.name)
+                .map_err(|e| anyhow::anyhow!("{e}"))?
+                .to_network_nbt()
+                .map_err(|e| anyhow::anyhow!("{e}"))?,
+        )
         .bool(chat_type.target_name.is_some());
     if let Some(target) = &chat_type.target_name {
-        output.raw(&encode_component_json(target)?);
+        output.raw(
+            &Component::from_json(target)
+                .map_err(|e| anyhow::anyhow!("{e}"))?
+                .to_network_nbt()
+                .map_err(|e| anyhow::anyhow!("{e}"))?,
+        );
     }
     Ok(())
 }
@@ -280,4 +291,32 @@ fn write_filter_mask(output: &mut Writer, filter: &FilterMask) -> Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod rich_name_tests {
+    use super::*;
+    #[test]
+    fn bound_chat_names_use_full_component_codec() {
+        let name = serde_json::json!({"text":"[T] Alice","font":"minecraft:uniform",
+            "hoverEvent":{"action":"show_text","contents":"Team"}});
+        let packet = encode_disguised_chat(
+            &serde_json::json!("hello"),
+            &BoundChatType {
+                registry_id: 0,
+                name,
+                target_name: None,
+            },
+        )
+        .unwrap();
+        let (_, used) = crate::nbt::Tag::decode_anonymous_prefix(&packet.payload).unwrap();
+        let mut reader = Reader::new(&packet.payload[used..]);
+        assert_eq!(reader.varint().unwrap(), 1);
+        let (name, _) = crate::nbt::Tag::decode_anonymous_prefix(reader.remaining()).unwrap();
+        assert_eq!(
+            name.get("font"),
+            Some(&crate::nbt::Tag::String("minecraft:uniform".into()))
+        );
+        assert!(name.get("hoverEvent").is_some());
+    }
 }

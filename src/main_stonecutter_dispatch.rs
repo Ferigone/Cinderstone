@@ -274,6 +274,7 @@ impl Server {
                 "minecraft:custom", "minecraft:interact_with_stonecutter",
             ).context("stonecutter interaction statistic missing")?;
             players.gameplay.stats_mut(player.profile.uuid)?.increment(stat, 1)?;
+        players.gameplay.award_scoreboard_stat(player.profile.uuid, stat, 1)?;
             // DefaultBlockInteractionTrigger reads the post-use block before
             // consulting its actual player's registered criterion listeners.
             let _post_use_state = world.block(target.0, target.1, target.2)?;

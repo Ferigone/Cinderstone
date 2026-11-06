@@ -35,7 +35,7 @@ fn permission_packets(entity_id: i32, level: i32) -> Result<Vec<Packet>> {
     let level = permission(level);
     Ok(vec![
         Packet { id: 0x1f, payload: encoded(|w| { w.i32(entity_id).u8(24 + level); }) },
-        command_protocol::administration_command_tree(level)?,
+        command_protocol::native_command_tree(level)?,
     ])
 }
 
@@ -152,6 +152,10 @@ impl Server {
             }
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
+        if matches!(line.split_whitespace().next(), Some("scoreboard" | "team" | "trigger")) {
+            drop(owner);
+            return self.execute_scoreboard(line, source_id, &source.name, source.permission_level);
+        }
         let outcome = owner.execute_line(line, &source, source_id, &online, wall_time_ms()?) ;
         drop(owner);
         let (send_feedback, log_admin) = {
