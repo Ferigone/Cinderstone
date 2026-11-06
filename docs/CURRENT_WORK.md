@@ -5,6 +5,15 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native ban-list queries connected (#190)
+
+Permission3 players and console query retained player/IP bans through native
+Brigadier, with correct typed private feedback. The [original/protocol comparison](validation/banlist-command-runtime.json)
+covers filters, retained expired entries, denial, console, pardon and restart.
+[Details and limits](reference/banlist-command.md). Access-list HashMap/date/locale
+parity and full #24/#64 remain outside scope; scope1/100 and58/53 are unchanged.
+Hosted verification remains under #19.
+
 ## World border commands connected (#186)
 
 Permission-2 players and console can query/change the live border, interpolate

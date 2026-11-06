@@ -67,7 +67,7 @@ public class banlist_command_oracle {
         JsonObject result = new JsonObject(); result.add("grammar", output);
         JsonArray executions = new JsonArray();
         for (boolean populated : new boolean[]{false,true}) {
-            for (String input : new String[]{"banlist", "banlist players", "banlist ips", "banlist players trailing", "banlist invalid"}) executions.add(execute(dispatcher,unsafe,populated,input,3));
+            for (String input : new String[]{"banlist", "banlist players", "banlist ips", "banlist players trailing", "banlist invalid", "banlist  players"}) executions.add(execute(dispatcher,unsafe,populated,input,3));
         }
         executions.add(execute(dispatcher,unsafe,true,"banlist ips",2));
         result.add("execution", executions);

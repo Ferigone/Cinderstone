@@ -243,6 +243,16 @@
       "retained_ip_bans": 0
     },
     {
+      "input": "banlist  players",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
       "input": "banlist",
       "permission": 3,
       "populated": true,
@@ -348,6 +358,32 @@
     },
     {
       "input": "banlist invalid",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "BannedOne",
+          "source": "Operator",
+          "reason": "Reason \"one\" ☃"
+        },
+        {
+          "display_name": "ExpiredOne",
+          "source": "Earlier",
+          "reason": "Expired reason"
+        },
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist  players",
       "permission": 3,
       "populated": true,
       "entries": [

@@ -159,13 +159,13 @@ try{
       trace.queries.push({command,messages:normalized(rows)});
     }
     await pause(150);assert.equal(observerBanCount(),before);trace.private=true;trace.query_retains_expired=true;
-    for(const text of ['banlist invalid','banlist players trailing','banlist PLAYERS'])await probe.denied(text);
+    for(const text of ['banlist invalid','banlist players trailing','banlist PLAYERS','banlist  players'])await probe.denied(text);
     trace.invalid_no_mutation=normalized(await query(probe,'banlist',3));
     for(const [i,text]of ['banlist ','banlist i','/banlist p','banlist ips ','b'].entries()){
       const c=await probe.complete(text,i+1);if(text==='b')c.matches=c.matches.filter(v=>['ban','ban-ip','banlist'].includes(v));trace.completion.push({text,...c});
     }
     const offset=server.log().length;server.command('banlist ips');
-    await until(()=>server.log().slice(offset).includes(kind==='java'?'192.0.2.7 was banned by Console: IP reason':'commands.banlist.entry'),'console query');trace.console=true;
+    await until(()=>{const log=server.log().slice(offset);return kind==='java'?log.includes('192.0.2.7 was banned by Console: IP reason'):log.includes('commands.banlist.entry')&&log.includes('192.0.2.7')&&log.includes('IP reason');},'console query');trace.console=true;
     server.command('pardon-ip 192.0.2.7');
     if(kind==='java')await javaCommands([]);else await until(()=>server.log().includes('commands.pardonip.success'),'pardon IP');
     trace.removed_ip=await query(probe,'banlist ips',0);
