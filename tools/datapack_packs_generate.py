@@ -39,6 +39,13 @@ TEXT_CORRUPTIONS = [
     lambda t: t[:len(t) // 2], lambda t: t + ",", lambda t: "﻿" + t, lambda t: t.replace('"', "'"), lambda t: "// c\n" + t,
     lambda t: t.replace("{", "[", 1), lambda t: t + " {}", lambda t: "", lambda t: " " + t + "\n", lambda t: t.replace('"pack"', "pack", 1),
     lambda t: t.replace(",", ";", 1), lambda t: "[" + t + "]", lambda t: "null", lambda t: '{"pack": null}', lambda t: '{"pack": []}',
+    # Gson accepts raw control characters inside strings and keeps numbers of any size.
+    lambda t: t.replace('": "', '": "\t', 1), lambda t: t.replace('": "', '": "\n', 1), lambda t: t.replace('": "', '": "\u0000', 1),
+    lambda t: t.replace('": "', '": "\u001f', 1), lambda t: t.replace('": "', '": "\u2028', 1),
+    lambda t: t.replace("48", "1e400", 1), lambda t: t.replace("48", "-1e400", 1), lambda t: t.replace("48", "1E40", 1),
+    lambda t: t.replace("48", "4294967344", 1), lambda t: t.replace("48", "48.9", 1), lambda t: t.replace("48", "4.8e1", 1),
+    lambda t: t.replace("48", "0.0048e4", 1), lambda t: t.replace("48", "03", 1), lambda t: t.replace("48", "+48", 1),
+    lambda t: t.replace("48", "9223372036854775808", 1), lambda t: t.replace("48", "1E999", 1),
 ]
 
 

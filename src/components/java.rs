@@ -71,6 +71,29 @@ pub fn hashmap_order_with(hash_codes: &[i32], table_size: usize, prepend: bool) 
     buckets.into_iter().flatten().collect()
 }
 
+/// `Number.intValue()` of a Gson `LazilyParsedNumber` (what `Codec.INT` and `JsonOps.getNumberValue`
+/// callers see): integers wrap to 32 bits, decimals go through `BigDecimal.intValue()` (truncate,
+/// then the low 32 bits).
+///
+/// `serde_json` keeps a decimal as the nearest `f64`, so the low bits of a value above 2^53 can
+/// differ from the original's exact decimal (`1E30` is 2^30 there and 0 here). Above 2^127 both are
+/// 0 for every exponent form, and that is what is returned.
+pub fn json_number_int_value(number: &serde_json::Number) -> i32 {
+    if let Some(value) = number.as_i64() {
+        value as i32
+    } else if let Some(value) = number.as_u64() {
+        value as i32
+    } else {
+        number.as_f64().map_or(0, |value| {
+            if value.abs() >= 2f64.powi(127) {
+                0
+            } else {
+                value.trunc() as i128 as i32
+            }
+        })
+    }
+}
+
 /// `ResourceLocation.hashCode()` of `namespace:path`.
 pub fn resource_location_hash(id: &str) -> i32 {
     let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));

@@ -2,9 +2,9 @@
 
 use super::requirements::AdvancementRequirements;
 use super::time::{format_obtained, parse_obtained};
-use crate::components::java::resource_location;
+use crate::components::java::{json_number_int_value, resource_location};
 use crate::components::lenient::parse_strict_prefix;
-use serde_json::{Map, Number, Value};
+use serde_json::{Map, Value};
 use std::collections::BTreeMap;
 
 /// `SharedConstants.getCurrentVersion().getDataVersion().getVersion()` for 1.21.
@@ -194,33 +194,11 @@ impl AdvancementProgress {
     }
 }
 
-/// `Number.intValue()` of a Gson `LazilyParsedNumber`: integers wrap to 32 bits, decimals go
-/// through `BigDecimal.intValue()` (truncate, then the low 32 bits).
-///
-/// `serde_json` keeps a decimal as the nearest `f64`, so the low bits of a value above 2^53 can
-/// differ from the original's exact decimal (`1E30` is 2^30 there and 0 here); a `DataVersion` that
-/// large is not a real file. Above 2^127 both are 0 for every exponent form.
-fn number_as_int(number: &Number) -> i32 {
-    if let Some(value) = number.as_i64() {
-        value as i32
-    } else if let Some(value) = number.as_u64() {
-        value as i32
-    } else {
-        number.as_f64().map_or(0, |value| {
-            if value.abs() >= 2f64.powi(127) {
-                0
-            } else {
-                value.trunc() as i128 as i32
-            }
-        })
-    }
-}
-
 /// The version `DataFixTypes.wrapCodec` reads: a numeric `DataVersion`, otherwise the default
 /// (`JsonOps.getNumberValue` takes numbers only: a string, boolean or `null` is "no version").
 fn file_version(members: &Map<String, Value>) -> i32 {
     match members.get("DataVersion") {
-        Some(Value::Number(number)) => number_as_int(number),
+        Some(Value::Number(number)) => json_number_int_value(number),
         _ => DEFAULT_FILE_VERSION,
     }
 }
