@@ -237,3 +237,56 @@ fn recipe_unlocked_matches_the_recipe_id() {
     .unwrap();
     assert_eq!(recipe_unlocked(&with_player, "minecraft:oak_planks"), Match::PlayerPredicate);
 }
+
+/// The entity-free trigger matchers against the original's `TriggerInstance.matches`
+/// (`fixtures/trigger-match-vectors.json`).
+#[test]
+fn entity_free_triggers_match_the_original() {
+    use super::definition::criterion;
+    use super::triggers::*;
+    use crate::inventory::ItemStack;
+
+    fn stack(spec: &Value) -> ItemStack {
+        let mut stack = crate::loot::enchant::new_stack(spec["id"].as_str().unwrap()).unwrap();
+        stack.count = spec["count"].as_i64().unwrap_or(1) as i32;
+        if let Some(damage) = spec["components"]["minecraft:damage"].as_i64() {
+            let mut writer = crate::protocol::Writer::new();
+            writer.varint(damage as i32);
+            crate::loot::enchant::set_component(&mut stack, 3, writer.into_inner());
+        }
+        stack
+    }
+
+    let doc: Value = serde_json::from_str(include_str!("../../fixtures/trigger-match-vectors.json")).unwrap();
+    let cases = doc["cases"].as_array().unwrap();
+    let mut unsupported = 0;
+    for case in cases {
+        let parsed = criterion(&serde_json::json!({"trigger": case["trigger"], "conditions": case["conditions"]})).unwrap();
+        let event = &case["event"];
+        let name = case["trigger"].as_str().unwrap().trim_start_matches("minecraft:");
+        let int = |key: &str| event[key].as_i64().unwrap() as i32;
+        let ours: Result<Match, crate::loot::LootError> = (|| Ok(match name {
+            "consume_item" | "filled_bucket" | "used_totem" | "using_item" | "shot_crossbow" => item_used(&parsed, &stack(&event["stack"]))?,
+            "enchanted_item" => enchanted_item(&parsed, &stack(&event["stack"]), int("value"))?,
+            "item_durability_changed" => item_durability_changed(&parsed, &stack(&event["stack"]), int("value"))?,
+            "construct_beacon" => construct_beacon(&parsed, int("value")),
+            "used_ender_eye" => used_ender_eye(&parsed, event["value"].as_f64().unwrap()),
+            "brewed_potion" => brewed_potion(&parsed, event["potion"].as_str().unwrap()),
+            "changed_dimension" => changed_dimension(&parsed, event["from"].as_str().unwrap(), event["to"].as_str().unwrap()),
+            "enter_block" | "slide_down_block" => block_state(&parsed, int("state") as u32)?,
+            "bee_nest_destroyed" => bee_nest_destroyed(&parsed, int("state") as u32, &stack(&event["stack"]), int("value"))?,
+            "recipe_crafted" | "crafter_recipe_crafted" => {
+                let ingredients: Vec<ItemStack> = event["ingredients"].as_array().unwrap().iter().map(stack).collect();
+                recipe_crafted(&parsed, event["recipe"].as_str().unwrap(), &ingredients)?
+            }
+            other => panic!("{other}"),
+        }))();
+        let expected = case["matches"].as_bool().unwrap();
+        match ours {
+            Err(crate::loot::LootError::Unsupported(_)) => unsupported += 1,
+            // A `player` predicate is the caller's: the trigger-specific part decides here.
+            ours => assert_eq!(ours.unwrap() != Match::NoMatch, expected, "{case}"),
+        }
+    }
+    assert!(cases.len() > 4000 && unsupported * 50 < cases.len(), "{unsupported} unsupported");
+}

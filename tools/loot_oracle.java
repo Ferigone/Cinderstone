@@ -1608,6 +1608,70 @@ public class loot_oracle {
         System.out.println("inventory-trigger=" + outArr.size());
         break;
       }
+      case "trigger-match": {
+        // TriggerInstance.matches of entity-free triggers. Input [{trigger, conditions, event}],
+        // output [true|false|"error"]. Block states are global state ids (Block.stateById).
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray()) {
+          JsonObject spec = e.getAsJsonObject();
+          try {
+            String trigger = spec.get("trigger").getAsString();
+            JsonElement conditions = spec.get("conditions");
+            JsonObject ev = spec.getAsJsonObject("event");
+            net.minecraft.advancements.CriterionTrigger<?> type = BuiltInRegistries.TRIGGER_TYPES.get(ResourceLocation.parse(trigger));
+            Object instance = type.codec().parse(ops, conditions).getOrThrow();
+            Object result;
+            String name = ResourceLocation.parse(trigger).getPath();
+            java.util.function.Function<String, ItemStack> item = k -> stack(ev.getAsJsonObject(k));
+            java.util.function.Function<String, net.minecraft.world.level.block.state.BlockState> state = k -> net.minecraft.world.level.block.Block.stateById(ev.get(k).getAsInt());
+            java.lang.reflect.Method m;
+            switch (name) {
+              case "consume_item", "filled_bucket", "used_totem", "using_item", "shot_crossbow" -> {
+                m = instance.getClass().getDeclaredMethod("matches", ItemStack.class); m.setAccessible(true); result = m.invoke(instance, item.apply("stack"));
+              }
+              case "enchanted_item", "item_durability_changed" -> {
+                m = instance.getClass().getDeclaredMethod("matches", ItemStack.class, int.class); m.setAccessible(true); result = m.invoke(instance, item.apply("stack"), ev.get("value").getAsInt());
+              }
+              case "construct_beacon" -> {
+                m = instance.getClass().getDeclaredMethod("matches", int.class); m.setAccessible(true); result = m.invoke(instance, ev.get("value").getAsInt());
+              }
+              case "used_ender_eye" -> {
+                m = instance.getClass().getDeclaredMethod("matches", double.class); m.setAccessible(true); result = m.invoke(instance, ev.get("value").getAsDouble());
+              }
+              case "brewed_potion" -> {
+                m = instance.getClass().getDeclaredMethod("matches", Holder.class); m.setAccessible(true);
+                result = m.invoke(instance, BuiltInRegistries.POTION.getHolder(ResourceLocation.parse(ev.get("potion").getAsString())).orElseThrow());
+              }
+              case "changed_dimension" -> {
+                m = instance.getClass().getDeclaredMethod("matches", ResourceKey.class, ResourceKey.class); m.setAccessible(true);
+                result = m.invoke(instance, ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, ResourceLocation.parse(ev.get("from").getAsString())),
+                    ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION, ResourceLocation.parse(ev.get("to").getAsString())));
+              }
+              case "enter_block", "slide_down_block" -> {
+                m = instance.getClass().getDeclaredMethod("matches", net.minecraft.world.level.block.state.BlockState.class); m.setAccessible(true); result = m.invoke(instance, state.apply("state"));
+              }
+              case "bee_nest_destroyed" -> {
+                m = instance.getClass().getDeclaredMethod("matches", net.minecraft.world.level.block.state.BlockState.class, ItemStack.class, int.class); m.setAccessible(true);
+                result = m.invoke(instance, state.apply("state"), item.apply("stack"), ev.get("value").getAsInt());
+              }
+              case "recipe_crafted", "crafter_recipe_crafted" -> {
+                m = instance.getClass().getDeclaredMethod("matches", ResourceLocation.class, List.class); m.setAccessible(true);
+                List<ItemStack> ingredients = new ArrayList<>();
+                for (JsonElement i : ev.getAsJsonArray("ingredients")) ingredients.add(stack(i.getAsJsonObject()));
+                result = m.invoke(instance, ResourceLocation.parse(ev.get("recipe").getAsString()), ingredients);
+              }
+              default -> throw new IllegalArgumentException(name);
+            }
+            outArr.add((Boolean) result);
+          } catch (Throwable t) {
+            outArr.add("error " + t);
+          }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("trigger-match=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the
