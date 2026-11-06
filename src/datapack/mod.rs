@@ -3,8 +3,11 @@
 
 pub mod config;
 pub mod packs;
+pub mod registries;
 pub mod tags;
 pub mod zip;
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod registry_tests;
