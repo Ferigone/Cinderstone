@@ -215,9 +215,17 @@ impl Server {
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
-                        let source_display = source_id.and_then(|id| online.iter().find(|p| p.entity_id == id))
-                            .map(|player| admission_commands::default_player_display_component(&player.profile))
-                            .unwrap_or_else(|| json!({"text":source.name}));
+                        let source_display = if is_idle {
+                            if let Some(id) = source_id {
+                                let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;
+                                let profile = &players.registry.get(id).context("idle command source missing")?.profile;
+                                main_scoreboard::decorated_name(&players.gameplay.scoreboard, profile)
+                            } else {json!({"text":source.name})}
+                        } else {
+                            source_id.and_then(|id| online.iter().find(|p| p.entity_id == id))
+                                .map(|player| admission_commands::default_player_display_component(&player.profile))
+                                .unwrap_or_else(|| json!({"text":source.name}))
+                        };
                         let admin_message = json!({"translate":"chat.type.admin", "with":[source_display,message.json_component()], "color":"gray","italic":true});
                         if log_admin && source_id.is_some() {
                             println!("{}", json!({"event":"administration_feedback","component":admin_message}));
