@@ -311,14 +311,13 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     tree.packet()
 }
 
-/// The time branch uses the actual dispatcher; administration keeps its existing route.
+/// Weather/time branches use their dispatchers; root suggestions retain administration.
 pub fn native_command_suggestions(
     request: &SuggestionRequest, permission_level: u8, context: &SuggestionContext<'_>,
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
-    if input == "weather" || input.starts_with("weather ") ||
-        (!input.is_empty() && "weather".starts_with(&input.to_lowercase())) {
+    if input == "weather" || input.starts_with("weather ") {
         if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
         let suggestions = crate::commands::weather_command::suggestions(input, permission_level)
             .map_err(|error| anyhow::anyhow!("weather suggestions: {error:?}"))?;
@@ -501,4 +500,33 @@ fn matches_substr(needle: &str, candidate: &str) -> bool {
     candidate
         .char_indices()
         .any(|(i, c)| (c == '.' || c == '_') && candidate[i + c.len_utf8()..].starts_with(needle))
+}
+
+#[cfg(test)]
+mod native_weather_tests {
+    use super::*;
+
+    #[test]
+    fn weather_root_completion_keeps_existing_whitelist_and_permissions() {
+        for (permission, expected) in [
+            (1, vec![]), (2, vec!["weather"]), (3, vec!["weather", "whitelist"]),
+        ] {
+            let packet = native_command_suggestions(&SuggestionRequest {
+                id: 9, command: "/w".into(),
+            }, permission, &SuggestionContext::default()).unwrap();
+            let mut reader = Reader::new(&packet.payload);
+            assert_eq!(reader.varint().unwrap(), 9);
+            let start = reader.varint().unwrap();
+            let length = reader.varint().unwrap();
+            let count = reader.varint().unwrap();
+            let mut texts = Vec::new();
+            for _ in 0..count {
+                texts.push(reader.string(32767).unwrap());
+                assert!(!reader.bool().unwrap());
+            }
+            reader.finish().unwrap();
+            assert_eq!(texts, expected);
+            assert_eq!((start, length), if expected.is_empty() { (0, 0) } else { (1, 1) });
+        }
+    }
 }
