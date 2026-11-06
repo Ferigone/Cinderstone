@@ -196,6 +196,7 @@
       "area": "world_storage",
       "delivery": "Pełny level.dat i saved-data lifecycle",
       "border_login_evidence": "Initial live world-border packet (#163): docs/validation/border-login.json; default and saved custom login bytes agree with Java. Remaining WP-G2 scope stays open.",
+      "world_type_login_evidence": "#170: initial isDebug/isFlat flags use saved overworld generator metadata; docs/validation/world-type-login.json matches real Java 1.21 for flat/noise/debug and native defaults. Generator/gameplay and aggregate WP-G2 remain incomplete.",
       "points": 1,
       "code_ported": false,
       "main_integrated": false,

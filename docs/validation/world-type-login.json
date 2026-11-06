@@ -1,0 +1,91 @@
+{
+  "ok": true,
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "7f72368f65ce44d349d8572a740dbd3c9d6f02ea",
+  "main_source_sha256": "4b3b204721ed1fa2aca688cf8f56169af3c44a5fa046ca41d5f83627cf55f0f8",
+  "binary_sha256": "0e62e750a37523043e090f962921ac5699f276e3ae491cfac309dba1305fb2d5",
+  "runner_sha256": "f21414c36dcbc61c97de67061508fd88996f750992e011eff8ee929856169749",
+  "client_sha256": "02da710af8d9db27a648180b3b60325e9f36e76425d62ace6f2569d1aa7a63da",
+  "java_options": [
+    "-XX:ActiveProcessorCount=2",
+    "-Xms128M",
+    "-Xmx768M"
+  ],
+  "cases": [
+    {
+      "java_preset": "flat",
+      "java": {
+        "ok": true,
+        "flags": {
+          "is_debug": false,
+          "is_flat": true
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "is_debug": false,
+          "is_flat": true
+        },
+        "position_received": true
+      }
+    },
+    {
+      "java_preset": "normal",
+      "java": {
+        "ok": true,
+        "flags": {
+          "is_debug": false,
+          "is_flat": false
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "is_debug": false,
+          "is_flat": false
+        },
+        "position_received": true
+      }
+    },
+    {
+      "java_preset": "debug_all_block_states",
+      "java": {
+        "ok": true,
+        "flags": {
+          "is_debug": true,
+          "is_flat": false
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "is_debug": true,
+          "is_flat": false
+        },
+        "position_received": true
+      }
+    }
+  ],
+  "scope": "Initial PLAY isDebug/isFlat flags only; no generator or gameplay parity",
+  "native_fresh": {
+    "ok": true,
+    "flags": {
+      "is_debug": false,
+      "is_flat": true
+    },
+    "position_received": true
+  },
+  "observed_at": "2026-11-06T17:10:49.874766+00:00",
+  "checks": {
+    "cargo check --locked --all-targets": "passed",
+    "CARGO_PROFILE_TEST_DEBUG=0 CARGO_BUILD_JOBS=1 cargo test --locked --lib level::tests": "passed (8 tests)",
+    "cargo test --locked --bin mc121-rust persistence_smoke": "passed"
+  },
+  "environment_note": "Initial concurrent Java/default-debug test compilation was killed by the host. Sequential tests with reduced test debug information and the recorded bounded JVM options passed."
+}
