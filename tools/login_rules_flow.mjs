@@ -2,12 +2,13 @@
 // The same real protocol client captures both Java and native PLAY login flags.
 import mc from 'minecraft-protocol';
 import {writeFile} from 'node:fs/promises';
-const [port, output] = process.argv.slice(2);
+const [port, output, kind = 'ui', username = 'LoginRulesProbe'] = process.argv.slice(2);
 let client, login, failure, position;
 const result = {ok: false};
 const timeout = setTimeout(() => { failure = Error('PLAY login/position deadline'); }, 30000);
 try {
-  client = mc.createClient({host: '127.0.0.1', port: Number(port), username: 'LoginRulesProbe',
+  if (!['ui', 'world-type'].includes(kind)) throw Error('Unknown login capture kind');
+  client = mc.createClient({host: '127.0.0.1', port: Number(port), username,
     auth: 'offline', version: '1.21', keepAlive: false, hideErrors: true});
   client.on('error', e => { failure = e; });
   client.on('kick_disconnect', () => { failure = Error('Kicked before admission'); });
@@ -16,7 +17,9 @@ try {
   client.on('chunk_batch_finished', () => client.write('chunk_batch_received', {chunksPerTick: 16}));
   client.on('packet', (p, meta) => {
     if (meta.state === 'play' && meta.name === 'login') {
-      login = {reduced_debug_info: p.reducedDebugInfo, show_death_screen: p.enableRespawnScreen};
+      login = kind === 'world-type'
+        ? {is_debug: p.worldState.isDebug, is_flat: p.worldState.isFlat}
+        : {reduced_debug_info: p.reducedDebugInfo, show_death_screen: p.enableRespawnScreen};
     }
   });
   client.on('position', p => {
@@ -27,7 +30,7 @@ try {
     if (failure) throw failure;
     await new Promise(resolve => setTimeout(resolve, 20));
   }
-  if (typeof login.reduced_debug_info !== 'boolean' || typeof login.show_death_screen !== 'boolean')
+  if (!Object.values(login).every(value => typeof value === 'boolean'))
     throw Error('Missing login flags');
   Object.assign(result, {ok: true, flags: login, position_received: true});
 } catch (e) { result.error = e.message; process.exitCode = 1; }

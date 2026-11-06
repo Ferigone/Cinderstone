@@ -138,6 +138,24 @@ impl LevelData {
             .transpose()
             .map(|value| value.unwrap_or(0))
     }
+    /// Client world-type flags for the saved overworld's actual chunk generator.
+    /// This reads metadata only; it does not implement any generator.
+    pub fn overworld_generator_flags(&self) -> Result<(bool, bool)> {
+        let generator = self.data().get("WorldGenSettings")
+            .and_then(|settings| settings.get("dimensions"))
+            .and_then(|dimensions| dimensions.get("minecraft:overworld"))
+            .and_then(|overworld| overworld.get("generator"))
+            .context("level.dat has no saved overworld generator metadata")?;
+        let Some(Tag::String(kind)) = generator.get("type") else {
+            bail!("level.dat overworld generator has no string type");
+        };
+        match kind.as_str() {
+            Some("minecraft:flat") => Ok((false, true)),
+            Some("minecraft:noise") => Ok((false, false)),
+            Some("minecraft:debug") => Ok((true, false)),
+            _ => bail!("unsupported saved overworld generator type: {kind:?}"),
+        }
+    }
     /// Exact WorldBorder.Settings.read semantics, including numeric tag
     /// conversions and the official per-field defaults for missing values.
     pub fn border_settings(&self) -> BorderSettings {
@@ -289,6 +307,36 @@ mod tests {
         assert_eq!(weather.thunder_level, 1.0);
         assert_eq!(weather.old_rain_level, 0.0);
         assert_eq!(weather.old_thunder_level, 0.0);
+    }
+    #[test]
+    fn world_type_flags_use_saved_overworld_not_other_dimensions() {
+        let mut level = fixture();
+        for (kind, expected) in [("minecraft:flat", (false, true)),
+            ("minecraft:noise", (false, false)), ("minecraft:debug", (true, false))] {
+            let dimension = |kind: &str| Tag::Compound(vec![("generator".into(),
+                Tag::Compound(vec![("type".into(), Tag::String(kind.into()))]))]);
+            let settings = Tag::Compound(vec![("dimensions".into(), Tag::Compound(vec![
+                ("minecraft:overworld".into(), dimension(kind)),
+                ("minecraft:the_nether".into(), dimension("minecraft:noise")),
+            ]))]);
+            level.root.tag.get_mut("Data").unwrap().insert("WorldGenSettings", settings).unwrap();
+            let before = level.document().clone();
+            assert_eq!(level.overworld_generator_flags().unwrap(), expected);
+            assert_eq!(level.document(), &before);
+        }
+    }
+    #[test]
+    fn world_type_flags_do_not_guess_missing_or_unsupported_generators() {
+        let mut level = fixture();
+        assert!(level.overworld_generator_flags().is_err());
+        for kind in [Tag::String("example:unknown".into()), Tag::Int(1)] {
+            let settings = Tag::Compound(vec![("dimensions".into(), Tag::Compound(vec![
+                ("minecraft:overworld".into(), Tag::Compound(vec![("generator".into(),
+                    Tag::Compound(vec![("type".into(), kind)]))])),
+            ]))]);
+            level.root.tag.get_mut("Data").unwrap().insert("WorldGenSettings", settings).unwrap();
+            assert!(level.overworld_generator_flags().is_err());
+        }
     }
     #[test]
     fn difficulty_lock_survives_clock_save_without_changing_difficulty() {
