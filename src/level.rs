@@ -92,6 +92,20 @@ impl LevelData {
     pub fn rules(&self) -> WorldRules {
         WorldRules::read(self.data().get("GameRules"))
     }
+    /// The saved lock is independent of dedicated-server configured difficulty.
+    pub fn difficulty_locked(&self) -> bool {
+        // Dynamic/NbtOps.asBoolean(false): Number.byteValue() != 0.
+        let value = match self.data().get("DifficultyLocked") {
+            Some(Tag::Byte(v)) => *v,
+            Some(Tag::Short(v)) => *v as i8,
+            Some(Tag::Int(v)) => *v as i8,
+            Some(Tag::Long(v)) => *v as i8,
+            Some(Tag::Float(v)) => *v as i32 as i8,
+            Some(Tag::Double(v)) => *v as i32 as i8,
+            _ => 0,
+        };
+        value != 0
+    }
     pub fn weather(&self) -> Result<WeatherState> {
         let mut weather = WeatherState {
             clear_weather_time: int(self.data(), "clearWeatherTime", 0)?,
@@ -275,6 +289,32 @@ mod tests {
         assert_eq!(weather.thunder_level, 1.0);
         assert_eq!(weather.old_rain_level, 0.0);
         assert_eq!(weather.old_thunder_level, 0.0);
+    }
+    #[test]
+    fn difficulty_lock_survives_clock_save_without_changing_difficulty() {
+        let mut level = fixture();
+        assert!(!level.difficulty_locked());
+        let data = level.root.tag.get_mut("Data").unwrap();
+        data.insert("Difficulty", Tag::Byte(3)).unwrap();
+        data.insert("DifficultyLocked", Tag::Byte(1)).unwrap();
+        assert!(level.difficulty_locked());
+        level.update(level.clock().unwrap(), None, 123).unwrap();
+        assert!(level.difficulty_locked());
+        assert_eq!(level.data().get("Difficulty"), Some(&Tag::Byte(3)));
+    }
+    #[test]
+    fn difficulty_lock_uses_nbt_numeric_byte_conversion() {
+        let mut level = fixture();
+        for (tag, expected) in [
+            (Tag::Int(256), false),
+            (Tag::Short(-1), true),
+            (Tag::Double(f64::NAN), false),
+            (Tag::Float(1.9), true),
+            (Tag::String("true".into()), false),
+        ] {
+            level.root.tag.get_mut("Data").unwrap().insert("DifficultyLocked", tag).unwrap();
+            assert_eq!(level.difficulty_locked(), expected);
+        }
     }
     #[test]
     fn border_checkpoint_preserves_unknown_fields_and_interpolation() {

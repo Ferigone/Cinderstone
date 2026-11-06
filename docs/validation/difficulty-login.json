@@ -1,0 +1,112 @@
+{
+  "ok": true,
+  "source_commit": "38ed2d43146de7705549c2d83ac61dbe1004c232",
+  "binary_sha256": "537680cb2f216cc0eac5c75b19835f2ac93bcadb1bb54258677573ef45b74941",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "scene": "Synthetic exact-version level.dat; no region chunks or imported gameplay",
+  "oracle": {
+    "packets": [
+      {
+        "difficulty": 0,
+        "locked": false,
+        "payload_hex": "0000"
+      },
+      {
+        "difficulty": 0,
+        "locked": true,
+        "payload_hex": "0001"
+      },
+      {
+        "difficulty": 1,
+        "locked": false,
+        "payload_hex": "0100"
+      },
+      {
+        "difficulty": 1,
+        "locked": true,
+        "payload_hex": "0101"
+      },
+      {
+        "difficulty": 2,
+        "locked": false,
+        "payload_hex": "0200"
+      },
+      {
+        "difficulty": 2,
+        "locked": true,
+        "payload_hex": "0201"
+      },
+      {
+        "difficulty": 3,
+        "locked": false,
+        "payload_hex": "0300"
+      },
+      {
+        "difficulty": 3,
+        "locked": true,
+        "payload_hex": "0301"
+      }
+    ],
+    "numeric_lock_results": [
+      false,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "cases": [
+    {
+      "name": "imported-locked",
+      "observation": {
+        "ok": true,
+        "login": true,
+        "packets": [
+          {
+            "difficulty": "easy",
+            "difficultyLocked": true
+          }
+        ],
+        "payloads": [
+          "0101"
+        ]
+      },
+      "original_packet_equal": true
+    },
+    {
+      "name": "imported-unlocked",
+      "observation": {
+        "ok": true,
+        "login": true,
+        "packets": [
+          {
+            "difficulty": "hard",
+            "difficultyLocked": false
+          }
+        ],
+        "payloads": [
+          "0300"
+        ]
+      },
+      "original_packet_equal": true
+    },
+    {
+      "name": "native-configured",
+      "observation": {
+        "ok": true,
+        "login": true,
+        "packets": [
+          {
+            "difficulty": "hard",
+            "difficultyLocked": false
+          }
+        ],
+        "payloads": [
+          "0300"
+        ]
+      },
+      "original_packet_equal": true
+    }
+  ],
+  "completed_at": "2026-11-06T14:52:05.803859+00:00"
+}

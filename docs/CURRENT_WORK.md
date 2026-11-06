@@ -38,6 +38,16 @@ fresh native defaults remain false/true. All-target check, world-rule tests and
 the Main save/rejoin smoke passed. Death/respawn gameplay and the rest of #41
 remain incomplete; scope version 1 and checklist counts are unchanged.
 
+## Existing-world difficulty publication (#160)
+
+Main now sends configured difficulty and the saved `DifficultyLocked` flag on
+existing-world PLAY initialization. Fresh native worlds stay unlocked. The
+[focused report](validation/difficulty-login.json) records three real protocol
+connections with packet bodies equal to the unchanged Java 1.21 codec. Imported
+cases use synthetic level metadata and stop at initial level-info; complete
+terrain transport and imported gameplay are not verified. Full WP-G2 stays open;
+scope version 1 and checklist counts remain 56/100 code, 51/100 Main.
+
 ## End-to-end differential runner (WP-Q1)
 
 The [scenario runner](reference/parity-runner.md) compares an unchanged pinned
