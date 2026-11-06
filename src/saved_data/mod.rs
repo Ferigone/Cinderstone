@@ -6,13 +6,20 @@
 //! cached as absent, as in Java), tracks dirty state per object and writes only dirty objects.
 //! Evidence and limits: `docs/reference/saved-data.md`.
 
+pub mod command_storage;
 pub mod file;
+pub mod forced_chunks;
+pub mod java_collections;
 pub mod owners;
 pub mod storage;
 
 #[cfg(test)]
+mod owners_tests;
+#[cfg(test)]
 mod tests;
 
+pub use command_storage::{CommandStorage, CommandStorageContainer};
+pub use forced_chunks::ForcedChunks;
 pub use owners::{random_sequences_factory, MapIndex, RANDOM_SEQUENCES};
 pub use storage::{DataFixType, DimensionDataStorage, Factory, SavedData, SavedDataError};
 

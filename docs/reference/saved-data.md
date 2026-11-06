@@ -9,7 +9,8 @@ official mappings SHA-1 `31c77994d96f05ba25a870ada70f47f315330437`
 ([`fixtures/source-lock.json`](../../fixtures/source-lock.json)). Java artifacts and decompiled
 text stay outside Git.
 
-Scope: `src/saved_data/**`, work package WP-G2 stage 2 and the first stage-3 owners (delivery
+Scope: `src/saved_data/**`, work package WP-G2 stage 2 and stage-3 owners (`idcounts`, `random_sequences`,
+`command_storage_*`, `chunks`; the scoreboard owner is in [scoreboard.md](scoreboard.md)) (delivery
 `world_storage.4`, **partial**). It claims **no** checklist point and **no** Main integration:
 nothing in `src/` outside the module calls it, and `src/level.rs`, `src/world_rules.rs` and
 `src/storage.rs` are untouched.
@@ -25,6 +26,9 @@ nothing in `src/` outside the module calls it, and `src/level.rs`, `src/world_ru
 | `DataFixTypes.update` | `DataFixType::update` | exact for the two owned types (see below) |
 | `MapIndex` (`idcounts`) | `saved_data::MapIndex` | `getFreeAuxValueForMap`, `load` with `getInt` conversion |
 | `RandomSequences` (`random_sequences`) | `loot::sequences::RandomSequences` as a `SavedData`, `random_sequences_factory(seed)` | the type is the one merged with the loot port |
+| `CommandStorage`, `CommandStorage.Container` (`command_storage_<namespace>`) | `saved_data::{CommandStorage, CommandStorageContainer}` | `get`, `set`, `keys`; the `HashMap` order of namespaces and paths; an empty compound removes an entry |
+| `ForcedChunksSavedData` (`chunks`) | `saved_data::ForcedChunks` | the `Forced` long array in fastutil `LongOpenHashSet` order; `set_forced` is `ServerLevel.setChunkForced` |
+| `java.util.HashMap<String, V>`, `LongOpenHashSet`, the `HashMap` order of a `CompoundTag` | `saved_data::java_collections::{JavaHashMap, LongOpenHashSet, to_java_order}` | table doubling and no shrinking; open addressing with back-shift deletion, rehash and shrink |
 
 Behaviours the original showed (each pinned by a scenario):
 
@@ -54,6 +58,22 @@ Behaviours the original showed (each pinned by a scenario):
   order. `reset` and `clear` do **not** mark the data dirty (only a draw does).
 - **`MapIndex`.** Every numeric member is kept through `getInt` (a long truncates, a float floors),
   the first id handed out is 0, and the counter wraps like a Java `int`.
+- **`CommandStorage`.** `get` returns an empty compound for a missing container or path; `set`
+  creates the container on demand (not dirty until `put`, which always marks it dirty, even when it
+  removes a path or the path was absent) and an empty compound removes the entry. `keys()` walks the
+  namespaces *this instance* has loaded or created, in `HashMap` order, and within each the container's
+  paths in `HashMap` order; a stored path that is not a valid resource-location path (`Bad`, a file edited by
+  hand) makes the whole call throw. `load` stores every member of `contents` (a member that is not a
+  compound becomes an empty compound), visiting them in the order the `contents` compound iterates.
+  `save` fills a *fresh* `CompoundTag` in the container's iteration order, so the written order comes
+  from a table sized for the entries now present, not for the ones once removed: a container that
+  grew and shrank iterates in one order and is written in another. No data fixer exists for the type.
+- **`ForcedChunksSavedData`.** `load` is `new LongOpenHashSet(getLongArray("Forced"))` (a missing or
+  non-long-array member is empty; the table is sized for the array length, duplicates collapse). The
+  array is written in `toLongArray()` order: the zero key (chunk 0,0) first, then the table from the
+  last slot down; adding grows the table at 75% load, removing back-shifts the following keys and
+  halves the table when the set is below a quarter of the load limit (never below the size it started
+  with, and never below 16). No data fixer exists for the type.
 
 ## Evidence
 
@@ -81,8 +101,23 @@ this library (`idcounts` and `random_sequences` for three world seeds, after ids
 original `DimensionDataStorage`: all six loaded, and the payload the original re-saved was equal
 to this library's, member order aside.
 
-`cargo test --locked --lib saved_data` runs the scenarios, the mutants and seven focused tests in
-about half a second.
+### Command storage and forced chunks
+
+`tools/saved_data_owners_generate.py` (oracle ops `cs_get`, `cs_set`, `cs_keys`, `fc_apply`, and the
+`raw` stream of every saved file) adds `fixtures/saved-data-owners-vectors.json`: **162 scenarios
+and 426 mutants generated** (66 scenarios and 86 mutants committed; `--full-out` keeps all), with
+the original's answer for every step and the NBT stream of every file it wrote **byte for byte,
+member order included**. They cover: files put on disk before the first access (plain, gzip, old
+data versions, non-compound members, an empty `contents`, uppercase paths that make `keys()` throw),
+random `set`/`get`/`keys`/`save` sequences over up to four namespaces and 55 paths with removals (the table
+grows to 128 buckets and keeps it), reloading a written file, `chunks` add/remove sequences up to 325
+positions (several rehashes and the shrink after most are removed), positions that collide in the
+table, `get`/`compute`/`set_dirty` of `chunks`, `read_tag` at versions 1 … 4000 for both types, and 426
+one-step mutants of `chunks.dat` / `command_storage_ns.dat` payloads. **All agree with zero
+disagreements.** Five deliberate mutations of the port were each caught: no shrink on removal, no table
+growth, the table resetting on removal, an ascending `toLongArray`, and `save` writing the in-memory order.
+
+`cargo test --locked --lib saved_data` runs all of it in about a second.
 
 ## Deliberate differences from the original
 
@@ -92,13 +127,20 @@ about half a second.
 - **A failed write keeps the object dirty** (Java clears the flag whatever happens), so the next
   `save` retries; the failure is in `diagnostics()`.
 - **The `data` folder is not created**; a missing folder is a logged write failure as in Java.
-- Names containing a path separator or `..` are rejected.
+- A name that is empty, `.`, `..`, or contains a path separator or NUL is rejected (`a..b` is fine).
+- `CommandStorage` registers a namespace the first time the instance obtains its container; the
+  original registers it inside the factory lambda, which also runs when another `CommandStorage`
+  over the same `DimensionDataStorage` loaded the file first. A server has one instance.
+- A `HashMap` bin is never treeified here (eight keys in one bucket of a table of at least 64 buckets).
+- Values stored by `CommandStorage::set` keep the member order the caller built them with (the
+  crate builds compounds in `HashMap` order); values read from a file are re-ordered with
+  `to_java_order`, as the original's `HashMap` would iterate them.
 
 ## Not implemented
 
 `level.dat` and `PrimaryLevelData` field owners (stage 1), per-dimension storage (needs WP-G1),
-save ordering and `saveAllChunks` (stage 4), the scoreboard, command-storage, forced-chunk, raid,
-map-data and structure-index owners, DataFixers for any other type (WP-G5), the 2 MiB read quota
+save ordering and `saveAllChunks` (stage 4), the raid, map-data and structure-index owners, DataFixers
+for any other type (WP-G5), the 2 MiB read quota
 of an uncompressed `NbtIo.read` (this library bounds reads with the crate's NBT limits), and any
 Main wiring.
 
@@ -107,5 +149,6 @@ Main wiring.
 ```bash
 python3 tools/loot_oracle_setup.py --oracle-dir /path/outside/git      # JDK 21 required
 python3 tools/saved_data_generate.py --oracle-dir /path/outside/git
+python3 tools/saved_data_owners_generate.py --oracle-dir /path/outside/git [--full-out FILE]
 cargo test --locked --lib saved_data
 ```

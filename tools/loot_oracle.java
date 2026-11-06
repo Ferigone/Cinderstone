@@ -924,6 +924,7 @@ public class loot_oracle {
             net.minecraft.world.level.storage.DimensionDataStorage storage =
                 new net.minecraft.world.level.storage.DimensionDataStorage(dir.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), access);
             JsonArray results = new JsonArray();
+            net.minecraft.world.level.storage.CommandStorage[] commandStorage = new net.minecraft.world.level.storage.CommandStorage[1];
             for (JsonElement stepElement : scenario.getAsJsonArray("steps")) {
               JsonObject step = stepElement.getAsJsonObject();
               JsonObject r = new JsonObject();
@@ -967,6 +968,9 @@ public class loot_oracle {
                     if (name.equals("random_sequences")) {
                       var factory = net.minecraft.world.RandomSequences.factory(worldSeed);
                       data = op.equals("get") ? storage.get(factory, name) : storage.computeIfAbsent(factory, name);
+                    } else if (name.equals("chunks")) {
+                      var factory = net.minecraft.world.level.ForcedChunksSavedData.factory();
+                      data = op.equals("get") ? storage.get(factory, name) : storage.computeIfAbsent(factory, name);
                     } else {
                       var factory = net.minecraft.world.level.saveddata.maps.MapIndex.factory();
                       data = op.equals("get") ? storage.get(factory, name) : storage.computeIfAbsent(factory, name);
@@ -977,6 +981,39 @@ public class loot_oracle {
                       r.addProperty("dirty", data.isDirty());
                       r.addProperty("data", tagHex(data.save(new CompoundTag(), access)));
                     }
+                    break;
+                  }
+                  case "cs_get": {
+                    // CommandStorage.get: an empty compound when absent.
+                    if (commandStorage[0] == null) commandStorage[0] = new net.minecraft.world.level.storage.CommandStorage(storage);
+                    r.addProperty("nbt", tagHex(commandStorage[0].get(ResourceLocation.parse(step.get("id").getAsString()))));
+                    break;
+                  }
+                  case "cs_set": {
+                    if (commandStorage[0] == null) commandStorage[0] = new net.minecraft.world.level.storage.CommandStorage(storage);
+                    commandStorage[0].set(ResourceLocation.parse(step.get("id").getAsString()), (CompoundTag) renameWrap(new TagParser(new com.mojang.brigadier.StringReader(step.get("snbt").getAsString())).readValue()));
+                    break;
+                  }
+                  case "cs_keys": {
+                    if (commandStorage[0] == null) commandStorage[0] = new net.minecraft.world.level.storage.CommandStorage(storage);
+                    JsonArray keys = new JsonArray();
+                    commandStorage[0].keys().forEach(k -> keys.add(k.toString()));
+                    r.add("keys", keys);
+                    break;
+                  }
+                  case "fc_apply": {
+                    // ServerLevel.setChunkForced: add or remove one packed chunk position, dirty on change.
+                    var forced = storage.computeIfAbsent(net.minecraft.world.level.ForcedChunksSavedData.factory(), "chunks");
+                    long packed = step.get("pos").getAsLong();
+                    boolean changed = step.get("forced").getAsBoolean() ? forced.getChunks().add(packed) : forced.getChunks().remove(packed);
+                    if (changed) forced.setDirty();
+                    r.addProperty("changed", changed);
+                    if (!step.has("quiet") || !step.get("quiet").getAsBoolean()) {
+                      JsonArray all = new JsonArray();
+                      for (long c : forced.getChunks().toLongArray()) all.add(c);
+                      r.add("chunks", all);
+                    }
+                    r.addProperty("dirty", forced.isDirty());
                     break;
                   }
                   case "free_map_id": {
@@ -1026,6 +1063,13 @@ public class loot_oracle {
                       f.addProperty("rewritten", !Arrays.equals(bytes, put.get(name)));
                       f.addProperty("gzip", bytes.length >= 2 && (bytes[0] & 255) == 0x1f && (bytes[1] & 255) == 0x8b);
                       try {
+                        // The NBT stream as written (member order included), without the gzip layer.
+                        byte[] rawBytes = f.get("gzip").getAsBoolean() ? new java.util.zip.GZIPInputStream(new ByteArrayInputStream(bytes)).readAllBytes() : bytes;
+                        f.addProperty("raw", hex(rawBytes));
+                      } catch (Exception bad) {
+                        // unreadable files are reported below
+                      }
+                      try {
                         CompoundTag tag;
                         if (f.get("gzip").getAsBoolean()) tag = NbtIo.readCompressed(new ByteArrayInputStream(bytes), NbtAccounter.unlimitedHeap());
                         else tag = NbtIo.read(new DataInputStream(new ByteArrayInputStream(bytes)));
@@ -1040,7 +1084,10 @@ public class loot_oracle {
                   }
                   case "read_tag": {
                     String name = step.get("name").getAsString();
-                    var type = name.equals("random_sequences") ? net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_RANDOM_SEQUENCES : net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_MAP_INDEX;
+                    var type = name.equals("random_sequences") ? net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_RANDOM_SEQUENCES
+                        : name.equals("chunks") ? net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_FORCED_CHUNKS
+                        : name.startsWith("command_storage_") ? net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_COMMAND_STORAGE
+                        : net.minecraft.util.datafix.DataFixTypes.SAVED_DATA_MAP_INDEX;
                     int version = step.has("version") ? step.get("version").getAsInt() : SharedConstants.getCurrentVersion().getDataVersion().getVersion();
                     r.addProperty("nbt", tagHex(storage.readTagFromDisk(name, type, version)));
                     break;
@@ -1091,8 +1138,30 @@ public class loot_oracle {
               NbtIo.writeCompressed(root, dir.resolve(name + ".dat"));
               net.minecraft.world.level.storage.DimensionDataStorage storage =
                   new net.minecraft.world.level.storage.DimensionDataStorage(dir.toFile(), net.minecraft.util.datafix.DataFixers.getDataFixer(), access);
-              net.minecraft.world.level.saveddata.SavedData data;
+              net.minecraft.world.level.saveddata.SavedData data = null;
+              if (name.startsWith("command_storage_")) {
+                // CommandStorage hides its container: probe it through the public API. The
+                // namespace is the file name suffix; the keys come from the file's own contents.
+                String namespace = name.substring("command_storage_".length());
+                var commandStorage = new net.minecraft.world.level.storage.CommandStorage(storage);
+                JsonArray keys = new JsonArray();
+                JsonObject values = new JsonObject();
+                CompoundTag contents = payload.getValue() instanceof CompoundTag c ? c.getCompound("contents") : new CompoundTag();
+                java.util.Set<String> probe = new java.util.TreeSet<>(contents.getAllKeys());
+                probe.add("absent");
+                for (String key : probe) {
+                  ResourceLocation id = ResourceLocation.fromNamespaceAndPath(namespace, key);
+                  values.addProperty(key, tagHex(commandStorage.get(id)));
+                }
+                commandStorage.keys().forEach(k -> keys.add(k.toString()));
+                r.add("keys", keys);
+                r.add("values", values);
+                r.addProperty("present", true);
+                outArr.add(r);
+                continue;
+              }
               if (name.equals("random_sequences")) data = storage.get(net.minecraft.world.RandomSequences.factory(worldSeed), name);
+              else if (name.equals("chunks")) data = storage.get(net.minecraft.world.level.ForcedChunksSavedData.factory(), name);
               else data = storage.get(net.minecraft.world.level.saveddata.maps.MapIndex.factory(), name);
               r.addProperty("present", data != null);
               if (data != null) r.addProperty("data", tagHex(data.save(new CompoundTag(), access)));

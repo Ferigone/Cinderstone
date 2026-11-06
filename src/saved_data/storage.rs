@@ -53,6 +53,10 @@ pub enum DataFixType {
     /// `SAVED_DATA_SCOREBOARD`: several fixers rewrite it (display slots, text components), so only
     /// data already at the target version is accepted.
     SavedDataScoreboard,
+    /// `SAVED_DATA_COMMAND_STORAGE`: no fixer is registered for this type.
+    SavedDataCommandStorage,
+    /// `SAVED_DATA_FORCED_CHUNKS`: no fixer is registered for this type.
+    SavedDataForcedChunks,
 }
 
 impl DataFixType {
@@ -60,7 +64,9 @@ impl DataFixType {
     /// `to` is returned unchanged.
     pub fn update(self, root: Tag, from: i32, to: i32) -> Result<Tag, SavedDataError> {
         match self {
-            Self::SavedDataMapIndex => Ok(root),
+            Self::SavedDataMapIndex
+            | Self::SavedDataCommandStorage
+            | Self::SavedDataForcedChunks => Ok(root),
             Self::SavedDataScoreboard => {
                 if from >= to {
                     Ok(root)
@@ -138,7 +144,9 @@ impl DimensionDataStorage {
     }
 
     fn data_file(&self, name: &str) -> Result<PathBuf, SavedDataError> {
-        if name.is_empty() || name.contains(['/', '\\']) || name.contains("..") {
+        // A name is one path component; `a..b` is fine (the file is `a..b.dat`), the bare dot
+        // names are refused as a precaution.
+        if name.is_empty() || name == "." || name == ".." || name.contains(['/', '\\', '\0']) {
             return Err(SavedDataError::InvalidName(name.to_owned()));
         }
         Ok(self.folder.join(format!("{name}.dat")))
