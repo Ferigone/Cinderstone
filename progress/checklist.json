@@ -660,7 +660,8 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "weather_evidence": "Partial /weather runtime (#177): native Brigadier, level RNG/weather timers, exact original witnesses and ordered protocol/restart flow; docs/validation/weather-command-runtime.json. Full catalog remains incomplete."
+      "weather_evidence": "Partial /weather runtime (#177): native Brigadier, level RNG/weather timers, exact original witnesses and ordered protocol/restart flow; docs/validation/weather-command-runtime.json. Full catalog remains incomplete.",
+      "seed_evidence": "Partial /seed runtime (#179): explicit raw seed, Brigadier/permission2, original rich feedback/result witnesses, private protocol/restart flow; docs/validation/seed-command-runtime.json. Full catalog remains incomplete."
     },
     {
       "id": "commands_data.2",
