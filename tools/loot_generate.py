@@ -454,6 +454,44 @@ def synthetic_cases():
         item("apple", functions=[{"function": "minecraft:filtered", "item_filter": {"items": "minecraft:stick"}, "modifier": const_count(7)}]),
         item("stick", functions=[{"function": "minecraft:filtered", "item_filter": {"count": {"min": 2}},
                                   "modifier": [const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), lore(["filtered"])]}])]}]}, 48)
+    # banner patterns and fireworks
+    explosion = {"shape": "creeper", "colors": [16711680, -1], "fade_colors": [255], "has_trail": True}
+    fw = lambda **extra: {"function": "minecraft:set_fireworks", **extra}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("white_banner", functions=[{"function": "minecraft:set_banner_pattern", "append": False, "patterns": [
+            {"pattern": "minecraft:creeper", "color": "red"}, {"pattern": "minecraft:triangles_top", "color": "black"}]}]),
+        item("white_banner", functions=[{"function": "minecraft:set_banner_pattern", "append": False, "patterns": [{"pattern": "minecraft:base", "color": "blue"}]},
+                                        {"function": "minecraft:set_banner_pattern", "append": True, "patterns": [
+            {"pattern": {"asset_id": "test:inline", "translation_key": "block.test.inline"}, "color": "lime"}]}]),
+        item("shield", functions=[{"function": "minecraft:set_banner_pattern", "append": True, "patterns": [{"pattern": "minecraft:globe", "color": "light_blue"}]}]),
+        item("white_banner", functions=[{"function": "minecraft:set_banner_pattern", "append": False, "patterns": []}]),
+        item("firework_rocket", functions=[fw(flight_duration=3)]),
+        item("firework_rocket", functions=[fw(flight_duration=300)]),
+        item("firework_rocket", functions=[fw(explosions={"values": [explosion, {"shape": "star"}], "mode": "append"})]),
+        item("firework_rocket", functions=[fw(explosions={"values": [explosion, explosion], "mode": "append"}),
+                                           fw(explosions={"values": [{"shape": "burst", "has_twinkle": True}], "mode": "insert", "offset": 1}, flight_duration=0)]),
+        item("firework_rocket", functions=[fw(explosions={"values": [explosion, explosion, explosion], "mode": "append"}),
+                                           fw(explosions={"values": [], "mode": "replace_section", "offset": 1, "size": 1})]),
+        item("stick", functions=[fw(explosions={"values": [explosion], "mode": "replace_all"})]),
+        item("firework_star", functions=[{"function": "minecraft:set_firework_explosion", "shape": "large_ball", "colors": [1, 2, 3], "trail": True}]),
+        item("firework_star", functions=[{"function": "minecraft:set_firework_explosion", "twinkle": True},
+                                         {"function": "minecraft:set_firework_explosion", "fade_colors": [7], "trail": False}]),
+        item("firework_star", functions=[{"function": "minecraft:set_firework_explosion"}])]}]}, 39)
+    # books
+    cover = lambda **extra: {"function": "minecraft:set_book_cover", **extra}
+    written = lambda pages, **mode: {"function": "minecraft:set_written_book_pages", "pages": pages, **(mode or {"mode": "append"})}
+    writable = lambda pages, **mode: {"function": "minecraft:set_writable_book_pages", "pages": pages, **(mode or {"mode": "append"})}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("written_book", functions=[cover(title="Tale", author="Steve", generation=2)]),
+        item("written_book", functions=[cover(title={"raw": "Raw", "filtered": "Filt"})]),
+        item("written_book", functions=[written(["one", {"text": "two", "color": "red"}])]),
+        item("written_book", functions=[cover(author="A"), written([{"raw": "r", "filtered": {"translate": "f"}}, "p2"]),
+                                        written(["ins"], mode="insert", offset=1)]),
+        item("written_book", functions=[written(["a", "b", "c"]), written(["X"], mode="replace_section", offset=0, size=2)]),
+        item("writable_book", functions=[writable(["page one", {"raw": "raw", "filtered": "f"}])]),
+        item("writable_book", functions=[writable(["p"] * 60), writable(["q"] * 50)]),
+        item("writable_book", functions=[writable(["a", "b"]), writable(["c"], mode="replace_all")]),
+        item("stick", functions=[cover(generation=3)])]}]}, 27)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 
