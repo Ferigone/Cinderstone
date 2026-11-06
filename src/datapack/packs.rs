@@ -4,7 +4,10 @@
 //! of the three packs built into the server. Evidence and limits: `docs/reference/datapack-packs.md`.
 
 use super::zip;
-use crate::components::java::{hashmap_order_by_hash, resource_location, resource_location_hash};
+use crate::components::java::{
+    hashmap_order_by_hash, json_number_int_value, resource_location, resource_location_hash,
+};
+use crate::components::lenient::parse_strict_prefix;
 use crate::components::text::Component;
 use serde_json::Value;
 use std::collections::BTreeMap;
@@ -66,10 +69,7 @@ pub struct PackMetadata {
 fn parse_range(value: &Value) -> Option<(i32, i32)> {
     let int = |v: &Value| -> Option<i32> {
         match v {
-            Value::Number(n) => Some(
-                n.as_i64()
-                    .map_or_else(|| n.as_f64().unwrap_or(0.0) as i64, |i| i) as i32,
-            ),
+            Value::Number(n) => Some(json_number_int_value(n)),
             _ => None,
         }
     };
@@ -113,14 +113,10 @@ fn sorted_unique(mut names: Vec<String>) -> Vec<String> {
 
 /// `Pack.readPackMetadata` for the text of a `pack.mcmeta`; `None` is a pack the original skips.
 pub fn read_metadata(mcmeta: &str, pack_version: i32) -> Option<PackMetadata> {
-    // GsonHelper.parse: strict JSON, an object at the top. Gson reads one value and never looks at
-    // what follows it, and its reader skips a leading byte-order mark.
-    let text = mcmeta.strip_prefix('\u{feff}').unwrap_or(mcmeta);
-    let Value::Object(root) = serde_json::Deserializer::from_str(text)
-        .into_iter::<Value>()
-        .next()?
-        .ok()?
-    else {
+    // GsonHelper.parse: Gson's strict reader, an object at the top. It reads one value and never
+    // looks at what follows it, skips a leading byte-order mark, and accepts raw control
+    // characters inside strings.
+    let Value::Object(root) = parse_strict_prefix(mcmeta).ok()? else {
         return None;
     };
     // PackMetadataSection (required): description, pack_format, lenient supported_formats.
@@ -130,10 +126,7 @@ pub fn read_metadata(mcmeta: &str, pack_version: i32) -> Option<PackMetadata> {
     let description =
         Component::from_json(pack.get("description").filter(|v| !v.is_null())?).ok()?;
     let pack_format = match pack.get("pack_format").filter(|v| !v.is_null())? {
-        Value::Number(n) => {
-            n.as_i64()
-                .map_or_else(|| n.as_f64().unwrap_or(0.0) as i64, |i| i) as i32
-        }
+        Value::Number(n) => json_number_int_value(n),
         _ => return None,
     };
     let declared = match pack

@@ -32,7 +32,9 @@ Behaviours the oracle forced (each was a real mismatch before it was fixed):
 
 - **Gson reads one value and stops.** `GsonHelper.parse` is not lenient, but it never checks what
   follows the first object: `{...},` and `{...} {}` are accepted, a leading byte-order mark is
-  skipped, a top-level array or `null` is not.
+  skipped, a top-level array or `null` is not. The reader is `components::lenient::parse_strict_prefix`
+  (not `serde_json`): a raw tab, newline or NUL inside a string is accepted and a number keeps its
+  text whatever its size (`pack_format: 1e400` is read as an `int` of 0).
 - **`Codec.INT` takes numbers only.** A boolean `pack_format` rejects the pack; a boolean inside
   `supported_formats` makes that lenient field absent. A fractional number is truncated.
 - **`supported_formats`** may be a number, a pair or `{min_inclusive, max_inclusive}`; a malformed
@@ -56,9 +58,11 @@ Behaviours the oracle forced (each was a real mismatch before it was fixed):
 `tools/datapack_packs_generate.py` records the original's discovery and selection results.
 
 - `fixtures/datapack-packs-vectors.json` (4 folders, 5 steps to 60 steps each):
-  - **1272 `pack.mcmeta` variants**: 11 base documents, every member removed and replaced by 18
-    wrong-typed values, and 15 text corruptions (truncation, trailing comma or content, byte-order
-    mark, single quotes, comments, wrong top-level type). 764 are accepted as packs, 508 rejected;
+  - **1393 `pack.mcmeta` variants** (a 1-in-4 sample of 349 is committed; `--sample 1` keeps all):
+    11 base documents, every member removed and replaced by 18 wrong-typed values, and 31 text
+    corruptions (truncation, trailing comma or content, byte-order mark, single quotes, comments,
+    wrong top-level type, raw control characters inside strings, and numbers of unusual form or
+    size such as `1e400`, `4294967344`, `48.9`, `03`, `+48`). 873 are accepted as packs;
     every accepted pack agrees on id, compatibility, description and title text, feature names,
     required/fixed/position and `shouldAddAutomatically`.
   - a **structure** folder (directories with and without `pack.mcmeta`, an empty `pack.mcmeta`,
@@ -82,6 +86,9 @@ Behaviours the oracle forced (each was a real mismatch before it was fixed):
   reproduced.
 - `level.dat` itself: `WorldDataConfiguration` reads and writes the two members, but
   `src/level.rs` does not call it.
+- A `pack_format` / `supported_formats` number written as a decimal above 2^53 (`1E30`) is read from
+  its nearest `f64`, so its low 32 bits can differ from the original's exact `BigDecimal`
+  (`components::java::json_number_int_value`); above 2^127, and for every integer spelling, they agree.
 
 ## Reproducing the oracle
 
