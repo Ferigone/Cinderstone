@@ -1442,6 +1442,54 @@ public class loot_oracle {
         System.out.println("snbt=" + outArr.size());
         break;
       }
+      case "nbt-path": {
+        // NbtPathArgument.NbtPath: parse each path, then run one operation on a parsed root
+        // compound: {ok, parsed, count?|tags?, root?} or {ok:false, stage, error}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject spec = e.getAsJsonObject();
+          JsonObject r = new JsonObject();
+          String stage = "parse";
+          try {
+            net.minecraft.commands.arguments.NbtPathArgument.NbtPath path = net.minecraft.commands.arguments.NbtPathArgument.NbtPath.of(spec.get("path").getAsString());
+            r.addProperty("parsed", path.asString());
+            if (spec.has("root")) {
+              stage = "op";
+              CompoundTag root = net.minecraft.nbt.TagParser.parseTag(spec.get("root").getAsString());
+              String op = spec.get("op").getAsString();
+              JsonArray tags = new JsonArray();
+              switch (op) {
+                case "get" -> { for (Tag t : path.get(root)) tags.add(tagHex(t)); r.add("tags", tags); }
+                case "count" -> r.addProperty("count", path.countMatching(root));
+                case "get_or_create" -> { for (Tag t : path.getOrCreate(root, CompoundTag::new)) tags.add(tagHex(t)); r.add("tags", tags); }
+                case "set" -> r.addProperty("count", path.set(root, new net.minecraft.nbt.TagParser(new com.mojang.brigadier.StringReader(spec.get("value").getAsString())).readValue()));
+                case "remove" -> r.addProperty("count", path.remove(root));
+                case "insert" -> {
+                  List<Tag> values = new ArrayList<>();
+                  for (JsonElement v : spec.getAsJsonArray("values")) values.add(new net.minecraft.nbt.TagParser(new com.mojang.brigadier.StringReader(v.getAsString())).readValue());
+                  r.addProperty("count", path.insert(spec.get("index").getAsInt(), root, values));
+                }
+                default -> throw new IllegalArgumentException(op);
+              }
+              r.addProperty("root", tagHex(root));
+            }
+            r.addProperty("ok", true);
+          } catch (com.mojang.brigadier.exceptions.CommandSyntaxException t) {
+            r.addProperty("ok", false);
+            r.addProperty("stage", stage);
+            r.addProperty("error", "syntax");
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("stage", stage);
+            r.addProperty("error", t.getClass().getSimpleName());
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("nbt-path=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the

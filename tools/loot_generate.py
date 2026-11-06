@@ -551,6 +551,13 @@ def synthetic_cases():
             item("apple", functions=[{"function": "minecraft:set_name", "name": "Old"}, {"function": "minecraft:copy_name", "source": "this"}]),
             item("bread", functions=[{"function": "minecraft:copy_name", "source": "attacking_entity"}]),
             item("player_head", functions=[{"function": "minecraft:fill_player_head", "entity": "this"}])]}]}, 8, **fields)
+    # copy_custom_data: codec forms; without an entity parameter the provider yields nothing
+    ccd = lambda source, ops: {"function": "minecraft:copy_custom_data", "source": source, "ops": ops}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stick", functions=[ccd("this", [{"source": "a.b", "target": "c[0]", "op": "replace"}])]),
+        item("stick", functions=[ccd({"type": "minecraft:context", "target": "attacker"}, [{"source": "x[]", "target": "y", "op": "append"},
+                                                                                       {"source": "{k:1}", "target": "z{m:2}", "op": "merge"}])]),
+        item("stick", functions=[ccd("attacking_player", [])])]}]}, 6)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 

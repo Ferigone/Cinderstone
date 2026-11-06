@@ -12,7 +12,7 @@ use super::entry::{Entry, LootPool, LootTable, SingletonKind, TableRef};
 use super::facts::{canonical, facts, HolderSet, Kind};
 use super::function::{
     component_id, BonusFormula, ComponentSource, Function, FunctionKind, ListOperation, NameTarget, StewEffect,
-    TextComponent, AttributeModifierSpec, ContainerComponent, NameSource, BannerLayer, Filterable, ATTRIBUTES, ATTRIBUTE_OPERATIONS, SLOT_GROUPS, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
+    TextComponent, AttributeModifierSpec, ContainerComponent, CopyOperation, MergeStrategy, NameSource, NbtSource, BannerLayer, Filterable, ATTRIBUTES, ATTRIBUTE_OPERATIONS, SLOT_GROUPS, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
     DYE_COLORS, FIREWORK_SHAPES, TOOLTIP_TOGGLES,
 };
 use super::number::{IntRange, LevelBasedValue, NumberProvider, ScoreboardName};
@@ -889,6 +889,19 @@ fn json_to_nbt(value: &Value) -> Result<crate::nbt::Tag> {
     })
 }
 
+/// `ContextNbtProvider.GETTER_CODEC`: `block_entity` or an entity target name (any other name
+/// makes `EntityTarget.getByName` throw).
+fn context_nbt_target(name: &str) -> Result<NbtSource> {
+    Ok(match name {
+        "block_entity" => NbtSource::BlockEntity,
+        "this" => NbtSource::Entity(EntityTarget::This),
+        "attacker" => NbtSource::Entity(EntityTarget::Attacker),
+        "direct_attacker" => NbtSource::Entity(EntityTarget::DirectAttacker),
+        "attacking_player" => NbtSource::Entity(EntityTarget::AttackingPlayer),
+        other => return codec(format!("Invalid entity target {other}")),
+    })
+}
+
 /// `ContainerComponentManipulators.CODEC`.
 fn container_component(value: &Value) -> Result<ContainerComponent> {
     let name = id(value, "component")?;
@@ -1337,6 +1350,42 @@ pub fn function(value: &Value) -> Result<Function> {
             trail: optional(map, "trail").map(|v| boolean(v, "trail")).transpose()?,
             twinkle: optional(map, "twinkle").map(|v| boolean(v, "twinkle")).transpose()?,
         },
+        "copy_custom_data" => {
+            let source = match required(map, "source", "copy_custom_data")? {
+                Value::String(name) => context_nbt_target(name)?,
+                Value::Object(provider) => match id(required(provider, "type", "nbt provider")?, "type")?.as_str() {
+                    "minecraft:context" => match required(provider, "target", "nbt provider")? {
+                        Value::String(name) => context_nbt_target(name)?,
+                        _ => return codec("target: expected a string"),
+                    },
+                    "minecraft:storage" => NbtSource::Storage(id(required(provider, "source", "nbt provider")?, "source")?),
+                    other => return codec(format!("Unknown registry key in minecraft:loot_nbt_provider_type: {other}")),
+                },
+                _ => return codec("source: expected a string or an object"),
+            };
+            let mut ops = Vec::new();
+            for op in required(map, "ops", "copy_custom_data")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("ops: expected a list".to_owned()))?
+            {
+                let op = object(op, "copy operation")?;
+                let path = |key: &str| -> Result<crate::nbt_path::NbtPath> {
+                    let text = string(required(op, key, "copy operation")?, key)?;
+                    crate::nbt_path::NbtPath::of(text).map_err(|e| LootError::Codec(format!("Failed to parse path {text}: {e}")))
+                };
+                ops.push(CopyOperation {
+                    source: path("source")?,
+                    target: path("target")?,
+                    op: match string(required(op, "op", "copy operation")?, "op")? {
+                        "replace" => MergeStrategy::Replace,
+                        "append" => MergeStrategy::Append,
+                        "merge" => MergeStrategy::Merge,
+                        other => return codec(format!("Unknown element name: {other}")),
+                    },
+                });
+            }
+            FunctionKind::CopyCustomData { source, ops }
+        }
         "copy_name" => FunctionKind::CopyName(match string(required(map, "source", "copy_name")?, "source")? {
             "this" => NameSource::Entity(EntityTarget::This),
             "attacking_entity" => NameSource::Entity(EntityTarget::Attacker),
