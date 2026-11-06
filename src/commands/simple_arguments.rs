@@ -90,6 +90,23 @@ impl ArgumentType for TimeArgumentType {
             template: self.minimum.to_be_bytes().to_vec(),
         })
     }
+
+    fn list_suggestions<S>(
+        &self,
+        _context: &super::dispatcher::CommandContext<S>,
+        builder: &mut super::suggestion::SuggestionsBuilder,
+    ) -> Result<super::suggestion::Suggestions, CommandSyntaxException> {
+        let mut reader = StringReader::new(&builder.remaining());
+        if reader.read_float().is_err() { return Ok(super::suggestion::Suggestions::empty()); }
+        let mut offset = builder.create_offset(builder.start() + reader.cursor())
+            .expect("float cursor stays within the remaining input");
+        for unit in ["d", "s", "t"] {
+            if unit.encode_utf16().collect::<Vec<_>>().starts_with(offset.remaining_lower_case_units()) {
+                offset.suggest(unit);
+            }
+        }
+        Ok(offset.build())
+    }
 }
 
 /// A `java.util.UUID`: the two signed 64-bit halves.

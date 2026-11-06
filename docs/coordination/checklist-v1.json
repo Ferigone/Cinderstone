@@ -865,6 +865,7 @@
       "id": "commands_data.1",
       "area": "commands_data",
       "delivery": "Komendy i uprawnienia operatorów",
+      "time_command_evidence": "#173: Main player/console time set/add/query, permission-2 tree and dispatcher completion, live clock and cold restart. Original Java parse/execute vectors and docs/validation/time-command-runtime.json. Full command catalog remains incomplete.",
       "points": 1,
       "code_ported": false,
       "main_integrated": false,

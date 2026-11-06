@@ -1,0 +1,65 @@
+[
+  {
+    "input": "time set day",
+    "game_time": 7,
+    "day_time": 13000,
+    "after_day_time": 1000,
+    "result": 1000
+  },
+  {
+    "input": "time set 2d",
+    "game_time": 7,
+    "day_time": 1000,
+    "after_day_time": 48000,
+    "result": 0
+  },
+  {
+    "input": "time add 1.5s",
+    "game_time": 7,
+    "day_time": 48000,
+    "after_day_time": 48030,
+    "result": 30
+  },
+  {
+    "input": "time query day",
+    "game_time": 7,
+    "day_time": 48030,
+    "after_day_time": 48030,
+    "result": 2
+  },
+  {
+    "input": "time query daytime",
+    "game_time": 7,
+    "day_time": 48030,
+    "after_day_time": 48030,
+    "result": 30
+  },
+  {
+    "input": "time query gametime",
+    "game_time": 7,
+    "day_time": 48030,
+    "after_day_time": 48030,
+    "result": 7
+  },
+  {
+    "input": "time set 2147483647t",
+    "game_time": 7,
+    "day_time": 48030,
+    "after_day_time": 2147483647,
+    "result": 11647
+  },
+  {
+    "input": "time add 1",
+    "game_time": 7,
+    "day_time": 2147483647,
+    "after_day_time": 2147483648,
+    "result": 11648
+  },
+  {
+    "input": "time set night",
+    "game_time": 7,
+    "day_time": 2147483648,
+    "after_day_time": 13000,
+    "result": 13000
+  }
+]
