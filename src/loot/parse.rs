@@ -12,7 +12,7 @@ use super::entry::{Entry, LootPool, LootTable, SingletonKind, TableRef};
 use super::facts::{canonical, facts, HolderSet, Kind};
 use super::function::{
     component_id, BonusFormula, ComponentSource, Function, FunctionKind, ListOperation, NameTarget, StewEffect,
-    TextComponent, AttributeModifierSpec, ContainerComponent, BannerLayer, Filterable, ATTRIBUTES, ATTRIBUTE_OPERATIONS, SLOT_GROUPS, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
+    TextComponent, AttributeModifierSpec, ContainerComponent, NameSource, BannerLayer, Filterable, ATTRIBUTES, ATTRIBUTE_OPERATIONS, SLOT_GROUPS, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
     DYE_COLORS, FIREWORK_SHAPES, TOOLTIP_TOGGLES,
 };
 use super::number::{IntRange, LevelBasedValue, NumberProvider, ScoreboardName};
@@ -1337,6 +1337,14 @@ pub fn function(value: &Value) -> Result<Function> {
             trail: optional(map, "trail").map(|v| boolean(v, "trail")).transpose()?,
             twinkle: optional(map, "twinkle").map(|v| boolean(v, "twinkle")).transpose()?,
         },
+        "copy_name" => FunctionKind::CopyName(match string(required(map, "source", "copy_name")?, "source")? {
+            "this" => NameSource::Entity(EntityTarget::This),
+            "attacking_entity" => NameSource::Entity(EntityTarget::Attacker),
+            "last_damage_player" => NameSource::Entity(EntityTarget::AttackingPlayer),
+            "block_entity" => NameSource::BlockEntity,
+            other => return codec(format!("Unknown element name: {other}")),
+        }),
+        "fill_player_head" => FunctionKind::FillPlayerHead(entity_target(required(map, "entity", "fill_player_head")?)?),
         "set_custom_data" => FunctionKind::SetCustomData(lenient_compound(required(map, "tag", "set_custom_data")?)?),
         "set_contents" => FunctionKind::SetContents {
             component: container_component(required(map, "component", "set_contents")?)?,

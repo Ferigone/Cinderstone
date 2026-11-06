@@ -33,6 +33,7 @@ const ATTRIBUTE_MODIFIERS: i32 = 12;
 const CUSTOM_MODEL_DATA: i32 = 13;
 const CONTAINER_LOOT: i32 = 56;
 const FIREWORK_EXPLOSION: i32 = 45;
+const PROFILE: i32 = 47;
 const WRITABLE_BOOK_CONTENT: i32 = 33;
 const WRITTEN_BOOK_CONTENT: i32 = 34;
 const FIREWORKS: i32 = 46;
@@ -376,6 +377,24 @@ impl ContainerComponent {
     }
 }
 
+/// `CopyNameFunction.NameSource`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NameSource {
+    Entity(EntityTarget),
+    BlockEntity,
+}
+
+/// `ItemStack.set(type, null)`: the component is removed (a prototype value is masked).
+fn remove_component(stack: &mut ItemStack, type_id: i32) {
+    stack.components.retain(|c| c.type_id != type_id);
+    let mut probe = stack.clone();
+    probe.removed_components.retain(|id| *id != type_id);
+    if probe.effective_component_bytes(type_id).is_some() && !stack.removed_components.contains(&type_id) {
+        stack.removed_components.push(type_id);
+    }
+    stack.normalize_patch();
+}
+
 /// `CompoundTag.merge`: compounds merge recursively, every other value replaces.
 fn merge_compound(target: &mut Tag, patch: &Tag) {
     let (Tag::Compound(entries), Tag::Compound(patch)) = (target, patch) else { return };
@@ -546,6 +565,8 @@ pub enum FunctionKind {
     Filtered { filter: ItemPredicate, modifier: Box<Function> },
     SetBannerPattern { layers: Vec<BannerLayer>, append: bool },
     SetAttributes { modifiers: Vec<AttributeModifierSpec>, replace: bool },
+    CopyName(NameSource),
+    FillPlayerHead(EntityTarget),
     /// `SetCustomDataFunction`: the compound merged into `minecraft:custom_data`.
     SetCustomData(Tag),
     SetContents { component: ContainerComponent, entries: Vec<super::entry::Entry> },
@@ -981,6 +1002,38 @@ impl Function {
                 new.encode(&mut writer);
                 if !stack.is_empty() {
                     set_component(&mut stack, FIREWORK_EXPLOSION, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::CopyName(source) => {
+                let name = match source {
+                    NameSource::Entity(target) => match ctx.entity(*target) {
+                        None => return Ok(stack),
+                        Some(entity) => entity.custom_name_nbt()?,
+                    },
+                    NameSource::BlockEntity => match ctx.params.block_entity {
+                        None => return Ok(stack),
+                        Some(block_entity) => match block_entity.nameable_custom_name_nbt()? {
+                            None => return Ok(stack),
+                            Some(name) => name,
+                        },
+                    },
+                };
+                if !stack.is_empty() {
+                    match name {
+                        Some(bytes) => set_component(&mut stack, CUSTOM_NAME, bytes),
+                        None => remove_component(&mut stack, CUSTOM_NAME),
+                    }
+                }
+                Ok(stack)
+            }
+            FunctionKind::FillPlayerHead(target) => {
+                if stack_item_id(&stack) == "minecraft:player_head" {
+                    if let Some(entity) = ctx.entity(*target) {
+                        if let Some(profile) = entity.player_profile()? {
+                            set_component(&mut stack, PROFILE, profile);
+                        }
+                    }
                 }
                 Ok(stack)
             }
