@@ -143,7 +143,8 @@ try {
   await writeFile(path.join(seed, 'server.properties'), properties);
   await start('java', seed, 25641);
   await javaCommands(['gamerule doDaylightCycle false', 'gamerule doWeatherCycle false',
-    'gamerule doMobSpawning false', 'gamerule randomTickSpeed 0', 'weather clear 100000t']);
+    'gamerule doMobSpawning false', 'gamerule randomTickSpeed 0', 'weather clear 100000t',
+    'setworldspawn 8 65 8', 'forceload add -80 -80 80 80', 'save-all flush']);
   await stop();
   for (const kind of ['java', 'native']) {
     const folder = path.join(scratch, kind); await mkdir(folder);

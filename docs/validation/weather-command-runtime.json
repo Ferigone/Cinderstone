@@ -1,0 +1,3605 @@
+{
+  "ok": true,
+  "native_commit": "f6c8c07aa2f9e7d0ca185adfb451c7965401d500",
+  "native_src_tree": "8be2336963363b0e7e3145675e274ed615ca91d2",
+  "native_binary_sha256": "6470335ee5c3a7f9d0c1b8092e14fb545e746f3a91965e56050173004ed43c9b",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "weather",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather clear",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather clear duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        },
+        {
+          "path": "weather rain",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather rain duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        },
+        {
+          "path": "weather thunder",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather thunder duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        }
+      ],
+      "success": [
+        {
+          "command": "weather rain 12.5s",
+          "component": {
+            "translate": "commands.weather.set.rain"
+          },
+          "hex": "0a0800097472616e736c6174650019636f6d6d616e64732e776561746865722e7365742e7261696e0000"
+        },
+        {
+          "command": "weather thunder 1d",
+          "component": {
+            "translate": "commands.weather.set.thunder"
+          },
+          "hex": "0a0800097472616e736c617465001c636f6d6d616e64732e776561746865722e7365742e7468756e6465720000"
+        },
+        {
+          "command": "weather clear 20s",
+          "component": {
+            "translate": "commands.weather.set.clear"
+          },
+          "hex": "0a0800097472616e736c617465001a636f6d6d616e64732e776561746865722e7365742e636c6561720000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "weather ",
+          "start": 8,
+          "length": 0,
+          "matches": [
+            "clear",
+            "rain",
+            "thunder"
+          ]
+        },
+        {
+          "text": "weather r",
+          "start": 8,
+          "length": 1,
+          "matches": [
+            "rain"
+          ]
+        },
+        {
+          "text": "weather rain ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "weather rain 1",
+          "start": 14,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        },
+        {
+          "text": "/weather thunder 12",
+          "start": 19,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "command": "weather rain 12.5s",
+          "packets": [
+            {
+              "reason": "rain_level_change",
+              "value": 0.009999999776482582
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.019999999552965164
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.029999999329447746
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.03999999910593033
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.04999999701976776
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.059999994933605194
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.06999999284744263
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.07999999076128006
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.08999998867511749
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.09999998658895493
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.10999998450279236
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.11999998241662979
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.12999998033046722
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.13999998569488525
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.14999999105930328
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1599999964237213
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.17000000178813934
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.18000000715255737
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1900000125169754
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "start_raining",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.21000002324581146
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2200000286102295
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.23000003397464752
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.24000003933906555
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2500000298023224
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2600000202655792
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.27000001072883606
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2800000011920929
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.28999999165534973
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.29999998211860657
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3099999725818634
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.31999996304512024
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3299999535083771
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3399999439716339
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.34999993443489075
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3599999248981476
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3699999153614044
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.37999990582466125
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3899998962879181
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3999998867511749
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.40999987721443176
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4199998676776886
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.42999985814094543
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.43999984860420227
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4499998390674591
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.45999982953071594
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4699998199939728
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4799998104572296
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.48999980092048645
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4999997913837433
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5099998116493225
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5199998021125793
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5299997925758362
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.539999783039093
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5499997735023499
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5599997639656067
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5699997544288635
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5799997448921204
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5899997353553772
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.599999725818634
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6099997162818909
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6199997067451477
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6299996972084045
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6399996876716614
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6499996781349182
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.659999668598175
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6699996590614319
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6799996495246887
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6899996399879456
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6999996304512024
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7099996209144592
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7199996113777161
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7299996018409729
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7399995923042297
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7499995827674866
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7599995732307434
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7699995636940002
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7799995541572571
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7899995446205139
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7999995350837708
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8099995255470276
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8199995160102844
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8299995064735413
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8399994969367981
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8499994874000549
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8599994778633118
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8699994683265686
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8799994587898254
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8899994492530823
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8999994397163391
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.909999430179596
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9199994206428528
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9299994111061096
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9399994015693665
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9499993920326233
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9599993824958801
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.969999372959137
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9799993634223938
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9899993538856506
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9999993443489075
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "command": "weather thunder 1d",
+          "packets": [
+            {
+              "reason": "thunder_level_change",
+              "value": 0.009999999776482582
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.019999999552965164
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.029999999329447746
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.03999999910593033
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.04999999701976776
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.059999994933605194
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.06999999284744263
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.07999999076128006
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.08999998867511749
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.09999998658895493
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.10999998450279236
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.11999998241662979
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.12999998033046722
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.13999998569488525
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.14999999105930328
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1599999964237213
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.17000000178813934
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.18000000715255737
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1900000125169754
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.21000002324581146
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2200000286102295
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.23000003397464752
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.24000003933906555
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2500000298023224
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2600000202655792
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.27000001072883606
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2800000011920929
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.28999999165534973
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.29999998211860657
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3099999725818634
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.31999996304512024
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3299999535083771
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3399999439716339
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.34999993443489075
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3599999248981476
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3699999153614044
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.37999990582466125
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3899998962879181
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3999998867511749
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.40999987721443176
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4199998676776886
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.42999985814094543
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.43999984860420227
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4499998390674591
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.45999982953071594
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4699998199939728
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4799998104572296
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.48999980092048645
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4999997913837433
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5099998116493225
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5199998021125793
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5299997925758362
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.539999783039093
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5499997735023499
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5599997639656067
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5699997544288635
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5799997448921204
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5899997353553772
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.599999725818634
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6099997162818909
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6199997067451477
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6299996972084045
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6399996876716614
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6499996781349182
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.659999668598175
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6699996590614319
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6799996495246887
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6899996399879456
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6999996304512024
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7099996209144592
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7199996113777161
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7299996018409729
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7399995923042297
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7499995827674866
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7599995732307434
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7699995636940002
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7799995541572571
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7899995446205139
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7999995350837708
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8099995255470276
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8199995160102844
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8299995064735413
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8399994969367981
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8499994874000549
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8599994778633118
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8699994683265686
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8799994587898254
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8899994492530823
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8999994397163391
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.909999430179596
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9199994206428528
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9299994111061096
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9399994015693665
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9499993920326233
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9599993824958801
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.969999372959137
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9799993634223938
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9899993538856506
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9999993443489075
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "command": "weather clear 20s",
+          "packets": [
+            {
+              "reason": "rain_level_change",
+              "value": 0.9900000095367432
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9900000095367432
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9800000190734863
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9800000190734863
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9700000286102295
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9700000286102295
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9600000381469727
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9600000381469727
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9500000476837158
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9500000476837158
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.940000057220459
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.940000057220459
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9300000667572021
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9300000667572021
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9200000762939453
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9200000762939453
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9100000858306885
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9100000858306885
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9000000953674316
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9000000953674316
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8900001049041748
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8900001049041748
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.880000114440918
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.880000114440918
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8700001239776611
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8700001239776611
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8600001335144043
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8600001335144043
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8500001430511475
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8500001430511475
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8400001525878906
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8400001525878906
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8300001621246338
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8300001621246338
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.820000171661377
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.820000171661377
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8100001811981201
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8100001811981201
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8000001907348633
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8000001907348633
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7900002002716064
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7900002002716064
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7800002098083496
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7800002098083496
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7700002193450928
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7700002193450928
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7600002288818359
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7600002288818359
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7500002384185791
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7500002384185791
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7400002479553223
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7400002479553223
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7300002574920654
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7300002574920654
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7200002670288086
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7200002670288086
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7100002765655518
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7100002765655518
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7000002861022949
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7000002861022949
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6900002956390381
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6900002956390381
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6800003051757812
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6800003051757812
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6700003147125244
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6700003147125244
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6600003242492676
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6600003242492676
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6500003337860107
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6500003337860107
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6400003433227539
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6400003433227539
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6300003528594971
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6300003528594971
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6200003623962402
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6200003623962402
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6100003719329834
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6100003719329834
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6000003814697266
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6000003814697266
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5900003910064697
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5900003910064697
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5800004005432129
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5800004005432129
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.570000410079956
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.570000410079956
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5600004196166992
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5600004196166992
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5500004291534424
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5500004291534424
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5400004386901855
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5400004386901855
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5300004482269287
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5300004482269287
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5200004577636719
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5200004577636719
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.510000467300415
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.510000467300415
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5000004768371582
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5000004768371582
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.49000048637390137
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.49000048637390137
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.48000049591064453
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.48000049591064453
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4700005054473877
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4700005054473877
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.46000051498413086
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.46000051498413086
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.450000524520874
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.450000524520874
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4400005340576172
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4400005340576172
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.43000054359436035
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.43000054359436035
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4200005531311035
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4200005531311035
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4100005626678467
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4100005626678467
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.40000057220458984
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.40000057220458984
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.390000581741333
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.390000581741333
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.38000059127807617
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.38000059127807617
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.37000060081481934
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.37000060081481934
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3600006103515625
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3600006103515625
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.35000061988830566
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.35000061988830566
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.34000062942504883
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.34000062942504883
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.330000638961792
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.330000638961792
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.32000064849853516
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.32000064849853516
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3100006580352783
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3100006580352783
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3000006675720215
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3000006675720215
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.29000067710876465
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.29000067710876465
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2800006866455078
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2800006866455078
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.270000696182251
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.270000696182251
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.26000070571899414
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.26000070571899414
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2500007152557373
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2500007152557373
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.24000070989131927
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.24000070989131927
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.23000070452690125
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.23000070452690125
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.22000069916248322
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.22000069916248322
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.21000069379806519
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.21000069379806519
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000068843364716
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.20000068843364716
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "stop_raining",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1800006777048111
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1800006777048111
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.17000067234039307
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.17000067234039307
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.16000066697597504
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.16000066697597504
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.150000661611557
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.150000661611557
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.14000065624713898
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.14000065624713898
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.13000065088272095
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.13000065088272095
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.12000065296888351
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.12000065296888351
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.11000065505504608
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.11000065505504608
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.10000065714120865
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.10000065714120865
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.09000065922737122
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.09000065922737122
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.08000066131353378
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.08000066131353378
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.07000066339969635
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.07000066339969635
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.06000066548585892
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.06000066548585892
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.050000667572021484
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.050000667572021484
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.04000066965818405
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.04000066965818405
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.03000066988170147
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.03000066988170147
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.020000670105218887
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.020000670105218887
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.010000670328736305
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.010000670328736305
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 6.705522537231445e-07
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 6.705522537231445e-07
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_mutation": true,
+      "console": true,
+      "saved_state": [
+        0,
+        600,
+        600,
+        true,
+        true
+      ],
+      "restart": true
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "weather",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather clear",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather clear duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        },
+        {
+          "path": "weather rain",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather rain duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        },
+        {
+          "path": "weather thunder",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "weather thunder duration",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 1
+          }
+        }
+      ],
+      "success": [
+        {
+          "command": "weather rain 12.5s",
+          "component": {
+            "translate": "commands.weather.set.rain"
+          },
+          "hex": "0a0800097472616e736c6174650019636f6d6d616e64732e776561746865722e7365742e7261696e0000"
+        },
+        {
+          "command": "weather thunder 1d",
+          "component": {
+            "translate": "commands.weather.set.thunder"
+          },
+          "hex": "0a0800097472616e736c617465001c636f6d6d616e64732e776561746865722e7365742e7468756e6465720000"
+        },
+        {
+          "command": "weather clear 20s",
+          "component": {
+            "translate": "commands.weather.set.clear"
+          },
+          "hex": "0a0800097472616e736c617465001a636f6d6d616e64732e776561746865722e7365742e636c6561720000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "weather ",
+          "start": 8,
+          "length": 0,
+          "matches": [
+            "clear",
+            "rain",
+            "thunder"
+          ]
+        },
+        {
+          "text": "weather r",
+          "start": 8,
+          "length": 1,
+          "matches": [
+            "rain"
+          ]
+        },
+        {
+          "text": "weather rain ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "weather rain 1",
+          "start": 14,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        },
+        {
+          "text": "/weather thunder 12",
+          "start": 19,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      ],
+      "transitions": [
+        {
+          "command": "weather rain 12.5s",
+          "packets": [
+            {
+              "reason": "rain_level_change",
+              "value": 0.009999999776482582
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.019999999552965164
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.029999999329447746
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.03999999910593033
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.04999999701976776
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.059999994933605194
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.06999999284744263
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.07999999076128006
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.08999998867511749
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.09999998658895493
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.10999998450279236
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.11999998241662979
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.12999998033046722
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.13999998569488525
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.14999999105930328
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1599999964237213
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.17000000178813934
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.18000000715255737
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1900000125169754
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "start_raining",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.21000002324581146
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2200000286102295
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.23000003397464752
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.24000003933906555
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2500000298023224
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2600000202655792
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.27000001072883606
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2800000011920929
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.28999999165534973
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.29999998211860657
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3099999725818634
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.31999996304512024
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3299999535083771
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3399999439716339
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.34999993443489075
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3599999248981476
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3699999153614044
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.37999990582466125
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3899998962879181
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3999998867511749
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.40999987721443176
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4199998676776886
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.42999985814094543
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.43999984860420227
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4499998390674591
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.45999982953071594
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4699998199939728
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4799998104572296
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.48999980092048645
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4999997913837433
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5099998116493225
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5199998021125793
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5299997925758362
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.539999783039093
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5499997735023499
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5599997639656067
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5699997544288635
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5799997448921204
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5899997353553772
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.599999725818634
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6099997162818909
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6199997067451477
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6299996972084045
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6399996876716614
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6499996781349182
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.659999668598175
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6699996590614319
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6799996495246887
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6899996399879456
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6999996304512024
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7099996209144592
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7199996113777161
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7299996018409729
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7399995923042297
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7499995827674866
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7599995732307434
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7699995636940002
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7799995541572571
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7899995446205139
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7999995350837708
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8099995255470276
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8199995160102844
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8299995064735413
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8399994969367981
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8499994874000549
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8599994778633118
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8699994683265686
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8799994587898254
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8899994492530823
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8999994397163391
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.909999430179596
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9199994206428528
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9299994111061096
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9399994015693665
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9499993920326233
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9599993824958801
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.969999372959137
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9799993634223938
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9899993538856506
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9999993443489075
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "command": "weather thunder 1d",
+          "packets": [
+            {
+              "reason": "thunder_level_change",
+              "value": 0.009999999776482582
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.019999999552965164
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.029999999329447746
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.03999999910593033
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.04999999701976776
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.059999994933605194
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.06999999284744263
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.07999999076128006
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.08999998867511749
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.09999998658895493
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.10999998450279236
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.11999998241662979
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.12999998033046722
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.13999998569488525
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.14999999105930328
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1599999964237213
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.17000000178813934
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.18000000715255737
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1900000125169754
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.20000001788139343
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.21000002324581146
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2200000286102295
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.23000003397464752
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.24000003933906555
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2500000298023224
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2600000202655792
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.27000001072883606
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2800000011920929
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.28999999165534973
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.29999998211860657
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3099999725818634
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.31999996304512024
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3299999535083771
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3399999439716339
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.34999993443489075
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3599999248981476
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3699999153614044
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.37999990582466125
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3899998962879181
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3999998867511749
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.40999987721443176
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4199998676776886
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.42999985814094543
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.43999984860420227
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4499998390674591
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.45999982953071594
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4699998199939728
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4799998104572296
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.48999980092048645
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4999997913837433
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5099998116493225
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5199998021125793
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5299997925758362
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.539999783039093
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5499997735023499
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5599997639656067
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5699997544288635
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5799997448921204
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5899997353553772
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.599999725818634
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6099997162818909
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6199997067451477
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6299996972084045
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6399996876716614
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6499996781349182
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.659999668598175
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6699996590614319
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6799996495246887
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6899996399879456
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6999996304512024
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7099996209144592
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7199996113777161
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7299996018409729
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7399995923042297
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7499995827674866
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7599995732307434
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7699995636940002
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7799995541572571
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7899995446205139
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7999995350837708
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8099995255470276
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8199995160102844
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8299995064735413
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8399994969367981
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8499994874000549
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8599994778633118
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8699994683265686
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8799994587898254
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8899994492530823
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8999994397163391
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.909999430179596
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9199994206428528
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9299994111061096
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9399994015693665
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9499993920326233
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9599993824958801
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.969999372959137
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9799993634223938
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9899993538856506
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9999993443489075
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "command": "weather clear 20s",
+          "packets": [
+            {
+              "reason": "rain_level_change",
+              "value": 0.9900000095367432
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9900000095367432
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9800000190734863
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9800000190734863
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9700000286102295
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9700000286102295
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9600000381469727
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9600000381469727
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9500000476837158
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9500000476837158
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.940000057220459
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.940000057220459
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9300000667572021
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9300000667572021
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9200000762939453
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9200000762939453
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9100000858306885
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9100000858306885
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.9000000953674316
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.9000000953674316
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8900001049041748
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8900001049041748
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.880000114440918
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.880000114440918
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8700001239776611
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8700001239776611
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8600001335144043
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8600001335144043
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8500001430511475
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8500001430511475
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8400001525878906
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8400001525878906
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8300001621246338
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8300001621246338
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.820000171661377
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.820000171661377
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8100001811981201
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8100001811981201
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.8000001907348633
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.8000001907348633
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7900002002716064
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7900002002716064
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7800002098083496
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7800002098083496
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7700002193450928
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7700002193450928
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7600002288818359
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7600002288818359
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7500002384185791
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7500002384185791
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7400002479553223
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7400002479553223
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7300002574920654
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7300002574920654
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7200002670288086
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7200002670288086
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7100002765655518
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7100002765655518
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.7000002861022949
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.7000002861022949
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6900002956390381
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6900002956390381
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6800003051757812
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6800003051757812
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6700003147125244
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6700003147125244
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6600003242492676
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6600003242492676
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6500003337860107
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6500003337860107
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6400003433227539
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6400003433227539
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6300003528594971
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6300003528594971
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6200003623962402
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6200003623962402
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6100003719329834
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6100003719329834
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.6000003814697266
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.6000003814697266
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5900003910064697
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5900003910064697
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5800004005432129
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5800004005432129
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.570000410079956
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.570000410079956
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5600004196166992
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5600004196166992
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5500004291534424
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5500004291534424
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5400004386901855
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5400004386901855
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5300004482269287
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5300004482269287
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5200004577636719
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5200004577636719
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.510000467300415
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.510000467300415
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.5000004768371582
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.5000004768371582
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.49000048637390137
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.49000048637390137
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.48000049591064453
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.48000049591064453
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4700005054473877
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4700005054473877
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.46000051498413086
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.46000051498413086
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.450000524520874
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.450000524520874
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4400005340576172
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4400005340576172
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.43000054359436035
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.43000054359436035
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4200005531311035
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4200005531311035
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.4100005626678467
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.4100005626678467
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.40000057220458984
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.40000057220458984
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.390000581741333
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.390000581741333
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.38000059127807617
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.38000059127807617
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.37000060081481934
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.37000060081481934
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3600006103515625
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3600006103515625
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.35000061988830566
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.35000061988830566
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.34000062942504883
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.34000062942504883
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.330000638961792
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.330000638961792
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.32000064849853516
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.32000064849853516
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3100006580352783
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3100006580352783
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.3000006675720215
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.3000006675720215
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.29000067710876465
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.29000067710876465
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2800006866455078
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2800006866455078
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.270000696182251
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.270000696182251
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.26000070571899414
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.26000070571899414
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.2500007152557373
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.2500007152557373
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.24000070989131927
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.24000070989131927
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.23000070452690125
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.23000070452690125
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.22000069916248322
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.22000069916248322
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.21000069379806519
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.21000069379806519
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.20000068843364716
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.20000068843364716
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "stop_raining",
+              "value": 0
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.19000068306922913
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.1800006777048111
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.1800006777048111
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.17000067234039307
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.17000067234039307
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.16000066697597504
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.16000066697597504
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.150000661611557
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.150000661611557
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.14000065624713898
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.14000065624713898
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.13000065088272095
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.13000065088272095
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.12000065296888351
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.12000065296888351
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.11000065505504608
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.11000065505504608
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.10000065714120865
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.10000065714120865
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.09000065922737122
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.09000065922737122
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.08000066131353378
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.08000066131353378
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.07000066339969635
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.07000066339969635
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.06000066548585892
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.06000066548585892
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.050000667572021484
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.050000667572021484
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.04000066965818405
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.04000066965818405
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.03000066988170147
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.03000066988170147
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.020000670105218887
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.020000670105218887
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0.010000670328736305
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0.010000670328736305
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 6.705522537231445e-07
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 6.705522537231445e-07
+            },
+            {
+              "reason": "rain_level_change",
+              "value": 0
+            },
+            {
+              "reason": "thunder_level_change",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_mutation": true,
+      "console": true,
+      "saved_state": [
+        0,
+        600,
+        600,
+        true,
+        true
+      ],
+      "restart": true
+    }
+  },
+  "limits": [
+    "Single overworld; imported scene probes administration/weather only, not general imported gameplay.",
+    "Duration defaults use each server own RNG. Exact controlled RNG consumption is separately checked by the original-class vectors.",
+    "Transport timing and command-error formatting are not compared; ordered weather transition packets are retained without deduplication."
+  ],
+  "native_flat": {
+    "sampled_default_range": true,
+    "saved_raining": true,
+    "restart": true,
+    "rain_time": 15752,
+    "thunder_time": 15752
+  },
+  "completed_at": "2026-11-06T20:01:28.259Z",
+  "source_tree": "0abb2ffd7f24510ca28dccf07a9065307c1d5fd8",
+  "source_note": "The executable and published source commit have the same native_src_tree. Fixture and runner-only changes are separate from compiled Rust inputs.",
+  "java_version": "openjdk version \"21.0.13\" 2026-10-20",
+  "scene_preparation": "Java setworldspawn plus forceload -80,-80..80,80 and save-all flush populate the imported native view. No fabricated chunks or relaxed readiness checks.",
+  "local_source_commit": "11a1a1ada1afe0c78779a206632b981dce5e4dd7"
+}
