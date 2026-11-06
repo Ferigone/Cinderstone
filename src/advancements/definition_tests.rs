@@ -10,13 +10,22 @@ fn vanilla_advancements_parse() {
     let files = doc["advancement"].as_object().unwrap();
     assert_eq!(files.len(), 1399);
     let mut failures = Vec::new();
+    let mut unsupported = Vec::new();
     for (id, text) in files {
         let json = crate::components::lenient::parse(text.as_str().unwrap()).unwrap();
-        if let Err(error) = parse(&json) {
-            failures.push(format!("{id}: {error}"));
+        match parse(&json) {
+            Ok(advancement) if !advancement.unvalidated_clauses().is_empty() => {
+                unsupported.push(format!("{id}: {:?}", advancement.unvalidated_clauses()));
+            }
+            Ok(_) => {}
+            Err(DefinitionError::Unsupported(what)) => unsupported.push(format!("{id}: {what}")),
+            Err(error) => failures.push(format!("{id}: {error}")),
         }
     }
+    eprintln!("vanilla advancements with unvalidated predicate clauses: {unsupported:#?}");
     assert!(failures.is_empty(), "{} vanilla advancements fail:\n{}", failures.len(), failures[..failures.len().min(20)].join("\n"));
+    // The shipped files that use a predicate clause whose codec is not ported yet.
+    assert!(unsupported.len() <= 12, "{} vanilla advancements hit unvalidated clauses", unsupported.len());
 }
 
 /// One-step mutants (or `ADVANCEMENT_PARSE_VECTORS`, a full local run): accepted and rejected
@@ -38,6 +47,7 @@ fn advancement_mutants_match_the_original_codec() {
         let json = crate::components::lenient::parse(input).unwrap();
         match (parse(&json), expected) {
             (Err(DefinitionError::Unsupported(_)), _) => unsupported += 1,
+            (Ok(advancement), _) if !advancement.unvalidated_clauses().is_empty() => unsupported += 1,
             (Ok(_), true) | (Err(DefinitionError::Codec(_)), false) => {}
             (ours, _) => failures.push(format!("{input}: ours {ours:?}, original accepts: {expected}")),
         }
@@ -148,4 +158,82 @@ fn vanilla_tree_layout_and_packet_match_the_original() {
             &hex[at.saturating_sub(40)..(at + 40).min(hex.len())], &expected[at.saturating_sub(40)..(at + 40).min(expected.len())]);
     }
     }
+}
+
+/// `inventory_changed` against the original's `InventoryChangeTrigger.TriggerInstance.matches`
+/// (`fixtures/inventory-trigger-vectors.json`): every distinct vanilla criterion and some
+/// hand-written ones, over seeded 41-slot inventories.
+#[test]
+fn inventory_changed_matches_the_original() {
+    use super::definition::criterion;
+    use super::triggers::{inventory_changed, Match};
+    use crate::inventory::ItemStack;
+    use crate::protocol::Writer;
+
+    fn stack(spec: &Value) -> ItemStack {
+        let id = spec["id"].as_str().unwrap();
+        if id == "minecraft:air" {
+            return ItemStack::empty();
+        }
+        let mut stack = crate::loot::enchant::new_stack(id).unwrap();
+        stack.count = spec["count"].as_i64().unwrap_or(1) as i32;
+        if let Some(damage) = spec["components"]["minecraft:damage"].as_i64() {
+            let mut writer = Writer::new();
+            writer.varint(damage as i32);
+            crate::loot::enchant::set_component(&mut stack, 3, writer.into_inner());
+        }
+        if let Some(levels) = spec["components"]["minecraft:stored_enchantments"]["levels"].as_object() {
+            let mut writer = Writer::new();
+            writer.varint(levels.len() as i32);
+            for (name, level) in levels {
+                let id = crate::loot::facts::facts().enchantment_id(name).unwrap() as i32;
+                writer.varint(id).varint(level.as_i64().unwrap() as i32);
+            }
+            writer.bool(true);
+            crate::loot::enchant::set_component(&mut stack, 23, writer.into_inner());
+        }
+        stack
+    }
+
+    let doc: Value = serde_json::from_str(include_str!("../../fixtures/inventory-trigger-vectors.json")).unwrap();
+    let criteria: Vec<_> = doc["criteria"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|conditions| criterion(&serde_json::json!({"trigger": "minecraft:inventory_changed", "conditions": conditions})).unwrap())
+        .collect();
+    let mut checked = 0;
+    let mut matched = 0;
+    for case in doc["cases"].as_array().unwrap() {
+        let mut inventory = vec![ItemStack::empty(); 41];
+        for slot in case["inventory"].as_array().unwrap() {
+            inventory[slot["slot"].as_u64().unwrap() as usize] = stack(&slot["item"]);
+        }
+        let changed = stack(&case["changed"]);
+        let bits = case["matches"].as_str().unwrap();
+        for (criterion, bit) in criteria.iter().zip(bits.chars()) {
+            let ours = inventory_changed(criterion, &inventory, &changed).unwrap();
+            assert_ne!(ours, Match::PlayerPredicate);
+            assert_eq!(ours == Match::Matches, bit == '1', "criterion {:?} on case {}", criterion.conditions.keys().collect::<Vec<_>>(), case);
+            checked += 1;
+            matched += usize::from(bit == '1');
+        }
+    }
+    assert!(checked > 70_000 && matched > 500, "{checked} checked, {matched} matching");
+}
+
+/// `recipe_unlocked` compares the recipe id; a `player` predicate is left to the caller.
+#[test]
+fn recipe_unlocked_matches_the_recipe_id() {
+    use super::definition::criterion;
+    use super::triggers::{recipe_unlocked, Match};
+    let plain = criterion(&serde_json::json!({"trigger": "minecraft:recipe_unlocked", "conditions": {"recipe": "minecraft:oak_planks"}})).unwrap();
+    assert_eq!(recipe_unlocked(&plain, "minecraft:oak_planks"), Match::Matches);
+    assert_eq!(recipe_unlocked(&plain, "minecraft:birch_planks"), Match::NoMatch);
+    let with_player = criterion(&serde_json::json!({
+        "trigger": "minecraft:recipe_unlocked",
+        "conditions": {"recipe": "minecraft:oak_planks", "player": {"flags": {"is_sneaking": true}}}
+    }))
+    .unwrap();
+    assert_eq!(recipe_unlocked(&with_player, "minecraft:oak_planks"), Match::PlayerPredicate);
 }

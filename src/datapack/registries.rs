@@ -188,9 +188,15 @@ fn named(value: &Value, path: &str, names: &[&str]) -> Result<String> {
     }
 }
 
+fn component_error(path: &str, error: crate::components::text::ComponentError) -> RegistryError {
+    match error {
+        crate::components::text::ComponentError::Unsupported(what) => RegistryError::Unsupported(format!("{path}: {what}")),
+        other => RegistryError::Codec(format!("{path}: {other}")),
+    }
+}
+
 fn component(value: &Value, path: &str) -> Result<Tag> {
-    let parsed = Component::from_json(value)
-        .map_err(|e| RegistryError::Codec(format!("{path}: {e}")))?;
+    let parsed = Component::from_json(value).map_err(|e| component_error(path, e))?;
     Ok(parsed.to_nbt())
 }
 
@@ -271,7 +277,7 @@ fn chat_decoration(value: &Value, path: &str) -> Result<Tag> {
         if !style.is_object() {
             return err(format!("{}: Not a map: {style}", obj.at("style")));
         }
-        let parsed = parse_style(&Val::from_json(style)).map_err(|e| RegistryError::Codec(format!("{}: {e}", obj.at("style"))))?;
+        let parsed = parse_style(&Val::from_json(style)).map_err(|e| component_error(&obj.at("style"), e))?;
         let style_tags = style_entries(&parsed);
         if !style_tags.is_empty() {
             entries.push(("style", compound(style_tags)));

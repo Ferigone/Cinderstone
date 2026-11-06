@@ -365,7 +365,14 @@ impl ContainerComponent {
                 }
                 items[..last].to_vec()
             }
-            Self::ChargedProjectiles => items,
+            // `ChargedProjectiles.of` keeps an emptied stack, but its stream codec cannot write
+            // one (the original fails when the item is sent); there is no byte form to produce.
+            Self::ChargedProjectiles => {
+                if items.iter().any(ItemStack::is_empty) {
+                    return unsupported("charged_projectiles holding an empty stack (not encodable, as in the original)");
+                }
+                items
+            }
         };
         let mut writer = Writer::new();
         writer.varint(items.len() as i32);
@@ -423,7 +430,8 @@ fn remove_component(stack: &mut ItemStack, type_id: i32) {
 fn merge_compound(target: &mut Tag, patch: &Tag) {
     let (Tag::Compound(entries), Tag::Compound(patch)) = (target, patch) else { return };
     for (key, value) in patch {
-        match (entries.iter_mut().find(|(k, _)| k == key), value) {
+        // The last of repeated names is the effective one (`Tag::get`).
+        match (entries.iter_mut().rev().find(|(k, _)| k == key), value) {
             (Some((_, existing @ Tag::Compound(_))), Tag::Compound(_)) => merge_compound(existing, value),
             (Some((_, existing)), _) => *existing = value.clone(),
             (None, _) => entries.push((key.clone(), value.clone())),

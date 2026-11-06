@@ -344,11 +344,14 @@ fn decode_field(kind: Kind, value: &Value, name: &str) -> Result<Field> {
 pub struct Criterion {
     pub trigger: String,
     pub conditions: BTreeMap<&'static str, Field>,
+    /// Predicate clauses read without their codec's validation (see
+    /// [`Advancement::unvalidated_clauses`]).
+    pub unvalidated: Vec<String>,
 }
 
 /// `Criterion.CODEC` (`ExtraCodecs.dispatchOptionalValue("trigger", "conditions", …)`): a missing
 /// `conditions` member is an empty map.
-fn criterion(value: &Value) -> Result<Criterion> {
+pub fn criterion(value: &Value) -> Result<Criterion> {
     let map = object(value, "criterion")?;
     let trigger = location(member(map, "trigger").ok_or_else(|| DefinitionError::Codec("Input does not contain a key [trigger]".into()))?, "trigger")?;
     let short = trigger.strip_prefix("minecraft:").filter(|_| trigger.starts_with("minecraft:"));
@@ -368,7 +371,17 @@ fn criterion(value: &Value) -> Result<Criterion> {
             None => {}
         }
     }
-    Ok(Criterion { trigger, conditions: decoded })
+    // Predicate clauses whose codec the loot port does not validate (`[unvalidated]`): the
+    // definition's accept/reject answer is not established while any is present.
+    let debug = format!("{decoded:?}");
+    let mut unvalidated = Vec::new();
+    let mut rest = debug.as_str();
+    while let Some(at) = rest.find(crate::loot::parse::UNVALIDATED) {
+        let start = rest[..at].rfind('"').map_or(0, |i| i + 1);
+        unvalidated.push(rest[start..at].to_owned());
+        rest = &rest[at + crate::loot::parse::UNVALIDATED.len()..];
+    }
+    Ok(Criterion { trigger, conditions: decoded, unvalidated })
 }
 
 /// `AdvancementType`.
@@ -528,6 +541,14 @@ pub struct Advancement {
     pub criteria: BTreeMap<String, Criterion>,
     pub requirements: AdvancementRequirements,
     pub sends_telemetry_event: bool,
+}
+
+impl Advancement {
+    /// Predicate clauses in the criteria whose codec is not ported (so not validated): while this
+    /// is non-empty, `parse` accepting the file does not establish that the original accepts it.
+    pub fn unvalidated_clauses(&self) -> Vec<&str> {
+        self.criteria.values().flat_map(|c| c.unvalidated.iter().map(String::as_str)).collect()
+    }
 }
 
 /// `Advancement.CODEC` (with its `validate`) over one parsed JSON file.
