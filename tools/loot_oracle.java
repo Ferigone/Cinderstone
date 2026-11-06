@@ -1367,6 +1367,72 @@ public class loot_oracle {
         System.out.println("world-data-config=" + outArr.size());
         break;
       }
+      case "advancement-progress": {
+        // PlayerAdvancements' progress file codec (DataFixTypes.ADVANCEMENTS.wrapCodec over the Data
+        // map codec), then AdvancementProgress.update(requirements) as PlayerAdvancements does.
+        // Input: [{text, requirements:{id:[[criterion,..],..]}}]; output rows: {ok, json?, done?}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        Class<?> dataClass = Class.forName("net.minecraft.server.PlayerAdvancements$Data");
+        Field codecField = dataClass.getDeclaredField("CODEC");
+        codecField.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        Codec<Object> dataCodec = (Codec<Object>) codecField.get(null);
+        Codec<Object> wrapped = net.minecraft.util.datafix.DataFixTypes.ADVANCEMENTS.wrapCodec(dataCodec, net.minecraft.util.datafix.DataFixers.getDataFixer(), 1343);
+        Method mapAccessor = dataClass.getDeclaredMethod("map");
+        mapAccessor.setAccessible(true);
+        for (JsonElement e : in) {
+          JsonObject spec = e.getAsJsonObject();
+          JsonObject r = new JsonObject();
+          try {
+            com.google.gson.stream.JsonReader reader = new com.google.gson.stream.JsonReader(new java.io.StringReader(spec.get("text").getAsString()));
+            reader.setLenient(false);
+            JsonElement parsed = com.google.gson.internal.Streams.parse(reader);
+            // The version DataFixTypes.wrapCodec reads (default 1343); older files are data-fixed.
+            r.addProperty("version", JsonOps.INSTANCE.get(parsed, "DataVersion").flatMap(JsonOps.INSTANCE::getNumberValue).map(Number::intValue).result().orElse(1343));
+            Object data = wrapped.parse(JsonOps.INSTANCE, parsed).getOrThrow(m -> new IllegalArgumentException(m));
+            @SuppressWarnings("unchecked")
+            Map<ResourceLocation, net.minecraft.advancements.AdvancementProgress> map = (Map<ResourceLocation, net.minecraft.advancements.AdvancementProgress>) mapAccessor.invoke(data);
+            JsonObject requirements = spec.getAsJsonObject("requirements");
+            LinkedHashMap<ResourceLocation, net.minecraft.advancements.AdvancementProgress> kept = new LinkedHashMap<>();
+            for (Map.Entry<ResourceLocation, net.minecraft.advancements.AdvancementProgress> entry : map.entrySet()) {
+              String id = entry.getKey().toString();
+              if (!requirements.has(id)) continue;
+              List<List<String>> lists = new ArrayList<>();
+              for (JsonElement group : requirements.getAsJsonArray(id)) {
+                List<String> names = new ArrayList<>();
+                for (JsonElement n : group.getAsJsonArray()) names.add(n.getAsString());
+                lists.add(names);
+              }
+              entry.getValue().update(new net.minecraft.advancements.AdvancementRequirements(lists));
+              if (entry.getValue().hasProgress()) kept.put(entry.getKey(), entry.getValue());
+            }
+            java.lang.reflect.Constructor<?> dataConstructor = dataClass.getDeclaredConstructors()[0];
+            dataConstructor.setAccessible(true);
+            Object asData = dataConstructor.newInstance(kept);
+            JsonElement encoded = wrapped.encodeStart(JsonOps.INSTANCE, asData).getOrThrow(m -> new IllegalStateException(m));
+            r.addProperty("ok", true);
+            r.add("json", encoded);
+            JsonObject done = new JsonObject();
+            for (Map.Entry<ResourceLocation, net.minecraft.advancements.AdvancementProgress> entry : map.entrySet()) done.addProperty(entry.getKey().toString(), entry.getValue().isDone());
+            r.add("done", done);
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            Throwable cause = t instanceof java.lang.reflect.InvocationTargetException ite ? ite.getCause() : t;
+            r.addProperty("error", cause.getClass().getSimpleName() + ": " + cause.getMessage());
+          }
+          outArr.add(r);
+        }
+        // Error messages can echo input that holds a lone surrogate, which UTF-8 cannot write:
+        // escape every non-ASCII character (they only occur inside JSON strings).
+        StringBuilder ascii = new StringBuilder();
+        for (char ch : GSON.toJson(outArr).toCharArray()) {
+          if (ch > 126) ascii.append(String.format("\\u%04x", (int) ch)); else ascii.append(ch);
+        }
+        Files.writeString(Path.of(a[2]), ascii.toString());
+        System.out.println("advancement-progress=" + in.size());
+        break;
+      }
       case "export-facts": {
         Files.writeString(Path.of(a[1]), GSON.toJson(exportFacts()));
         break;

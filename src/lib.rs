@@ -142,3 +142,4 @@ pub mod block_entity_empty_components;
 pub mod source_nbt_decode;
 pub mod nbt_snbt;
 pub mod datapack;
+pub mod advancements;

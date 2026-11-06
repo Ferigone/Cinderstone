@@ -115,6 +115,15 @@ compare it (`gson` fields). Float and double arguments print with Java's `Float/
 rules, including the closest-two-digit rule (`1.4E-45`). `components::lenient::parse` is
 `JsonParser.parseString` (Gson's lenient reader) for the callers that need it.
 
+`components::lenient` is Gson's `JsonReader` in both modes the server uses. `parse` is the lenient
+`JsonParser.parseString`; `parse_strict_prefix` is `Streams.parse` over a non-lenient reader (one value, nothing
+after it is looked at; raw control characters inside strings are accepted, unlike `serde_json`) and backs
+the advancement progress file ([advancements.md](advancements.md)). Probing Gson 2.10.1 directly corrected
+three details of the lenient form: `[1,]` is `[1, null]` and `[,1]` is `[null, 1]` (an empty element is
+`null`), `{"a":1,}` is an error, and a comment *after* the value is an error (the end-of-document check
+runs with the reader back in strict mode). Escaped surrogate pairs combine into one character, and a form
+feed is not whitespace.
+
 ## Not implemented (explicit)
 
 - `show_item` and `show_entity` hover events return `ComponentError::Unsupported` (they need
