@@ -95,6 +95,21 @@ computes them, and that computation is transcribed. The criteria are the 456 dis
 inventories. All 74,560 answers agree (`fixtures/inventory-trigger-vectors.json`,
 `tools/inventory_trigger_generate.py`).
 
+Entity-free matchers follow, in the same module:
+- the item triggers (`consume_item`, `filled_bucket`, `used_totem`, `using_item`, `shot_crossbow`);
+- `enchanted_item` and `item_durability_changed`;
+- `construct_beacon` and `used_ender_eye` (`matchesSqr`: the bounds are squared, sign and all);
+- `brewed_potion` and `changed_dimension`;
+- `enter_block` / `slide_down_block` and `bee_nest_destroyed`;
+- `recipe_crafted` / `crafter_recipe_crafted` (each ingredient predicate takes a distinct
+  ingredient).
+
+`tools/loot_oracle.java trigger-match` calls the unchanged `TriggerInstance.matches` of each
+trigger. 108 criteria (every vanilla one of these triggers plus hand-written ones) × 40 seeded
+events give 4,320 answers, and all agree (`fixtures/trigger-match-vectors.json`,
+`tools/trigger_match_generate.py`). A ranged state matcher on a non-integer property is
+`Unsupported` in the loot port, and the test counts such answers.
+
 ## Tree, layout and the update packet (`advancements::tree`)
 
 - **Tree:** `AdvancementTree::add_all` is `AdvancementTree.addAll`. It inserts every advancement
