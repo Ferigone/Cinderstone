@@ -1,0 +1,100 @@
+{
+  "ok": true,
+  "native_commit": "8de46e824373b53972e7b1adebe0785c96f6d2a2",
+  "native_binary_sha256": "062c5dd88701906b6d75d6e0a764ead150813fd8e13ba221e0500b7c1ecaa2e9",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "native_source_tree": "4d0b81090a13ff73278e608bb48a6ebb12c7e32f",
+  "java_version": "openjdk version \"21.0.13\" 2026-10-20",
+  "flows": {
+    "java_default": {
+      "ok": true,
+      "packets": [
+        {
+          "fields": {
+            "x": 0,
+            "z": 0,
+            "oldDiameter": 59999968,
+            "newDiameter": 59999968,
+            "speed": 0,
+            "portalTeleportBoundary": 29999984,
+            "warningBlocks": 5,
+            "warningTime": 15
+          },
+          "payload_hex": "00000000000000000000000000000000418c9c3700000000418c9c370000000000f086a70e050f"
+        }
+      ]
+    },
+    "java_custom": {
+      "ok": true,
+      "packets": [
+        {
+          "fields": {
+            "x": 12.25,
+            "z": -7.5,
+            "oldDiameter": 200,
+            "newDiameter": 200,
+            "speed": 0,
+            "portalTeleportBoundary": 29999984,
+            "warningBlocks": 7,
+            "warningTime": 23
+          },
+          "payload_hex": "4028800000000000c01e0000000000004069000000000000406900000000000000f086a70e0717"
+        }
+      ]
+    },
+    "native_default": {
+      "ok": true,
+      "packets": [
+        {
+          "fields": {
+            "x": 0,
+            "z": 0,
+            "oldDiameter": 59999968,
+            "newDiameter": 59999968,
+            "speed": 0,
+            "portalTeleportBoundary": 29999984,
+            "warningBlocks": 5,
+            "warningTime": 15
+          },
+          "payload_hex": "00000000000000000000000000000000418c9c3700000000418c9c370000000000f086a70e050f"
+        }
+      ]
+    },
+    "native_custom": {
+      "ok": true,
+      "packets": [
+        {
+          "fields": {
+            "x": 12.25,
+            "z": -7.5,
+            "oldDiameter": 200,
+            "newDiameter": 200,
+            "speed": 0,
+            "portalTeleportBoundary": 29999984,
+            "warningBlocks": 7,
+            "warningTime": 23
+          },
+          "payload_hex": "4028800000000000c01e0000000000004069000000000000406900000000000000f086a70e0717"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "Initial border packets only; no imported-world gameplay, runtime listener packets, border damage or broad parity claim."
+  ],
+  "completed_at": "2026-11-06T15:14:49.605702+00:00",
+  "native_fixtures_tree": "c9a3759fff18470dabf2a58413f68a7f214a06f0",
+  "validation": {
+    "cargo_check_all_targets": "passed after rebase onto fad5b52",
+    "native_packet_test": "passed after rebase: six original-class packet witnesses",
+    "existing_border_tests": "five passed; later rebases change Main admission and docs only, leaving the library unchanged",
+    "repository_hygiene": "passed",
+    "build_options": [
+      "CARGO_BUILD_JOBS=1",
+      "CARGO_INCREMENTAL=0",
+      "CARGO_PROFILE_DEV_DEBUG=0",
+      "CARGO_PROFILE_TEST_DEBUG=0"
+    ],
+    "prior_attempts": "Earlier local memory-limit kills were resolved with single-job, non-incremental compilation without debug symbols."
+  }
+}

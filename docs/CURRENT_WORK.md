@@ -736,3 +736,13 @@ the central coordinator retains Main, metrics, journal and deployment ownership.
 HTTP 403 on issue comments has a documented versioned branch-status fallback.
 These assignments and prompts are not evidence that another session or seven
 agents are running; active work must be reported from observed state.
+
+## Initial world-border synchronization (#163)
+
+PLAY admission now sends the live restored border before initial time/spawn.
+The [protocol report](validation/border-login.json) records byte-identical Java
+1.21/native packets for default and saved custom borders; six original-class
+packet witnesses additionally cover interpolation and warning fields.
+All-target check and the focused native packet test passed. Runtime border-change
+listeners, commands, damage and the remaining WP-G2 work stay out of scope;
+`world_storage.4` remains incomplete and scope version 1/counts are unchanged.

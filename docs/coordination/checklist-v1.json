@@ -195,6 +195,7 @@
       "id": "world_storage.4",
       "area": "world_storage",
       "delivery": "Pełny level.dat i saved-data lifecycle",
+      "border_login_evidence": "Initial live world-border packet (#163): docs/validation/border-login.json; default and saved custom login bytes agree with Java. Remaining WP-G2 scope stays open.",
       "points": 1,
       "code_ported": false,
       "main_integrated": false,

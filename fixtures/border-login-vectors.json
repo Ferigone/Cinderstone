@@ -1,0 +1,74 @@
+[
+  {
+    "x": 0.0,
+    "z": 0.0,
+    "from": 59999968.0,
+    "to": 59999968.0,
+    "duration": 0,
+    "now": 0,
+    "absolute": 29999984,
+    "warning_blocks": 5,
+    "warning_time": 15,
+    "payload_hex": "00000000000000000000000000000000418c9c3700000000418c9c370000000000f086a70e050f"
+  },
+  {
+    "x": 12.25,
+    "z": -7.5,
+    "from": 200.0,
+    "to": 200.0,
+    "duration": 0,
+    "now": 0,
+    "absolute": 29999984,
+    "warning_blocks": 7,
+    "warning_time": 23,
+    "payload_hex": "4028800000000000c01e0000000000004069000000000000406900000000000000f086a70e0717"
+  },
+  {
+    "x": 12.25,
+    "z": -7.5,
+    "from": 200.0,
+    "to": 100.0,
+    "duration": 1000,
+    "now": 250,
+    "absolute": 29999984,
+    "warning_blocks": 7,
+    "warning_time": 23,
+    "payload_hex": "4028800000000000c01e0000000000004065e000000000004059000000000000ee05f086a70e0717"
+  },
+  {
+    "x": 0.0,
+    "z": 0.0,
+    "from": 100.0,
+    "to": 200.0,
+    "duration": 1000,
+    "now": 1000,
+    "absolute": 29999984,
+    "warning_blocks": 5,
+    "warning_time": 15,
+    "payload_hex": "000000000000000000000000000000004069000000000000406900000000000000f086a70e050f"
+  },
+  {
+    "x": 0.0,
+    "z": 0.0,
+    "from": 100.0,
+    "to": 200.0,
+    "duration": 1000,
+    "now": 1001,
+    "absolute": 29999984,
+    "warning_blocks": 5,
+    "warning_time": 15,
+    "payload_hex": "0000000000000000000000000000000040690000000000004069000000000000ffffffffffffffffff01f086a70e050f"
+  },
+  {
+    "x": -4.0,
+    "z": 8.0,
+    "from": 64.0,
+    "to": 128.0,
+    "duration": 100000,
+    "now": 1,
+    "absolute": 123456,
+    "warning_blocks": -1,
+    "warning_time": -2,
+    "payload_hex": "c01000000000000040200000000000004050000a7c5ac47240600000000000009f8d06c0c407ffffffff0ffeffffff0f"
+  }
+]
