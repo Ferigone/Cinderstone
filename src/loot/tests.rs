@@ -116,6 +116,7 @@ impl LootLevel for TestLevel {
 
 struct TestEntity {
     entity_type: String,
+    custom_name: Option<String>,
     on_fire: bool,
     mainhand: ItemStack,
     size: Option<i32>,
@@ -127,6 +128,7 @@ impl TestEntity {
     fn from_json(value: &Value) -> Self {
         Self {
             entity_type: value["type"].as_str().unwrap().to_owned(),
+            custom_name: value["custom_name"].as_str().map(str::to_owned),
             on_fire: value["on_fire"].as_bool().unwrap_or(false),
             mainhand: value
                 .get("mainhand")
@@ -168,6 +170,15 @@ impl LootEntity for TestEntity {
     }
     fn slime_size(&self) -> Result<Option<i32>> {
         Ok(self.size)
+    }
+    fn custom_name_nbt(&self) -> Result<Option<Vec<u8>>> {
+        Ok(self.custom_name.as_ref().map(|name| {
+            crate::components::text::Component::from_json(&Value::String(name.clone())).unwrap().to_network_nbt().unwrap()
+        }))
+    }
+    fn player_profile(&self) -> Result<Option<Vec<u8>>> {
+        // Stub entities are never players (the oracle cannot create one either).
+        Ok(None)
     }
     fn fishing_hook_open_water(&self) -> Result<Option<bool>> {
         Ok(if self.entity_type == "minecraft:fishing_bobber" {
@@ -510,7 +521,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
         &serde_json::from_str::<Value>(
             r#"{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[
                 {"type":"minecraft:item","name":"minecraft:stick",
-                 "functions":[{"function":"minecraft:fill_player_head","entity":"this"}]}]}]}"#,
+                 "functions":[{"function":"minecraft:copy_custom_data","source":"block_entity","ops":[]}]}]}]}"#,
         )
         .unwrap(),
     )
@@ -529,7 +540,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
     assert!(matches!(
         table.get_random_items(&mut ctx),
-        Err(LootError::Unsupported(what)) if what.contains("fill_player_head")
+        Err(LootError::Unsupported(what)) if what.contains("copy_custom_data")
     ));
 }
 

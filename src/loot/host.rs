@@ -146,6 +146,15 @@ pub trait LootEntity {
     }
     /// Variant string for `type_specific` variant predicates (`frog`, `cat`, …);
     /// `None` when the entity is not of that class.
+    /// `Entity.getCustomName()` (every entity is `Nameable`) as network NBT; `None` when unnamed.
+    fn custom_name_nbt(&self) -> Result<Option<Vec<u8>>> {
+        unsupported("entity.custom_name")
+    }
+    /// `Some(bytes)` when the entity is a `Player`: `ResolvableProfile.STREAM_CODEC` of
+    /// `new ResolvableProfile(player.getGameProfile())`.
+    fn player_profile(&self) -> Result<Option<Vec<u8>>> {
+        unsupported("entity.game_profile")
+    }
     fn variant(&self, kind: &str) -> Result<Option<String>> {
         unsupported(format!("entity.variant.{kind}"))
     }
@@ -165,6 +174,10 @@ pub trait LootDamageSource {
 /// `BlockEntity.collectComponents()`.
 pub trait LootBlockEntity {
     fn collect_components(&self) -> Result<Vec<Component>>;
+    /// `None` when the block entity is not `Nameable`; else its `getCustomName()` as network NBT.
+    fn nameable_custom_name_nbt(&self) -> Result<Option<Option<Vec<u8>>>> {
+        unsupported("block_entity.custom_name")
+    }
 }
 
 /// Registry lookups performed through `LootContext.getResolver()`.

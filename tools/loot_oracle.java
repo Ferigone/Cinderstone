@@ -553,6 +553,7 @@ public class loot_oracle {
     Entity e = t.create(level);
     if (e == null) throw new IllegalStateException("cannot create " + o.get("type"));
     if (o.has("on_fire") && o.get("on_fire").getAsBoolean()) e.setRemainingFireTicks(100);
+    if (o.has("custom_name")) e.setCustomName(net.minecraft.network.chat.Component.literal(o.get("custom_name").getAsString()));
     if (o.has("mainhand") && e instanceof LivingEntity le) le.setItemSlot(EquipmentSlot.MAINHAND, stack(o.getAsJsonObject("mainhand")));
     if (o.has("size") && e instanceof net.minecraft.world.entity.monster.Slime s) s.setSize(o.get("size").getAsInt(), false);
     if (o.has("open_water") && e instanceof net.minecraft.world.entity.projectile.FishingHook h) {

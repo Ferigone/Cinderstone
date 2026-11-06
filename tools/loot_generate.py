@@ -539,6 +539,18 @@ def synthetic_cases():
         item("stick", functions=[cdata({"a": 1, "b": True, "c": "s", "d": {"e": [1, 2]}, "f": [True, False], "g": [], "h": ["x", 1], "i": [{"k": 1}, {"": 2}]})]),
         item("stick", functions=[cdata({})]),
         item("apple", functions=[cdata("{a:[{b:1},{c:2}],big:300b,neg:-0.0d}"), cdata({"a": "replaced"})])]}]}, 18)
+    # copy_name and fill_player_head from (non-player) entities
+    named = entity(type="minecraft:zombie", custom_name="Bob")
+    named_attacker = entity(type="minecraft:skeleton", custom_name="Archer \u00e9")
+    for this_entity, attacker in ((named, named_attacker), (zombie, None), (named, None)):
+        fields = {"te": this_entity, "ds": player_hit}
+        if attacker is not None:
+            fields["ae"] = attacker
+        add({"type": "minecraft:entity", "pools": [{"rolls": 1, "entries": [
+            item("stick", functions=[{"function": "minecraft:copy_name", "source": "this"}]),
+            item("apple", functions=[{"function": "minecraft:set_name", "name": "Old"}, {"function": "minecraft:copy_name", "source": "this"}]),
+            item("bread", functions=[{"function": "minecraft:copy_name", "source": "attacking_entity"}]),
+            item("player_head", functions=[{"function": "minecraft:fill_player_head", "entity": "this"}])]}]}, 8, **fields)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 
