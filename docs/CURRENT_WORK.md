@@ -5,6 +5,16 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## World border commands connected (#186)
+
+Permission-2 players and console can query/change the live border, interpolate
+size, move its center and configure warnings/damage settings. Clients receive
+border updates and later joins see the retained state. Imported and native saves
+restore settings and remaining transitions. The [Java/native protocol check](validation/worldborder-command-runtime.json)
+and [focused original witnesses](reference/worldborder-command.md) cover the
+selected behavior. Border damage gameplay and full #24 remain outside scope;
+scope1/100 and58/53 are unchanged. Deployment verification remains under #19.
+
 ## Player idle timeout connected (#185)
 
 Console and permission-level3 players can run `/setidletimeout <minutes>` through

@@ -1,0 +1,927 @@
+{
+  "ok": true,
+  "native_commit": "ddb22d2586631076ddea5a826128973e6255d19e",
+  "native_src_tree": "f45f1167f24c4a4bf7ee5d37db1aecc2326337c2",
+  "native_binary_sha256": "71605c3b35f95122ca999f81c1d8cc4e90778fcf45f51f11b70d63ca5fa8d475",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "worldborder",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder add",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder add distance",
+          "executable": true,
+          "parser": "brigadier:double",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 1,
+              "min_present": 1
+            },
+            "min": -59999968,
+            "max": 59999968
+          }
+        },
+        {
+          "path": "worldborder add distance time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder center",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder center pos",
+          "executable": true,
+          "parser": "minecraft:vec2",
+          "properties": null
+        },
+        {
+          "path": "worldborder damage",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage amount",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage amount damagePerBlock",
+          "executable": true,
+          "parser": "brigadier:float",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder damage buffer",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage buffer distance",
+          "executable": true,
+          "parser": "brigadier:float",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder get",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder set",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder set distance",
+          "executable": true,
+          "parser": "brigadier:double",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 1,
+              "min_present": 1
+            },
+            "min": -59999968,
+            "max": 59999968
+          }
+        },
+        {
+          "path": "worldborder set distance time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder warning",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning distance",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning distance distance",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder warning time",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning time time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        }
+      ],
+      "denied_nonop": true,
+      "success": [
+        {
+          "component": {
+            "with": [
+              "59999968"
+            ],
+            "translate": "commands.worldborder.get"
+          },
+          "hex": "0a090004776974680800000001000835393939393936380800097472616e736c6174650018636f6d6d616e64732e776f726c64626f726465722e6765740000"
+        },
+        {
+          "component": {
+            "with": [
+              "64.0"
+            ],
+            "translate": "commands.worldborder.set.immediate"
+          },
+          "hex": "0a090004776974680800000001000436342e300800097472616e736c6174650022636f6d6d616e64732e776f726c64626f726465722e7365742e696d6d6564696174650000"
+        },
+        {
+          "component": {
+            "with": [
+              "12.50",
+              "-7.50"
+            ],
+            "translate": "commands.worldborder.center.success"
+          },
+          "hex": "0a090004776974680800000002000531322e353000052d372e35300800097472616e736c6174650023636f6d6d616e64732e776f726c64626f726465722e63656e7465722e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              7
+            ],
+            "translate": "commands.worldborder.warning.time.success"
+          },
+          "hex": "0a0b00047769746800000001000000070800097472616e736c6174650029636f6d6d616e64732e776f726c64626f726465722e7761726e696e672e74696d652e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              9
+            ],
+            "translate": "commands.worldborder.warning.distance.success"
+          },
+          "hex": "0a0b00047769746800000001000000090800097472616e736c617465002d636f6d6d616e64732e776f726c64626f726465722e7761726e696e672e64697374616e63652e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              "0.13"
+            ],
+            "translate": "commands.worldborder.damage.amount.success"
+          },
+          "hex": "0a0900047769746808000000010004302e31330800097472616e736c617465002a636f6d6d616e64732e776f726c64626f726465722e64616d6167652e616d6f756e742e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              "2.67"
+            ],
+            "translate": "commands.worldborder.damage.buffer.success"
+          },
+          "hex": "0a0900047769746808000000010004322e36370800097472616e736c617465002a636f6d6d616e64732e776f726c64626f726465722e64616d6167652e6275666665722e737563636573730000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "translate": "commands.worldborder.set.failed.nochange"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650028636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e6e6f6368616e6765000800047465787400000000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "translate": "commands.worldborder.set.failed.small"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650025636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e736d616c6c000800047465787400000000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "with": [
+                  29999984
+                ],
+                "translate": "commands.worldborder.set.failed.far"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a00000001090004776974680600000001417c9c37000000000800097472616e736c6174650023636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e666172000800047465787400000000"
+        },
+        {
+          "component": {
+            "with": [
+              "128.0",
+              "2"
+            ],
+            "translate": "commands.worldborder.set.grow"
+          },
+          "hex": "0a09000477697468080000000200053132382e300001320800097472616e736c617465001d636f6d6d616e64732e776f726c64626f726465722e7365742e67726f770000"
+        },
+        {
+          "component": {
+            "with": [
+              "128"
+            ],
+            "translate": "commands.worldborder.get"
+          },
+          "hex": "0a09000477697468080000000100033132380800097472616e736c6174650018636f6d6d616e64732e776f726c64626f726465722e6765740000"
+        }
+      ],
+      "updates": [
+        {
+          "name": "world_border_size",
+          "packet": {
+            "diameter": 64
+          },
+          "hex": "4050000000000000"
+        },
+        {
+          "name": "world_border_center",
+          "packet": {
+            "x": 12.5,
+            "z": -7.5
+          },
+          "hex": "4029000000000000c01e000000000000"
+        },
+        {
+          "name": "world_border_warning_delay",
+          "packet": {
+            "warningTime": 7
+          },
+          "hex": "07"
+        },
+        {
+          "name": "world_border_warning_reach",
+          "packet": {
+            "warningBlocks": 9
+          },
+          "hex": "09"
+        },
+        {
+          "name": "world_border_lerp_size",
+          "packet": {
+            "oldDiameter": 64,
+            "newDiameter": 128,
+            "speed": 2000
+          },
+          "hex": "40500000000000004060000000000000d00f"
+        },
+        {
+          "name": "world_border_center",
+          "packet": {
+            "x": 8,
+            "z": 8
+          },
+          "hex": "40200000000000004020000000000000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "worldborder ",
+          "start": 12,
+          "length": 0,
+          "matches": [
+            "add",
+            "center",
+            "damage",
+            "get",
+            "set",
+            "warning"
+          ]
+        },
+        {
+          "text": "worldborder center ",
+          "start": 19,
+          "length": 0,
+          "matches": [
+            "~",
+            "~ ~"
+          ]
+        },
+        {
+          "text": "worldborder warning ",
+          "start": 20,
+          "length": 0,
+          "matches": [
+            "distance",
+            "time"
+          ]
+        },
+        {
+          "text": "w",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "weather",
+            "whitelist",
+            "worldborder"
+          ]
+        }
+      ],
+      "query_private": true,
+      "invalid_no_mutation": true,
+      "console": true,
+      "rejoin": {
+        "name": "initialize_world_border",
+        "packet": {
+          "x": 8,
+          "z": 8,
+          "oldDiameter": 128,
+          "newDiameter": 128,
+          "speed": 0,
+          "portalTeleportBoundary": 29999984,
+          "warningBlocks": 9,
+          "warningTime": 7
+        },
+        "hex": "402000000000000040200000000000004060000000000000406000000000000000f086a70e0907"
+      },
+      "saved": {
+        "BorderCenterX": 8,
+        "BorderCenterZ": 8,
+        "BorderSize": 128,
+        "BorderSafeZone": 2.674999952316284,
+        "BorderDamagePerBlock": 0.125,
+        "BorderWarningBlocks": 9,
+        "BorderWarningTime": 7,
+        "BorderSizeLerpTime": [
+          0,
+          0
+        ],
+        "BorderSizeLerpTarget": 128
+      },
+      "restart": {
+        "name": "initialize_world_border",
+        "packet": {
+          "x": 8,
+          "z": 8,
+          "oldDiameter": 128,
+          "newDiameter": 128,
+          "speed": 0,
+          "portalTeleportBoundary": 29999984,
+          "warningBlocks": 9,
+          "warningTime": 7
+        },
+        "hex": "402000000000000040200000000000004060000000000000406000000000000000f086a70e0907"
+      },
+      "imported_lerp_restart": true
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "worldborder",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder add",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder add distance",
+          "executable": true,
+          "parser": "brigadier:double",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 1,
+              "min_present": 1
+            },
+            "min": -59999968,
+            "max": 59999968
+          }
+        },
+        {
+          "path": "worldborder add distance time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder center",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder center pos",
+          "executable": true,
+          "parser": "minecraft:vec2",
+          "properties": null
+        },
+        {
+          "path": "worldborder damage",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage amount",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage amount damagePerBlock",
+          "executable": true,
+          "parser": "brigadier:float",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder damage buffer",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder damage buffer distance",
+          "executable": true,
+          "parser": "brigadier:float",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder get",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder set",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder set distance",
+          "executable": true,
+          "parser": "brigadier:double",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 1,
+              "min_present": 1
+            },
+            "min": -59999968,
+            "max": 59999968
+          }
+        },
+        {
+          "path": "worldborder set distance time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder warning",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning distance",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning distance distance",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        },
+        {
+          "path": "worldborder warning time",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "worldborder warning time time",
+          "executable": true,
+          "parser": "brigadier:integer",
+          "properties": {
+            "flags": {
+              "unused": 0,
+              "max_present": 0,
+              "min_present": 1
+            },
+            "min": 0
+          }
+        }
+      ],
+      "denied_nonop": true,
+      "success": [
+        {
+          "component": {
+            "with": [
+              "59999968"
+            ],
+            "translate": "commands.worldborder.get"
+          },
+          "hex": "0a090004776974680800000001000835393939393936380800097472616e736c6174650018636f6d6d616e64732e776f726c64626f726465722e6765740000"
+        },
+        {
+          "component": {
+            "with": [
+              "64.0"
+            ],
+            "translate": "commands.worldborder.set.immediate"
+          },
+          "hex": "0a090004776974680800000001000436342e300800097472616e736c6174650022636f6d6d616e64732e776f726c64626f726465722e7365742e696d6d6564696174650000"
+        },
+        {
+          "component": {
+            "with": [
+              "12.50",
+              "-7.50"
+            ],
+            "translate": "commands.worldborder.center.success"
+          },
+          "hex": "0a090004776974680800000002000531322e353000052d372e35300800097472616e736c6174650023636f6d6d616e64732e776f726c64626f726465722e63656e7465722e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              7
+            ],
+            "translate": "commands.worldborder.warning.time.success"
+          },
+          "hex": "0a0b00047769746800000001000000070800097472616e736c6174650029636f6d6d616e64732e776f726c64626f726465722e7761726e696e672e74696d652e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              9
+            ],
+            "translate": "commands.worldborder.warning.distance.success"
+          },
+          "hex": "0a0b00047769746800000001000000090800097472616e736c617465002d636f6d6d616e64732e776f726c64626f726465722e7761726e696e672e64697374616e63652e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              "0.13"
+            ],
+            "translate": "commands.worldborder.damage.amount.success"
+          },
+          "hex": "0a0900047769746808000000010004302e31330800097472616e736c617465002a636f6d6d616e64732e776f726c64626f726465722e64616d6167652e616d6f756e742e737563636573730000"
+        },
+        {
+          "component": {
+            "with": [
+              "2.67"
+            ],
+            "translate": "commands.worldborder.damage.buffer.success"
+          },
+          "hex": "0a0900047769746808000000010004322e36370800097472616e736c617465002a636f6d6d616e64732e776f726c64626f726465722e64616d6167652e6275666665722e737563636573730000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "translate": "commands.worldborder.set.failed.nochange"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650028636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e6e6f6368616e6765000800047465787400000000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "translate": "commands.worldborder.set.failed.small"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650025636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e736d616c6c000800047465787400000000"
+        },
+        {
+          "component": {
+            "color": "red",
+            "extra": [
+              {
+                "with": [
+                  29999984
+                ],
+                "translate": "commands.worldborder.set.failed.far"
+              }
+            ],
+            "text": ""
+          },
+          "hex": "0a080005636f6c6f72000372656409000565787472610a00000001090004776974680600000001417c9c37000000000800097472616e736c6174650023636f6d6d616e64732e776f726c64626f726465722e7365742e6661696c65642e666172000800047465787400000000"
+        },
+        {
+          "component": {
+            "with": [
+              "128.0",
+              "2"
+            ],
+            "translate": "commands.worldborder.set.grow"
+          },
+          "hex": "0a09000477697468080000000200053132382e300001320800097472616e736c617465001d636f6d6d616e64732e776f726c64626f726465722e7365742e67726f770000"
+        },
+        {
+          "component": {
+            "with": [
+              "128"
+            ],
+            "translate": "commands.worldborder.get"
+          },
+          "hex": "0a09000477697468080000000100033132380800097472616e736c6174650018636f6d6d616e64732e776f726c64626f726465722e6765740000"
+        }
+      ],
+      "updates": [
+        {
+          "name": "world_border_size",
+          "packet": {
+            "diameter": 64
+          },
+          "hex": "4050000000000000"
+        },
+        {
+          "name": "world_border_center",
+          "packet": {
+            "x": 12.5,
+            "z": -7.5
+          },
+          "hex": "4029000000000000c01e000000000000"
+        },
+        {
+          "name": "world_border_warning_delay",
+          "packet": {
+            "warningTime": 7
+          },
+          "hex": "07"
+        },
+        {
+          "name": "world_border_warning_reach",
+          "packet": {
+            "warningBlocks": 9
+          },
+          "hex": "09"
+        },
+        {
+          "name": "world_border_lerp_size",
+          "packet": {
+            "oldDiameter": 64,
+            "newDiameter": 128,
+            "speed": 2000
+          },
+          "hex": "40500000000000004060000000000000d00f"
+        },
+        {
+          "name": "world_border_center",
+          "packet": {
+            "x": 8,
+            "z": 8
+          },
+          "hex": "40200000000000004020000000000000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "worldborder ",
+          "start": 12,
+          "length": 0,
+          "matches": [
+            "add",
+            "center",
+            "damage",
+            "get",
+            "set",
+            "warning"
+          ]
+        },
+        {
+          "text": "worldborder center ",
+          "start": 19,
+          "length": 0,
+          "matches": [
+            "~",
+            "~ ~"
+          ]
+        },
+        {
+          "text": "worldborder warning ",
+          "start": 20,
+          "length": 0,
+          "matches": [
+            "distance",
+            "time"
+          ]
+        },
+        {
+          "text": "w",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "weather",
+            "whitelist",
+            "worldborder"
+          ]
+        }
+      ],
+      "query_private": true,
+      "invalid_no_mutation": true,
+      "console": true,
+      "rejoin": {
+        "name": "initialize_world_border",
+        "packet": {
+          "x": 8,
+          "z": 8,
+          "oldDiameter": 128,
+          "newDiameter": 128,
+          "speed": 0,
+          "portalTeleportBoundary": 29999984,
+          "warningBlocks": 9,
+          "warningTime": 7
+        },
+        "hex": "402000000000000040200000000000004060000000000000406000000000000000f086a70e0907"
+      },
+      "saved": {
+        "BorderCenterX": 8,
+        "BorderCenterZ": 8,
+        "BorderSize": 128,
+        "BorderSafeZone": 2.674999952316284,
+        "BorderDamagePerBlock": 0.125,
+        "BorderWarningBlocks": 9,
+        "BorderWarningTime": 7,
+        "BorderSizeLerpTime": [
+          0,
+          0
+        ],
+        "BorderSizeLerpTarget": 128
+      },
+      "restart": {
+        "name": "initialize_world_border",
+        "packet": {
+          "x": 8,
+          "z": 8,
+          "oldDiameter": 128,
+          "newDiameter": 128,
+          "speed": 0,
+          "portalTeleportBoundary": 29999984,
+          "warningBlocks": 9,
+          "warningTime": 7
+        },
+        "hex": "402000000000000040200000000000004060000000000000406000000000000000f086a70e0907"
+      },
+      "imported_lerp_restart": true
+    }
+  },
+  "limits": [
+    "Selected single-overworld command behavior, not border damage gameplay or broad vanilla parity.",
+    "Exact controlled-clock interpolation is covered separately; live size transitions use target/remaining invariants.",
+    "World-border packets and feedback are exact for commands issued from a static size. Live interpolation completion allows 500ms scheduling drift."
+  ],
+  "native_lerp_checkpoint": {
+    "saved": {
+      "center_x": 0,
+      "center_z": 0,
+      "damage_per_block": 0.2,
+      "safe_zone": 5,
+      "warning_blocks": 5,
+      "warning_time": 15,
+      "size": 66.2208,
+      "size_lerp_time": 57918,
+      "size_lerp_target": 128
+    },
+    "restored": {
+      "x": 0,
+      "z": 0,
+      "oldDiameter": 66.32426666666666,
+      "newDiameter": 128,
+      "speed": 57821,
+      "portalTeleportBoundary": 29999984,
+      "warningBlocks": 5,
+      "warningTime": 15
+    }
+  },
+  "legacy_checkpoint_default": true,
+  "completed_at": "2026-11-06T21:32:58.389Z"
+}

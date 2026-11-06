@@ -9,7 +9,7 @@ pub const ABSOLUTE_MAX_SIZE: i32 = 29_999_984;
 pub const MAX_SIZE: f64 = 59_999_968.;
 pub const MAX_CENTER_COORDINATE: f64 = 29_999_984.;
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct BorderSettings {
     pub center_x: f64,
     pub center_z: f64,

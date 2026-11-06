@@ -665,7 +665,8 @@
       "seed_evidence": "Partial /seed runtime (#179): explicit raw seed, Brigadier/permission2, original rich feedback/result witnesses, private protocol/restart flow; docs/validation/seed-command-runtime.json. Full catalog remains incomplete.",
       "difficulty_evidence": "Partial /difficulty runtime (#180): native Brigadier permission2 query/set, retained player/fire difficulty, requester/observer protocol updates, saved lock and dedicated restart behavior; original-class vectors and docs/validation/difficulty-command-runtime.json. Full catalog remains incomplete.",
       "list_evidence": "Partial /list runtime (#183): native Brigadier, current ordered roster/team display names, private feedback and original-class/protocol byte comparison; docs/validation/list-command-runtime.json. Full catalog remains incomplete.",
-      "idle_timeout_evidence": "Partial idle timeout (#185): Brigadier command, actual action clock/PLAY disconnect, dedicated property persistence; original deadline/component vectors and real Java/native minute-long flow in docs/validation/idle-timeout-runtime.json. Full #24/#64 remain open."
+      "idle_timeout_evidence": "Partial idle timeout (#185): Brigadier command, actual action clock/PLAY disconnect, dedicated property persistence; original deadline/component vectors and real Java/native minute-long flow in docs/validation/idle-timeout-runtime.json. Full #24/#64 remain open.",
+      "worldborder_evidence": "Partial /worldborder runtime (#186): permission2 Brigadier, retained collision/login border, ordered client packets and imported/native interpolation checkpoints; original-class vectors and docs/validation/worldborder-command-runtime.json. Full catalog remains incomplete."
     },
     {
       "id": "commands_data.2",

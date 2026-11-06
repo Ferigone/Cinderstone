@@ -94,6 +94,10 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 enum Parser {
     NonnegativeInteger,
     Time(i32),
+    BorderDouble,
+    NonnegativeFloat,
+    NonnegativeInteger,
+    Vec2,
     GreedyString,
     Word,
     Players,
@@ -200,6 +204,10 @@ impl Tree {
                     match parser {
                         Parser::NonnegativeInteger => { output.varint(3).u8(1).i32(0); },
                         Parser::Time(minimum) => { output.varint(42).i32(*minimum); },
+                        Parser::BorderDouble => {output.varint(2).u8(3).f64(-crate::border::MAX_SIZE).f64(crate::border::MAX_SIZE);},
+                        Parser::NonnegativeFloat => {output.varint(1).u8(1).f32(0.);},
+                        Parser::NonnegativeInteger => {output.varint(3).u8(1).i32(0);},
+                        Parser::Vec2 => {output.varint(11);},
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -295,6 +303,21 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
         tree.literal(0, "seed", true);
+        let border=tree.literal(0,"worldborder",false);
+        for name in ["add","set"] {
+            let branch=tree.literal(border,name,false);
+            let distance=tree.argument(branch,"distance",Parser::BorderDouble,false);
+            tree.argument(distance,"time",Parser::NonnegativeInteger,false);
+        }
+        let center=tree.literal(border,"center",false);
+        tree.argument(center,"pos",Parser::Vec2,false);
+        let damage=tree.literal(border,"damage",false);
+        for (name,arg) in [("amount","damagePerBlock"),("buffer","distance")] {
+            let branch=tree.literal(damage,name,false);tree.argument(branch,arg,Parser::NonnegativeFloat,false);
+        }
+        tree.literal(border,"get",true);
+        let warning=tree.literal(border,"warning",false);
+        for name in ["distance","time"] {let branch=tree.literal(warning,name,false);tree.argument(branch,name,Parser::NonnegativeInteger,false);}
         let difficulty = tree.literal(0,"difficulty",true);
         for name in crate::commands::difficulty_command::NAMES { tree.literal(difficulty,name,true); }
         let weather = tree.literal(0, "weather", false);
@@ -348,6 +371,14 @@ pub fn native_command_suggestions(
         if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
         let range = suggestions.range();
         return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
+    if input == "worldborder" || input.starts_with("worldborder ") {
+        let suggestions=crate::commands::worldborder_command::suggestions(input,permission_level)
+            .map_err(|error|anyhow::anyhow!("worldborder suggestions: {error:?}"))?;
+        let matches=suggestions.list().iter().map(|value|value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+        let range=suggestions.range();
+        return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
     }
     if input == "difficulty" || input.starts_with("difficulty ") {
         let suggestions = crate::commands::difficulty_command::suggestions(input,permission_level)
@@ -523,6 +554,8 @@ fn administration_suggestions_with_time(
         && "difficulty".starts_with(&lowered) && remaining != "difficulty" {
         matches.push("difficulty".to_owned());
     }
+    if include_time && permission_level>=2 && last_separator.is_none()
+        && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.
     matches.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));
@@ -578,7 +611,7 @@ mod native_weather_tests {
     #[test]
     fn weather_root_completion_keeps_existing_whitelist_and_permissions() {
         for (permission, expected) in [
-            (1, vec![]), (2, vec!["weather"]), (3, vec!["weather", "whitelist"]),
+            (1, vec![]), (2, vec!["weather", "worldborder"]), (3, vec!["weather", "whitelist", "worldborder"]),
         ] {
             let packet = native_command_suggestions(&SuggestionRequest {
                 id: 9, command: "/w".into(),

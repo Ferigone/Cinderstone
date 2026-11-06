@@ -12,6 +12,7 @@
 pub mod arguments;
 pub mod coordinates;
 pub mod difficulty_command;
+pub mod worldborder_command;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
