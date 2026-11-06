@@ -128,7 +128,7 @@ function property(bytes) {
 }
 async function consoleIdle(minutes) {
   const offset=server.log().length;server.command('/setidletimeout '+minutes);
-  await until(()=>server.log().slice(offset).includes(server.kind==='java'?'Set the idle kick timer':'commands.setidletimeout.success'),'console idle');
+  await until(()=>server.log().slice(offset).includes(server.kind==='java'?'The player idle timeout is now':'commands.setidletimeout.success'),'console idle');
 }
 try {
   const prepared=path.join(scratch,'prepared');await mkdir(prepared);await copyFile(eulaArg,path.join(prepared,'eula.txt'));
