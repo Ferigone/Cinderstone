@@ -198,7 +198,7 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "verification": "Partial: initial PLAY shared-spawn packet uses saved level.dat coordinates/angle; real Java/native bytes in docs/validation/spawn-login.json (#161). Full level.dat/SavedData lifecycle remains incomplete."
+      "verification": "Partial Main evidence: shared-spawn coordinates/angle match Java packet bytes in docs/validation/spawn-login.json (#161); PLAY login UI flags use loaded GameRules and match all four Java rule combinations plus native defaults in docs/validation/login-rules.json (#164). Full level.dat/SavedData lifecycle (#41) remains incomplete."
     },
     {
       "id": "world_storage.5",

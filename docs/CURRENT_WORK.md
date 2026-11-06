@@ -29,6 +29,15 @@ This fixes admission-time spawn publication only. Initial-player spawn search,
 respawn and general imported-world gameplay remain outside this delivery;
 WP-G2 and `world_storage.4` remain incomplete. Scope/counts stay 1 / 100 and 56/51.
 
+## PLAY login game-rule flags (#164)
+
+Main now sends the live world's `reducedDebugInfo` rule and the inverse of
+`doImmediateRespawn` in the initial login packet. The [real protocol check](validation/login-rules.json)
+matches unchanged Java 1.21 for all four rule combinations on imported worlds;
+fresh native defaults remain false/true. All-target check, world-rule tests and
+the Main save/rejoin smoke passed. Death/respawn gameplay and the rest of #41
+remain incomplete; scope version 1 and checklist counts are unchanged.
+
 ## End-to-end differential runner (WP-Q1)
 
 The [scenario runner](reference/parity-runner.md) compares an unchanged pinned
