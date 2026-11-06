@@ -1,0 +1,560 @@
+{
+  "ok": true,
+  "native_commit": "f999c06930b983d1e1b7e29dc35d2a4fd3c9f9e0",
+  "native_src_tree": "a12f3b34dc4b72648b234253b6d4e64a7f6abeae",
+  "native_binary_sha256": "2e325e42fa885bfcb197b23af371264b23d8a8194ca7d823519136a3d01d128a",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "banlist",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "banlist ips",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "banlist players",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "denied_nonop": true,
+      "queries": [
+        {
+          "command": "banlist",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  3
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000030800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "192.0.2.7",
+                  "Console",
+                  "IP reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "BannedOne",
+                  "Operator",
+                  "Reason \"one\" \u2603"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "ExpiredOne",
+                  "Earlier",
+                  "Expired reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        },
+        {
+          "command": "banlist players",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  2
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000020800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "BannedOne",
+                  "Operator",
+                  "Reason \"one\" \u2603"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "ExpiredOne",
+                  "Earlier",
+                  "Expired reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        },
+        {
+          "command": "banlist ips",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  1
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000010800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "192.0.2.7",
+                  "Console",
+                  "IP reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        }
+      ],
+      "completion": [
+        {
+          "text": "banlist ",
+          "start": 8,
+          "length": 0,
+          "matches": [
+            "ips",
+            "players"
+          ]
+        },
+        {
+          "text": "banlist i",
+          "start": 8,
+          "length": 1,
+          "matches": [
+            "ips"
+          ]
+        },
+        {
+          "text": "/banlist p",
+          "start": 9,
+          "length": 1,
+          "matches": [
+            "players"
+          ]
+        },
+        {
+          "text": "banlist ips ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "b",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "ban",
+            "ban-ip",
+            "banlist"
+          ]
+        }
+      ],
+      "private": true,
+      "query_retains_expired": true,
+      "invalid_no_mutation": [
+        {
+          "component": {
+            "with": [
+              3
+            ],
+            "translate": "commands.banlist.list"
+          },
+          "hex": "0a0b00047769746800000001000000030800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+        },
+        {
+          "component": {
+            "with": [
+              "192.0.2.7",
+              "Console",
+              "IP reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "BannedOne",
+              "Operator",
+              "Reason \"one\" \u2603"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "ExpiredOne",
+              "Earlier",
+              "Expired reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        }
+      ],
+      "console": true,
+      "removed_ip": [
+        {
+          "component": {
+            "translate": "commands.banlist.none"
+          },
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e650000"
+        }
+      ],
+      "restart_players": [
+        {
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.banlist.list"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+        },
+        {
+          "component": {
+            "with": [
+              "BannedOne",
+              "Operator",
+              "Reason \"one\" \u2603"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "ExpiredOne",
+              "Earlier",
+              "Expired reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        }
+      ],
+      "restart_ips": [
+        {
+          "component": {
+            "translate": "commands.banlist.none"
+          },
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e650000"
+        }
+      ]
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "banlist",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "banlist ips",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "banlist players",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "denied_nonop": true,
+      "queries": [
+        {
+          "command": "banlist",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  3
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000030800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "192.0.2.7",
+                  "Console",
+                  "IP reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "BannedOne",
+                  "Operator",
+                  "Reason \"one\" \u2603"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "ExpiredOne",
+                  "Earlier",
+                  "Expired reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        },
+        {
+          "command": "banlist players",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  2
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000020800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "BannedOne",
+                  "Operator",
+                  "Reason \"one\" \u2603"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            },
+            {
+              "component": {
+                "with": [
+                  "ExpiredOne",
+                  "Earlier",
+                  "Expired reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        },
+        {
+          "command": "banlist ips",
+          "messages": [
+            {
+              "component": {
+                "with": [
+                  1
+                ],
+                "translate": "commands.banlist.list"
+              },
+              "hex": "0a0b00047769746800000001000000010800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+            },
+            {
+              "component": {
+                "with": [
+                  "192.0.2.7",
+                  "Console",
+                  "IP reason"
+                ],
+                "translate": "commands.banlist.entry"
+              },
+              "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+            }
+          ]
+        }
+      ],
+      "completion": [
+        {
+          "text": "banlist ",
+          "start": 8,
+          "length": 0,
+          "matches": [
+            "ips",
+            "players"
+          ]
+        },
+        {
+          "text": "banlist i",
+          "start": 8,
+          "length": 1,
+          "matches": [
+            "ips"
+          ]
+        },
+        {
+          "text": "/banlist p",
+          "start": 9,
+          "length": 1,
+          "matches": [
+            "players"
+          ]
+        },
+        {
+          "text": "banlist ips ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "b",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "ban",
+            "ban-ip",
+            "banlist"
+          ]
+        }
+      ],
+      "private": true,
+      "query_retains_expired": true,
+      "invalid_no_mutation": [
+        {
+          "component": {
+            "with": [
+              3
+            ],
+            "translate": "commands.banlist.list"
+          },
+          "hex": "0a0b00047769746800000001000000030800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+        },
+        {
+          "component": {
+            "with": [
+              "192.0.2.7",
+              "Console",
+              "IP reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "BannedOne",
+              "Operator",
+              "Reason \"one\" \u2603"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "ExpiredOne",
+              "Earlier",
+              "Expired reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        }
+      ],
+      "console": true,
+      "removed_ip": [
+        {
+          "component": {
+            "translate": "commands.banlist.none"
+          },
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e650000"
+        }
+      ],
+      "restart_players": [
+        {
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.banlist.list"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c6973740000"
+        },
+        {
+          "component": {
+            "with": [
+              "BannedOne",
+              "Operator",
+              "Reason \"one\" \u2603"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        },
+        {
+          "component": {
+            "with": [
+              "ExpiredOne",
+              "Earlier",
+              "Expired reason"
+            ],
+            "translate": "commands.banlist.entry"
+          },
+          "hex": "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e7472790000"
+        }
+      ],
+      "restart_ips": [
+        {
+          "component": {
+            "translate": "commands.banlist.none"
+          },
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e650000"
+        }
+      ]
+    }
+  },
+  "limits": [
+    "Existing access-list owner and its expiry behavior; no profile-cache/date/locale or HashMap bucket parity claim.",
+    "Entry encounter order within player/IP maps is excluded across languages; membership and each component byte string are exact. Player entries must precede IP entries.",
+    "Syntax-error text and packet timing are excluded. Query payloads, filtered contents, command subtree and completion are exact.",
+    "Root-prefix b comparisons retain only native-supported ban, ban-ip and banlist matches."
+  ],
+  "completed_at": "2026-11-06T21:52:05.185Z"
+}

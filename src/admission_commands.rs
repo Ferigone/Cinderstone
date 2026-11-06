@@ -707,29 +707,8 @@ pub fn execute<H: AdministrationHost>(
             Ok(count)
         }
         AdminCommand::BanList(kind) => {
-            let entries = host.ban_entries(kind);
-            let count = entries.len() as i32;
-            if entries.is_empty() {
-                host.feedback(CommandMessage::plain_key("commands.banlist.none"), false);
-            } else {
-                host.feedback(
-                    CommandMessage::new("commands.banlist.list", vec![MessageArg::Integer(count)]),
-                    false,
-                );
-                for entry in entries {
-                    host.feedback(
-                        CommandMessage::new(
-                            "commands.banlist.entry",
-                            vec![
-                                MessageArg::Text(entry.display_name),
-                                MessageArg::Text(entry.source),
-                                MessageArg::Text(entry.reason),
-                            ],
-                        ),
-                        false,
-                    );
-                }
-            }
+            let (count,messages)=crate::commands::banlist_command::messages(host.ban_entries(kind));
+            for message in messages {host.feedback(message,false);}
             Ok(count)
         }
         AdminCommand::Ban { targets, reason } => {

@@ -172,6 +172,7 @@ impl Server {
             drop(owner);
             return self.execute_seed_command(time_line, source_id, source.permission_level);
         }
+        let is_banlist = time_line.split_whitespace().next() == Some("banlist");
         let is_time = time_line.split_whitespace().next() == Some("time");
         let is_weather = time_line.split_whitespace().next() == Some("weather");
         let is_difficulty = time_line.split_whitespace().next() == Some("difficulty");
@@ -213,7 +214,7 @@ impl Server {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
                     } else if send_feedback {
-                        let component = if is_time || is_weather || is_difficulty || is_idle || is_worldborder { main_time_command::feedback_component(&message)? } else { message.network_component()? };
+                        let component = if is_time || is_weather || is_difficulty || is_idle || is_worldborder || is_banlist { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {

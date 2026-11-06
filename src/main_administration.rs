@@ -311,6 +311,12 @@ impl Administration {
         // grammar merely because its bounded parser runs before execute().
         let input = line.strip_prefix('/').unwrap_or(line);
         let root = input.split(' ').next().unwrap_or("");
+        if root == "banlist" {
+            return match mc121_rust::commands::banlist_command::parse(input, source.permission_level) {
+                Ok(kind) => self.execute(&AdminCommand::BanList(kind), source, source_entity_id, online, now_ms),
+                Err(error) => CommandOutcome {result:Err(CommandError::Host(error.message())),effects:Vec::new()},
+            };
+        }
         let permission = match root {
             "list" => Some(0),
             "banlist" | "ban" | "pardon" | "ban-ip" | "pardon-ip" | "whitelist" | "op" | "deop"
