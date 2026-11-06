@@ -287,10 +287,10 @@ fn original_inventory_changed_scan_has_its_own_empty_registry() {
             .len(),
         14
     );
-    assert_eq!(facts["default_vanilla_recipe_unlocks_implemented"], false);
+    assert_eq!(facts["default_vanilla_recipe_unlocks_implemented"], true);
     println!(
         "MAIN_ITEM_GAMEPLAY_INVENTORY_CONFORMANCE:{}",
-        json!({"ok":true,"original_inventory_scans":compared,"native_inventory_menu_listener_callbacks":slot_callbacks,"default_vanilla_recipe_unlocks_implemented":false,"mismatches":0,"scope":"Original InventoryChangeTrigger scans all41 inventory slots before empty SimpleCriterionTrigger gate. Native counts cover all1333 prototype IDs across the corpus and InventoryMenu listener slots5..45; local callback scheduling belongs to the menu owner. Explicit empty fixture registry does not represent vanilla's1419 inventory criteria or its14 exact stone recipe predicates."})
+        json!({"ok":true,"original_inventory_scans":compared,"native_inventory_menu_listener_callbacks":slot_callbacks,"default_vanilla_recipe_unlocks_implemented":true,"mismatches":0,"scope":"Original InventoryChangeTrigger scans all41 inventory slots before empty SimpleCriterionTrigger gate. Native counts cover all1333 prototype IDs across the corpus and InventoryMenu listener slots5..45; local callback scheduling belongs to the menu owner. The recipes/** inventory criteria are evaluated by the recipe advancement owner (#27)."})
     );
 }
 

@@ -446,9 +446,9 @@ impl PlayerMoveHooks for MainMotionHooks<'_> {
     fn inside_block(&mut self, state: &EntityPhysicalState, block: u32) -> Result<()> {
         self.validate(state)?;
         ensure!(block < 26684, "unknown ENTER_BLOCK context");
-        // NativeFixtureEmptyCriteria owns the complete absent catalogue. The
-        // trigger's context construction reads references, with no RNG draw.
-        self.gameplay.require_supported_floor()
+        // Only the recipe advancements register ENTER_BLOCK listeners (boats:
+        // in_water). Matching reads the state alone, with no RNG draw.
+        self.gameplay.enter_block(state.uuid, block)
     }
 }
 impl PlayerMotionHooks for MainMotionHooks<'_> {

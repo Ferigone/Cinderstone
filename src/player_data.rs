@@ -115,6 +115,10 @@ pub struct PlayerLifecycle {
     /// Original Java statistics JSON, including unrecognized extension keys.
     #[serde(default)]
     pub java_stats_json: Option<String>,
+    /// `advancements/<uuid>.json` text (`PlayerAdvancements.save`). Absent for
+    /// a player saved before advancements were loaded: they start empty.
+    #[serde(default)]
+    pub advancements_json: Option<String>,
 }
 impl PlayerLifecycle {
     /// Explicit new-player state; do not use this to replace an existing save.
@@ -142,6 +146,7 @@ impl PlayerLifecycle {
             recipe_book_nbt: None,
             java_source_nbt: None,
             java_stats_json: None,
+            advancements_json: None,
         };
         value.validate()?;
         Ok(value)
@@ -197,6 +202,8 @@ impl PlayerLifecycle {
                 "saved recipe book must be an anonymous compound"
             );
         }
+        ensure!(self.advancements_json.as_ref().map_or(true, |v| v.len() as u64 <= MAX_SAVE_BYTES),
+            "saved advancements are too large");
         ensure!(self.java_source_nbt.as_ref().map_or(true, |v| v.len() as u64 <= MAX_SAVE_BYTES),
             "original Java player source exceeds64MiB");
         ensure!(self.java_stats_json.as_ref().map_or(true, |v| v.len() as u64 <= MAX_SAVE_BYTES),

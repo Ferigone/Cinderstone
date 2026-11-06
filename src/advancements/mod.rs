@@ -1,8 +1,9 @@
 //! Advancement progress (WP-E5 core): requirements, per-criterion progress and the
-//! `advancements/<uuid>.json` file. Nothing here is called by Main; the triggers that grant
-//! progress are not ported. Evidence and limits: `docs/reference/advancements.md`.
+//! `advancements/<uuid>.json` file. Main uses [`player`] for the vanilla recipe advancements (#27);
+//! the other trees are not loaded. Evidence and limits: `docs/reference/advancements.md`.
 
 pub mod definition;
+pub mod player;
 pub mod tree;
 pub mod triggers;
 pub mod progress;
@@ -18,3 +19,5 @@ pub use progress::{
 pub use requirements::AdvancementRequirements;
 #[cfg(test)]
 mod definition_tests;
+#[cfg(test)]
+mod player_tests;

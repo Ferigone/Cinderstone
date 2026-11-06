@@ -13,8 +13,8 @@
     "Tests deferred per user; no test-count-derived percentages"
   ],
   "baseline_commit": "643106e8eb60d970a8df67eb9acf0ab5f107c788",
-  "code_ported_points": 57,
-  "main_integrated_points": 52,
+  "code_ported_points": 58,
+  "main_integrated_points": 53,
   "note": "Public planning snapshot; the original named delivery definitions are preserved verbatim. Only the integration coordinator updates completion after actual source and Main evidence. Counts do not measure functional Minecraft compatibility.",
   "rows": [
     {
@@ -570,9 +570,9 @@
       "area": "crafting",
       "delivery": "Vanilla advancement unlocks/rewards",
       "points": 1,
-      "code_ported": false,
-      "main_integrated": false,
-      "verification": "final validation deferred"
+      "code_ported": true,
+      "main_integrated": true,
+      "verification": "recipe advancements (recipes/**) drive unlocks in Main; scripted-pickup vectors and live tick/pickup/restart probe (#27)"
     },
     {
       "id": "crafting.5",

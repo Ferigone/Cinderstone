@@ -5,6 +5,21 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Recipe unlocks through vanilla recipe advancements — `crafting.4` closed
+
+The shipped `recipes/**` advancements (1,276 and their root) are loaded and
+evaluated in Main ([details](reference/recipe-unlocks.md), #27). A fresh player
+receives the crafting table on its first tick; picking up an oak log unlocks oak
+planks, oak wood and charcoal; entering water unlocks the boats; recipes other
+owners add fire `recipe_unlocked`. Progress is saved with the player (and as
+`advancements/<uuid>.json` in an Anvil world) and survives a restart. Evidence:
+scripted-pickup vectors whose criteria are answered by the unchanged
+`InventoryChangeTrigger` (316 pickups, 62 scripts) and a live stock-client probe
+(`tools/recipe_unlock_live_probe.mjs`) covering tick, pickup and restart. The
+other advancement trees (story, nether, end, adventure, husbandry) are still not
+loaded (#26); `doLimitedCrafting` and recipe-book placement requests remain open.
+This closes `crafting.4`: the checklist is **58/100 code**, **53/100 Main**.
+
 ## Use-item-on block reconciliation (#158)
 
 [Focused protocol evidence](validation/use-item-on-reconciliation.json) now agrees
@@ -733,8 +748,8 @@ block entities, complete redstone, TNT/explosions, commands/datapacks and full
 Java-world interoperability. Unsupported owners and callbacks remain explicit
 errors.
 
-The fixed 100-item planning checklist records **56/100 code deliveries** and
-**51/100 main-server integrations** at `scope_version: 1`. The existing
+The fixed 100-item planning checklist records **58/100 code deliveries** and
+**53/100 main-server integrations** at `scope_version: 1`. The existing
 `network.5` delivery is now implemented and called by Main; the denominator and
 definitions are unchanged. These are checklist
 indicators, not measures of functional compatibility, engineering effort or
