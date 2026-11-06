@@ -75,6 +75,13 @@ Results:
 - **Full local run:** `--per-path 0 --sample 1` produces 642,360 runs over 6,060 paths (138,409
   succeed). Point `NBT_PATH_VECTORS` at that output to run them. All agree with the original.
 
+Numeric writes into arrays narrow as the source tag does:
+- `FloatTag.getAsLong` is a plain cast, while `DoubleTag.getAsLong` floors.
+- `getAsInt` uses `Mth.floor` for both.
+
+A decoded compound that repeats a name resolves to its last value, as `Tag::get` does. Reads
+borrow the tree, so `a[]` over a large list is linear.
+
 ## Not covered
 
 - **Error text:** message text and cursors are not compared.

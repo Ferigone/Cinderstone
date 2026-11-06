@@ -450,9 +450,11 @@ pub fn compare_nbt(expected: &Tag, actual: Option<&Tag>) -> bool {
     }
 }
 
+/// `CompoundTag.get`: a decoded compound may repeat a name; the last one is the effective value
+/// (as `Tag::get` treats it).
 fn child<'a>(tag: &'a Tag, key: &JavaString) -> Option<&'a Tag> {
     match tag {
-        Tag::Compound(entries) => entries.iter().find(|(k, _)| k == key).map(|(_, v)| v),
+        Tag::Compound(entries) => entries.iter().rev().find(|(k, _)| k == key).map(|(_, v)| v),
         _ => None,
     }
 }
@@ -482,19 +484,29 @@ fn element(tag: &Tag, index: usize) -> Option<Tag> {
     }
 }
 
-fn value_at(root: &Tag, location: &[Step]) -> Option<Tag> {
-    let mut current = root.clone();
-    for step in location {
-        current = match step {
-            Step::Key(key) => child(&current, key)?.clone(),
-            Step::Index(index) => element(&current, *index)?,
-        };
+/// The tag at `location`, borrowed while the path stays inside compounds and lists; an array
+/// element is materialised as a fresh numeric tag (as `CollectionTag.get` does).
+fn tag_at<'a>(root: &'a Tag, location: &[Step]) -> Option<std::borrow::Cow<'a, Tag>> {
+    use std::borrow::Cow;
+    let mut current: &'a Tag = root;
+    for (position, step) in location.iter().enumerate() {
+        match step {
+            Step::Key(key) => current = child(current, key)?,
+            Step::Index(index) => match current {
+                Tag::List { values, .. } => current = values.get(*index)?,
+                other => {
+                    // An array element ends the walk: nothing below a numeric tag.
+                    let value = element(other, *index)?;
+                    return (position + 1 == location.len()).then_some(Cow::Owned(value));
+                }
+            },
+        }
     }
-    Some(current)
+    Some(Cow::Borrowed(current))
 }
 
-fn tag_at(root: &Tag, location: &[Step]) -> Option<Tag> {
-    value_at(root, location)
+fn value_at(root: &Tag, location: &[Step]) -> Option<Tag> {
+    tag_at(root, location).map(std::borrow::Cow::into_owned)
 }
 
 /// A mutable reference to a container at `location`; `None` for array elements (the original
@@ -503,7 +515,7 @@ fn tag_at_mut<'a>(root: &'a mut Tag, location: &[Step]) -> Option<&'a mut Tag> {
     let mut current = root;
     for step in location {
         current = match (step, current) {
-            (Step::Key(key), Tag::Compound(entries)) => entries.iter_mut().find(|(k, _)| k == key).map(|(_, v)| v)?,
+            (Step::Key(key), Tag::Compound(entries)) => entries.iter_mut().rev().find(|(k, _)| k == key).map(|(_, v)| v)?,
             (Step::Index(index), Tag::List { values, .. }) => values.get_mut(*index)?,
             _ => return None,
         };
@@ -521,16 +533,17 @@ fn step_get(node: &Node, root: &Tag, locations: &[Location]) -> Vec<Location> {
     let mut out = Vec::new();
     for location in locations {
         let Some(tag) = tag_at(root, location) else { continue };
+        let tag: &Tag = &tag;
         match node {
             Node::CompoundChild(name) => {
                 let key = JavaString::Utf8(name.clone());
-                if child(&tag, &key).is_some() {
+                if child(tag, &key).is_some() {
                     out.push(with(location, Step::Key(key)));
                 }
             }
             Node::Indexed(index) => {
-                if is_collection(&tag) {
-                    let size = collection_len(&tag) as i64;
+                if is_collection(tag) {
+                    let size = collection_len(tag) as i64;
                     let at = if *index < 0 { size + i64::from(*index) } else { i64::from(*index) };
                     if 0 <= at && at < size {
                         out.push(with(location, Step::Index(at as usize)));
@@ -538,7 +551,7 @@ fn step_get(node: &Node, root: &Tag, locations: &[Location]) -> Vec<Location> {
                 }
             }
             Node::AllElements => {
-                for index in 0..collection_len(&tag) {
+                for index in 0..collection_len(tag) {
                     out.push(with(location, Step::Index(index)));
                 }
             }
@@ -553,12 +566,12 @@ fn step_get(node: &Node, root: &Tag, locations: &[Location]) -> Vec<Location> {
             }
             Node::MatchObject(name, pattern) => {
                 let key = JavaString::Utf8(name.clone());
-                if matches!(tag, Tag::Compound(_)) && compare_nbt(pattern, child(&tag, &key)) {
+                if matches!(tag, Tag::Compound(_)) && compare_nbt(pattern, child(tag, &key)) {
                     out.push(with(location, Step::Key(key)));
                 }
             }
             Node::MatchRootObject(pattern) => {
-                if matches!(tag, Tag::Compound(_)) && compare_nbt(pattern, Some(&tag)) {
+                if matches!(tag, Tag::Compound(_)) && compare_nbt(pattern, Some(tag)) {
                     out.push(location.clone());
                 }
             }
@@ -662,29 +675,40 @@ fn clear(target: &mut Tag) {
 #[derive(Clone, Copy)]
 enum Numeric {
     Integral(i64),
-    Floating(f64),
+    Float(f32),
+    Double(f64),
 }
 
 impl Numeric {
     fn as_long(self) -> i64 {
         match self {
             Self::Integral(n) => n,
-            // `(long) Math.floor(d)` (Java saturates).
-            Self::Floating(d) => d.floor() as i64,
+            // `FloatTag.getAsLong` is a plain cast; `DoubleTag.getAsLong` floors first (Java saturates).
+            Self::Float(f) => f as i64,
+            Self::Double(d) => d.floor() as i64,
         }
     }
     fn as_int(self) -> i32 {
+        // `Mth.floor`: `(int) v`, minus one below it (wrapping, as Java does).
+        fn floor(value: f64) -> i32 {
+            let i = value as i32;
+            if value < f64::from(i) {
+                i.wrapping_sub(1)
+            } else {
+                i
+            }
+        }
         match self {
             Self::Integral(n) => n as i32,
-            // `Mth.floor(double)`: `(int) d`, minus one below it (wrapping, as Java does).
-            Self::Floating(d) => {
-                let i = d as i32;
-                if d < f64::from(i) {
+            Self::Float(f) => {
+                let i = f as i32;
+                if f < i as f32 {
                     i.wrapping_sub(1)
                 } else {
                     i
                 }
             }
+            Self::Double(d) => floor(d),
         }
     }
     fn as_byte(self) -> i8 {
@@ -698,8 +722,8 @@ fn numeric(tag: &Tag) -> Option<Numeric> {
         Tag::Short(n) => Numeric::Integral(i64::from(*n)),
         Tag::Int(n) => Numeric::Integral(i64::from(*n)),
         Tag::Long(n) => Numeric::Integral(*n),
-        Tag::Float(f) => Numeric::Floating(f64::from(*f)),
-        Tag::Double(d) => Numeric::Floating(*d),
+        Tag::Float(f) => Numeric::Float(*f),
+        Tag::Double(d) => Numeric::Double(*d),
         _ => return None,
     })
 }
@@ -707,7 +731,7 @@ fn numeric(tag: &Tag) -> Option<Numeric> {
 fn compound_put(target: &mut Tag, name: &str, value: Tag) -> Option<Tag> {
     let Tag::Compound(entries) = target else { return None };
     let key = JavaString::Utf8(name.to_owned());
-    match entries.iter_mut().find(|(k, _)| *k == key) {
+    match entries.iter_mut().rev().find(|(k, _)| *k == key) {
         Some(slot) => Some(std::mem::replace(&mut slot.1, value)),
         None => {
             entries.push((key, value));
@@ -992,6 +1016,37 @@ mod tests {
         }
         outcome.root = Some(root);
         Ok(outcome)
+    }
+
+    /// Review findings: `FloatTag.getAsLong` truncates while `DoubleTag.getAsLong` floors; a
+    /// repeated compound name resolves to its last value; and a list pattern needs at least as
+    /// many elements as it has (`NbtUtils.compareNbt` in 1.21 keeps that size check).
+    #[test]
+    fn narrowing_duplicate_names_and_list_pattern_size() {
+        let mut root = parse_compound("{a:[L;0l,0l]}").unwrap();
+        NbtPath::of("a[0]").unwrap().set(&mut root, &Tag::Float(-1.5)).unwrap();
+        NbtPath::of("a[1]").unwrap().set(&mut root, &Tag::Double(-1.5)).unwrap();
+        assert_eq!(root, parse_compound("{a:[L;-1l,-2l]}").unwrap());
+
+        let duplicate = Tag::Compound(vec![
+            (JavaString::Utf8("x".into()), Tag::Int(1)),
+            (JavaString::Utf8("x".into()), Tag::Int(2)),
+        ]);
+        assert_eq!(NbtPath::of("x").unwrap().get(&duplicate).unwrap(), vec![Tag::Int(2)]);
+
+        let root = parse_compound("{list:[{k:[1]}]}").unwrap();
+        assert_eq!(NbtPath::of("list[{k:[1,1]}]").unwrap().count_matching(&root), 0);
+        assert_eq!(NbtPath::of("list[{k:[1]}]").unwrap().count_matching(&root), 1);
+    }
+
+    /// Reading every element of a large list is linear (each match borrows the tree).
+    #[test]
+    fn wildcard_reads_do_not_clone_the_tree_per_match() {
+        let values = (0..20_000).map(Tag::Int).collect();
+        let root = Tag::Compound(vec![(JavaString::Utf8("a".into()), Tag::List { element_type: 3, values })]);
+        let found = NbtPath::of("a[]").unwrap().get(&root).unwrap();
+        assert_eq!(found.len(), 20_000);
+        assert_eq!(found[19_999], Tag::Int(19_999));
     }
 
     /// Every vector of the fixture (or of `NBT_PATH_VECTORS`, a full local run): the path parses or

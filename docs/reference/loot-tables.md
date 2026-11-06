@@ -85,10 +85,19 @@ against the original before it was fixed.
 - **Source selection** (`LootContext.Builder.create`): an explicit non-zero seed is
   `RandomSource.create(seed)` (legacy LCG), else the table's `random_sequence`
   (persistent Xoroshiro), else the level random. `RollRandom::select` encodes it.
-- **Unsupported clauses fail where Java would evaluate them.** `EntityPredicate`
-  clauses without a native owner (`distance`, `movement`, `effects`, `nbt`,
-  `vehicle`, `passenger`, `team`, `slots`, …) parse, are skipped when an earlier
-  clause already returned false, and raise `LootError::Unsupported` otherwise.
+- **Unsupported clauses fail where Java would evaluate them.** Predicate clauses without a
+  native owner parse, are skipped when an earlier clause already returned false, and raise
+  `LootError::Unsupported` otherwise.
+  - **Validated, not evaluated:** most of these clauses are still read with their own codec, so
+    accept/reject follows the original. This covers the `distance`, `movement`, `effects`
+    (registered effects), `nbt` and `block.nbt` (`TagParser.LENIENT_CODEC`), `periodic_tick`
+    (positive), `team`, `stepping_on`, `movement_affected_by`, `vehicle`, `passenger` and
+    `targeted_entity` clauses. It also covers the location clauses `smokey` and `light`, and the
+    `custom_data` item sub-predicate.
+  - **Not validated:** a few clauses' codecs are not ported, so their contents are not checked.
+    Each is marked `[unvalidated]`. They are `slots`, the location `structures` and `fluid`,
+    item `components`, the other unported item sub-predicates, and the `player`, `lightning` and
+    `raider` entity sub-predicates. `crate::advancements` reports them per definition.
 - The multi-enchantment wire order in Java is the JVM identity-hash order of a
   `Holder` map and differs between runs; the comparison therefore decodes both stacks
   and compares them as values (`ItemStack::same_item_same_components`).

@@ -1575,6 +1575,39 @@ public class loot_oracle {
         System.out.println("advancement-visibility=" + outArr.size());
         break;
       }
+      case "inventory-trigger": {
+        // InventoryChangeTrigger.TriggerInstance.matches for every criterion over every case: the
+        // slot counts are computed as InventoryChangeTrigger.trigger does (empty, occupied, full at
+        // the maximum stack size). Input {criteria:[conditions], cases:[{inventory:[{slot,item}],
+        // changed:item}]}; output one string of 0/1 per case (a character per criterion).
+        JsonObject input = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonObject();
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
+        List<net.minecraft.advancements.critereon.InventoryChangeTrigger.TriggerInstance> instances = new ArrayList<>();
+        for (JsonElement c : input.getAsJsonArray("criteria")) {
+          instances.add(net.minecraft.advancements.critereon.InventoryChangeTrigger.TriggerInstance.CODEC.parse(ops, c).getOrThrow());
+        }
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : input.getAsJsonArray("cases")) {
+          JsonObject spec = e.getAsJsonObject();
+          net.minecraft.world.entity.player.Inventory inventory = new net.minecraft.world.entity.player.Inventory(null);
+          for (JsonElement slot : spec.getAsJsonArray("inventory")) {
+            JsonObject o = slot.getAsJsonObject();
+            inventory.setItem(o.get("slot").getAsInt(), stack(o.getAsJsonObject("item")));
+          }
+          ItemStack changed = stack(spec.getAsJsonObject("changed"));
+          int full = 0, empty = 0, occupied = 0;
+          for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack s2 = inventory.getItem(i);
+            if (s2.isEmpty()) empty++; else { occupied++; if (s2.getCount() >= s2.getMaxStackSize()) full++; }
+          }
+          StringBuilder bits = new StringBuilder();
+          for (var instance : instances) bits.append(instance.matches(inventory, changed, full, empty, occupied) ? '1' : '0');
+          outArr.add(bits.toString());
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("inventory-trigger=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the

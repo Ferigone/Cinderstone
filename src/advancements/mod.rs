@@ -4,6 +4,7 @@
 
 pub mod definition;
 pub mod tree;
+pub mod triggers;
 pub mod progress;
 pub mod requirements;
 pub mod time;

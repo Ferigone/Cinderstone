@@ -424,12 +424,17 @@ pub fn item_predicate(value: &Value) -> Result<ItemPredicate> {
                         },
                     }
                 }
-                "minecraft:potion_contents" | "minecraft:custom_data" | "minecraft:container"
+                // `ItemCustomDataPredicate`: an `NbtPredicate`.
+                "minecraft:custom_data" => {
+                    lenient_compound(body)?;
+                    ItemSubPredicate::Unsupported(unsupported_clause("item.minecraft:custom_data"))
+                }
+                "minecraft:potion_contents" | "minecraft:container"
                 | "minecraft:bundle_contents" | "minecraft:firework_explosion"
                 | "minecraft:fireworks" | "minecraft:writable_book_content"
                 | "minecraft:written_book_content" | "minecraft:attribute_modifiers"
                 | "minecraft:trim" | "minecraft:jukebox_playable" => {
-                    ItemSubPredicate::Unsupported(unsupported_clause(&format!("item.{name}")))
+                    ItemSubPredicate::Unsupported(unsupported_clause(&format!("item.{name}{UNVALIDATED}")))
                 }
                 other => return codec(format!("unknown item sub predicate {other}")),
             });
@@ -437,7 +442,7 @@ pub fn item_predicate(value: &Value) -> Result<ItemPredicate> {
     }
     let components = optional(map, "components")
         .filter(|v| v.as_object().is_some_and(|object| !object.is_empty()))
-        .map(|_| unsupported_clause("item.components"));
+        .map(|_| unsupported_clause(&format!("item.components{UNVALIDATED}")));
     Ok(ItemPredicate {
         items: optional(map, "items")
             .map(|v| holder_set(v, Kind::Item, "items"))
@@ -507,41 +512,105 @@ fn entity_sub_predicate(value: &Value) -> Result<EntitySubPredicate> {
             })
         }
         "lightning" | "player" | "raider" => Ok(EntitySubPredicate::Unsupported(unsupported_clause(
-            &format!("type_specific.{short}"),
+            &format!("type_specific.{short}{UNVALIDATED}"),
         ))),
         other => codec(format!("unknown entity sub predicate {other}")),
     }
 }
 
+/// Marks a clause whose value this port does not even validate (its codec is not ported):
+/// accept/reject of a predicate holding one is not established.
+pub const UNVALIDATED: &str = " [unvalidated]";
+
+/// A clause that is read (validated by its codec) but not evaluated: it fails with
+/// `Unsupported` when reached.
+fn checked_clause(
+    map: &Map<String, Value>,
+    owner: &str,
+    key: &str,
+    validate: impl Fn(&Value) -> Result<()>,
+) -> Result<Option<UnsupportedClause>> {
+    match optional(map, key) {
+        None => Ok(None),
+        Some(value) => {
+            validate(value)?;
+            Ok(Some(unsupported_clause(&format!("{owner}.{key}"))))
+        }
+    }
+}
+
+fn unvalidated_clause(map: &Map<String, Value>, owner: &str, key: &str) -> Option<UnsupportedClause> {
+    optional(map, key).map(|_| unsupported_clause(&format!("{owner}.{key}{UNVALIDATED}")))
+}
+
+/// Optional `MinMaxBounds.Doubles` members of a record codec.
+fn double_bounds_members(value: &Value, what: &str, keys: &[&str]) -> Result<()> {
+    let map = object(value, what)?;
+    for key in keys {
+        if let Some(bounds) = optional(map, key) {
+            double_bounds(bounds)?;
+        }
+    }
+    Ok(())
+}
+
+/// `MobEffectsPredicate.CODEC`.
+fn validate_effects(value: &Value) -> Result<()> {
+    for (name, body) in object(value, "effects")? {
+        registered_in(&Value::String(name.clone()), &facts().registries.mob_effect, "mob effect")?;
+        let body = object(body, "effect predicate")?;
+        for key in ["amplifier", "duration"] {
+            if let Some(bounds) = optional(body, key) {
+                int_bounds(bounds)?;
+            }
+        }
+        for key in ["ambient", "visible"] {
+            if let Some(flag) = optional(body, key) {
+                boolean(flag, key)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 pub fn entity_predicate(value: &Value) -> Result<EntityPredicate> {
     let map = object(value, "entity predicate")?;
-    let clause = |key: &str| -> Option<UnsupportedClause> {
-        optional(map, key).map(|_| unsupported_clause(&format!("entity.{key}")))
-    };
+    let entity = |key: &str| checked_clause(map, "entity", key, |v| entity_predicate(v).map(|_| ()));
+    let location = |key: &str| checked_clause(map, "entity", key, |v| location_predicate(v).map(|_| ()));
     Ok(EntityPredicate {
         entity_type: optional(map, "type")
             .map(|v| holder_set(v, Kind::EntityType, "type").map(EntityTypePredicate))
             .transpose()?,
-        distance: clause("distance"),
-        movement: clause("movement"),
+        distance: checked_clause(map, "entity", "distance", |v| double_bounds_members(v, "distance", &["x", "y", "z", "horizontal", "absolute"]))?,
+        movement: checked_clause(map, "entity", "movement", |v| {
+            double_bounds_members(v, "movement", &["x", "y", "z", "speed", "horizontal_speed", "vertical_speed", "fall_distance"])
+        })?,
         located: optional(map, "location")
             .map(|v| location_predicate(v).map(Box::new))
             .transpose()?,
-        stepping_on: clause("stepping_on"),
-        movement_affected_by: clause("movement_affected_by"),
-        effects: clause("effects"),
+        stepping_on: location("stepping_on")?,
+        movement_affected_by: location("movement_affected_by")?,
+        effects: checked_clause(map, "entity", "effects", validate_effects)?,
         flags: optional(map, "flags").map(flags_predicate).transpose()?,
         equipment: optional(map, "equipment").map(equipment_predicate).transpose()?,
         sub_predicate: optional(map, "type_specific")
             .map(entity_sub_predicate)
             .transpose()?,
-        vehicle: clause("vehicle"),
-        passenger: clause("passenger"),
-        targeted_entity: clause("targeted_entity"),
-        periodic_tick: clause("periodic_tick"),
-        team: clause("team"),
-        slots: clause("slots"),
-        nbt: clause("nbt"),
+        vehicle: entity("vehicle")?,
+        passenger: entity("passenger")?,
+        targeted_entity: entity("targeted_entity")?,
+        // `ExtraCodecs.POSITIVE_INT`.
+        periodic_tick: checked_clause(map, "entity", "periodic_tick", |v| {
+            let n = int(v, "periodic_tick")?;
+            if n <= 0 {
+                return codec(format!("Value must be positive: {n}"));
+            }
+            Ok(())
+        })?,
+        team: checked_clause(map, "entity", "team", |v| string(v, "team").map(|_| ()))?,
+        slots: unvalidated_clause(map, "entity", "slots"),
+        // `NbtPredicate.CODEC` is `TagParser.LENIENT_CODEC`.
+        nbt: checked_clause(map, "entity", "nbt", |v| lenient_compound(v).map(|_| ()))?,
     })
 }
 
@@ -594,15 +663,12 @@ fn block_predicate(value: &Value) -> Result<BlockPredicate> {
             .map(|v| holder_set(v, Kind::Block, "blocks"))
             .transpose()?,
         state: optional(map, "state").map(state_properties).transpose()?,
-        nbt: optional(map, "nbt").map(|_| unsupported_clause("block.nbt")),
+        nbt: checked_clause(map, "block", "nbt", |v| lenient_compound(v).map(|_| ()))?,
     })
 }
 
 pub fn location_predicate(value: &Value) -> Result<LocationPredicate> {
     let map = object(value, "location predicate")?;
-    let clause = |key: &str| -> Option<UnsupportedClause> {
-        optional(map, key).map(|_| unsupported_clause(&format!("location.{key}")))
-    };
     let position = match optional(map, "position") {
         None => None,
         Some(position) => {
@@ -623,12 +689,18 @@ pub fn location_predicate(value: &Value) -> Result<LocationPredicate> {
         biomes: optional(map, "biomes")
             .map(|v| holder_set(v, Kind::Biome, "biomes"))
             .transpose()?,
-        structures: clause("structures"),
+        structures: unvalidated_clause(map, "location", "structures"),
         dimension: optional(map, "dimension").map(|v| id(v, "dimension")).transpose()?,
-        smokey: clause("smokey"),
-        light: clause("light"),
+        smokey: checked_clause(map, "location", "smokey", |v| boolean(v, "smokey").map(|_| ()))?,
+        // `LightPredicate.CODEC`.
+        light: checked_clause(map, "location", "light", |v| {
+            if let Some(bounds) = optional(object(v, "light")?, "light") {
+                int_bounds(bounds)?;
+            }
+            Ok(())
+        })?,
         block: optional(map, "block").map(block_predicate).transpose()?,
-        fluid: clause("fluid"),
+        fluid: unvalidated_clause(map, "location", "fluid"),
         can_see_sky: optional(map, "can_see_sky")
             .map(|v| boolean(v, "can_see_sky"))
             .transpose()?,

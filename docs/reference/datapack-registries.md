@@ -72,6 +72,13 @@ full generator run (`--per-registry 0`) to check every mutant.
 
 ## Known gaps
 
+- **Decimals beyond `f64`.** A `long` field (`fixed_time`) written as a decimal with more
+  significant digits than an `f64` holds (for example `9007199254740993.0`) is read from its
+  nearest `f64`, because `serde_json` keeps no token text. The original's `BigDecimal` keeps the
+  exact value.
+- **Hover events.** A description or style with a `show_item` / `show_entity` hover event answers
+  `Unsupported` (the component port's gap). Such a component is not reported as a codec error.
+
 - **Enchantment element codec.** The ids are loaded and ordered, but `encode_element` answers
   `Unsupported`. A client that knows the vanilla pack, which is every vanilla client, receives no
   enchantment data, so this only matters for enchantments from a custom pack.

@@ -58,10 +58,42 @@ Evidence comes from `tools/loot_oracle.java advancement-parse` (`Advancement.COD
   `fixtures/advancement-parse-vectors.json` keeps every 4th (11,049). Point
   `ADVANCEMENT_PARSE_VECTORS` at a `--sample 1` run to check all of them.
 
+Some predicate clauses inside criteria are not validated by their codec (marked `[unvalidated]`
+by the loot parser). `Advancement::unvalidated_clauses()` lists them, and while that list is
+non-empty an accepted file is not established as accepted by the original.
+
+- **Vanilla:** 12 shipped advancements contain such clauses. Seven use `location.structures`
+  or item `components`, four use the `player` and `lightning` entity sub-predicates, and one uses
+  the `jukebox_playable` item sub-predicate.
+- **Mutants:** 45 of the 44,195 mutants count as unsupported for the same reason.
+
 The parsed predicates are kept for the trigger stage. Nothing evaluates a trigger, and the
 original's post-load `validate` (parameter-set warnings) is not reproduced. A file without
 `requirements` gets one requirement per criterion in name order; the original uses the file's
 member order, which `serde_json` does not keep.
+
+## Trigger matching (`advancements::triggers`)
+
+The first two trigger matchers cover every recipe advancement (WP-E6 #27).
+
+- **`inventory_changed`** (`InventoryChangeTrigger`):
+  1. The slot counts come first: empty, occupied, and full, where full means a stack at its
+     maximum size.
+  2. Then the item predicates:
+     - no predicate matches anything;
+     - a single predicate is tested against the changed stack only;
+     - several predicates must each be matched by some non-empty slot.
+- **`recipe_unlocked`:** the recipe id must equal the criterion's.
+
+Every criterion's `player` predicate needs the player as a loot entity. When one is present, the
+answer is `PlayerPredicate` and the caller evaluates it.
+
+**Evidence:** `tools/loot_oracle.java inventory-trigger` runs the unchanged
+`TriggerInstance.matches` over a real `Inventory`. The slot counts are computed as `trigger`
+computes them, and that computation is transcribed. The criteria are the 456 distinct vanilla
+`inventory_changed` conditions plus 10 hand-written ones, matched against 160 seeded 41-slot
+inventories. All 74,560 answers agree (`fixtures/inventory-trigger-vectors.json`,
+`tools/inventory_trigger_generate.py`).
 
 ## Tree, layout and the update packet (`advancements::tree`)
 
