@@ -1,15 +1,28 @@
-//! `JsonParser.parseString`: Gson's lenient JSON reader.
+//! Gson's `JsonReader`, in both of the modes the server uses.
 //!
-//! `Component.Serializer.fromJson(String)` (used by `scoreboard.dat`, and by command arguments
-//! through their own readers) does not require strict JSON: names and strings may be unquoted or
-//! single-quoted, `=`/`=>` may separate a name from its value, `;` may separate members and
-//! elements, and comments are skipped. An empty document is JSON `null`.
+//! [`parse`] is `JsonParser.parseString` (lenient): `Component.Serializer.fromJson(String)` (used by
+//! `scoreboard.dat`, and by command arguments through their own readers) does not require strict
+//! JSON: names and strings may be unquoted or single-quoted, `=`/`=>` may separate a name from its
+//! value, `;` may separate members and elements, and comments are skipped. An empty document is
+//! JSON `null`.
+//!
+//! [`parse_strict_prefix`] is `Streams.parse` over a `JsonReader` with `setLenient(false)`, which
+//! is how files such as `advancements/<uuid>.json` are read: strict grammar, but unlike `serde_json`
+//! a raw control character inside a string is accepted, a lone surrogate escape is kept, numbers
+//! keep their text whatever their size, and nothing after the first value is looked at.
 
 use serde_json::{Map, Number, Value};
+
+/// Nesting the readers follow before they give up. The original recurses until the JVM stack runs
+/// out (`Streams.parse` turns the `StackOverflowError` into a parse failure), which takes
+/// thousands of levels; this is a fixed, smaller bound.
+pub const MAX_DEPTH: usize = 512;
 
 struct Reader<'a> {
     chars: Vec<char>,
     position: usize,
+    strict: bool,
+    depth: usize,
     _text: &'a str,
 }
 
@@ -25,9 +38,9 @@ impl<'a> Reader<'a> {
     fn skip_whitespace(&mut self) -> Result<(), String> {
         loop {
             match self.peek() {
-                Some(' ' | '\t' | '\r' | '\n' | '\u{c}') => self.position += 1,
-                Some('#') => self.skip_line(),
-                Some('/') => match self.chars.get(self.position + 1) {
+                Some(' ' | '\t' | '\r' | '\n') => self.position += 1,
+                Some('#') if !self.strict => self.skip_line(),
+                Some('/') if !self.strict => match self.chars.get(self.position + 1) {
                     Some('/') => self.skip_line(),
                     Some('*') => {
                         let start = self.position + 2;
@@ -56,38 +69,49 @@ impl<'a> Reader<'a> {
 
     fn quoted(&mut self, quote: char) -> Result<String, String> {
         self.position += 1;
-        let mut out = String::new();
+        // Java strings are UTF-16: an escaped surrogate pair is one character, a lone surrogate
+        // (which `String` cannot hold) becomes U+FFFD.
+        let mut units: Vec<u16> = Vec::new();
         loop {
             let c = self.peek().ok_or("Unterminated string")?;
             self.position += 1;
             if c == quote {
-                return Ok(out);
+                return Ok(String::from_utf16_lossy(&units));
             }
             if c != '\\' {
-                out.push(c);
+                let mut buffer = [0u16; 2];
+                units.extend_from_slice(c.encode_utf16(&mut buffer));
                 continue;
             }
             let escape = self.peek().ok_or("Unterminated escape sequence")?;
             self.position += 1;
             match escape {
                 'u' => {
-                    let hex: String = self
+                    let hex = self
                         .chars
                         .get(self.position..self.position + 4)
-                        .ok_or("Unterminated escape sequence")?
-                        .iter()
-                        .collect();
-                    let unit = u32::from_str_radix(&hex, 16)
-                        .map_err(|_| format!("Malformed escape {hex}"))?;
+                        .ok_or("Unterminated escape sequence")?;
+                    if !hex.iter().all(char::is_ascii_hexdigit) {
+                        return Err(format!(
+                            "Malformed escape {}",
+                            hex.iter().collect::<String>()
+                        ));
+                    }
+                    let digits: String = hex.iter().collect();
+                    let unit = u16::from_str_radix(&digits, 16)
+                        .map_err(|_| format!("Malformed escape {digits}"))?;
                     self.position += 4;
-                    out.push(char::from_u32(unit).unwrap_or('\u{fffd}'));
+                    units.push(unit);
                 }
-                't' => out.push('\t'),
-                'b' => out.push('\u{8}'),
-                'n' => out.push('\n'),
-                'r' => out.push('\r'),
-                'f' => out.push('\u{c}'),
-                '\n' | '\'' | '"' | '\\' | '/' => out.push(escape),
+                't' => units.push(u16::from(b'\t')),
+                'b' => units.push(8),
+                'n' => units.push(u16::from(b'\n')),
+                'r' => units.push(u16::from(b'\r')),
+                'f' => units.push(12),
+                '\n' | '\'' | '"' | '\\' | '/' => {
+                    let mut buffer = [0u16; 2];
+                    units.extend_from_slice(escape.encode_utf16(&mut buffer));
+                }
                 other => return Err(format!("Invalid escape sequence {other}")),
             }
         }
@@ -104,11 +128,12 @@ impl<'a> Reader<'a> {
         self.chars[start..self.position].iter().collect()
     }
 
-    fn literal(text: String) -> Value {
+    /// An unquoted token: a keyword (either case), a number, or (only when lenient) a string.
+    fn literal(&self, text: String) -> Result<Value, String> {
         match text.to_ascii_lowercase().as_str() {
-            "null" => return Value::Null,
-            "true" => return Value::Bool(true),
-            "false" => return Value::Bool(false),
+            "null" => return Ok(Value::Null),
+            "true" => return Ok(Value::Bool(true)),
+            "false" => return Ok(Value::Bool(false)),
             _ => {}
         }
         // A number token: `-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?` and nothing else.
@@ -142,92 +167,151 @@ impl<'a> Reader<'a> {
             ok && i == bytes.len()
         };
         if looks_numeric {
-            if let Ok(number) = serde_json::from_str::<Number>(&text) {
-                return Value::Number(number);
-            }
+            // Gson keeps the digits of a number whatever its size. A value `f64` cannot hold
+            // (`1e400`) stays as its text when lenient (a component prints it back as text) and
+            // is the largest finite double of its sign when strict, where only the magnitude
+            // is ever used.
+            return Ok(match serde_json::from_str::<Number>(&text) {
+                Ok(number) => Value::Number(number),
+                Err(_) if self.strict => {
+                    let largest = if text.starts_with('-') {
+                        -f64::MAX
+                    } else {
+                        f64::MAX
+                    };
+                    Value::Number(Number::from_f64(largest).expect("finite"))
+                }
+                Err(_) => Value::String(text),
+            });
         }
-        Value::String(text)
+        if self.strict {
+            return Err("Use JsonReader.setLenient(true) to accept malformed JSON".to_owned());
+        }
+        Ok(Value::String(text))
     }
 
     fn value(&mut self) -> Result<Value, String> {
+        self.depth += 1;
+        if self.depth > MAX_DEPTH {
+            return Err("nesting too deep".to_owned());
+        }
+        let result = self.value_inner();
+        self.depth -= 1;
+        result
+    }
+
+    fn name(&mut self) -> Result<String, String> {
+        match self.peek() {
+            Some('"') => self.quoted('"'),
+            Some('\'') if !self.strict => self.quoted('\''),
+            Some(c) if self.strict || DELIMITERS.contains(&c) => {
+                Err(format!("Expected name at {}", self.position))
+            }
+            _ => Ok(self.unquoted()),
+        }
+    }
+
+    fn object(&mut self) -> Result<Value, String> {
+        self.position += 1;
+        let mut map = Map::new();
+        let mut first = true;
+        loop {
+            self.skip_whitespace()?;
+            match self.peek() {
+                Some('}') if first => {
+                    self.position += 1;
+                    return Ok(Value::Object(map));
+                }
+                None => return Err("Unterminated object".to_owned()),
+                _ => {}
+            }
+            first = false;
+            let name = self.name()?;
+            self.skip_whitespace()?;
+            match self.peek() {
+                Some(':') => self.position += 1,
+                Some('=') if !self.strict => {
+                    self.position += 1;
+                    if self.peek() == Some('>') {
+                        self.position += 1;
+                    }
+                }
+                _ => return Err("Expected ':'".to_owned()),
+            }
+            let value = self.value()?;
+            map.insert(name, value);
+            self.skip_whitespace()?;
+            match self.peek() {
+                Some(',') => self.position += 1,
+                Some(';') if !self.strict => self.position += 1,
+                Some('}') => {
+                    self.position += 1;
+                    return Ok(Value::Object(map));
+                }
+                _ => return Err("Expected ',' or '}'".to_owned()),
+            }
+        }
+    }
+
+    fn array(&mut self) -> Result<Value, String> {
+        self.position += 1;
+        let mut items = Vec::new();
+        let mut first = true;
+        loop {
+            self.skip_whitespace()?;
+            match self.peek() {
+                Some(']') if first => {
+                    self.position += 1;
+                    return Ok(Value::Array(items));
+                }
+                // Lenient: a separator or the closing bracket where an element is expected means
+                // an empty element, which is `null` (`[1,]` is `[1, null]`, `[,1]` is `[null, 1]`).
+                Some(',' | ';' | ']') if !self.strict => items.push(Value::Null),
+                None => return Err("Unterminated array".to_owned()),
+                _ => items.push(self.value()?),
+            }
+            first = false;
+            self.skip_whitespace()?;
+            match self.peek() {
+                Some(',') => self.position += 1,
+                Some(';') if !self.strict => self.position += 1,
+                Some(']') => {
+                    self.position += 1;
+                    return Ok(Value::Array(items));
+                }
+                _ => return Err("Expected ',' or ']'".to_owned()),
+            }
+        }
+    }
+
+    fn value_inner(&mut self) -> Result<Value, String> {
         self.skip_whitespace()?;
         match self.peek() {
             None => Err("Unexpected end of input".to_owned()),
-            Some('{') => {
-                self.position += 1;
-                let mut map = Map::new();
-                loop {
-                    self.skip_whitespace()?;
-                    match self.peek() {
-                        Some('}') => {
-                            self.position += 1;
-                            return Ok(Value::Object(map));
-                        }
-                        None => return Err("Unterminated object".to_owned()),
-                        _ => {}
-                    }
-                    let name = match self.peek() {
-                        Some(quote @ ('"' | '\'')) => self.quoted(quote)?,
-                        Some(c) if DELIMITERS.contains(&c) => {
-                            return Err(format!("Expected name at {}", self.position))
-                        }
-                        _ => self.unquoted(),
-                    };
-                    self.skip_whitespace()?;
-                    match self.peek() {
-                        Some(':') => self.position += 1,
-                        Some('=') => {
-                            self.position += 1;
-                            if self.peek() == Some('>') {
-                                self.position += 1;
-                            }
-                        }
-                        _ => return Err("Expected ':'".to_owned()),
-                    }
-                    let value = self.value()?;
-                    map.insert(name, value);
-                    self.skip_whitespace()?;
-                    match self.peek() {
-                        Some(',' | ';') => self.position += 1,
-                        Some('}') => {}
-                        _ => return Err("Expected ',' or '}'".to_owned()),
-                    }
-                }
-            }
-            Some('[') => {
-                self.position += 1;
-                let mut items = Vec::new();
-                loop {
-                    self.skip_whitespace()?;
-                    match self.peek() {
-                        Some(']') => {
-                            self.position += 1;
-                            return Ok(Value::Array(items));
-                        }
-                        // Lenient: an empty element is `null`.
-                        Some(',' | ';') => {
-                            self.position += 1;
-                            items.push(Value::Null);
-                            continue;
-                        }
-                        None => return Err("Unterminated array".to_owned()),
-                        _ => {}
-                    }
-                    items.push(self.value()?);
-                    self.skip_whitespace()?;
-                    match self.peek() {
-                        Some(',' | ';') => self.position += 1,
-                        Some(']') => {}
-                        _ => return Err("Expected ',' or ']'".to_owned()),
-                    }
-                }
-            }
-            Some(quote @ ('"' | '\'')) => Ok(Value::String(self.quoted(quote)?)),
-            Some(c) if DELIMITERS.contains(&c) => {
+            Some('{') => self.object(),
+            Some('[') => self.array(),
+            Some('"') => Ok(Value::String(self.quoted('"')?)),
+            Some('\'') if !self.strict => Ok(Value::String(self.quoted('\'')?)),
+            Some(c) if DELIMITERS.contains(&c) || (self.strict && c == '\'') => {
                 Err(format!("Expected value at {}", self.position))
             }
-            Some(_) => Ok(Self::literal(self.unquoted())),
+            Some(_) => {
+                let token = self.unquoted();
+                self.literal(token)
+            }
         }
+    }
+}
+
+fn reader(body: &str, strict: bool) -> Reader<'_> {
+    // The reader skips a leading byte-order mark.
+    let body = body.strip_prefix('\u{feff}').unwrap_or(body);
+    Reader {
+        chars: body.chars().collect(),
+        position: 0,
+        strict,
+        depth: 0,
+        _text: body,
     }
 }
 
@@ -235,23 +319,33 @@ impl<'a> Reader<'a> {
 pub fn parse(text: &str) -> Result<Value, String> {
     // The non-execute prefix some servers add.
     let body = text.strip_prefix(")]}'\n").unwrap_or(text);
-    let mut reader = Reader {
-        chars: body.chars().collect(),
-        position: 0,
-        _text: body,
-    };
+    let mut reader = reader(body, false);
     reader.skip_whitespace()?;
     if reader.peek().is_none() {
         return Ok(Value::Null);
     }
     let value = reader.value()?;
     if !value.is_null() {
+        // `parseReader` has put the reader back to strict by the time it looks for the end of
+        // the document, so a comment after the value is an error too.
+        reader.strict = true;
         reader.skip_whitespace()?;
         if reader.peek().is_some() {
             return Err("Did not consume the entire document.".to_owned());
         }
     }
     Ok(value)
+}
+
+/// `Streams.parse(JsonReader)` with `setLenient(false)` over `text`: strict grammar, one value, and
+/// whatever follows that value is never looked at. An empty document is `null`.
+pub fn parse_strict_prefix(text: &str) -> Result<Value, String> {
+    let mut reader = reader(text, true);
+    reader.skip_whitespace()?;
+    if reader.peek().is_none() {
+        return Ok(Value::Null);
+    }
+    reader.value()
 }
 
 #[cfg(test)]
@@ -273,7 +367,9 @@ mod tests {
         assert_eq!(parse("'single'").unwrap(), json!("single"));
         assert_eq!(parse("{text:abc}").unwrap(), json!({"text": "abc"}));
         assert_eq!(parse("{a=1;b=>true}").unwrap(), json!({"a": 1, "b": true}));
-        assert_eq!(parse("[1;2,]").unwrap(), json!([1, 2]));
+        assert_eq!(parse("[1;2,]").unwrap(), json!([1, 2, null]));
+        assert_eq!(parse("[,1]").unwrap(), json!([null, 1]));
+        assert_eq!(parse("[1,,2]").unwrap(), json!([1, null, 2]));
         assert_eq!(parse("123abc").unwrap(), json!("123abc"));
         assert_eq!(parse("TRUE").unwrap(), json!(true));
         assert_eq!(parse("/* c */ # d\n 7").unwrap(), json!(7));
@@ -286,5 +382,76 @@ mod tests {
         assert!(parse("1 2").is_err());
         assert!(parse("{").is_err());
         assert!(parse("{\"a\"}").is_err());
+    }
+
+    #[test]
+    fn object_commas_and_trailing_comments_are_errors_like_gson() {
+        assert!(parse(r#"{"a":1,}"#).is_err());
+        assert!(parse("{a:1,}").is_err());
+        assert!(parse(r#"{"a":1}//c"#).is_err());
+        assert!(parse("/* c */ 1 ").is_ok());
+        assert!(parse("\u{c}1").is_err(), "a form feed is not whitespace");
+        assert_eq!(parse("\u{feff}{}").unwrap(), json!({}));
+    }
+
+    #[test]
+    fn escaped_surrogate_pairs_combine() {
+        assert_eq!(parse(r#""\ud83d\ude00""#).unwrap(), json!("\u{1f600}"));
+        assert_eq!(parse(r#""\ud800""#).unwrap(), json!("\u{fffd}"));
+        assert!(parse(r#""\u00zz""#).is_err());
+    }
+
+    #[test]
+    fn strict_prefix_reads_one_value_like_streams_parse() {
+        use super::parse_strict_prefix;
+        assert_eq!(
+            parse_strict_prefix(r#"{"a":1} trailing"#).unwrap(),
+            json!({"a": 1})
+        );
+        assert_eq!(parse_strict_prefix("\u{feff}[1]]").unwrap(), json!([1]));
+        assert_eq!(
+            parse_strict_prefix("\"a\tb\nc\"").unwrap(),
+            json!("a\tb\nc"),
+            "raw control characters are accepted"
+        );
+        assert_eq!(
+            parse_strict_prefix(r#"{"a":1,"a":2}"#).unwrap(),
+            json!({"a": 2})
+        );
+        assert_eq!(parse_strict_prefix("TRUE").unwrap(), json!(true));
+        for bad in [
+            r#"{"a":1,}"#,
+            "[1,]",
+            "[,1]",
+            r#"{"a":1;"b":2}"#,
+            "{'a':1}",
+            "{a:1}",
+            r#"{"a"=1}"#,
+            "[1;2]",
+            "// c\n1",
+            "/* c */1",
+            "# c\n1",
+            "NaN",
+            "-",
+            "-01",
+            "1.",
+            ".5",
+            "1e",
+            "x",
+            r#"{"a":nul}"#,
+            r#"{"a":1 "b":2}"#,
+            r#"{"a":}"#,
+            "{\"a\":1",
+            ")]}'\n1",
+        ] {
+            assert!(parse_strict_prefix(bad).is_err(), "{bad:?}");
+        }
+        // Numbers keep their text whatever their size.
+        assert!(parse_strict_prefix("1e400").is_ok());
+        assert!(parse_strict_prefix("[1.0,1e2,-1E-2,-0]").is_ok());
+        let deep = "[".repeat(super::MAX_DEPTH + 10) + &"]".repeat(super::MAX_DEPTH + 10);
+        assert!(parse_strict_prefix(&deep).is_err());
+        let fine = "[".repeat(100) + &"]".repeat(100);
+        assert!(parse_strict_prefix(&fine).is_ok());
     }
 }
