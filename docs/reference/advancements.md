@@ -59,7 +59,54 @@ Evidence comes from `tools/loot_oracle.java advancement-parse` (`Advancement.COD
   `ADVANCEMENT_PARSE_VECTORS` at a `--sample 1` run to check all of them.
 
 The parsed predicates are kept for the trigger stage. Nothing evaluates a trigger, and the
-original's post-load `validate` (parameter-set warnings) is not reproduced.
+original's post-load `validate` (parameter-set warnings) is not reproduced. A file without
+`requirements` gets one requirement per criterion in name order; the original uses the file's
+member order, which `serde_json` does not keep.
+
+## Tree, layout and the update packet (`advancements::tree`)
+
+- **Tree:** `AdvancementTree::add_all` is `AdvancementTree.addAll`. It inserts every advancement
+  whose parent is known, repeating until nothing more can be inserted, and returns the ids that
+  could not be inserted. `remove` removes children first.
+- **Layout:** `layout(root, has_display, children_of)` is `TreeNodePosition.run`, the
+  Walker-style layout that sets each visible advancement's `(x, y)`. Invisible advancements are
+  skipped through to their children.
+- **Visibility:** `visibility(tree, node, is_done, has_display, hidden)` is
+  `AdvancementVisibilityEvaluator.evaluateVisibility`. A node is visible when it or a descendant is
+  done, or when the nearest of itself and its two closest ancestors that has a rule says show.
+- **Packet:** `update_advancements_packet` writes the body of `ClientboundUpdateAdvancementsPacket`.
+  It covers each holder's parent, display (title, description, icon `ItemStack`, frame, the flags
+  integer, background, x/y), requirements and telemetry flag, then the removed ids and the
+  progress map.
+  - Criteria in a progress entry follow the original's `HashMap` order. That order is modelled as
+    `Collectors.toMap`, then the copy into a map sized for the decoded entries, then
+    `AdvancementRequirements.names()` (a fastutil `ObjectOpenHashSet` filled with `addAll`).
+
+Two orders are not reproducible:
+
+- **Child order:** the original keeps each node's children in a `ReferenceOpenHashSet`, which
+  iterates in object identity-hash order. The port keeps insertion order and lets the caller pass
+  any child order to `layout`.
+- **Packet sets:** the packet's `removed` set and `progress` map are copied with `Set.copyOf` /
+  `Map.copyOf`, whose iteration order is randomised per run. Only one-element sets and maps have
+  a fixed byte form.
+
+Evidence comes from `tools/loot_oracle.java advancement-tree` and
+`tools/advancement_tree_generate.py` (`fixtures/advancement-tree-1.21.json`). The oracle loads
+the vanilla tree through the unchanged `ServerAdvancementManager` and records, for every node,
+its parent, its children in the original's iteration order and its display position. It also
+writes an update packet containing all 1,399 holders sorted by id, one removed id, and the
+progress of `adventure/kill_all_mobs` with three criteria granted.
+
+The test `vanilla_tree_layout_and_packet_match_the_original` checks:
+
+- the tree's parents, children and roots;
+- all 122 display positions (bit-exact, using the original's child order);
+- the visible sets the original reports for 60 sets of done advancements (from none to all,
+  random densities);
+- the 186,085-byte packet, byte for byte, and three more single-progress packets. Two of these
+  carry fresh progress (the copied map starts empty, so the default 16-bucket table applies), and
+  one carries a single decoded criterion.
 
 ## What is implemented
 
@@ -153,9 +200,9 @@ read.
 
 ## Not implemented (explicit)
 
-- `AdvancementHolder`, `AdvancementTree`/layout and `ServerAdvancementManager` (loading from packs,
-  parents, the tree). Definitions parse (above), but no trigger is evaluated; icon components other
-  than the four vanilla types are `Unsupported`.
+- `ServerAdvancementManager` loading from the selected packs, and the orphan warnings it logs.
+  Definitions, the tree, the layout and the packet exist (above), but no trigger is evaluated.
+  Icon components other than the four vanilla types are `Unsupported`.
 - `PlayerAdvancements` runtime (listeners, `award`/`revoke`, rewards, chat announcements,
   `progressChanged`, the `/advancement` command) and `ClientboundUpdateAdvancementsPacket`
   (`criteria` are a `HashMap` in the original; the packet's map order would be Java's).

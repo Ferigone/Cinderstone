@@ -417,7 +417,7 @@ fn icon(value: &Value) -> Result<Icon> {
             }
             match name.as_str() {
                 "minecraft:item_name" => {
-                    Component::from_json(body).map_err(from_component)?;
+                    flat_component(body)?;
                 }
                 "minecraft:hide_additional_tooltip" => {
                     object(body, "hide_additional_tooltip")?;
@@ -455,6 +455,14 @@ fn icon(value: &Value) -> Result<Icon> {
         }
     }
     Ok(Icon { item, count, components })
+}
+
+/// `ComponentSerialization.FLAT_CODEC` (the persistent codec of `item_name`, `custom_name`, …): a
+/// string holding the component's JSON, read with the lenient Gson reader.
+pub fn flat_component(value: &Value) -> Result<Component> {
+    let text = string(value, "component")?;
+    let json = crate::components::lenient::parse(text).map_err(DefinitionError::Codec)?;
+    Component::from_json(&json).map_err(from_component)
 }
 
 /// `DisplayInfo`.

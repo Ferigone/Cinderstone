@@ -123,6 +123,15 @@ impl<V> OpenHashMap<V> {
         }
     }
 
+    /// `tryCapacity(capacity)` (what `ObjectOpenHashSet.addAll` calls first with a load factor above
+    /// one half): grow to the table `capacity` entries need, never shrink.
+    pub fn try_capacity(&mut self, capacity: usize) {
+        let needed = next_power_of_two((capacity as f32 / self.load_factor).ceil() as u64).max(2).min(1 << 30) as usize;
+        if needed > self.n() {
+            self.rehash(needed);
+        }
+    }
+
     pub fn remove(&mut self, key: &str) -> Option<V> {
         let pos = self.find(key).ok()?;
         let old = self.values[pos].take();

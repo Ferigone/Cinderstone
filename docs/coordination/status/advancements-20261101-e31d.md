@@ -9,9 +9,11 @@ Capacity: one Claude Code session, no subordinate agents. Nothing continues in t
 
 ## Owned files
 
-Stage 1 additions: `src/advancements/definition.rs`, `src/advancements/definition_tests.rs`,
+Stage 1 additions: `src/advancements/definition.rs`, `src/advancements/tree.rs`, `src/advancements/definition_tests.rs`,
 `tools/advancement_parse_generate.py`, `fixtures/advancements-vanilla-1.21.json`,
-`fixtures/advancement-parse-vectors.json`, the `advancement-parse` mode of `tools/loot_oracle.java`;
+`fixtures/advancement-parse-vectors.json`, `tools/advancement_tree_generate.py`,
+`fixtures/advancement-tree-1.21.json`, the `advancement-parse` and `advancement-tree` modes of
+`tools/loot_oracle.java`, `OpenHashMap::try_capacity` in my `src/scoreboard/fastutil.rs`;
 read-only reuse of `crate::loot::parse` (four of its predicate readers made `pub`).
 
 New and exclusive: `src/advancements/**`, `fixtures/advancement-progress-vectors.json`,
@@ -29,8 +31,10 @@ added or claimed; `scope_version: 1`, 100 items, **56/100 code, 51/100 Main** un
 `AdvancementRequirements`, `CriterionProgress`/`AdvancementProgress` and their codec, the
 `advancements/<uuid>.json` document (strict Gson read, `SMART` date resolution, canonical UTC write,
 duplicate ids, `DataVersion` rules) for files at DataVersion 3097 or later; stage 1 definitions (`definition::parse`: `Advancement.CODEC`
-with all 56 trigger-instance codecs; 1,399 vanilla files and 44,195 mutants agree with the original).
-Not implemented: trigger evaluation, tree/layout, `ServerAdvancementManager` loading, `PlayerAdvancements` runtime, the update
+with all 56 trigger-instance codecs; 1,399 vanilla files and 44,195 mutants agree with the original),
+the tree, `TreeNodePosition` layout and the `Update Advancements` packet body (the vanilla tree's
+122 positions and a 186,085-byte packet match byte for byte).
+Not implemented: trigger evaluation, `ServerAdvancementManager` loading, `PlayerAdvancements` runtime, the update
 packet, data fixers for older files, file text rendering. Details:
 [advancements.md](../../reference/advancements.md).
 
@@ -58,5 +62,5 @@ requirements, reads the file as text it has already decoded as UTF-8, and treats
 
 ## Next action / handoff
 
-Owner: this instance for the next WP-E5 stages (the tree and `ServerAdvancementManager` loading, the
-`Update Advancements` packet) only if claimed again; trigger evaluation and the runtime are unclaimed.
+Owner: this instance for the next WP-E5 stages (`ServerAdvancementManager` loading, `PlayerAdvancements` visibility
+and the packet flush) only if claimed again; trigger evaluation and the runtime are unclaimed.
