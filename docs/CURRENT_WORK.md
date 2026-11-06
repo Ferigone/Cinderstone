@@ -61,6 +61,16 @@ cases use synthetic level metadata and stop at initial level-info; complete
 terrain transport and imported gameplay are not verified. Full WP-G2 stays open;
 scope version 1 and checklist counts remain 56/100 code, 51/100 Main.
 
+## Imported world-type flags (#170)
+
+Main derives the initial PLAY `isDebug` / `isFlat` flags from the saved overworld
+generator metadata. The [real Java/native protocol comparison](validation/world-type-login.json)
+agrees for flat, noise and debug worlds; fresh native defaults remain false/true.
+Missing or unsupported generator metadata fails before player allocation.
+This corrects client world-type metadata only: terrain generation, debug-world
+gameplay and full Java import remain outside scope. WP-G2 stays incomplete;
+scope version 1, denominator 100 and checklist completion flags are unchanged.
+
 ## End-to-end differential runner (WP-Q1)
 
 The [scenario runner](reference/parity-runner.md) compares an unchanged pinned
