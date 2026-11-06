@@ -9,6 +9,11 @@ Capacity: one Claude Code session, no subordinate agents. Nothing continues in t
 
 ## Owned files
 
+Stage 1 additions: `src/advancements/definition.rs`, `src/advancements/definition_tests.rs`,
+`tools/advancement_parse_generate.py`, `fixtures/advancements-vanilla-1.21.json`,
+`fixtures/advancement-parse-vectors.json`, the `advancement-parse` mode of `tools/loot_oracle.java`;
+read-only reuse of `crate::loot::parse` (four of its predicate readers made `pub`).
+
 New and exclusive: `src/advancements/**`, `fixtures/advancement-progress-vectors.json`,
 `tools/advancement_generate.py`, `docs/reference/advancements.md`, this file. Shared edits: one
 `pub mod advancements;` line in `src/lib.rs` (standing export exception); the `advancement-progress`
@@ -23,8 +28,9 @@ Work package WP-E5 on #26, **core only** (requirements, progress, progress file)
 added or claimed; `scope_version: 1`, 100 items, **56/100 code, 51/100 Main** unchanged. Implemented:
 `AdvancementRequirements`, `CriterionProgress`/`AdvancementProgress` and their codec, the
 `advancements/<uuid>.json` document (strict Gson read, `SMART` date resolution, canonical UTC write,
-duplicate ids, `DataVersion` rules) for files at DataVersion 3097 or later. Not implemented:
-advancement definitions, criterion triggers, tree/layout, `PlayerAdvancements` runtime, the update
+duplicate ids, `DataVersion` rules) for files at DataVersion 3097 or later; stage 1 definitions (`definition::parse`: `Advancement.CODEC`
+with all 56 trigger-instance codecs; 1,399 vanilla files and 44,195 mutants agree with the original).
+Not implemented: trigger evaluation, tree/layout, `ServerAdvancementManager` loading, `PlayerAdvancements` runtime, the update
 packet, data fixers for older files, file text rendering. Details:
 [advancements.md](../../reference/advancements.md).
 
@@ -52,6 +58,5 @@ requirements, reads the file as text it has already decoded as UTF-8, and treats
 
 ## Next action / handoff
 
-Owner: this instance for the next WP-E5 stages (advancement definitions, rewards/display structs, the
-`Update Advancements` packet) only if claimed again; the criterion triggers, tree layout and runtime
-are unclaimed.
+Owner: this instance for the next WP-E5 stages (the tree and `ServerAdvancementManager` loading, the
+`Update Advancements` packet) only if claimed again; trigger evaluation and the runtime are unclaimed.

@@ -1490,6 +1490,27 @@ public class loot_oracle {
         System.out.println("nbt-path=" + outArr.size());
         break;
       }
+      case "advancement-parse": {
+        // Advancement.CODEC over RegistryOps<JsonOps> for each JSON text: {ok} or {ok:false, error}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        RegistryOps<JsonElement> ops = RegistryOps.create(JsonOps.INSTANCE, access);
+        for (JsonElement e : in) {
+          JsonObject r = new JsonObject();
+          try {
+            JsonElement json = JsonParser.parseString(e.getAsString());
+            net.minecraft.advancements.Advancement.CODEC.parse(ops, json).getOrThrow(m -> new IllegalArgumentException(m));
+            r.addProperty("ok", true);
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()).replaceAll("[^\\x20-\\x7e]", "?"));
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("advancement-parse=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the

@@ -12,9 +12,54 @@ Java artifacts and decompiled text stay outside Git.
 
 Scope: `src/advancements/**`, work package WP-E5 **core** (the persistence and progress half of the
 advancement system). It claims **no** checklist point and **no** Main integration; nothing outside
-the module calls it. The advancement *definitions* (display, rewards, the ~70 criterion triggers),
-the tree and its layout, `PlayerAdvancements` runtime and the `Update Advancements` packet are **not**
-implemented (see the end).
+the module calls it.
+
+Stage 1 adds the advancement *definitions* (`definition::parse`, described in the next section).
+The tree and its layout, trigger evaluation, the `PlayerAdvancements` runtime and the
+`Update Advancements` packet are **not** implemented (see the end).
+
+## Definitions (`advancements::definition`)
+
+`parse(json)` is `Advancement.CODEC` with its `validate`, over a file read with the lenient Gson
+reader. It covers:
+
+- **Top-level fields:** `parent`, `display`, `rewards`, `criteria` and `requirements`. A missing
+  `requirements` means all criteria are required, and the requirements must exactly match the
+  criteria.
+- **`display`:** title, description, background, frame, `show_toast`, `announce_to_chat` and
+  `hidden`.
+- **The display icon** (`ItemStack.STRICT_CODEC`):
+  - The item must be registered and not air.
+  - `count` uses `orElse(1)`, so an unreadable or out-of-range count is 1. The count may not
+    exceed the item's maximum stack size.
+  - The component values are validated for the types vanilla icons use: `item_name`,
+    `hide_additional_tooltip`, `pot_decorations` and `banner_patterns`. Any other component type
+    answers `Unsupported`.
+- **`rewards`:** experience, loot, recipes and function.
+- **`sends_telemetry_event`.**
+- **Criteria:** each criterion is decoded with its trigger's `TriggerInstance` codec. All 56
+  registered triggers are covered.
+  - `EntityPredicate.ADVANCEMENT_CODEC` reads a list of loot conditions, or else an entity
+    predicate.
+  - Fields that are lists of loot conditions (`ContextAwarePredicate.CODEC`) accept a list only.
+  - The new predicate types are `DistancePredicate`, `MobEffectsPredicate` and `DamagePredicate`.
+  - Item, entity, location, damage-source, state and bound predicates reuse `crate::loot::parse`.
+  - A missing `conditions` member counts as an empty map.
+
+Evidence comes from `tools/loot_oracle.java advancement-parse` (`Advancement.CODEC` over
+`RegistryOps<JsonOps>`, with the vanilla registries and tags) and
+`tools/advancement_parse_generate.py`:
+
+- All 1,399 shipped advancements (`fixtures/advancements-vanilla-1.21.json`) are accepted by the
+  original and parse here.
+- Mutants are one-step changes of every distinct criterion, conditions, display and rewards
+  fragment, plus hand-written requirement and envelope cases. There are 44,195 of them (5,567
+  accepted by the original), and they agree with zero disagreements and nothing `Unsupported`.
+  `fixtures/advancement-parse-vectors.json` keeps every 4th (11,049). Point
+  `ADVANCEMENT_PARSE_VECTORS` at a `--sample 1` run to check all of them.
+
+The parsed predicates are kept for the trigger stage. Nothing evaluates a trigger, and the
+original's post-load `validate` (parameter-set warnings) is not reproduced.
 
 ## What is implemented
 
@@ -108,9 +153,9 @@ read.
 
 ## Not implemented (explicit)
 
-- `Advancement`, `AdvancementHolder`, `DisplayInfo`, `AdvancementRewards`, `AdvancementTree`/layout
-  and `ServerAdvancementManager`: the definitions and the ~70 criterion triggers and their
-  conditions. A caller supplies each advancement's requirements itself.
+- `AdvancementHolder`, `AdvancementTree`/layout and `ServerAdvancementManager` (loading from packs,
+  parents, the tree). Definitions parse (above), but no trigger is evaluated; icon components other
+  than the four vanilla types are `Unsupported`.
 - `PlayerAdvancements` runtime (listeners, `award`/`revoke`, rewards, chat announcements,
   `progressChanged`, the `/advancement` command) and `ClientboundUpdateAdvancementsPacket`
   (`criteria` are a `HashMap` in the original; the packet's map order would be Java's).
