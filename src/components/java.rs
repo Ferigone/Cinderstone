@@ -30,11 +30,31 @@ pub fn hashmap_iteration_order(keys: &[&str]) -> Vec<usize> {
 /// As [`hashmap_iteration_order`] for a map whose table already has `table_size` buckets (a
 /// `HashMap` never shrinks, so a set that once held many members keeps the larger table).
 pub fn hashmap_iteration_order_in(keys: &[&str], table_size: usize) -> Vec<usize> {
-    let hashes: Vec<u32> = keys.iter().map(|key| spread(string_hash(key))).collect();
-    let mut capacity = table_size.max(16).next_power_of_two();
+    let hashes: Vec<i32> = keys.iter().map(|key| string_hash(key)).collect();
+    hashmap_order_by_hash(&hashes, table_size.max(16))
+}
+
+/// The general form: indices of entries with the given `hashCode()`s (distinct keys, in insertion
+/// order) in the order a `java.util.HashMap` whose table starts with `table_size` buckets (a power
+/// of two; `HashMap(3)` starts at 4) iterates them.
+pub fn hashmap_order_by_hash(hash_codes: &[i32], table_size: usize) -> Vec<usize> {
+    hashmap_order_with(hash_codes, table_size, false)
+}
+
+/// As [`hashmap_order_by_hash`], for a map filled with `computeIfAbsent`: unlike `put`, which
+/// appends to a bucket's chain, `HashMap.computeIfAbsent` links the new node in *front* of it, so
+/// colliding keys iterate newest first.
+pub fn hashmap_order_with(hash_codes: &[i32], table_size: usize, prepend: bool) -> Vec<usize> {
+    let hashes: Vec<u32> = hash_codes.iter().map(|hash| spread(*hash)).collect();
+    let mut capacity = table_size.max(1).next_power_of_two();
     let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); capacity];
     for (index, hash) in hashes.iter().enumerate() {
-        buckets[*hash as usize & (capacity - 1)].push(index);
+        let bucket = &mut buckets[*hash as usize & (capacity - 1)];
+        if prepend {
+            bucket.insert(0, index);
+        } else {
+            bucket.push(index);
+        }
         if index + 1 > capacity * 3 / 4 {
             // `resize()`: the split keeps relative order, so re-bucketing in
             // iteration order is equivalent.
@@ -49,6 +69,12 @@ pub fn hashmap_iteration_order_in(keys: &[&str], table_size: usize) -> Vec<usize
         }
     }
     buckets.into_iter().flatten().collect()
+}
+
+/// `ResourceLocation.hashCode()` of `namespace:path`.
+pub fn resource_location_hash(id: &str) -> i32 {
+    let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
+    string_hash(namespace).wrapping_mul(31).wrapping_add(string_hash(path))
 }
 
 /// `NumericTag.getAsInt` (`CompoundTag.getInt`, `contains(key, 99)`): any numeric tag, with Java's
