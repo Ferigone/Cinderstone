@@ -294,6 +294,9 @@ pub enum ScoreboardError {
     NotOnTeam(String),
     /// The named objective or team does not exist (Java would hold a `null`).
     Unknown(String),
+    /// `NullPointerException`: a team whose colour was set to `null` (`ChatFormatting.getByName`
+    /// of an unknown name) reached `getColor().getId()`.
+    NullTeamColor(String),
 }
 
 impl std::fmt::Display for ScoreboardError {
@@ -303,6 +306,7 @@ impl std::fmt::Display for ScoreboardError {
             Self::ReadOnlyScore => write!(f, "Cannot modify read-only score"),
             Self::NotOnTeam(team) => write!(f, "Player is either on another team or not on any team. Cannot remove from team '{team}'."),
             Self::Unknown(name) => write!(f, "unknown {name}"),
+            Self::NullTeamColor(team) => write!(f, "team '{team}' has a null colour"),
         }
     }
 }
