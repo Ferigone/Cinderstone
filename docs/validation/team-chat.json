@@ -1,0 +1,1177 @@
+{
+  "ok": true,
+  "minecraft": "1.21",
+  "protocol": 767,
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "source_commit": "af753a1bdd512ef7861330f47a9c3d79c88566ef",
+  "binary_sha256": "edd02006b63950fb02d6bd83e9ffb0b2d85db4f98e5130b5a61930f438013410",
+  "runner_sha256": "de2120c59118ac05988a20ff97f8c8e8602575c12e2ce0688dfd2780f6820f02",
+  "client_sha256": "13516782d730ae0f09bf6acc5f3dd297896c753f0425846fcae1f044902ce66f",
+  "traces": {
+    "java": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "no-team",
+          "messages": {
+            "TeamAlice": [],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "unsigned-literal",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "  \"hello  team\"  ",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "profileless_chat",
+                "content": "  \"hello  team\"  ",
+                "type": {
+                  "chatType": 5
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "system-visibility-recipient",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "only-full-chat",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "signed-command-envelope",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "player_chat",
+                "content": "signed  hello",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                },
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "player_chat",
+                "content": "signed  hello",
+                "type": {
+                  "chatType": 5
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                },
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "console-denied-and-membership-change",
+          "messages": {
+            "TeamAlice": [],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "alias-after-membership-change",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "only-alice",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "ordinary-chat-still-public",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "OtherCara": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ]
+          }
+        }
+      ],
+      "tree": [
+        {
+          "name": "teammsg",
+          "kind": 1,
+          "executable": false,
+          "parser": null,
+          "redirect": null,
+          "children": [
+            {
+              "name": "message",
+              "kind": 2,
+              "executable": true,
+              "parser": "minecraft:message",
+              "redirect": null,
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "tm",
+          "kind": 1,
+          "executable": false,
+          "parser": null,
+          "redirect": "teammsg",
+          "children": []
+        }
+      ],
+      "no_team_error": {
+        "color": "red",
+        "extra": [
+          {
+            "translate": "commands.teammsg.failed.noteam"
+          }
+        ],
+        "text": ""
+      },
+      "console_failure_observed": true
+    },
+    "native": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "no-team",
+          "messages": {
+            "TeamAlice": [],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "unsigned-literal",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "  \"hello  team\"  ",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "profileless_chat",
+                "content": "  \"hello  team\"  ",
+                "type": {
+                  "chatType": 5
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "system-visibility-recipient",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "only-full-chat",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "signed-command-envelope",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "player_chat",
+                "content": "signed  hello",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                },
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "player_chat",
+                "content": "signed  hello",
+                "type": {
+                  "chatType": 5
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                },
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "console-denied-and-membership-change",
+          "messages": {
+            "TeamAlice": [],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "alias-after-membership-change",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "profileless_chat",
+                "content": "only-alice",
+                "type": {
+                  "chatType": 6
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/teammsg "
+                  },
+                  "color": "red",
+                  "hoverEvent": {
+                    "action": "show_text",
+                    "contents": {
+                      "translate": "chat.type.team.hover"
+                    }
+                  },
+                  "translate": "chat.square_brackets",
+                  "with": [
+                    {
+                      "bold": 1,
+                      "hoverEvent": {
+                        "action": "show_text",
+                        "contents": "red"
+                      },
+                      "insertion": "red",
+                      "text": "Red"
+                    }
+                  ]
+                }
+              }
+            ],
+            "TeamBob": [],
+            "OtherCara": []
+          }
+        },
+        {
+          "name": "ordinary-chat-still-public",
+          "messages": {
+            "TeamAlice": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "TeamBob": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ],
+            "OtherCara": [
+              {
+                "kind": "player_chat",
+                "content": "public after team",
+                "type": {
+                  "chatType": 0
+                },
+                "name": {
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell TeamAlice "
+                  },
+                  "color": "red",
+                  "extra": [
+                    "[R] ",
+                    "TeamAlice",
+                    ""
+                  ],
+                  "hoverEvent": {
+                    "action": "show_entity",
+                    "contents": {
+                      "id": [
+                        1778387534,
+                        -1513865998,
+                        -1160177632,
+                        -457843428
+                      ],
+                      "name": "TeamAlice",
+                      "type": "minecraft:player"
+                    }
+                  },
+                  "insertion": "TeamAlice",
+                  "text": ""
+                },
+                "target": null,
+                "sender": "6a000a4e-a5c4-3cf2-bad9-1820e4b5dd1c",
+                "has_signature": false,
+                "filter": 0
+              }
+            ]
+          }
+        }
+      ],
+      "tree": [
+        {
+          "name": "teammsg",
+          "kind": 1,
+          "executable": false,
+          "parser": null,
+          "redirect": null,
+          "children": [
+            {
+              "name": "message",
+              "kind": 2,
+              "executable": true,
+              "parser": "minecraft:message",
+              "redirect": null,
+              "children": []
+            }
+          ]
+        },
+        {
+          "name": "tm",
+          "kind": 1,
+          "executable": false,
+          "parser": null,
+          "redirect": "teammsg",
+          "children": []
+        }
+      ],
+      "no_team_error": {
+        "color": "red",
+        "extra": [
+          {
+            "translate": "commands.teammsg.failed.noteam"
+          }
+        ],
+        "text": ""
+      },
+      "console_failure_observed": true
+    }
+  },
+  "scope": "Literal <=256 UTF-16 offline team chat; no selectors, external filtering or real-account trust",
+  "comparison": "Exact command subgraph and ordered per-recipient chat content/type/name/target; exclude timestamps, salts and global unrelated tree nodes",
+  "observed_at": "2026-11-06T18:02:07.694182+00:00"
+}

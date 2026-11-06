@@ -108,7 +108,12 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "verification": "final validation deferred"
+      "verification": "final validation deferred",
+      "team_chat_evidence": {
+        "issue": 172,
+        "report": "docs/validation/team-chat.json",
+        "status": "partial: literal /teammsg and /tm connected to live teams and authorized chat; selectors, real-account trust and full WP-H1 remain open"
+      }
     },
     {
       "id": "authentication.5",
