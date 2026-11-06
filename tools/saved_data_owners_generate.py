@@ -32,6 +32,11 @@ import struct
 # test as bytes. ("b", 1) byte, ("s", 1) short, ("i", 1) int, ("l", 1) long, ("f", 1.5) float,
 # ("d", 1.5) double, ("str", "x"), ("list", tag_id, [values]), ("c", {name: value}),
 # ("ia", [ints]), ("ba", [bytes]).
+def quote(text):
+    """An SNBT string: only backslash and the double quote are escaped."""
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
 def snbt(value):
     kind = value[0]
     if kind == "b":
@@ -47,11 +52,11 @@ def snbt(value):
     if kind == "d":
         return f"{value[1]}d"
     if kind == "str":
-        return json.dumps(value[1])
+        return quote(value[1])
     if kind == "list":
         return "[" + ",".join(snbt(v) for v in value[2]) + "]"
     if kind == "c":
-        return "{" + ",".join(f'{json.dumps(k) if k != "" else "WRAP"}:{snbt(v)}' for k, v in value[1].items()) + "}"
+        return "{" + ",".join(f'{quote(k) if k != "" else "WRAP"}:{snbt(v)}' for k, v in value[1].items()) + "}"
     if kind == "ia":
         return "[I;" + ",".join(str(v) for v in value[1]) + "]"
     if kind == "ba":
