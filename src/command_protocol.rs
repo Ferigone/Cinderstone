@@ -320,6 +320,14 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "list" || input.starts_with("list ") {
+        let suggestions = crate::commands::list_command::suggestions(input)
+            .map_err(|error| anyhow::anyhow!("list suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "seed" || input.starts_with("seed ") {
         if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
         let suggestions = crate::commands::seed_command::suggestions(input, permission_level)
