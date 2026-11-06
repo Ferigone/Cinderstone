@@ -2629,6 +2629,22 @@ struct PresenceGuard {
     server: Arc<Server>,
 }
 impl Server {
+    /// PlayerList sends the current ServerLevel shared spawn on admission.
+    /// Imported worlds own it in level.dat; native flat worlds retain their
+    /// existing default until a native spawn-setting owner is implemented.
+    async fn default_spawn_packet(&self) -> Result<Packet> {
+        let (x, y, z, angle) = match &self.level {
+            Some(level) => level.lock().await.spawn()?,
+            None => (8, 64, 8, 0.),
+        };
+        Ok(Packet {
+            id: 0x56,
+            payload: encoded(|writer| {
+                writer.i64(pack_position(x, y, z)).f32(angle);
+            }),
+        })
+    }
+
     async fn cleanup_player(&self, id: i32, reason: Option<&'static str>) -> Result<()> {
         let _operation = self.chat_dispatch.lock().await;
         let admission = self.player_admission.lock().await;
@@ -3900,15 +3916,8 @@ async fn play(
         initial_world.time_payload.to_vec(),
     )
     .await?;
-    send(
-        &codec,
-        &mut writer,
-        0x56,
-        encoded(|writer| {
-            writer.i64(pack_position(8, 64, 8)).f32(0.);
-        }),
-    )
-    .await?;
+    let spawn_packet = server.default_spawn_packet().await?;
+    send(&codec, &mut writer, spawn_packet.id, spawn_packet.payload).await?;
     send_packets(&codec, &mut writer, initial_world.weather_packets(false)).await?;
     send(
         &codec,
