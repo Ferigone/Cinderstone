@@ -126,7 +126,7 @@ impl MainChatOutcome {
         }
     }
 
-    fn append_system(&mut self, recipient: i32, component: &Value) {
+    pub(super) fn append_system(&mut self, recipient: i32, component: &Value) {
         match chat_wire::encode_system_chat(component, false) {
             Ok(packet) => self
                 .effects
@@ -417,8 +417,27 @@ impl MainChatRuntime {
             name: bound.name.clone(),
             trusted: message.has_signature() && !message.has_expired_server(now_ms),
         });
+        let audience = self.registration_order.iter().map(|id| (*id, bound.clone())).collect();
+        self.deliver_audience(sender_id, sender_filtering, message, audience, outcome);
+    }
+
+    pub(super) fn send_team_message(&mut self, sender_id: i32,
+        members: &std::collections::BTreeSet<i32>, message: PlayerChatMessage,
+        incoming: BoundChatType, outgoing: BoundChatType) -> Result<MainChatOutcome> {
+        let sender_filtering = self.connection_mut(sender_id)?.settings.text_filtering_enabled;
+        let audience = self.registration_order.iter()
+            .filter(|id| **id == sender_id || members.contains(id))
+            .map(|id| (*id, if *id == sender_id { outgoing.clone() } else { incoming.clone() }))
+            .collect();
+        let mut outcome = MainChatOutcome::default();
+        self.deliver_audience(sender_id, sender_filtering, message, audience, &mut outcome);
+        Ok(outcome)
+    }
+
+    fn deliver_audience(&mut self, sender_id: i32, sender_filtering: bool,
+        message: PlayerChatMessage, audience: Vec<(i32, BoundChatType)>, outcome: &mut MainChatOutcome) {
         let mut filtered_full = false;
-        for recipient in self.registration_order.clone() {
+        for (recipient, bound) in audience {
             let Some(entry) = self.connections.get_mut(&recipient) else {
                 outcome.error = Some("registered chat audience owner disappeared".into());
                 return;
@@ -488,6 +507,10 @@ fn unsigned_has_signable_arguments(command: &str, permission_level: i32) -> bool
     if command.starts_with('/') {
         return false;
     }
+    if super::main_team_chat::is_command(command) {
+        // An unsupported selector must never become an unsigned signing exemption.
+        return !matches!(super::main_team_chat::literal_argument(command), Ok(None));
+    }
     match admission_commands::parse_command(command) {
         Ok(parsed) => {
             permission_level >= i32::from(admission_commands::required_permission(&parsed))
@@ -513,6 +536,10 @@ fn known_signable_arguments(
 ) -> std::result::Result<Vec<SignableArgument>, &'static str> {
     if command.starts_with('/') {
         return Ok(Vec::new());
+    }
+    if super::main_team_chat::is_command(command) {
+        return Ok(super::main_team_chat::literal_argument(command)?.map(|value|
+            SignableArgument { name: "message".into(), value: value.to_owned() }).into_iter().collect());
     }
     let parsed = match admission_commands::parse_command(command) {
         Ok(command) => command,
@@ -556,4 +583,68 @@ fn known_signable_arguments(
         name: "reason".into(),
         value: raw.to_owned(),
     }])
+}
+
+#[cfg(test)]
+mod team_signing_tests {
+    use super::*;
+    #[test]
+    fn nonop_team_message_uses_original_range_and_unsupported_ranges_cannot_bypass_signing() {
+        let line = "tm   cześć  team ";
+        assert_eq!(known_signable_arguments(line, 0).unwrap(), vec![SignableArgument {
+            name: "message".into(), value: "  cześć  team ".into(),
+        }]);
+        assert!(unsigned_has_signable_arguments(line, 0));
+        assert!(unsigned_has_signable_arguments("teammsg @a", 0));
+        assert!(known_signable_arguments("teammsg @a", 0).is_err());
+        assert!(!unsigned_has_signable_arguments("teammsg", 0));
+        assert!(known_signable_arguments("/tm hi", 0).unwrap().is_empty());
+    }
+    #[test]
+    fn team_delivery_advances_only_actual_recipients_signature_owners() {
+        let mut chat = MainChatRuntime::new();
+        let mut profiles = Vec::new();
+        for (id, name) in [(1, "Alice"), (2, "Bob"), (3, "Cara")] {
+            let profile = PlayerProfile::offline(name).unwrap();
+            chat.register(id, &profile, MainChatSettings::default()).unwrap();
+            profiles.push(profile);
+        }
+        // Delivery-boundary fixture, not a claim that this synthetic signature
+        // has passed the separate cryptographic authorization owner.
+        let mut message = PlayerChatMessage::unsigned(profiles[0].uuid, "team fixture", 1);
+        message.signature = Some([7; 256]);
+        let baseline = chat.connections[&1].listener.tracked_messages_count();
+        let bound = BoundChatType { registry_id: 0, name: json!({"text":"Alice"}), target_name: Some(json!({"text":"team"})) };
+        let outcome = chat.send_team_message(1, &std::collections::BTreeSet::from([1, 2]), message, bound.clone(), bound).unwrap();
+        let recipients = outcome.effects.iter().filter_map(|effect| match effect {
+            MainChatEffect::Packet { recipient, .. } => Some(*recipient), _ => None,
+        }).collect::<Vec<_>>();
+        assert_eq!(recipients, vec![1, 2]);
+        assert!(!outcome.effects.iter().any(|e| matches!(e, MainChatEffect::ChatLog { .. })));
+        for id in [1, 2] {
+            let connection = &chat.connections[&id];
+            assert!(connection.signature_cache.index_of(&[7; 256]) >= 0);
+            assert_eq!(connection.listener.tracked_messages_count(), baseline + 1);
+        }
+        assert_eq!(chat.connections[&3].signature_cache.index_of(&[7; 256]), -1);
+        assert_eq!(chat.connections[&3].listener.tracked_messages_count(), baseline);
+        chat.connections.get_mut(&2).unwrap().settings.visibility = ChatVisibility::System;
+        let mut message = PlayerChatMessage::unsigned(profiles[0].uuid, "hidden member", 2);
+        message.signature = Some([8; 256]);
+        let bound = BoundChatType { registry_id: 0, name: json!("Alice"), target_name: None };
+        chat.send_team_message(1, &std::collections::BTreeSet::from([1, 2]), message, bound.clone(), bound).unwrap();
+        assert_eq!(chat.connections[&2].signature_cache.index_of(&[8; 256]), -1);
+        assert_eq!(chat.connections[&2].listener.tracked_messages_count(), baseline + 1);
+    }
+    #[test]
+    fn secure_unsigned_team_commands_are_refused_even_for_unsupported_selectors() {
+        let mut chat = MainChatRuntime::new();
+        chat.register(1, &PlayerProfile::offline("Alice").unwrap(), MainChatSettings::default()).unwrap();
+        let host = MainChatContext { now_ms: 1, enforce_secure_profile: true, is_operator: false, is_singleplayer_owner: false };
+        for command in ["teammsg hello", "tm @a"] {
+            let outcome = chat.handle_unsigned_command(1, command, 0, host).unwrap();
+            assert!(outcome.command.is_none());
+            assert!(!outcome.effects.is_empty());
+        }
+    }
 }

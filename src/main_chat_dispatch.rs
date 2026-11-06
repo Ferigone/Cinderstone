@@ -18,7 +18,7 @@ impl Server {
     /// Effects share the existing ordered player event stream. In particular a
     /// session's INITIALIZE_CHAT cannot be overtaken by the following message,
     /// nor a spam disconnect by that sender's final accepted broadcast.
-    fn publish_chat_outcome(&self, players: &mut LivePlayers, sender: i32,
+    pub(super) fn publish_chat_outcome(&self, players: &mut LivePlayers, sender: i32,
         outcome: MainChatOutcome) -> Result<(Option<mc121_rust::chat_listener::AuthorizedCommand>, bool)> {
         if outcome.reset_last_action {
             let action = players.player_last_actions.get_mut(&sender).context("actual last-action owner missing")?;
@@ -83,7 +83,11 @@ impl Server {
         // Source command parsing, profile resolution and side effects remain
         // owned by the actual administration host, outside the player lock.
         let result = if let Some(command) = command {
-            self.execute_administration_locked(&command.command, Some(entity_id), &admission)
+            if main_team_chat::is_command(&command.command) {
+                self.execute_team_message(&command, Some(entity_id))
+            } else {
+                self.execute_administration_locked(&command.command, Some(entity_id), &admission)
+            }
         } else { Ok(()) };
         if charge {
             let (context, _) = self.actual_chat_context(entity_id)?;

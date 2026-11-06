@@ -1,0 +1,52 @@
+{
+  "minecraft": "1.21",
+  "jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "method": "Unchanged TeamMsgCommand registration and Brigadier parse; callbacks not executed",
+  "cases": [
+    {
+      "command": "teammsg hi",
+      "complete": true,
+      "start_utf16": 8,
+      "end_utf16": 10,
+      "message": "hi"
+    },
+    {
+      "command": "tm hi",
+      "complete": true,
+      "start_utf16": 3,
+      "end_utf16": 5,
+      "message": "hi"
+    },
+    {
+      "command": "teammsg   hi",
+      "complete": true,
+      "start_utf16": 8,
+      "end_utf16": 12,
+      "message": "  hi"
+    },
+    {
+      "command": "teammsg \"two words\"  ",
+      "complete": true,
+      "start_utf16": 8,
+      "end_utf16": 21,
+      "message": "\"two words\"  "
+    },
+    {
+      "command": "tm cześć 😀",
+      "complete": true,
+      "start_utf16": 3,
+      "end_utf16": 11,
+      "message": "cześć 😀"
+    },
+    {
+      "command": "teammsg ",
+      "complete": false,
+      "message": null
+    },
+    {
+      "command": "tm",
+      "complete": false,
+      "message": null
+    }
+  ]
+}

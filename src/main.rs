@@ -126,6 +126,7 @@ mod main_administration;
 mod main_admin_dispatch;
 mod main_scoreboard;
 mod main_chat;
+mod main_team_chat;
 mod main_chat_dispatch;
 mod main_chat_keys;
 mod main_connection;

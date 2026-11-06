@@ -20,6 +20,21 @@ other advancement trees (story, nether, end, adventure, husbandry) are still not
 loaded (#26); `doLimitedCrafting` and recipe-book placement requests remain open.
 This closes `crafting.4`: the checklist is **58/100 code**, **53/100 Main**.
 
+## Literal team chat (#172)
+
+Non-operators can use `/teammsg` and `/tm` with literal messages up to 256 UTF-16
+units. Main uses current team membership, formatted names, incoming/outgoing
+chat types and existing authorization, visibility and recipient signature owners.
+[Java/native evidence](validation/team-chat.json) compares the non-op command
+subgraph and ordered chat fields for no-team failure, both command envelopes,
+visibility, membership changes, alias and ordinary public-chat regression.
+[Original MessageArgument ranges](../fixtures/team-message-ranges.json) retain
+spaces/quotes/UTF-16 offsets. Synthetic signed delivery tests cover recipient
+caches; the offline runtime flow does not prove Mojang account trust.
+Selectors, external filtering and full WP-H1/#63 and WP-E3/#24 remain incomplete.
+`authentication.4` stays partial; current scope1 counts stay 58/100 code and 53/100 Main.
+Production deployment/TCP verification remains tracked under #19.
+
 ## Use-item-on block reconciliation (#158)
 
 [Focused protocol evidence](validation/use-item-on-reconciliation.json) now agrees

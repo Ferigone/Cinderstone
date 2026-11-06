@@ -113,6 +113,7 @@ struct Node {
     kind: NodeKind,
     executable: bool,
     children: Vec<usize>,
+    redirect: Option<usize>,
 }
 
 struct Tree {
@@ -126,6 +127,7 @@ impl Tree {
                 kind: NodeKind::Root,
                 executable: false,
                 children: Vec::new(),
+                redirect: None,
             }],
         }
     }
@@ -136,6 +138,7 @@ impl Tree {
             kind,
             executable,
             children: Vec::new(),
+            redirect: None,
         });
         self.nodes[parent].children.push(index);
         index
@@ -172,10 +175,14 @@ impl Tree {
                 NodeKind::Literal(_) => (1, false),
                 NodeKind::Argument { ask_server, .. } => (2, *ask_server),
             };
-            let flags = kind | if node.executable { 4 } else { 0 } | if custom { 16 } else { 0 };
+            let flags = kind | if node.executable { 4 } else { 0 } | if custom { 16 } else { 0 }
+                | if node.redirect.is_some() { 8 } else { 0 };
             output.u8(flags).varint(i32::try_from(node.children.len())?);
             for child in &node.children {
                 output.varint(i32::try_from(*child)?);
+            }
+            if let Some(redirect) = node.redirect {
+                output.varint(i32::try_from(redirect)?);
             }
             match &node.kind {
                 NodeKind::Root => {}
@@ -274,6 +281,10 @@ pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
 /// Scoreboard roots are usable in Main. Their full suggestion grammar belongs to WP-E3.
 pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let mut tree=administration_tree(permission_level);
+    let teammsg=tree.literal(0,"teammsg",false);
+    tree.argument(teammsg,"message",Parser::Message,false);
+    let alias=tree.literal(0,"tm",false);
+    tree.nodes[alias].redirect=Some(teammsg);
     let trigger=tree.literal(0,"trigger",false);
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
