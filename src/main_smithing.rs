@@ -146,8 +146,7 @@ impl PreparedSmithingCommit<'_> {
             |ordinal: usize, _item_publication: &mut ItemBatchPublication<'_>| {
                 if let Some(index) = pending_drop.take() {
                     // ServerPlayer.drop awards only after actual world-add.
-                    *gameplay.stats_mut(uuid).expect("validated smithing statistic owner") =
-                        stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     cursor = index + 1;
                 }
                 while cursor < publication.events.len() {
@@ -161,8 +160,7 @@ impl PreparedSmithingCommit<'_> {
                             return;
                         }
                     }
-                    *gameplay.stats_mut(uuid).expect("validated smithing statistic owner") =
-                        stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     if let Some(book) = callbacks.book_at(index) { *recipe_book = book.clone(); }
                     match event {
                         SmithingMenuEvent::Sync { event: SyncEvent::SlotListener {

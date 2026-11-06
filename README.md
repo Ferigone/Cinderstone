@@ -382,8 +382,8 @@ The fixed planning checklist has **100 named, unweighted delivery items** at
 
 | Checklist indicator | Recorded implementation scope |
 | --- | ---: |
-| Native code deliveries | **56/100** |
-| Deliveries connected to the main server | **51/100** |
+| Native code deliveries | **57/100** |
+| Deliveries connected to the main server | **52/100** |
 
 These are **planning-checklist indicators**, not percentages of Minecraft's
 functional compatibility, engineering effort or remaining time. Partial features

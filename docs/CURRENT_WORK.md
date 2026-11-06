@@ -18,6 +18,19 @@ This closes a packet discrepancy, not full block interaction parity; survival,
 other block families and persistence are outside this check. Scope version 1 and
 the existing 56/100 code, 51/100 Main counts remain unchanged.
 
+## Scoreboard and teams — Main acceptance connected (WP-E4 #25)
+
+The retained server scoreboard now handles console/player `/scoreboard`, `/team`
+and `/trigger`, native vitals/statistic criteria, team/chat decoration, join-time
+synchronization and atomic `data/scoreboard.dat` saves before `level.dat`.
+The [runtime flow](validation/scoreboard-runtime.json) compares ordered scoreboard
+packet bytes and saved NBT against the unchanged Java 1.21 server, including a
+real `leave_game` criterion, non-operator denial/trigger and cold restart.
+[Scope and remaining consumers](reference/scoreboard-runtime.md) keep full selector
+contexts (#24), survival death/damage (#54) and unsupported entity behavior (#53)
+separate. `commands_data.3` is connected; fixed scope1 counts are 57/100 code and
+52/100 Main, still a 100-item planning indicator rather than vanilla parity.
+
 ## Imported world default-spawn packet (#161)
 
 Main now reads the current `level.dat` shared spawn for the initial PLAY

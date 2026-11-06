@@ -92,6 +92,7 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 
 #[derive(Clone, Copy)]
 enum Parser {
+    GreedyString,
     Word,
     Players,
     Profiles,
@@ -188,6 +189,7 @@ impl Tree {
                 } => {
                     output.string(name);
                     match parser {
+                        Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
                         }
@@ -220,7 +222,7 @@ impl Tree {
 /// level. All selected administration roots require level3; `list` is public.
 /// MessageArgument nodes remain the actual signable parser19. Advertising them
 /// does not make their signed transport executable without a signing owner.
-pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
+fn administration_tree(permission_level: u8) -> Tree {
     let mut tree = Tree::new();
     let list = tree.literal(0, "list", true);
     tree.literal(list, "uuids", true);
@@ -260,6 +262,24 @@ pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
         for literal in ["add", "remove"] {
             let branch = tree.literal(whitelist, literal, false);
             tree.argument(branch, "targets", Parser::Profiles, true);
+        }
+    }
+    tree
+}
+
+pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
+    administration_tree(permission_level).packet()
+}
+
+/// Scoreboard roots are usable in Main. Their full suggestion grammar belongs to WP-E3.
+pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
+    let mut tree=administration_tree(permission_level);
+    let trigger=tree.literal(0,"trigger",false);
+    tree.argument(trigger,"arguments",Parser::GreedyString,false);
+    if permission_level>=2 {
+        for root in ["scoreboard","team"] {
+            let root=tree.literal(0,root,false);
+            tree.argument(root,"arguments",Parser::GreedyString,false);
         }
     }
     tree.packet()

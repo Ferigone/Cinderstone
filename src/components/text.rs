@@ -9,8 +9,8 @@
 //! `java.util.HashMap` key order and a list of mixed tag types wraps each
 //! non-compound element as `{"": element}`.
 //!
-//! Not ported and reported as [`ComponentError::Unsupported`]: `show_item` and
-//! `show_entity` hover events (they need the item-stack and entity-tooltip codecs).
+//! Native player `show_entity` hovers support scoreboard display-name persistence.
+//! `show_item`, non-player and legacy entity hovers remain explicit Unsupported contexts.
 
 use super::java::hashmap_iteration_order;
 use crate::nbt::{JavaString, Tag};
@@ -149,10 +149,66 @@ pub struct ClickEvent {
     pub value: String,
 }
 
-/// `HoverEvent` (`show_text` only).
+/// Hover forms required by text and the live player's display name.
 #[derive(Debug, Clone, PartialEq)]
-pub struct HoverEvent {
-    pub text: Box<Component>,
+pub enum HoverEvent {
+    Text(Box<Component>),
+    PlayerEntity {
+        uuid: [u8; 16],
+        name: Option<Box<Component>>,
+    },
+}
+impl HoverEvent {
+    fn action(&self) -> &'static str {
+        match self {
+            Self::Text(_) => "show_text",
+            Self::PlayerEntity { .. } => "show_entity",
+        }
+    }
+    fn contents_json(&self) -> Json {
+        match self {
+            Self::Text(text) => text.json(),
+            Self::PlayerEntity { uuid, name } => {
+                let mut fields = Vec::new();
+                fields.push((
+                    "id",
+                    Json::Arr(
+                        uuid.chunks_exact(4)
+                            .map(|b| {
+                                Json::Num(i32::from_be_bytes(b.try_into().unwrap()).to_string())
+                            })
+                            .collect(),
+                    ),
+                ));
+                fields.insert(0, ("type", Json::Str("minecraft:player".into())));
+                if let Some(name) = name {
+                    fields.push(("name", name.json()));
+                }
+                Json::Obj(fields)
+            }
+        }
+    }
+    fn contents_nbt(&self) -> Tag {
+        match self {
+            Self::Text(text) => text.to_nbt(),
+            Self::PlayerEntity { uuid, name } => {
+                let mut fields = Vec::new();
+                if let Some(name) = name {
+                    fields.push(("name", name.to_nbt()));
+                }
+                fields.push((
+                    "id",
+                    Tag::IntArray(
+                        uuid.chunks_exact(4)
+                            .map(|b| i32::from_be_bytes(b.try_into().unwrap()))
+                            .collect(),
+                    ),
+                ));
+                fields.push(("type", nbt_string("minecraft:player")));
+                compound(fields)
+            }
+        }
+    }
 }
 
 /// `Style`.
@@ -454,8 +510,8 @@ impl Component {
             out.push((
                 "hoverEvent",
                 Json::Obj(vec![
-                    ("contents", hover.text.json()),
-                    ("action", Json::Str("show_text".to_owned())),
+                    ("contents", hover.contents_json()),
+                    ("action", Json::Str(hover.action().to_owned())),
                 ]),
             ));
         }
@@ -517,8 +573,8 @@ pub(crate) fn style_entries(style: &Style) -> Vec<(&'static str, Tag)> {
         out.push((
             "hoverEvent",
             compound(vec![
-                ("contents", hover.text.to_nbt()),
-                ("action", nbt_string("show_text")),
+                ("contents", hover.contents_nbt()),
+                ("action", nbt_string(hover.action())),
             ]),
         ));
     }

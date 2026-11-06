@@ -255,6 +255,7 @@ impl Server {
                 "minecraft:custom", "minecraft:interact_with_smithing_table",
             ).context("smithing interaction statistic missing")?;
             players.gameplay.stats_mut(player.profile.uuid)?.increment(stat, 1)?;
+        players.gameplay.award_scoreboard_stat(player.profile.uuid, stat, 1)?;
             let _post_use_state = world.block(target.0, target.1, target.2)?;
             players.gameplay.default_block_use(player.profile.uuid, target)?;
         }

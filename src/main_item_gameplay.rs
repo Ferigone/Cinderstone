@@ -75,6 +75,8 @@ pub enum GameplayObservation {
 /// This owner is the registry. An empty value is created only by the explicit
 /// fresh-fixture constructor, never inferred from missing imported files.
 pub struct MainItemGameplay {
+    pub scoreboard: mc121_rust::scoreboard::Scoreboard,
+    pub scoreboard_names: BTreeMap<Uuid, String>,
     source_scope: GameplaySourceScope,
     invalid_reason: Option<String>,
     active_players: BTreeMap<i32, Uuid>,
@@ -94,6 +96,8 @@ pub struct MainItemGameplay {
 impl MainItemGameplay {
     pub fn new(source_scope: GameplaySourceScope) -> Self {
         Self {
+            scoreboard: mc121_rust::scoreboard::Scoreboard::new_server(),
+            scoreboard_names: BTreeMap::new(),
             source_scope,
             invalid_reason: None,
             active_players: BTreeMap::new(),
@@ -142,6 +146,7 @@ impl MainItemGameplay {
     }
     pub fn remove_player(&mut self, id: i32) {
         if let Some(uuid) = self.active_players.remove(&id) {
+            self.scoreboard_names.remove(&uuid);
             // Original stopListening removes this PlayerAdvancements identity.
             // Values survive this connection's lifetime under the UUID owner.
             self.criteria.retain(|(player, _), _| *player != uuid);
@@ -164,7 +169,36 @@ impl MainItemGameplay {
         key.validate()?;
         self.stats.get_mut(&uuid).context("statistic counter owner is absent")?
             .increment(key, amount)?;
-        self.observe(GameplayObservation::EmptyScoreboard { player: uuid, key });
+        self.award_scoreboard_stat(uuid, key, amount)?;
+        if !self.has_stat_objective(key)? {
+            self.observe(GameplayObservation::EmptyScoreboard { player: uuid, key });
+        }
+        Ok(())
+    }
+    fn stat_criterion(key: StatKey) -> Result<String> {
+        let (kind, value) = mc121_rust::player_stats::stat_names(key).context("statistic name missing")?;
+        Ok(format!("{}:{}", kind.replace(':', "."), value.replace(':', ".")))
+    }
+    fn has_stat_objective(&self, key: StatKey) -> Result<bool> {
+        let criteria = Self::stat_criterion(key)?;
+        Ok(self.scoreboard.objectives().iter().any(|o| o.criteria.name() == criteria))
+    }
+    pub fn award_scoreboard_stat(&mut self, uuid: Uuid, key: StatKey, amount: i32) -> Result<()> {
+        if self.has_stat_objective(key)? {
+            let name = self.scoreboard_names.get(&uuid).context("scoreboard statistic actor name is missing")?;
+            let holder=mc121_rust::scoreboard::names::player_holder(&self.scoreboard,name,uuid);
+            mc121_rust::scoreboard::hooks::award_stat(&mut self.scoreboard,
+                &holder, &Self::stat_criterion(key)?, amount)?;
+        }
+        Ok(())
+    }
+    /// Transactional workstation/drop counters publish their statistic criteria at commit.
+    pub fn replace_player_stats(&mut self, uuid: Uuid, mut stats: PlayerStats) -> Result<()> {
+        let cursor = self.stats.get(&uuid).context("statistics owner missing")?.award_cursor();
+        let awards = stats.awards_after(cursor).collect::<Vec<_>>();
+        for (key, amount) in awards { self.award_scoreboard_stat(uuid, key, amount)?; }
+        stats.finish_transaction();
+        self.stats.insert(uuid, stats);
         Ok(())
     }
     /// Install a verified native player-store counter after admission, or an
@@ -177,6 +211,7 @@ impl MainItemGameplay {
                 && self.active_players.values().any(|active| *active == uuid),
             "persisted statistics require an admitted known player UUID"
         );
+        stats.finish_transaction();
         stats.mark_all_dirty();
         self.stats.insert(uuid, stats);
         self.native_stats.insert(uuid);
@@ -197,7 +232,7 @@ impl MainItemGameplay {
         );
         self.stats
             .get(&uuid)
-            .cloned()
+            .map(PlayerStats::for_transaction)
             .context("gameplay statistics UUID has no counter owner")
     }
     /// Preload UUID identities only from fully validated native player saves.
@@ -486,7 +521,7 @@ impl PreparedGameplayMenu<'_> {
                 .observe_block_change((change.x, change.y, change.z), change.state)
                 .expect("prepared listener-source states were validated before world commit");
         }
-        self.gameplay.stats.insert(self.uuid, self.next_stats);
+        self.gameplay.replace_player_stats(self.uuid, self.next_stats).expect("prepared native scoreboard/statistic commit");
         for observation in self.observations {
             self.gameplay.observe(observation);
         }
@@ -706,10 +741,12 @@ impl RuntimeGameplayHooks for MainGameplayFrame<'_> {
             item_id: original_item_id,
             count: original_count,
         });
-        self.gameplay.observe(GameplayObservation::EmptyScoreboard {
-            player: player.uuid,
-            key: StatKey::new(mc121_rust::player_stats::ITEM_PICKED_UP, original_item_id)?,
-        });
+        self.gameplay.award_scoreboard_stat(player.uuid,
+            StatKey::new(mc121_rust::player_stats::ITEM_PICKED_UP, original_item_id)?, original_count)?;
+        let key = StatKey::new(mc121_rust::player_stats::ITEM_PICKED_UP, original_item_id)?;
+        if !self.gameplay.has_stat_objective(key)? {
+            self.gameplay.observe(GameplayObservation::EmptyScoreboard { player: player.uuid, key });
+        }
         Ok(())
     }
     fn on_item_pickup(

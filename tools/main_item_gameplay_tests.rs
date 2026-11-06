@@ -515,3 +515,24 @@ fn unknown_imports_registrations_and_listener_sources_fail_closed() {
         "unconfirmed FULL must not be fabricated as absent getChunkNow"
     );
 }
+
+#[test]
+fn transactional_awards_survive_saturation_and_each_snapshot_commits_once() {
+    let mut gameplay=MainItemGameplay::new(GameplaySourceScope::NativeFixtureEmptyCriteria);
+    gameplay.register_player(1,[1;16]).unwrap();
+    gameplay.scoreboard_names.insert([1;16],"Alice".into());
+    let key=mc121_rust::player_stats::stat_key("minecraft:custom","minecraft:drop").unwrap();
+    gameplay.stats_mut([1;16]).unwrap().set(key,i32::MAX).unwrap();
+    mc121_rust::scoreboard::commands::execute(&mut gameplay.scoreboard,
+        "scoreboard objectives add drops minecraft.custom:minecraft.drop",None,4,&[]).unwrap();
+    let mut prepared=gameplay.snapshot_player_stats([1;16]).unwrap();
+    prepared.increment(key,3).unwrap();
+    gameplay.replace_player_stats([1;16],prepared.clone()).unwrap();
+    prepared.increment(key,2).unwrap();
+    gameplay.replace_player_stats([1;16],prepared.clone()).unwrap();
+    gameplay.replace_player_stats([1;16],prepared).unwrap();
+    assert_eq!(gameplay.stats_mut([1;16]).unwrap().get(key),i32::MAX);
+    assert_eq!(gameplay.scoreboard.player_score_info("Alice","drops").unwrap().value,5);
+    let saved=gameplay.snapshot_player_stats([1;16]).unwrap().to_stat_file_json().unwrap();
+    assert!(!saved.contains("award_cursor")&&!saved.contains("transaction_awards"));
+}

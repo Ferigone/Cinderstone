@@ -124,6 +124,7 @@ mod main_bucket_interactions;
 mod main_configuration;
 mod main_administration;
 mod main_admin_dispatch;
+mod main_scoreboard;
 mod main_chat;
 mod main_chat_dispatch;
 mod main_chat_keys;
@@ -530,6 +531,8 @@ struct Server {
 }
 
 struct LivePlayers {
+    scoreboard_revision: u64,
+    scoreboard_trackers: BTreeMap<i32, mc121_rust::scoreboard::hooks::PlayerCriteriaTracker>,
     registry: EntityRegistry,
     revision: u64,
     motion: BTreeMap<i32, PlayerMotionTracker>,
@@ -731,6 +734,7 @@ impl ClientTrackers {
 
 #[derive(Clone)]
 enum PlayerEvent {
+    Scoreboard { revision: u64, recipients: Arc<Vec<i32>>, packets: Arc<Vec<Packet>> },
     AdminDisconnect { recipient: i32, reason: Vec<u8> },
     ChatDisconnect { recipient: i32, reason: &'static str },
     ChunksReady {
@@ -798,6 +802,8 @@ impl LivePlayers {
                 let _ = sender.send(PlayerEvent::Item(Arc::new(event)));
             }));
         Self {
+            scoreboard_revision: 0,
+            scoreboard_trackers: BTreeMap::new(),
             registry: EntityRegistry::default(),
             revision: 0,
             motion: BTreeMap::new(),
@@ -904,6 +910,7 @@ impl LivePlayers {
         Ok(())
     }
     fn remove_runtime_player(&mut self, id: i32) -> Result<()> {
+        self.scoreboard_trackers.remove(&id);
         self.experience_runtime.forget_player(id);
         self.player_motion_runtime.remove(id);
         self.player_food_runtime.remove(id);
@@ -1482,7 +1489,7 @@ impl Server {
             floor(position.x + 18.).div_euclid(16),
             floor(position.z + 18.).div_euclid(16),
         );
-        let staged_stats = players.gameplay.stats_mut(uuid)?.clone();
+        let staged_stats = players.gameplay.stats_mut(uuid)?.for_transaction();
         let LivePlayers {
             item_runtime,
             player_random,
@@ -2263,6 +2270,7 @@ impl Server {
                 equipment_events.insert(id, event);
             }
         }
+        main_scoreboard::tick(&mut players, &self.entity_events)?;
         let mut frames = BTreeMap::new();
         for player in players.registry.snapshot() {
             if players.player_motion_runtime.contains(player.entity_id) {
@@ -2603,6 +2611,10 @@ impl Server {
             self.entity_store.save(&checkpoint)?;
         }
         drop(world);
+        {
+            let mut players = self.players.write().map_err(|_| anyhow!("players poisoned"))?;
+            main_scoreboard::save(&main_scoreboard::path(&self.options), &mut players.gameplay.scoreboard)?;
+        }
         if let Some(level) = &self.level {
             let border = self
                 .border
@@ -3122,6 +3134,7 @@ async fn main() -> Result<()> {
         .restore_known_native_players(main_player_data::load_known_native_players(
             &player_store,
         )?)?;
+    players.gameplay.scoreboard = main_scoreboard::load(&main_scoreboard::path(&options))?;
     let server = Arc::new(Server {
         options,
         connection_settings,
@@ -3830,6 +3843,7 @@ async fn play(
             players.player_last_actions.remove(&entity_id);
             return Err(error);
         }
+        players.gameplay.scoreboard_names.insert(uuid, chat_profile.name.clone());
         players.gameplay.install_player_stats(uuid, stats)?;
         players
             .player_lifecycle
@@ -3902,6 +3916,8 @@ async fn play(
     .await?;
     send(&codec,&mut writer,0x0b,encoded(|w| {w.u8(server.options.difficulty as u8).bool(server.difficulty_locked);})).await?;
     send_packets(&codec, &mut writer, server.administration_permission_packets(entity_id)?).await?;
+    let (mut scoreboard_revision, scoreboard_packets) = server.scoreboard_join_packets()?;
+    send_packets(&codec, &mut writer, scoreboard_packets).await?;
     let initial_inventory = container.snapshot()?;
     let mut container_revision = initial_inventory.revision;
     send_packets(&codec, &mut writer, vec![initial_inventory.packet]).await?;
@@ -4415,6 +4431,12 @@ async fn play(
                     OrderedEntityInput::Event(PlayerEvent::ObserverReconcile{..})=>{},
                     OrderedEntityInput::Event(PlayerEvent::ChunksReady{..})=>{},
                     OrderedEntityInput::Event(PlayerEvent::World {revision,packets})=>send_packets(&codec,&mut writer,tracker.world_event(revision,&packets)).await?,
+                    OrderedEntityInput::Event(PlayerEvent::Scoreboard {revision,recipients,packets})=> {
+                        if revision > scoreboard_revision && recipients.contains(&entity_id) {
+                            send_packets(&codec,&mut writer,packets.as_ref().clone()).await?;
+                            scoreboard_revision=revision;
+                        }
+                    },
                     OrderedEntityInput::Event(PlayerEvent::WorldAudience {recipients,packets})=> {
                         if recipients.contains(&entity_id) { send_packets(&codec,&mut writer,packets.as_ref().clone()).await?; }
                     },

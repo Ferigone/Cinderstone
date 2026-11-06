@@ -1,0 +1,751 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "native_commit": "e25fde09c76aa78508f378753b07dd3a00930e09",
+  "native_src_tree": "2942b7493efe9d7232f6162c2d2c20638c84b746",
+  "completed_at": "2026-11-06T16:01:18.304Z",
+  "traces": {
+    "native": {
+      "live": [
+        {
+          "name": "teams",
+          "hex": "60047465737400080004746573740306616c7761797306616c77617973150a0a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000010a53636f726550726f6265"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e066c6561766573000800066c65617665730000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "5701066c6561766573"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657300010800054c6162656c00"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657300010800054c6162656c0100"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a4f7468657250726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a4f7468657250726f62650b00026964000000044b05a086bd223bee898f605027746c2a0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c204f7468657250726f62652000080009696e73657274696f6e000a4f7468657250726f626508000474657874000a4f7468657250726f62650000"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e06627574746f6e00080006627574746f6e0000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "570006627574746f6e"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f626506627574746f6e03010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f62650800047465787400000000"
+        }
+      ],
+      "restart": [
+        {
+          "name": "teams",
+          "hex": "60047465737400080004746573740306616c7761797306616c77617973150a0a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000010a53636f726550726f6265"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e06627574746f6e00080006627574746f6e0000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "570006627574746f6e"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f626506627574746f6e03010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f62650800047465787400000000"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e066c6561766573000800066c65617665730000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "5701066c6561766573"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f6265080004746578740000000100"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a4f7468657250726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a4f7468657250726f62650b00026964000000044b05a086bd223bee898f605027746c2a0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c204f7468657250726f62652000080009696e73657274696f6e000a4f7468657250726f626508000474657874000a4f7468657250726f62650000"
+        }
+      ],
+      "checks": {
+        "real_criterion": true,
+        "team_prefix": true,
+        "permission_denial": true,
+        "nonop_trigger": true,
+        "display_grammar": true,
+        "display_auto_update": true,
+        "rich_team_chat": true,
+        "restart": true
+      },
+      "saved_data": {
+        "DataVersion": 3953,
+        "data": {
+          "DisplaySlots": {
+            "list": "button",
+            "sidebar": "leaves"
+          },
+          "Objectives": [
+            {
+              "CriteriaName": "minecraft.custom:minecraft.leave_game",
+              "DisplayName": "\"leaves\"",
+              "Name": "leaves",
+              "RenderType": "integer",
+              "display_auto_update": 1
+            },
+            {
+              "CriteriaName": "trigger",
+              "DisplayName": "\"button\"",
+              "Name": "button",
+              "RenderType": "integer",
+              "display_auto_update": 1
+            }
+          ],
+          "PlayerScores": [
+            {
+              "Locked": 1,
+              "Name": "ScoreProbe",
+              "Objective": "leaves",
+              "Score": 2,
+              "display": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}",
+              "format": {
+                "type": "minecraft:blank"
+              }
+            },
+            {
+              "Locked": 1,
+              "Name": "ScoreProbe",
+              "Objective": "button",
+              "Score": 3,
+              "display": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+            },
+            {
+              "Locked": 1,
+              "Name": "OtherProbe",
+              "Objective": "leaves",
+              "Score": 1,
+              "display": "{\"text\":\"OtherProbe\",\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[1258659974,-1121829906,-1987092400,661941290],\"name\":\"OtherProbe\"},\"action\":\"show_entity\"},\"insertion\":\"OtherProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell OtherProbe \"}}"
+            }
+          ],
+          "Teams": [
+            {
+              "AllowFriendlyFire": 1,
+              "CollisionRule": "always",
+              "DeathMessageVisibility": "always",
+              "DisplayName": "\"test\"",
+              "MemberNamePrefix": "{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"}",
+              "MemberNameSuffix": "\"\"",
+              "Name": "test",
+              "NameTagVisibility": "always",
+              "Players": [
+                "ScoreProbe"
+              ],
+              "SeeFriendlyInvisibles": 1
+            }
+          ]
+        }
+      },
+      "saved_data_nbt": {
+        "name": "",
+        "type": "compound",
+        "value": {
+          "DataVersion": {
+            "type": "int",
+            "value": 3953
+          },
+          "data": {
+            "type": "compound",
+            "value": {
+              "DisplaySlots": {
+                "type": "compound",
+                "value": {
+                  "list": {
+                    "type": "string",
+                    "value": "button"
+                  },
+                  "sidebar": {
+                    "type": "string",
+                    "value": "leaves"
+                  }
+                }
+              },
+              "Objectives": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "CriteriaName": {
+                        "type": "string",
+                        "value": "minecraft.custom:minecraft.leave_game"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"leaves\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "RenderType": {
+                        "type": "string",
+                        "value": "integer"
+                      },
+                      "display_auto_update": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    },
+                    {
+                      "CriteriaName": {
+                        "type": "string",
+                        "value": "trigger"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"button\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "button"
+                      },
+                      "RenderType": {
+                        "type": "string",
+                        "value": "integer"
+                      },
+                      "display_auto_update": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    }
+                  ]
+                }
+              },
+              "PlayerScores": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "ScoreProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 2
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+                      },
+                      "format": {
+                        "type": "compound",
+                        "value": {
+                          "type": {
+                            "type": "string",
+                            "value": "minecraft:blank"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "ScoreProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "button"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 3
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+                      }
+                    },
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "OtherProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 1
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"OtherProbe\",\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[1258659974,-1121829906,-1987092400,661941290],\"name\":\"OtherProbe\"},\"action\":\"show_entity\"},\"insertion\":\"OtherProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell OtherProbe \"}}"
+                      }
+                    }
+                  ]
+                }
+              },
+              "Teams": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "AllowFriendlyFire": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "CollisionRule": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "DeathMessageVisibility": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"test\""
+                      },
+                      "MemberNamePrefix": {
+                        "type": "string",
+                        "value": "{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"}"
+                      },
+                      "MemberNameSuffix": {
+                        "type": "string",
+                        "value": "\"\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "test"
+                      },
+                      "NameTagVisibility": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "Players": {
+                        "type": "list",
+                        "value": {
+                          "type": "string",
+                          "value": [
+                            "ScoreProbe"
+                          ]
+                        }
+                      },
+                      "SeeFriendlyInvisibles": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "java": {
+      "live": [
+        {
+          "name": "teams",
+          "hex": "60047465737400080004746573740306616c7761797306616c77617973150a0a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000010a53636f726550726f6265"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e066c6561766573000800066c65617665730000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "5701066c6561766573"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657300010800054c6162656c00"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657300010800054c6162656c0100"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a4f7468657250726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a4f7468657250726f62650b00026964000000044b05a086bd223bee898f605027746c2a0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c204f7468657250726f62652000080009696e73657274696f6e000a4f7468657250726f626508000474657874000a4f7468657250726f62650000"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e06627574746f6e00080006627574746f6e0000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "570006627574746f6e"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f626506627574746f6e03010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f62650800047465787400000000"
+        }
+      ],
+      "restart": [
+        {
+          "name": "teams",
+          "hex": "60047465737400080004746573740306616c7761797306616c77617973150a0a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000010a53636f726550726f6265"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e06627574746f6e00080006627574746f6e0000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "570006627574746f6e"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f626506627574746f6e03010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f62650800047465787400000000"
+        },
+        {
+          "name": "scoreboard_objective",
+          "hex": "5e066c6561766573000800066c65617665730000"
+        },
+        {
+          "name": "scoreboard_display_objective",
+          "hex": "5701066c6561766573"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a53636f726550726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a53636f726550726f62650b000269640000000435951013d18b3644b0f5481d6ba7b8e20800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c2053636f726550726f6265200009000565787472610a000000030a000a686f7665724576656e74080008636f6e74656e747300045465616d080006616374696f6e000973686f775f74657874000800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000a53636f726550726f626500080000000000080009696e73657274696f6e000a53636f726550726f6265080004746578740000000100"
+        },
+        {
+          "name": "scoreboard_score",
+          "hex": "610a4f7468657250726f6265066c656176657301010a0a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000a4f7468657250726f62650b00026964000000044b05a086bd223bee898f605027746c2a0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500112f74656c6c204f7468657250726f62652000080009696e73657274696f6e000a4f7468657250726f626508000474657874000a4f7468657250726f62650000"
+        }
+      ],
+      "checks": {
+        "real_criterion": true,
+        "team_prefix": true,
+        "permission_denial": true,
+        "nonop_trigger": true,
+        "display_grammar": true,
+        "display_auto_update": true,
+        "rich_team_chat": true,
+        "restart": true
+      },
+      "saved_data": {
+        "DataVersion": 3953,
+        "data": {
+          "DisplaySlots": {
+            "list": "button",
+            "sidebar": "leaves"
+          },
+          "Objectives": [
+            {
+              "CriteriaName": "minecraft.custom:minecraft.leave_game",
+              "DisplayName": "\"leaves\"",
+              "Name": "leaves",
+              "RenderType": "integer",
+              "display_auto_update": 1
+            },
+            {
+              "CriteriaName": "trigger",
+              "DisplayName": "\"button\"",
+              "Name": "button",
+              "RenderType": "integer",
+              "display_auto_update": 1
+            }
+          ],
+          "PlayerScores": [
+            {
+              "Locked": 1,
+              "Name": "ScoreProbe",
+              "Objective": "button",
+              "Score": 3,
+              "display": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+            },
+            {
+              "Locked": 1,
+              "Name": "ScoreProbe",
+              "Objective": "leaves",
+              "Score": 2,
+              "display": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}",
+              "format": {
+                "type": "minecraft:blank"
+              }
+            },
+            {
+              "Locked": 1,
+              "Name": "OtherProbe",
+              "Objective": "leaves",
+              "Score": 1,
+              "display": "{\"text\":\"OtherProbe\",\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[1258659974,-1121829906,-1987092400,661941290],\"name\":\"OtherProbe\"},\"action\":\"show_entity\"},\"insertion\":\"OtherProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell OtherProbe \"}}"
+            }
+          ],
+          "Teams": [
+            {
+              "AllowFriendlyFire": 1,
+              "CollisionRule": "always",
+              "DeathMessageVisibility": "always",
+              "DisplayName": "\"test\"",
+              "MemberNamePrefix": "{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"}",
+              "MemberNameSuffix": "\"\"",
+              "Name": "test",
+              "NameTagVisibility": "always",
+              "Players": [
+                "ScoreProbe"
+              ],
+              "SeeFriendlyInvisibles": 1
+            }
+          ]
+        }
+      },
+      "saved_data_nbt": {
+        "name": "",
+        "type": "compound",
+        "value": {
+          "DataVersion": {
+            "type": "int",
+            "value": 3953
+          },
+          "data": {
+            "type": "compound",
+            "value": {
+              "DisplaySlots": {
+                "type": "compound",
+                "value": {
+                  "list": {
+                    "type": "string",
+                    "value": "button"
+                  },
+                  "sidebar": {
+                    "type": "string",
+                    "value": "leaves"
+                  }
+                }
+              },
+              "Objectives": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "CriteriaName": {
+                        "type": "string",
+                        "value": "minecraft.custom:minecraft.leave_game"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"leaves\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "RenderType": {
+                        "type": "string",
+                        "value": "integer"
+                      },
+                      "display_auto_update": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    },
+                    {
+                      "CriteriaName": {
+                        "type": "string",
+                        "value": "trigger"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"button\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "button"
+                      },
+                      "RenderType": {
+                        "type": "string",
+                        "value": "integer"
+                      },
+                      "display_auto_update": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    }
+                  ]
+                }
+              },
+              "PlayerScores": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "ScoreProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "button"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 3
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+                      }
+                    },
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "ScoreProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 2
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"\",\"extra\":[{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"},\"ScoreProbe\",\"\"],\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[898961427,-779405756,-1326102499,1806153954],\"name\":\"ScoreProbe\"},\"action\":\"show_entity\"},\"insertion\":\"ScoreProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell ScoreProbe \"}}"
+                      },
+                      "format": {
+                        "type": "compound",
+                        "value": {
+                          "type": {
+                            "type": "string",
+                            "value": "minecraft:blank"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "Locked": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "OtherProbe"
+                      },
+                      "Objective": {
+                        "type": "string",
+                        "value": "leaves"
+                      },
+                      "Score": {
+                        "type": "int",
+                        "value": 1
+                      },
+                      "display": {
+                        "type": "string",
+                        "value": "{\"text\":\"OtherProbe\",\"hoverEvent\":{\"contents\":{\"type\":\"minecraft:player\",\"id\":[1258659974,-1121829906,-1987092400,661941290],\"name\":\"OtherProbe\"},\"action\":\"show_entity\"},\"insertion\":\"OtherProbe\",\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/tell OtherProbe \"}}"
+                      }
+                    }
+                  ]
+                }
+              },
+              "Teams": {
+                "type": "list",
+                "value": {
+                  "type": "compound",
+                  "value": [
+                    {
+                      "AllowFriendlyFire": {
+                        "type": "byte",
+                        "value": 1
+                      },
+                      "CollisionRule": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "DeathMessageVisibility": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "DisplayName": {
+                        "type": "string",
+                        "value": "\"test\""
+                      },
+                      "MemberNamePrefix": {
+                        "type": "string",
+                        "value": "{\"text\":\"[T] \",\"hoverEvent\":{\"contents\":\"Team\",\"action\":\"show_text\"},\"font\":\"minecraft:uniform\"}"
+                      },
+                      "MemberNameSuffix": {
+                        "type": "string",
+                        "value": "\"\""
+                      },
+                      "Name": {
+                        "type": "string",
+                        "value": "test"
+                      },
+                      "NameTagVisibility": {
+                        "type": "string",
+                        "value": "always"
+                      },
+                      "Players": {
+                        "type": "list",
+                        "value": {
+                          "type": "string",
+                          "value": [
+                            "ScoreProbe"
+                          ]
+                        }
+                      },
+                      "SeeFriendlyInvisibles": {
+                        "type": "byte",
+                        "value": 1
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "differences": [],
+  "native_binary_sha256": "ca6fa665633736b1a6ba9944d7e978616081d6877ba38b129d50de561efca9cd",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "saved_data_comparison": "NBT values equal; PlayerScores rows compared by (Name,Objective), original row order retained above"
+}

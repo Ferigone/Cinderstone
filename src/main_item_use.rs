@@ -115,6 +115,7 @@ impl NativeUseHost<'_> {
             .gameplay
             .stats_mut(self.uuid)?
             .increment(key, 1)?;
+        self.players.gameplay.award_scoreboard_stat(self.uuid, key, 1)?;
         Ok(())
     }
     fn food_finish(&mut self, stack: &ItemStack, spec: &UseSpec) -> Result<()> {

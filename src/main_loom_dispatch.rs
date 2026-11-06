@@ -280,6 +280,7 @@ impl Server {
         let key = mc121_rust::player_stats::stat_key("minecraft:custom", LOOM_INTERACTION_STAT)
             .context("loom interaction statistic missing")?;
         players.gameplay.stats_mut(uuid)?.increment(key, 1)?;
+        players.gameplay.award_scoreboard_stat(uuid, key, 1)?;
         let _post_use_state = world.block(target.0, target.1, target.2)?;
         players.gameplay.default_block_use(uuid, target)
     }

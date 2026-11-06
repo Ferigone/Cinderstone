@@ -277,6 +277,7 @@ impl PlayerFoodHost for NativeFoodHost<'_> {
             .gameplay
             .stats_mut(self.uuid)?
             .increment(key, amount)?;
+        self.services.gameplay.award_scoreboard_stat(self.uuid, key, amount)?;
         Ok(())
     }
     fn send_health(&mut self, update: PlayerHealthUpdate) -> Result<()> {

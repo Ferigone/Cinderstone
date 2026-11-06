@@ -243,7 +243,7 @@ impl PreparedLoomCommit<'_> {
         items.commit_with_world_random_ordered(next_world_random,
             |ordinal: usize, item_publication: &mut ItemBatchPublication<'_>| {
                 if let Some(index) = pending_drop.take() {
-                    *gameplay.stats_mut(uuid).expect("validated loom statistic owner") = stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     cursor = index + 1;
                 }
                 while cursor < publication.events.len() {
@@ -257,7 +257,7 @@ impl PreparedLoomCommit<'_> {
                             return;
                         }
                     }
-                    *gameplay.stats_mut(uuid).expect("validated loom statistic owner") = stats_after_event[index].clone();
+                    gameplay.replace_player_stats(uuid, stats_after_event[index].clone()).expect("validated workstation scoreboard/statistic commit");
                     match event {
                         LoomMenuEvent::Sync { event: SyncEvent::SlotListener {
                             player_slot: Some(slot), stack, ..

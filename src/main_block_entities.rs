@@ -465,6 +465,7 @@ impl Server {
             .gameplay
             .stats_mut(player.profile.uuid)?
             .increment(key_stat, 1)?;
+        players.gameplay.award_scoreboard_stat(player.profile.uuid, key_stat, 1)?;
         let WorldBackend::Fixture(flat) = &mut *world else {
             unreachable!()
         };

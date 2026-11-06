@@ -391,12 +391,51 @@ fn parse_hover_event(value: &Val) -> Result<HoverEvent> {
                 (Err(_), Some(legacy)) => decode_component(legacy)?,
                 (Err(error), None) => return Err(error),
             };
-            Ok(HoverEvent {
-                text: Box::new(text),
-            })
+            Ok(HoverEvent::Text(Box::new(text)))
         }
-        "show_item" | "show_entity" => Err(ComponentError::Unsupported(
-            "hoverEvent show_item/show_entity".to_owned(),
+        "show_entity" => {
+            let contents = value
+                .get("contents")
+                .ok_or_else(|| ComponentError::Unsupported("legacy entity hover".into()))?;
+            if contents.get("type").and_then(Val::string) != Some("minecraft:player") {
+                return Err(ComponentError::Unsupported(
+                    "non-player entity hover".into(),
+                ));
+            }
+            let id = contents
+                .get("id")
+                .ok_or_else(|| ComponentError::Codec("missing entity UUID".into()))?;
+            let uuid = match id {
+                Val::Str(text) => crate::access_lists::parse_profile_uuid(text)
+                    .ok_or_else(|| ComponentError::Codec("invalid entity UUID".into()))?,
+                Val::List(values) if values.len() == 4 => {
+                    let mut uuid = [0; 16];
+                    for (value, bytes) in values.iter().zip(uuid.chunks_exact_mut(4)) {
+                        let n = match value {
+                            Val::JsonNumber(n) => super::java::json_number_int_value(n),
+                            Val::Number(Primitive::Byte(n)) => i32::from(*n),
+                            Val::Number(Primitive::Short(n)) => i32::from(*n),
+                            Val::Number(Primitive::Int(n)) => *n,
+                            Val::Number(Primitive::Long(n)) => *n as i32,
+                            Val::Number(Primitive::Float(n)) => *n as i32,
+                            Val::Number(Primitive::Double(n)) => *n as i32,
+                            _ => return reject("invalid entity UUID integer"),
+                        };
+                        bytes.copy_from_slice(&n.to_be_bytes());
+                    }
+                    uuid
+                }
+                _ => return reject("entity UUID must contain four integers"),
+            };
+            let name = contents
+                .get("name")
+                .map(decode_component)
+                .transpose()?
+                .map(Box::new);
+            Ok(HoverEvent::PlayerEntity { uuid, name })
+        }
+        "show_item" => Err(ComponentError::Unsupported(
+            "hoverEvent show_item".to_owned(),
         )),
         other => reject(format!("Unknown hover action {other}")),
     }
