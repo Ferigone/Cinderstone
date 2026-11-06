@@ -129,6 +129,10 @@ impl Server {
 /// Resolve the real minecraft:chat holder from the registry bytes sent to this
 /// client. An absent/omitted registry is not replaced with a guessed ID.
 pub(super) fn captured_chat_type(configuration: &[Packet]) -> Result<i32> {
+    captured_chat_type_named(configuration, "minecraft:chat")
+}
+
+pub(super) fn captured_chat_type_named(configuration: &[Packet], key: &str) -> Result<i32> {
     for packet in configuration.iter().filter(|packet| packet.id == 0x07) {
         let mut reader = Reader::new(&packet.payload);
         if reader.string(32767)? != "minecraft:chat_type" { continue; }
@@ -142,13 +146,13 @@ pub(super) fn captured_chat_type(configuration: &[Packet]) -> Result<i32> {
                 let (_, consumed) = Tag::decode_anonymous_prefix(reader.remaining())?;
                 reader.bytes(consumed)?;
             }
-            if name == "minecraft:chat" {
+            if name == key {
                 ensure!(present, "chat holder has no configured serialized data");
                 ensure!(chat.replace(index).is_none(), "duplicate chat registry key");
             }
         }
         reader.finish()?;
-        return chat.context("configured minecraft:chat holder missing");
+        return chat.with_context(|| format!("configured {key} holder missing"));
     }
     bail!("configured chat-type registry missing")
 }

@@ -152,6 +152,13 @@ impl Server {
             }
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
+        let team_line = line.strip_prefix('/').unwrap_or(line);
+        if main_team_chat::is_command(team_line) {
+            drop(owner);
+            return self.execute_team_message(&mc121_rust::chat_listener::AuthorizedCommand {
+                command: team_line.to_owned(), signed_arguments: BTreeMap::new(),
+            }, source_id);
+        }
         if matches!(line.split_whitespace().next(), Some("scoreboard" | "team" | "trigger")) {
             drop(owner);
             return self.execute_scoreboard(line, source_id, &source.name, source.permission_level);

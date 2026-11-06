@@ -152,7 +152,9 @@ pub fn encode_player_chat(
 
 pub fn encode_disguised_chat(message: &Value, chat_type: &BoundChatType) -> Result<Packet> {
     let mut output = Writer::new();
-    output.raw(&encode_component_json(message)?);
+    output.raw(&Component::from_json(message)
+        .map_err(|e| anyhow::anyhow!("{e}"))?
+        .to_network_nbt().map_err(|e| anyhow::anyhow!("{e}"))?);
     write_chat_type(&mut output, chat_type)?;
     Ok(Packet {
         id: CLIENTBOUND_DISGUISED_CHAT,
@@ -318,5 +320,12 @@ mod rich_name_tests {
             Some(&crate::nbt::Tag::String("minecraft:uniform".into()))
         );
         assert!(name.get("hoverEvent").is_some());
+    }
+    #[test]
+    fn disguised_literal_body_uses_original_component_string_form() {
+        let packet = encode_disguised_chat(&serde_json::json!({"text":"team text"}),
+            &BoundChatType { registry_id: 0, name: serde_json::json!("Alice"), target_name: None }).unwrap();
+        let (body, _) = crate::nbt::Tag::decode_anonymous_prefix(&packet.payload).unwrap();
+        assert_eq!(body, crate::nbt::Tag::String("team text".into()));
     }
 }
