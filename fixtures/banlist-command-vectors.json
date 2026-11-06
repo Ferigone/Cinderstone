@@ -1,0 +1,392 @@
+{
+  "grammar": [
+    {
+      "permission": 0,
+      "packet_hex": "01000000",
+      "cases": []
+    },
+    {
+      "permission": 1,
+      "packet_hex": "01000000",
+      "cases": []
+    },
+    {
+      "permission": 2,
+      "packet_hex": "01000000",
+      "cases": [
+        {
+          "input": "banlist ips",
+          "cursor": 0,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        }
+      ]
+    },
+    {
+      "permission": 3,
+      "packet_hex": "04000101050202030762616e6c697374050003697073050007706c617965727300",
+      "cases": [
+        {
+          "input": "",
+          "cursor": 0,
+          "remaining": false,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": [
+              "banlist"
+            ]
+          }
+        },
+        {
+          "input": "b",
+          "cursor": 0,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 1,
+            "texts": [
+              "banlist"
+            ]
+          }
+        },
+        {
+          "input": "banlist",
+          "cursor": 7,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist ",
+          "cursor": 7,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 8,
+            "end": 8,
+            "texts": [
+              "ips",
+              "players"
+            ]
+          }
+        },
+        {
+          "input": "banlist i",
+          "cursor": 8,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 8,
+            "end": 9,
+            "texts": [
+              "ips"
+            ]
+          }
+        },
+        {
+          "input": "banlist players",
+          "cursor": 15,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist ips",
+          "cursor": 11,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist PLAYERS",
+          "cursor": 8,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 8,
+            "end": 15,
+            "texts": [
+              "players"
+            ]
+          }
+        },
+        {
+          "input": "banlist invalid",
+          "cursor": 8,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist players trailing",
+          "cursor": 16,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist  players",
+          "cursor": 8,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "banlist\tplayers",
+          "cursor": 0,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        }
+      ]
+    },
+    {
+      "permission": 4,
+      "packet_hex": "04000101050202030762616e6c697374050003697073050007706c617965727300",
+      "cases": []
+    }
+  ],
+  "execution": [
+    {
+      "input": "banlist",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "result": 0,
+      "ok": true,
+      "feedback_hex": [
+        "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e6500"
+      ],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
+      "input": "banlist players",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "result": 0,
+      "ok": true,
+      "feedback_hex": [
+        "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e6500"
+      ],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
+      "input": "banlist ips",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "result": 0,
+      "ok": true,
+      "feedback_hex": [
+        "0a0800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6e6f6e6500"
+      ],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
+      "input": "banlist players trailing",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
+      "input": "banlist invalid",
+      "permission": 3,
+      "populated": false,
+      "entries": [],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 0,
+      "retained_ip_bans": 0
+    },
+    {
+      "input": "banlist",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "BannedOne",
+          "source": "Operator",
+          "reason": "Reason \"one\" ☃"
+        },
+        {
+          "display_name": "ExpiredOne",
+          "source": "Earlier",
+          "reason": "Expired reason"
+        },
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "result": 3,
+      "ok": true,
+      "feedback_hex": [
+        "0a0b00047769746800000001000000030800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c69737400",
+        "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900",
+        "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900",
+        "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900"
+      ],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist players",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "BannedOne",
+          "source": "Operator",
+          "reason": "Reason \"one\" ☃"
+        },
+        {
+          "display_name": "ExpiredOne",
+          "source": "Earlier",
+          "reason": "Expired reason"
+        }
+      ],
+      "result": 2,
+      "ok": true,
+      "feedback_hex": [
+        "0a0b00047769746800000001000000020800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c69737400",
+        "0a090004776974680800000003000942616e6e65644f6e6500084f70657261746f720010526561736f6e20226f6e652220e298830800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900",
+        "0a090004776974680800000003000a457870697265644f6e6500074561726c696572000e4578706972656420726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900"
+      ],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist ips",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "result": 1,
+      "ok": true,
+      "feedback_hex": [
+        "0a0b00047769746800000001000000010800097472616e736c6174650015636f6d6d616e64732e62616e6c6973742e6c69737400",
+        "0a09000477697468080000000300093139322e302e322e370007436f6e736f6c650009495020726561736f6e0800097472616e736c6174650016636f6d6d616e64732e62616e6c6973742e656e74727900"
+      ],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist players trailing",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "BannedOne",
+          "source": "Operator",
+          "reason": "Reason \"one\" ☃"
+        },
+        {
+          "display_name": "ExpiredOne",
+          "source": "Earlier",
+          "reason": "Expired reason"
+        },
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist invalid",
+      "permission": 3,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "BannedOne",
+          "source": "Operator",
+          "reason": "Reason \"one\" ☃"
+        },
+        {
+          "display_name": "ExpiredOne",
+          "source": "Earlier",
+          "reason": "Expired reason"
+        },
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    },
+    {
+      "input": "banlist ips",
+      "permission": 2,
+      "populated": true,
+      "entries": [
+        {
+          "display_name": "192.0.2.7",
+          "source": "Console",
+          "reason": "IP reason"
+        }
+      ],
+      "ok": false,
+      "feedback_hex": [],
+      "retained_player_bans": 2,
+      "retained_ip_bans": 1
+    }
+  ]
+}

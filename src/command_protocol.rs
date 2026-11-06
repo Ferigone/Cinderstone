@@ -370,6 +370,14 @@ pub fn native_command_suggestions(
         let range = suggestions.range();
         return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
     }
+    if input == "banlist" || input.starts_with("banlist ") {
+        let suggestions=crate::commands::banlist_command::suggestions(input,permission_level)
+            .map_err(|error|anyhow::anyhow!("banlist suggestions: {error:?}"))?;
+        let matches=suggestions.list().iter().map(|s|s.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+        let range=suggestions.range();
+        return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
+    }
     if input == "worldborder" || input.starts_with("worldborder ") {
         let suggestions=crate::commands::worldborder_command::suggestions(input,permission_level)
             .map_err(|error|anyhow::anyhow!("worldborder suggestions: {error:?}"))?;
