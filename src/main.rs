@@ -83,6 +83,7 @@ mod main_difficulty_command;
 mod main_worldborder_command;
 mod main_list_command;
 mod main_idle_timeout;
+mod main_save_all_command;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -2478,7 +2479,11 @@ impl Server {
     }
 
     async fn save(&self) -> Result<()> {
-        let _operation = self.chat_dispatch.lock().await;
+        let operation = self.chat_dispatch.lock().await;
+        self.save_with_chat_guard(&operation).await
+    }
+
+    async fn save_with_chat_guard(&self, _operation: &tokio::sync::MutexGuard<'_, ()>) -> Result<()> {
         let _save = self.save_lock.lock().await;
         let mut world = self.world.write().await;
         let clock = *self

@@ -1,0 +1,180 @@
+{
+  "ok": true,
+  "native_commit": "3d1848f9ce94ece2d6a916c9a5e576a8231f68ab",
+  "native_src_tree": "3cc1d686dd63979c163b1f261b012b5b632da074",
+  "native_binary_sha256": "7f4c54d2f1de027bf5637488f3f5ae7ac502010e4dffca8092540aef17741e01",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "save-all",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "save-all flush",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "feedback": [
+        {
+          "command": "save-all",
+          "hex": [
+            "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+            "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000"
+          ]
+        },
+        {
+          "command": "save-all flush",
+          "hex": [
+            "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+            "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000"
+          ]
+        }
+      ],
+      "operator_feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d6500095361766550726f62650b00026964000000041d867f02e1013df4b1e1eef41b5cbdf60800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c205361766550726f62652000080009696e73657274696f6e00095361766550726f62650800047465787400095361766550726f6265000800097472616e736c6174650015636f6d6d616e64732e736176652e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000",
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d6500095361766550726f62650b00026964000000041d867f02e1013df4b1e1eef41b5cbdf60800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c205361766550726f62652000080009696e73657274696f6e00095361766550726f62650800047465787400095361766550726f6265000800097472616e736c6174650015636f6d6d616e64732e736176652e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "completions": [
+        {
+          "text": "/save-a",
+          "start": 1,
+          "length": 6,
+          "matches": [
+            "save-all"
+          ]
+        },
+        {
+          "text": "save-all",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "save-all ",
+          "start": 9,
+          "length": 0,
+          "matches": [
+            "flush"
+          ]
+        },
+        {
+          "text": "save-all f",
+          "start": 9,
+          "length": 1,
+          "matches": [
+            "flush"
+          ]
+        },
+        {
+          "text": "save-all flush ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        }
+      ],
+      "permission_denied": true,
+      "invalid_denied": true,
+      "world_player_saved_before_ack": true,
+      "hidden_feedback_suppressed": true,
+      "console": true,
+      "hard_restart_world_player": true
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "save-all",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "save-all flush",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "feedback": [
+        {
+          "command": "save-all",
+          "hex": [
+            "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+            "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000"
+          ]
+        },
+        {
+          "command": "save-all flush",
+          "hex": [
+            "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+            "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000"
+          ]
+        }
+      ],
+      "operator_feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d6500095361766550726f62650b00026964000000041d867f02e1013df4b1e1eef41b5cbdf60800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c205361766550726f62652000080009696e73657274696f6e00095361766550726f62650800047465787400095361766550726f6265000800097472616e736c6174650015636f6d6d616e64732e736176652e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000",
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d6500095361766550726f62650b00026964000000041d867f02e1013df4b1e1eef41b5cbdf60800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c205361766550726f62652000080009696e73657274696f6e00095361766550726f62650800047465787400095361766550726f6265000800097472616e736c6174650015636f6d6d616e64732e736176652e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "completions": [
+        {
+          "text": "/save-a",
+          "start": 1,
+          "length": 6,
+          "matches": [
+            "save-all"
+          ]
+        },
+        {
+          "text": "save-all",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "save-all ",
+          "start": 9,
+          "length": 0,
+          "matches": [
+            "flush"
+          ]
+        },
+        {
+          "text": "save-all f",
+          "start": 9,
+          "length": 1,
+          "matches": [
+            "flush"
+          ]
+        },
+        {
+          "text": "save-all flush ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        }
+      ],
+      "permission_denied": true,
+      "invalid_denied": true,
+      "world_player_saved_before_ack": true,
+      "hidden_feedback_suppressed": true,
+      "console": true,
+      "hard_restart_world_player": true
+    }
+  },
+  "limits": [
+    "Supported single-level native creative profile; native synchronous checkpoint writes implement both modes.",
+    "Selected command packets/tree/completions and explicit-save recovery are compared; filesystem scheduling and syntax-error rendering are not."
+  ],
+  "native_io_failure": {
+    "saving_then_failed": true,
+    "no_success": true
+  },
+  "completed_at": "2026-11-06T21:58:46.305Z",
+  "local_source_commit": "4e6846dd85dc20c38f741982229e2f6fa0248883",
+  "source_note": "Current-master rebase including banlist; published source tree matches executed source; API commit metadata differs."
+}

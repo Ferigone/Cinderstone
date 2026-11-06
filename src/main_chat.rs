@@ -168,6 +168,10 @@ pub(super) struct MainChatRuntime {
 }
 
 impl MainChatRuntime {
+    pub(super) fn accepts_system_messages(&self, entity_id: i32) -> bool {
+        self.connections.get(&entity_id).is_some_and(|entry| entry.settings.visibility != ChatVisibility::Hidden)
+    }
+
     pub fn new() -> Self {
         Self::default()
     }

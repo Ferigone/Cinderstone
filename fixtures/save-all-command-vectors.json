@@ -1,0 +1,150 @@
+{
+  "trees": [
+    {
+      "permission": 0,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 1,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 3,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 4,
+      "packet_hex": "0300010105010208736176652d616c6c050005666c75736800"
+    }
+  ],
+  "execution": [
+    {
+      "input": "save-all",
+      "permission": 4,
+      "save_success": true,
+      "result": 1,
+      "ok": true,
+      "called": true,
+      "quiet": true,
+      "flush": false,
+      "force": true,
+      "feedback": [
+        {
+          "hex": "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+          "broadcast": false,
+          "key": "commands.save.saving"
+        },
+        {
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000",
+          "broadcast": true,
+          "key": "commands.save.success"
+        }
+      ]
+    },
+    {
+      "input": "save-all flush",
+      "permission": 4,
+      "save_success": true,
+      "result": 1,
+      "ok": true,
+      "called": true,
+      "quiet": true,
+      "flush": true,
+      "force": true,
+      "feedback": [
+        {
+          "hex": "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+          "broadcast": false,
+          "key": "commands.save.saving"
+        },
+        {
+          "hex": "0a0800097472616e736c6174650015636f6d6d616e64732e736176652e737563636573730000",
+          "broadcast": true,
+          "key": "commands.save.success"
+        }
+      ]
+    },
+    {
+      "input": "save-all bad",
+      "permission": 4,
+      "save_success": true,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "called": false,
+      "quiet": false,
+      "flush": false,
+      "force": false,
+      "feedback": []
+    },
+    {
+      "input": "save-all flush extra",
+      "permission": 4,
+      "save_success": true,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "called": false,
+      "quiet": false,
+      "flush": false,
+      "force": false,
+      "feedback": []
+    },
+    {
+      "input": "save-all ",
+      "permission": 4,
+      "save_success": true,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "called": false,
+      "quiet": false,
+      "flush": false,
+      "force": false,
+      "feedback": []
+    },
+    {
+      "input": "save-all flush ",
+      "permission": 4,
+      "save_success": true,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "called": false,
+      "quiet": false,
+      "flush": false,
+      "force": false,
+      "feedback": []
+    },
+    {
+      "input": "save-all",
+      "permission": 3,
+      "save_success": true,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "called": false,
+      "quiet": false,
+      "flush": false,
+      "force": false,
+      "feedback": []
+    },
+    {
+      "input": "save-all flush",
+      "permission": 4,
+      "save_success": false,
+      "ok": false,
+      "error_key": "commands.save.failed",
+      "called": true,
+      "quiet": true,
+      "flush": true,
+      "force": true,
+      "feedback": [
+        {
+          "hex": "0a0800097472616e736c6174650014636f6d6d616e64732e736176652e736176696e670000",
+          "broadcast": false,
+          "key": "commands.save.saving"
+        }
+      ]
+    }
+  ]
+}

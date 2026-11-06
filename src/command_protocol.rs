@@ -243,6 +243,10 @@ fn administration_tree(permission_level: u8) -> Tree {
     let mut tree = Tree::new();
     let list = tree.literal(0, "list", true);
     tree.literal(list, "uuids", true);
+    if permission_level >= 4 {
+        let save = tree.literal(0, "save-all", true);
+        tree.literal(save, "flush", true);
+    }
     if permission_level >= 3 {
         let idle = tree.literal(0, "setidletimeout", false);
         tree.argument(idle, "minutes", Parser::NonnegativeInteger, false);
@@ -345,6 +349,14 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "save-all" || input.starts_with("save-all ") {
+        let suggestions = crate::commands::save_all_command::suggestions(input, permission_level)
+            .map_err(|error| anyhow::anyhow!("save suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "setidletimeout" || input.starts_with("setidletimeout ") {
         let suggestions = crate::commands::idle_command::suggestions(input, permission_level)
             .map_err(|error| anyhow::anyhow!("idle suggestions: {error:?}"))?;
@@ -562,6 +574,9 @@ fn administration_suggestions_with_time(
     }
     if include_time && permission_level>=2 && last_separator.is_none()
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
+    if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
+        matches.push("save-all".to_owned());
+    }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.
     matches.sort_by(|a, b| a.encode_utf16().cmp(b.encode_utf16()));

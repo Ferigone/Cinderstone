@@ -14,6 +14,20 @@ covers filters, retained expired entries, denial, console, pardon and restart.
 parity and full #24/#64 remain outside scope; scope1/100 and58/53 are unchanged.
 Hosted verification remains under #19.
 
+## Explicit save command connected (#189)
+
+Console and permission-level4 players can run `/save-all` and `/save-all flush`
+through Brigadier. Both use the existing actual save transaction, retaining
+chat/admission serialization without re-entering the chat lock. Source saving
+feedback precedes the write; success/operator feedback follows completion.
+Failure reports `commands.save.failed`; hidden chat recipients remain hidden.
+The [Java/native protocol flow](validation/save-all-runtime.json) compares ordered
+feedback and completions, verifies saved clock/inventory before proceeding, then
+uses SIGKILL and checks actual state after cold restart. Native I/O failure is
+also exercised. [Details](reference/save-all-command.md). Storage formats and
+save-off/on are unchanged; full #24/#45 remain open. Scope1/100 and58/53 stay
+unchanged. Hosted verification remains under #19.
+
 ## World border commands connected (#186)
 
 Permission-2 players and console can query/change the live border, interpolate
