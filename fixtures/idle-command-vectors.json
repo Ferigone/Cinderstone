@@ -1,0 +1,136 @@
+{
+  "trees": [
+    {
+      "permission": 0,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 1,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 3,
+      "packet_hex": "030001010101020e73657469646c6574696d656f75740600076d696e7574657303010000000000"
+    },
+    {
+      "permission": 4,
+      "packet_hex": "030001010101020e73657469646c6574696d656f75740600076d696e7574657303010000000000"
+    }
+  ],
+  "execution": [
+    {
+      "input": "setidletimeout 0",
+      "permission": 3,
+      "result": 0,
+      "ok": true,
+      "minutes": 0,
+      "feedback_hex": "0a0b00047769746800000001000000000800097472616e736c617465001f636f6d6d616e64732e73657469646c6574696d656f75742e737563636573730000"
+    },
+    {
+      "input": "setidletimeout 1",
+      "permission": 3,
+      "result": 1,
+      "ok": true,
+      "minutes": 1,
+      "feedback_hex": "0a0b00047769746800000001000000010800097472616e736c617465001f636f6d6d616e64732e73657469646c6574696d656f75742e737563636573730000"
+    },
+    {
+      "input": "setidletimeout 2147483647",
+      "permission": 3,
+      "result": 2147483647,
+      "ok": true,
+      "minutes": 2147483647,
+      "feedback_hex": "0a0b000477697468000000017fffffff0800097472616e736c617465001f636f6d6d616e64732e73657469646c6574696d656f75742e737563636573730000"
+    },
+    {
+      "input": "setidletimeout -1",
+      "permission": 3,
+      "ok": false,
+      "minutes": 7
+    },
+    {
+      "input": "setidletimeout 2147483648",
+      "permission": 3,
+      "ok": false,
+      "minutes": 7
+    },
+    {
+      "input": "setidletimeout 1 extra",
+      "permission": 3,
+      "ok": false,
+      "minutes": 7
+    },
+    {
+      "input": "setidletimeout 1 ",
+      "permission": 3,
+      "ok": false,
+      "minutes": 7
+    },
+    {
+      "input": "setidletimeout",
+      "permission": 3,
+      "ok": false,
+      "minutes": 7
+    },
+    {
+      "input": "setidletimeout 1",
+      "permission": 2,
+      "ok": false,
+      "minutes": 7
+    }
+  ],
+  "deadlines": [
+    {
+      "now": 99999,
+      "last": 40000,
+      "minutes": 1,
+      "kicked": false
+    },
+    {
+      "now": 100000,
+      "last": 40000,
+      "minutes": 1,
+      "kicked": false
+    },
+    {
+      "now": 100001,
+      "last": 40000,
+      "minutes": 1,
+      "kicked": true
+    },
+    {
+      "now": 100001,
+      "last": 0,
+      "minutes": 1,
+      "kicked": false
+    },
+    {
+      "now": 100001,
+      "last": -1,
+      "minutes": 1,
+      "kicked": false
+    },
+    {
+      "now": 100001,
+      "last": 1,
+      "minutes": 0,
+      "kicked": false
+    },
+    {
+      "now": 100001,
+      "last": 1,
+      "minutes": -1,
+      "kicked": false
+    },
+    {
+      "now": 100001,
+      "last": 1,
+      "minutes": 2147483647,
+      "kicked": false
+    }
+  ]
+}

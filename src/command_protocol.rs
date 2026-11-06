@@ -92,6 +92,7 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 
 #[derive(Clone, Copy)]
 enum Parser {
+    NonnegativeInteger,
     Time(i32),
     GreedyString,
     Word,
@@ -197,6 +198,7 @@ impl Tree {
                 } => {
                     output.string(name);
                     match parser {
+                        Parser::NonnegativeInteger => { output.varint(3).u8(1).i32(0); },
                         Parser::Time(minimum) => { output.varint(42).i32(*minimum); },
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
@@ -236,6 +238,8 @@ fn administration_tree(permission_level: u8) -> Tree {
     let list = tree.literal(0, "list", true);
     tree.literal(list, "uuids", true);
     if permission_level >= 3 {
+        let idle = tree.literal(0, "setidletimeout", false);
+        tree.argument(idle, "minutes", Parser::NonnegativeInteger, false);
         let ban = tree.literal(0, "ban", false);
         let targets = tree.argument(ban, "targets", Parser::Profiles, false);
         tree.argument(targets, "reason", Parser::Message, false);
@@ -320,6 +324,14 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "setidletimeout" || input.starts_with("setidletimeout ") {
+        let suggestions = crate::commands::idle_command::suggestions(input, permission_level)
+            .map_err(|error| anyhow::anyhow!("idle suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "list" || input.starts_with("list ") {
         let suggestions = crate::commands::list_command::suggestions(input)
             .map_err(|error| anyhow::anyhow!("list suggestions: {error:?}"))?;
@@ -463,6 +475,7 @@ fn administration_suggestions_with_time(
                 "op",
                 "pardon",
                 "pardon-ip",
+                "setidletimeout",
                 "whitelist",
             ]
         } else {

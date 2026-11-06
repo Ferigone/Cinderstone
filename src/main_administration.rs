@@ -84,6 +84,7 @@ pub struct CommandOutcome {
 pub struct Administration {
     directory: PathBuf,
     settings: AdminSettings,
+    idle_timeout: i32,
     lists: AccessLists,
     /// Names observed from an actual selected login/profile or a loaded list.
     /// This is not a replacement for the unported Mojang user-cache resolver.
@@ -98,6 +99,8 @@ impl Administration {
         now_ms: i64,
     ) -> Result<Self> {
         let directory = directory.into();
+        let idle_timeout = property_value(&directory.join("server.properties"), "player-idle-timeout").ok().flatten()
+            .and_then(|value| value.parse::<i32>().ok()).unwrap_or(0);
         fs::create_dir_all(&directory)
             .with_context(|| format!("create administration directory {}", directory.display()))?;
         let mut startup_warnings = Vec::new();
@@ -161,6 +164,7 @@ impl Administration {
         let mut owner = Self {
             directory,
             settings,
+            idle_timeout,
             lists,
             known_profiles: BTreeMap::new(),
             startup_warnings,
@@ -192,6 +196,15 @@ impl Administration {
     pub fn directory(&self) -> &Path {
         &self.directory
     }
+    pub(super) fn idle_timeout(&self) -> i32 { self.idle_timeout }
+    pub(super) fn set_idle_timeout(&mut self, minutes: i32) -> Vec<AdminEffect> {
+        self.idle_timeout = minutes;
+        match append_property(&self.directory.join("server.properties"), "player-idle-timeout", &minutes.to_string()) {
+            Ok(()) => vec![],
+            Err(error) => vec![AdminEffect::PersistenceWarning { file: "server.properties", message: format!("{error:#}") }],
+        }
+    }
+
     pub fn settings(&self) -> &AdminSettings {
         &self.settings
     }

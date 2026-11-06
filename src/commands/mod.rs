@@ -15,6 +15,7 @@ pub mod difficulty_command;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
+pub mod idle_command;
 pub mod list_command;
 pub mod operation;
 pub mod ranges;
