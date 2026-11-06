@@ -155,6 +155,7 @@ mod main_grindstone_dispatch;
 mod main_grindstone_lifecycle;
 mod main_grindstone_pickup;
 mod main_anvil;
+mod main_recipe_advancements;
 mod main_anvil_context;
 mod main_anvil_dispatch;
 mod main_anvil_lifecycle;
@@ -1126,6 +1127,11 @@ impl Server {
         id: i32,
         view: PlayerInventorySaveView,
     ) -> Result<Option<PlayerData>> {
+        // Matches still queued for this player are awarded before any save
+        // (autosave, shutdown, removal) captures its book and advancements.
+        if let Some(uuid) = players.registry.get(id).map(|player| player.profile.uuid) {
+            self.award_recipe_advancements_locked(players, Some(uuid))?;
+        }
         let Some(player) = players.registry.get(id).cloned() else {
             return Ok(None);
         };
@@ -1165,6 +1171,9 @@ impl Server {
         if let Some(book) = players.recipe_books.get(&uuid) {
             lifecycle.recipe_book_nbt = Some(main_player_data::save_recipe_book(book)?);
         }
+        if let Some(advancements) = players.gameplay.recipe_advancements(uuid) {
+            lifecycle.advancements_json = Some(main_recipe_advancements::save(advancements)?);
+        }
         Ok(Some(PlayerData::capture(
             &player, &inventory, &stats, lifecycle,
         )?))
@@ -1176,6 +1185,13 @@ impl Server {
             let path=root.join("playerdata").join(format!("{uuid}.dat"));
             let stats=root.join("stats").join(format!("{uuid}.json"));
             mc121_rust::player_nbt::save_player_file(&path,data,Some(&stats))?;
+            if let Some(text)=&data.lifecycle.advancements_json {
+                let directory=root.join("advancements");
+                std::fs::create_dir_all(&directory)?;
+                let staged=directory.join(format!("{uuid}.json.tmp"));
+                std::fs::write(&staged,text)?;
+                std::fs::rename(&staged,directory.join(format!("{uuid}.json")))?;
+            }
         }
         Ok(())
     }
@@ -1931,6 +1947,7 @@ impl Server {
             .context("recipe player missing")?
             .profile
             .uuid;
+        players.gameplay.recipe_book_initialized(uuid);
         let book = players.recipe_books.entry(uuid).or_default();
         Ok(vec![
             VanillaRecipeCatalogue::get().declarations_packet(),
@@ -3135,6 +3152,8 @@ async fn main() -> Result<()> {
             &player_store,
         )?)?;
     players.gameplay.scoreboard = main_scoreboard::load(&main_scoreboard::path(&options))?;
+    // Load the recipe advancements before the first tick needs them.
+    mc121_rust::advancements::player::RecipeAdvancements::vanilla();
     let server = Arc::new(Server {
         options,
         connection_settings,
@@ -3239,6 +3258,7 @@ async fn main() -> Result<()> {
                 // XP and Item bodies share the actual level tick order above.
                 server.tick_native_furnaces().await?;
                 server.tick_connection_phase().await?;
+                server.flush_recipe_advancements()?;
                 // Sample actual connection ticks without replaying coalesced
                 // watch updates into the wrong packet-count window.
                 for (connection, rate) in server.connection_rates.read().map_err(|_|anyhow!("connection registry poisoned"))?.iter() {
@@ -3758,6 +3778,18 @@ async fn play(
                 if path.try_exists()? { saved=Some(mc121_rust::player_nbt::import_player_file(&path,uuid,Some(&stats))?); }
             }
         }
+        // A Java import, or a native save from before advancements were kept,
+        // reads the world's advancements/<uuid>.json so its next save keeps it.
+        if let (Some(data), Some(root)) = (saved.as_mut(), &server.options.anvil_world) {
+            if data.lifecycle.advancements_json.is_none() {
+                let text = mc121_rust::player_data::uuid_string(uuid);
+                match std::fs::read_to_string(root.join("advancements").join(format!("{text}.json"))) {
+                    Ok(json) => data.lifecycle.advancements_json = Some(json),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error).context("read Java player advancements"),
+                }
+            }
+        }
         if let Some(data) = saved.as_ref() {
             // One admission boundary for pending, native and imported saves,
             // before apply/refresh can canonicalize an unsupported component.
@@ -3801,6 +3833,8 @@ async fn play(
         // constructor zero. Move this advanced RNG into runtime below.
         main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
+        // Validate saved advancement progress before any registration is published.
+        let advancements = main_recipe_advancements::load(&lifecycle)?;
         position = player.position;
         metadata = player.metadata;
         if let Some(info) = client_information {
@@ -3852,7 +3886,9 @@ async fn play(
         players
             .player_lifecycle
             .insert(uuid, login_lifecycle.clone());
+        let known = book.known().iter().map(|id| id.as_str().to_owned()).collect();
         players.recipe_books.insert(uuid, book);
+        players.gameplay.install_recipe_advancements(uuid, advancements, known);
         if login_lifecycle.abilities.flying && login_lifecycle.abilities.may_fly {
             players.flying.insert(entity_id);
         }
@@ -3860,7 +3896,12 @@ async fn play(
             .motion
             .insert(entity_id, PlayerMotionTracker::new(entity_id, position)?);
         if players.gameplay.require_supported_floor().is_ok() {
-            container.transact(|menu| Ok(((), menu.enable_local_slot_events()?)))?;
+            // The first broadcast reports every non-empty slot to the listener.
+            let (changes, inventory) = container.transact(|menu| {
+                let packets = menu.enable_local_slot_events()?;
+                Ok(((menu.take_local_slot_changes(), menu.inventory.clone()), packets))
+            })?;
+            players.gameplay.login_inventory_changes(uuid, &inventory, changes)?;
         }
         players.containers.insert(entity_id, container.clone());
         players.disconnects.insert(entity_id, disconnect);

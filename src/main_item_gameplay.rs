@@ -1,8 +1,11 @@
 //! Owned gameplay callbacks for the native item fixture slice.
 //!
-//! NativeFixtureEmptyCriteria is an explicit fixture policy. It does not load
-//! vanilla's advancement catalogue or unlock its recipes. Player phases below
-//! implement only this item's callback slice, never full ServerPlayer.tick.
+//! NativeFixtureEmptyCriteria is an explicit fixture policy: no unported
+//! advancement criterion is registered. The vanilla recipe advancements
+//! (`recipes/**`, #27) are the one loaded tree; their listeners are evaluated
+//! here and their awards are applied by `main_recipe_advancements`. Player
+//! phases below implement only this item's callback slice, never full
+//! ServerPlayer.tick.
 use anyhow::{ensure, Context, Result};
 use mc121_rust::{
     container::LocalSlotChange,
@@ -18,6 +21,7 @@ use mc121_rust::{
     runtime_entities::PickupPlayer,
     runtime_entity_index::EntityHandle,
 };
+use mc121_rust::advancements::player::{inventory_from_menu, Listener, PlayerAdvancements, RecipeAdvancements};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 type Uuid = [u8; 16];
@@ -92,6 +96,19 @@ pub struct MainItemGameplay {
     level_player_callbacks: u64,
     connection_callbacks: u64,
     profile_counts: [u64; 4],
+    /// Per-player progress of the loaded recipe advancements. Kept by UUID
+    /// after disconnect so the save path still reads it.
+    recipe_advancements: BTreeMap<Uuid, PlayerAdvancements>,
+    /// Matched criteria, in trigger order, awaiting `award` by the owner of
+    /// the recipe books.
+    pending_awards: Vec<(Uuid, Listener)>,
+    /// Known recipes already reported to RecipeUnlockedTrigger, so additions
+    /// made by other recipe-book owners (furnace, smithing, stonecutter
+    /// outputs) still fire it.
+    recipe_trigger_baseline: BTreeMap<Uuid, BTreeSet<String>>,
+    /// Players whose recipe-book INIT has been built. Awards wait for it: the
+    /// original sends INIT in placeNewPlayer, before the player's first tick.
+    recipe_book_ready: BTreeSet<Uuid>,
 }
 impl MainItemGameplay {
     pub fn new(source_scope: GameplaySourceScope) -> Self {
@@ -112,7 +129,75 @@ impl MainItemGameplay {
             level_player_callbacks: 0,
             connection_callbacks: 0,
             profile_counts: [0; 4],
+            recipe_advancements: BTreeMap::new(),
+            pending_awards: Vec::new(),
+            recipe_trigger_baseline: BTreeMap::new(),
+            recipe_book_ready: BTreeSet::new(),
         }
+    }
+    /// PlayerAdvancements construction for an admitted player (load or new).
+    pub fn install_recipe_advancements(&mut self, uuid: Uuid, advancements: PlayerAdvancements, known_recipes: BTreeSet<String>) {
+        self.recipe_advancements.insert(uuid, advancements);
+        self.recipe_trigger_baseline.insert(uuid, known_recipes);
+        self.recipe_book_ready.remove(&uuid);
+    }
+    pub fn recipe_book_initialized(&mut self, uuid: Uuid) {
+        self.recipe_book_ready.insert(uuid);
+    }
+    pub fn recipe_book_ready(&self, uuid: Uuid) -> bool {
+        self.recipe_book_ready.contains(&uuid)
+    }
+    pub fn recipe_trigger_baseline_mut(&mut self, uuid: Uuid) -> &mut BTreeSet<String> {
+        self.recipe_trigger_baseline.entry(uuid).or_default()
+    }
+    pub fn recipe_advancements(&self, uuid: Uuid) -> Option<&PlayerAdvancements> {
+        self.recipe_advancements.get(&uuid)
+    }
+    pub fn recipe_advancements_mut(&mut self, uuid: Uuid) -> Option<&mut PlayerAdvancements> {
+        self.recipe_advancements.get_mut(&uuid)
+    }
+    pub fn take_pending_awards(&mut self) -> Vec<(Uuid, Listener)> {
+        std::mem::take(&mut self.pending_awards)
+    }
+    pub fn requeue_pending_awards(&mut self, awards: Vec<(Uuid, Listener)>) {
+        let later = std::mem::replace(&mut self.pending_awards, awards);
+        self.pending_awards.extend(later);
+    }
+    pub fn active_player_ids(&self) -> Vec<(i32, Uuid)> {
+        self.active_players.iter().map(|(id, uuid)| (*id, *uuid)).collect()
+    }
+    /// The recipe advancements' InventoryChangeTrigger listeners for one
+    /// slotChanged callback, against the inventory at that callback.
+    fn match_inventory_changed(&self, uuid: Uuid, inventory: &PlayerInventory, changed: &ItemStack) -> Result<Vec<(Uuid, Listener)>> {
+        let Some(advancements) = self.recipe_advancements.get(&uuid) else { return Ok(Vec::new()) };
+        let slots = inventory_from_menu(inventory.slots());
+        Ok(advancements
+            .inventory_changed(RecipeAdvancements::vanilla(), &slots, changed)?
+            .into_iter()
+            .map(|listener| (uuid, listener))
+            .collect())
+    }
+    /// ServerPlayer.onInsideBlock: EnterBlockTrigger for one block state.
+    pub fn enter_block(&mut self, uuid: Uuid, state: u32) -> Result<()> {
+        self.require_supported_floor()?;
+        let catalogue = RecipeAdvancements::vanilla();
+        if let Some(advancements) = self.recipe_advancements.get(&uuid) {
+            if advancements.has_enter_block_listeners(catalogue) {
+                let matched = advancements.enter_block(catalogue, state)?;
+                self.pending_awards.extend(matched.into_iter().map(|listener| (uuid, listener)));
+            }
+        }
+        Ok(())
+    }
+    /// Login: the first broadcastChanges of the InventoryMenu reports every
+    /// non-empty inventory-backed slot to the listener.
+    pub fn login_inventory_changes(&mut self, uuid: Uuid, inventory: &PlayerInventory, changes: Vec<LocalSlotChange>) -> Result<()> {
+        for change in changes {
+            if change.inventory_slot.is_some() {
+                self.inventory_slot_changed(uuid, change.menu_slot, inventory, &change.stack)?;
+            }
+        }
+        Ok(())
     }
     pub fn phase_scope(&self) -> PlayerPhaseScope {
         PlayerPhaseScope::NativeItemCallbacksOnly
@@ -333,7 +418,7 @@ impl MainItemGameplay {
         uuid: Uuid,
         menu_slot: usize,
         inventory: &PlayerInventory,
-        _changed_stack: &ItemStack,
+        changed_stack: &ItemStack,
     ) -> Result<Option<InventorySlotCounts>> {
         self.require_supported_floor()?;
         ensure!(
@@ -350,6 +435,8 @@ impl MainItemGameplay {
             counts,
         });
         self.empty_criterion(uuid, GameplayCriterion::InventoryChanged)?;
+        let matched = self.match_inventory_changed(uuid, inventory, changed_stack)?;
+        self.pending_awards.extend(matched);
         Ok(Some(counts))
     }
     /// Prepare the immutable empty-criteria observations and staged counter
@@ -375,6 +462,7 @@ impl MainItemGameplay {
         );
         let mut counts = None;
         let mut observations = Vec::new();
+        let mut awards = Vec::new();
         for change in local_changes {
             ensure!(
                 change.menu_slot < 46,
@@ -410,6 +498,7 @@ impl MainItemGameplay {
                 player: uuid,
                 criterion: GameplayCriterion::InventoryChanged,
             });
+            awards.extend(self.match_inventory_changed(uuid, inventory, &change.stack)?);
         }
         Ok(PreparedGameplayMenu {
             gameplay: self,
@@ -417,6 +506,7 @@ impl MainItemGameplay {
             next_stats,
             observations,
             block_changes: Vec::new(),
+            awards,
         })
     }
     /// Validate native listener-source changes before an atomic menu/world
@@ -513,9 +603,11 @@ pub struct PreparedGameplayMenu<'a> {
     next_stats: PlayerStats,
     observations: Vec<GameplayObservation>,
     block_changes: Vec<mc121_rust::world::BlockChange>,
+    awards: Vec<(Uuid, Listener)>,
 }
 impl PreparedGameplayMenu<'_> {
     pub fn commit(self) {
+        self.gameplay.pending_awards.extend(self.awards);
         for change in self.block_changes {
             self.gameplay
                 .observe_block_change((change.x, change.y, change.z), change.state)
@@ -560,7 +652,7 @@ fn listener_facts() -> &'static ListenerFacts {
             serde_json::from_str(include_str!("../fixtures/main-item-gameplay-facts.json"))
                 .expect("original listener-source facts");
         assert_eq!(facts["dynamic_item_and_player_listener_registrations"], 0);
-        assert_eq!(facts["default_vanilla_recipe_unlocks_implemented"], false);
+        assert_eq!(facts["default_vanilla_recipe_unlocks_implemented"], true);
         ListenerFacts {
             state_count: facts["block_states"].as_u64().unwrap() as u32,
             states: facts["listener_state_ids"]

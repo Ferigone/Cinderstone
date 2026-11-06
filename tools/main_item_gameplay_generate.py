@@ -65,8 +65,8 @@ def facts():
                 dynamic_item_and_player_listener_registrations=0, default_vanilla_advancement_files=len(files),
                 default_vanilla_trigger_counts={key: counts[key] for key in ['minecraft:thrown_item_picked_up_by_entity',
                                                'minecraft:thrown_item_picked_up_by_player', 'minecraft:inventory_changed']},
-                default_vanilla_stone_inventory_examples=examples, default_vanilla_recipe_unlocks_implemented=False,
-                native_fixture_policy='Explicit empty advancement registries, distinct from default vanilla catalogue')
+                default_vanilla_stone_inventory_examples=examples, default_vanilla_recipe_unlocks_implemented=True,
+                native_fixture_policy='No unported advancement criteria; the vanilla recipes/** advancements are loaded and evaluated (#27)')
 
 
 def queries():

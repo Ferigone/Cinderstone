@@ -8,8 +8,8 @@ bounded delivery has code connected to the current runtime; it is not a declarat
 of complete vanilla parity or comprehensive validation. **Partial** groups remain
 open even when individual subfeatures work.
 
-The separate fixed 100-item planning checklist currently records **57/100 code**
-and **52/100 main-server integration**, at `scope_version: 1`. These indicators do
+The separate fixed 100-item planning checklist currently records **58/100 code**
+and **53/100 main-server integration**, at `scope_version: 1`. These indicators do
 not measure behavioral coverage, engineering effort or remaining time. This more
 detailed roadmap does not add points to, rename or replace that checklist.
 

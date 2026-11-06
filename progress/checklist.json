@@ -6,10 +6,10 @@
   "not_behavior_coverage": true,
   "not_engineering_effort_percentage": true,
   "total_points": 100,
-  "code_ported_points": 56,
-  "main_integrated_points": 51,
-  "code_ported_percent": 56,
-  "main_integrated_percent": 51,
+  "code_ported_points": 58,
+  "main_integrated_points": 53,
+  "code_ported_percent": 58,
+  "main_integrated_percent": 53,
   "full_vanilla_parity": false,
   "rows": [
     {
@@ -434,8 +434,8 @@
       "id": "crafting.4",
       "area": "crafting",
       "points": 1,
-      "code_ported": false,
-      "main_integrated": false
+      "code_ported": true,
+      "main_integrated": true
     },
     {
       "id": "crafting.5",
@@ -672,8 +672,8 @@
       "id": "commands_data.3",
       "area": "commands_data",
       "points": 1,
-      "code_ported": false,
-      "main_integrated": false
+      "code_ported": true,
+      "main_integrated": true
     },
     {
       "id": "commands_data.4",
