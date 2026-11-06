@@ -1254,6 +1254,8 @@ impl Server {
             players.player_removal_progress.get_mut(&id).expect("actual removal marker").leave_game = Some(outcome);
         }
         if players.player_removal_progress.get(&id).expect("actual removal marker").source_save.is_none() {
+            // Matches still queued for this player are awarded before its save.
+            self.award_recipe_advancements_locked(players, Some(uuid))?;
             let data = self.capture_player_with_view_locked(players, id, PlayerInventorySaveView::SourcePlayerInventory)?
                 .context("actual removal player disappeared before source save")?;
             players.player_removal_progress.get_mut(&id).expect("actual removal marker").source_save = Some(data);
@@ -3770,15 +3772,18 @@ async fn play(
                 let text=mc121_rust::player_data::uuid_string(uuid);
                 let path=root.join("playerdata").join(format!("{text}.dat"));
                 let stats=root.join("stats").join(format!("{text}.json"));
-                if path.try_exists()? {
-                    let mut data=mc121_rust::player_nbt::import_player_file(&path,uuid,Some(&stats))?;
-                    let advancements=root.join("advancements").join(format!("{text}.json"));
-                    match std::fs::read_to_string(&advancements) {
-                        Ok(json) => data.lifecycle.advancements_json=Some(json),
-                        Err(error) if error.kind()==std::io::ErrorKind::NotFound => {},
-                        Err(error) => return Err(error).context("read Java player advancements"),
-                    }
-                    saved=Some(data);
+                if path.try_exists()? { saved=Some(mc121_rust::player_nbt::import_player_file(&path,uuid,Some(&stats))?); }
+            }
+        }
+        // A Java import, or a native save from before advancements were kept,
+        // reads the world's advancements/<uuid>.json so its next save keeps it.
+        if let (Some(data), Some(root)) = (saved.as_mut(), &server.options.anvil_world) {
+            if data.lifecycle.advancements_json.is_none() {
+                let text = mc121_rust::player_data::uuid_string(uuid);
+                match std::fs::read_to_string(root.join("advancements").join(format!("{text}.json"))) {
+                    Ok(json) => data.lifecycle.advancements_json = Some(json),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error).context("read Java player advancements"),
                 }
             }
         }
@@ -3825,6 +3830,8 @@ async fn play(
         // constructor zero. Move this advanced RNG into runtime below.
         main_player_data::admit_enchantment_seed(&mut lifecycle, seed_admission, &mut player_random)?;
         let book = main_player_data::load_recipe_book(&lifecycle)?;
+        // Validate saved advancement progress before any registration is published.
+        let advancements = main_recipe_advancements::load(&lifecycle)?;
         position = player.position;
         metadata = player.metadata;
         if let Some(info) = client_information {
@@ -3876,7 +3883,6 @@ async fn play(
         players
             .player_lifecycle
             .insert(uuid, login_lifecycle.clone());
-        let advancements = main_recipe_advancements::load(&login_lifecycle)?;
         let known = book.known().iter().map(|id| id.as_str().to_owned()).collect();
         players.recipe_books.insert(uuid, book);
         players.gameplay.install_recipe_advancements(uuid, advancements, known);

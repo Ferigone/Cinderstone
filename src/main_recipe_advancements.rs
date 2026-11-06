@@ -76,25 +76,39 @@ impl RecipeBookHost for AwardHost<'_> {
 
 impl Server {
     pub(super) fn flush_recipe_advancements(&self) -> Result<()> {
+        let mut guard = self.players.write().map_err(|_| anyhow!("player registry lock poisoned"))?;
+        self.award_recipe_advancements_locked(&mut guard, None)
+    }
+
+    /// One award pass. With `departing`, only that player's queued matches and
+    /// recipe-book additions are awarded (no `TICK`), so its removal save holds
+    /// them; otherwise every player whose recipe-book INIT is built.
+    pub(super) fn award_recipe_advancements_locked(&self, players: &mut LivePlayers, departing: Option<[u8; 16]>) -> Result<()> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
         let catalogue = RecipeAdvancements::vanilla();
-        let mut guard = self.players.write().map_err(|_| anyhow!("player registry lock poisoned"))?;
-        let players = &mut *guard;
-        let active = players.gameplay.active_player_ids();
-        // Matches for a player whose recipe-book INIT is not built yet wait.
+        let selected = |gameplay: &main_item_gameplay::MainItemGameplay, uuid: [u8; 16]| match departing {
+            Some(player) => uuid == player,
+            None => gameplay.recipe_book_ready(uuid),
+        };
+        let players_in_pass: Vec<(i32, [u8; 16])> = players
+            .gameplay
+            .active_player_ids()
+            .into_iter()
+            .filter(|(_, uuid)| selected(&players.gameplay, *uuid))
+            .collect();
+        // Matches of players outside this pass (INIT not built yet) wait.
         let (mut queue, waiting): (Vec<_>, Vec<_>) = players
             .gameplay
             .take_pending_awards()
             .into_iter()
-            .partition(|(uuid, _)| players.gameplay.recipe_book_ready(*uuid));
+            .partition(|(uuid, _)| selected(&players.gameplay, *uuid));
         players.gameplay.requeue_pending_awards(waiting);
         let mut unlocked: Vec<([u8; 16], String)> = Vec::new();
-        for (_, uuid) in &active {
-            if !players.gameplay.recipe_book_ready(*uuid) {
-                continue;
-            }
+        for (_, uuid) in &players_in_pass {
             let Some(advancements) = players.gameplay.recipe_advancements(*uuid) else { continue };
-            queue.extend(advancements.tick(catalogue).into_iter().map(|listener| (*uuid, listener)));
+            if departing.is_none() {
+                queue.extend(advancements.tick(catalogue).into_iter().map(|listener| (*uuid, listener)));
+            }
             if let Some(book) = players.recipe_books.get(uuid) {
                 let baseline = players.gameplay.recipe_trigger_baseline_mut(*uuid);
                 for id in book.known() {
@@ -126,10 +140,7 @@ impl Server {
             }
             outbox.entry(uuid).or_default().extend(host.packets);
         }
-        for (id, uuid) in &active {
-            if !players.gameplay.recipe_book_ready(*uuid) {
-                continue;
-            }
+        for (id, uuid) in &players_in_pass {
             if let Some(book) = players.recipe_books.get(uuid) {
                 let known = book.known().iter().map(|id| id.as_str().to_owned()).collect();
                 *players.gameplay.recipe_trigger_baseline_mut(*uuid) = known;
