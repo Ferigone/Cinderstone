@@ -38,7 +38,9 @@ Functions: `set_count`, `explosion_decay`, `limit_count`, `enchanted_count_incre
 patterns), `set_fireworks`, `set_firework_explosion`, `set_book_cover`, `set_written_book_pages`,
 `set_writable_book_pages`, `set_attributes` (`replace: false` on an empty armor item is
 unsupported: `ArmorItem.getDefaultAttributeModifiers`), `set_contents` and `modify_contents`
-(`container` and `charged_projectiles`; `bundle_contents` is unsupported), `set_custom_data`
+(`container`, `charged_projectiles` and `bundle_contents` with `BundleContents.Mutable.tryInsert`:
+exact fractional weights, nested bundles, bees, merging of stackable equal stacks, shulker boxes
+refused), `set_custom_data`
 (SNBT through `crate::tag_parser` or a JSON object through the `JsonOps` → `NbtOps` conversion;
 a JSON `null` is unsupported), `copy_name` and `fill_player_head` (through the host's
 `LootEntity::custom_name_nbt`, `LootEntity::player_profile` and
@@ -106,14 +108,14 @@ tests) and records, per case, every produced stack as Slot wire bytes plus the n
 `nextInt()` of the roll's random source. The Rust test must reproduce both, so it
 proves exact RNG consumption order, not just the items.
 
-`fixtures/loot-oracle-vectors.json` holds **8872 cases**:
+`fixtures/loot-oracle-vectors.json` holds **8908 cases**:
 
 | Category | Cases |
 | --- | ---: |
 | Block tables (tools, states, explosions, block entity) | 5378 |
 | Entity tables (killer, looting, fire, slime sizes, frog variants, damage sources) | 1223 |
 | Chests / archaeology / gifts / fishing / barter / equipment / spawners / pots / dispensers / shearing | 664 |
-| Hand-written synthetic tables (74; pools, bonus rolls, every entry type, enchant, potion, stew, instrument, smelt, every `LevelBasedValue`, item predicates, block-state location checks, `copy_state`, lore list operations, tooltip toggles, custom model data, container loot tables, `filtered`, styled names, banner patterns, fireworks, firework explosions, book covers and pages, attribute modifiers, container contents, custom data, `copy_name` from named entities, `copy_custom_data` codec forms) | 614 |
+| Hand-written synthetic tables (75; pools, bonus rolls, every entry type, enchant, potion, stew, instrument, smelt, every `LevelBasedValue`, item predicates, block-state location checks, `copy_state`, lore list operations, tooltip toggles, custom model data, container loot tables, `filtered`, styled names, banner patterns, fireworks, firework explosions, book covers and pages, attribute modifiers, container contents, custom data, `copy_name` from named entities, `copy_custom_data` codec forms, bundle contents) | 650 |
 | `LootTable.fill` into a 27- or 9-slot container, with and without pre-filled slots | 317 |
 | Named random sequences, three consecutive rolls, saved stream state compared | 676 |
 
@@ -139,10 +141,10 @@ table is accepted at all is the other half of fidelity, so
 number-provider, pool and table fragment of the shipped data one step at a time
 (each key removed, each value replaced by seven wrong-typed values, unknown type
 names, one nested level) plus 25 hand-written edge cases, and asks the original
-`LootTable.DIRECT_CODEC` to accept or reject each. **100,982 mutants** (28,668
-accepted, 72,314 rejected) now agree with `loot::parse` with **zero
+`LootTable.DIRECT_CODEC` to accept or reject each. **101,598 mutants** (28,693
+accepted, 72,905 rejected) now agree with `loot::parse` with **zero
 disagreements**. The committed fixture `fixtures/loot-parse-parity.json` keeps the
-hand-written cases and every 20th mutant (5073 cases); `--sample 1` regenerates
+hand-written cases and every 20th mutant (5103 cases); `--sample 1` regenerates
 the full set and the ignored test `explore_parser_parity` runs it
 (`LOOT_PARITY_FILE=<json> cargo test --lib loot::tests::explore_parser_parity -- --ignored`).
 
@@ -167,8 +169,7 @@ supplied tables, predicates or item modifiers; performance.
 
 ## Not implemented (explicit errors)
 
-Functions: every registered type runs; unported parts are the `bundle_contents` manipulator
-(`BundleContents.Mutable.tryInsert`) and `set_components` for anything but an armor trim (and values of other components are not
+Functions: every registered type runs; the unported part is `set_components` for anything but an armor trim (and values of other components are not
 validated at parse time). `set_name` and `set_lore` with entity resolution (`ComponentUtils.updateForEntity`). Predicate
 clauses listed above, `ItemPredicate.components`, the remaining item sub-predicates,
 `LocationPredicate` structures/light/fluid/smokey, `BlockPredicate.nbt`. JSON object

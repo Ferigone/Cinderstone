@@ -516,13 +516,13 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     ));
     assert!(matches!(reject(r#"{"pools":[{"entries":[]}]}"#), LootError::Codec(_)));
 
-    // A registered function whose unported part is reached (the bundle manipulator) parses, then
-    // fails explicitly.
+    // A registered function whose unported part is reached (`set_components` beyond armor trims)
+    // parses, then fails explicitly.
     let table = parse::table(
         &serde_json::from_str::<Value>(
             r#"{"type":"minecraft:chest","pools":[{"rolls":1,"entries":[
                 {"type":"minecraft:item","name":"minecraft:stick",
-                 "functions":[{"function":"minecraft:set_contents","component":"minecraft:bundle_contents","entries":[]}]}]}]}"#,
+                 "functions":[{"function":"minecraft:set_components","components":{"minecraft:max_stack_size":5}}]}]}]}"#,
         )
         .unwrap(),
     )
@@ -541,7 +541,7 @@ fn unknown_types_are_rejected_and_unported_ones_fail_only_when_run() {
     let mut ctx = LootContext::new(params, &mut random, &level, vanilla());
     assert!(matches!(
         table.get_random_items(&mut ctx),
-        Err(LootError::Unsupported(what)) if what.contains("bundle_contents")
+        Err(LootError::Unsupported(what)) if what.contains("set_components")
     ));
 }
 

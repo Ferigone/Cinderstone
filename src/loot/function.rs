@@ -356,7 +356,7 @@ impl ContainerComponent {
     /// `setContents(stack, items)`.
     fn set(self, stack: &mut ItemStack, items: Vec<ItemStack>) -> Result<()> {
         let items = match self {
-            Self::BundleContents => return unsupported("bundle_contents (BundleContents.Mutable.tryInsert)"),
+            Self::BundleContents => bundle_insert_all(items)?,
             // `ItemContainerContents.fromItems`: trailing empty slots are dropped.
             Self::Container => {
                 let last = items.iter().rposition(|item| !item.is_empty()).map_or(0, |i| i + 1);
@@ -429,6 +429,121 @@ fn merge_compound(target: &mut Tag, patch: &Tag) {
             (None, _) => entries.push((key.clone(), value.clone())),
         }
     }
+}
+
+/// An exact fraction (`org.apache.commons.lang3.math.Fraction` values; always reduced here, which
+/// does not change any comparison or `intValue` the bundle code makes).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Fraction {
+    num: i64,
+    den: i64,
+}
+
+impl Fraction {
+    const ZERO: Self = Self { num: 0, den: 1 };
+    const ONE: Self = Self { num: 1, den: 1 };
+
+    fn new(num: i64, den: i64) -> Self {
+        fn gcd(a: i64, b: i64) -> i64 {
+            if b == 0 { a.abs().max(1) } else { gcd(b, a % b) }
+        }
+        let sign = if den < 0 { -1 } else { 1 };
+        let g = gcd(num, den);
+        Self { num: sign * num / g, den: sign * den / g }
+    }
+    fn add(self, other: Self) -> Self {
+        Self::new(self.num * other.den + other.num * self.den, self.den * other.den)
+    }
+    fn sub(self, other: Self) -> Self {
+        Self::new(self.num * other.den - other.num * self.den, self.den * other.den)
+    }
+    fn mul(self, other: Self) -> Self {
+        Self::new(self.num * other.num, self.den * other.den)
+    }
+    fn div(self, other: Self) -> Self {
+        Self::new(self.num * other.den, self.den * other.num)
+    }
+    /// `Fraction.intValue`: truncation toward zero.
+    fn int_value(self) -> i64 {
+        self.num / self.den
+    }
+}
+
+const BEES: i32 = 54;
+
+fn bundle_items(bytes: &[u8]) -> Result<Vec<ItemStack>> {
+    ContainerComponent::BundleContents.items(bytes)
+}
+
+/// `BundleContents.getWeight(stack)`.
+fn bundle_weight(stack: &ItemStack) -> Result<Fraction> {
+    if let Some(bytes) = stack.effective_component_bytes(BUNDLE_CONTENTS) {
+        let mut weight = Fraction::new(1, 16);
+        for item in bundle_items(bytes)? {
+            weight = weight.add(bundle_weight(&item)?.mul(Fraction::new(i64::from(item.count), 1)));
+        }
+        return Ok(weight);
+    }
+    let bees = stack.effective_component_bytes(BEES).map(|bytes| Reader::new(bytes).varint().unwrap_or(0)).unwrap_or(0);
+    if bees > 0 {
+        return Ok(Fraction::ONE);
+    }
+    let mut probe = stack.clone();
+    probe.count = 1;
+    Ok(Fraction::new(1, i64::from(probe.max_stack_size().map_err(host)?)))
+}
+
+/// `ItemStack.isStackable`: a maximum above one and not a damaged damageable item.
+fn is_stackable(stack: &ItemStack) -> Result<bool> {
+    let mut probe = stack.clone();
+    probe.count = 1;
+    if probe.max_stack_size().map_err(host)? <= 1 {
+        return Ok(false);
+    }
+    let damageable = stack.effective_component_bytes(2).is_some()
+        && stack.effective_component_bytes(4).is_none()
+        && stack.effective_component_bytes(DAMAGE).is_some();
+    Ok(!(damageable && damage_value(stack)? > 0))
+}
+
+/// `new BundleContents.Mutable(old).clearItems()` then `tryInsert` of every stack, in order.
+fn bundle_insert_all(stacks: Vec<ItemStack>) -> Result<Vec<ItemStack>> {
+    let mut items: Vec<ItemStack> = Vec::new();
+    let mut weight = Fraction::ZERO;
+    for stack in stacks {
+        // `Item.canFitInsideContainerItems`: false only for shulker box block items.
+        if stack.is_empty() || stack_item_id(&stack).ends_with("shulker_box") {
+            continue;
+        }
+        let each = bundle_weight(&stack)?;
+        let room = Fraction::ONE.sub(weight).div(each).int_value().max(0);
+        let amount = i64::from(stack.count).min(room) as i32;
+        if amount == 0 {
+            continue;
+        }
+        weight = weight.add(each.mul(Fraction::new(i64::from(amount), 1)));
+        let existing = if is_stackable(&stack)? {
+            let mut found = None;
+            for (index, item) in items.iter().enumerate() {
+                if item.same_item_same_components(&stack).map_err(host)? {
+                    found = Some(index);
+                    break;
+                }
+            }
+            found
+        } else {
+            None
+        };
+        match existing {
+            Some(index) => {
+                let merged = items.remove(index);
+                let count = merged.count + amount;
+                items.insert(0, copy_with_count(&merged, count));
+            }
+            None => items.insert(0, copy_with_count(&stack, amount)),
+        }
+    }
+    Ok(items)
 }
 
 /// `Filterable<T>`: the raw value and an optional filtered one.
