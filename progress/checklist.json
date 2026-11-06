@@ -662,7 +662,8 @@
       "main_integrated": false,
       "weather_evidence": "Partial /weather runtime (#177): native Brigadier, level RNG/weather timers, exact original witnesses and ordered protocol/restart flow; docs/validation/weather-command-runtime.json. Full catalog remains incomplete.",
       "seed_evidence": "Partial /seed runtime (#179): explicit raw seed, Brigadier/permission2, original rich feedback/result witnesses, private protocol/restart flow; docs/validation/seed-command-runtime.json. Full catalog remains incomplete.",
-      "difficulty_evidence": "Partial /difficulty runtime (#180): native Brigadier permission2 query/set, retained player/fire difficulty, requester/observer protocol updates, saved lock and dedicated restart behavior; original-class vectors and docs/validation/difficulty-command-runtime.json. Full catalog remains incomplete."
+      "difficulty_evidence": "Partial /difficulty runtime (#180): native Brigadier permission2 query/set, retained player/fire difficulty, requester/observer protocol updates, saved lock and dedicated restart behavior; original-class vectors and docs/validation/difficulty-command-runtime.json. Full catalog remains incomplete.",
+      "list_evidence": "Partial /list runtime (#183): native Brigadier, current ordered roster/team display names, private feedback and original-class/protocol byte comparison; docs/validation/list-command-runtime.json. Full catalog remains incomplete."
     },
     {
       "id": "commands_data.2",

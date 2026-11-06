@@ -5,6 +5,18 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native list command and current player display names (#183)
+
+Console and every player can use `/list` and `/list uuids` through native
+Brigadier. Main reads the actual admitted roster in admission order, configured
+maximum and current scoreboard display names. Team prefix/suffix/color and
+identity hover/click/insertion are retained; the UUID variant uses plain names.
+The [real Java/native comparison](validation/list-command-runtime.json) matches
+full feedback bytes, tree and completions across joins/disconnect/rejoin, team
+changes, non-op use, console, invalid inputs, privacy and feedback suppression.
+[Details](reference/list-command.md). Full #24 stays open, scope1/100 and58/53
+unchanged. Hosted verification remains under #19.
+
 ## Read-only seed command connected (#179)
 
 Console and operator-level2 players can use `/seed` through Brigadier. It reads
