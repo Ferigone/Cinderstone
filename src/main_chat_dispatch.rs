@@ -85,6 +85,8 @@ impl Server {
         let result = if let Some(command) = command {
             if main_team_chat::is_command(&command.command) {
                 self.execute_team_message(&command, Some(entity_id))
+            } else if self.try_save_all_command(&command.command, Some(entity_id), &_sequence).await? {
+                Ok(())
             } else {
                 self.execute_administration_locked(&command.command, Some(entity_id), &admission)
             }

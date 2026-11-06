@@ -135,6 +135,7 @@ impl Server {
         // Match the source server-thread serialization: a policy mutation must
         // not fit between final admission and publication of the actual actor.
         let admission = self.player_admission.lock().await;
+        if self.try_save_all_command(line, source_id, &_sequence).await? {return Ok(());}
         self.execute_administration_locked(line, source_id, &admission)
     }
 

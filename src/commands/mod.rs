@@ -22,6 +22,7 @@ pub mod list_command;
 pub mod operation;
 pub mod ranges;
 pub mod seed_command;
+pub mod save_all_command;
 pub mod simple_arguments;
 pub mod string_reader;
 pub mod suggestion;
