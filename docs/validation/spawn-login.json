@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "ok": true,
-  "completed_at": "2026-11-06T14:49:39.606466+00:00",
+  "completed_at": "2026-11-06T14:59:01.885617+00:00",
   "native_commit": "336dcf98399a8120c86a25bb846149e620856dfa",
   "native_binary_sha256": "184da84973dcd76714a84cea0783bc0f82a8d3f90529e3bb142d6c8b6c4ef086",
   "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
@@ -54,8 +54,9 @@
     }
   },
   "error": null,
-  "local_build_commit": "78cedfd4c1bbbbffadc90cf2c2f3eb40f2256a2a",
   "native_source_tree": "f7211bc5d91dd485a95d009a6350c2c71f0e7a77",
+  "local_build_commit": "78cedfd4c1bbbbffadc90cf2c2f3eb40f2256a2a",
   "source_note": "Published source tree is identical to local build commit; GitHub API commit metadata differs.",
-  "java_version": "openjdk version \"21.0.13\" 2026-10-20; OpenJDK 64-Bit Server VM 21.0.13+9-1-deb13u2-Debian"
+  "java_version": "openjdk version \"21.0.13\" 2026-10-20",
+  "administration_scope": "Separate scratch-local --server-directory for each native process."
 }

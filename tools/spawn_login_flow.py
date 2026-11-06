@@ -91,6 +91,7 @@ def main():
         ]:
             server = Server([str(binary), '--allow-offline', '--bind', '127.0.0.1', '--port', '25622',
                              '--fixtures', str(ROOT / 'fixtures/configuration.json'),
+                             '--server-directory', str(scratch / (name + '-admin')),
                              '--enforce-secure-profile', 'false', '--loopback-service-keys', str(scratch / 'keys.json'),
                              *world_args], ROOT, scratch / (name + '.log'), '"event":"listening"')
             assert probe(name, 25622) == expected, name + ' spawn differs'
