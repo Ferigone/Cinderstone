@@ -94,8 +94,17 @@ impl LevelData {
     }
     /// The saved lock is independent of dedicated-server configured difficulty.
     pub fn difficulty_locked(&self) -> bool {
+        self.numeric_flag("DifficultyLocked")
+    }
+    pub fn hardcore(&self) -> bool { self.numeric_flag("hardcore") }
+    pub fn set_difficulty(&mut self, id: i32) -> Result<()> {
+        ensure!((0..=3).contains(&id), "invalid difficulty ID");
+        self.root.tag.get_mut("Data").expect("validated Data compound").insert("Difficulty",Tag::Byte(id as i8))?;
+        Ok(())
+    }
+    fn numeric_flag(&self, name: &str) -> bool {
         // Dynamic/NbtOps.asBoolean(false): Number.byteValue() != 0.
-        let value = match self.data().get("DifficultyLocked") {
+        let value = match self.data().get(name) {
             Some(Tag::Byte(v)) => *v,
             Some(Tag::Short(v)) => *v as i8,
             Some(Tag::Int(v)) => *v as i8,

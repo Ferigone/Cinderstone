@@ -17,6 +17,20 @@ feedback suppression, console execution and restart. [Details](reference/seed-co
 Queries change no clock or level RNG. Full WP-E3 remains open; fixed scope1/100
 and58code/53Main counts are unchanged. Hosted verification remains under #19.
 
+## Difficulty command connected (#180)
+
+Player and console `/difficulty` query and named changes now use Brigadier and
+permission level 2. The retained player/food and fire owners share the new value;
+current difficulty and the preserved lock are sent to all players and later joins.
+The query is private; change feedback follows the existing operator feedback rules.
+The [focused original/runtime evidence](validation/difficulty-command-runtime.json)
+covers denied/invalid input, exact success and already-current failure components,
+completion, observer updates, rejoin and save/restart. A dedicated restart reapplies
+the configured difficulty, as Java does; the command does not rewrite properties.
+[Source and reproduction](reference/difficulty-command.md). This does not implement
+mobs, full hardcore/survival or multiple dimensions. `commands_data.1` remains
+partial; scope1/100 and counts58code/53Main are unchanged.
+
 ## Weather commands connected (#177)
 
 Player and console `/weather clear|rain|thunder [duration]` now use Brigadier,
