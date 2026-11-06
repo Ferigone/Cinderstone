@@ -172,3 +172,16 @@ Each team may self-review and merge its owned source PRs under the user's explic
 conflicts, updates public status/checklist evidence and the persistent journal,
 and verifies the resulting Railway deployment. Teams communicate by actually
 reading GitHub updates; this document creates no automatic cross-chat channel.
+
+## Required CI checks
+
+Every pull request and every push to `master` runs `.github/workflows/ci.yml`
+with two jobs: `repository hygiene` (`.github/scripts/repo_hygiene.py`: no
+archives, JARs, class files, saves, secrets, JVM disassembly or licence
+removals; checklist scope and denominator intact) and `cargo check and tests`
+(`cargo check --locked --all-targets`, `cargo test --locked --lib`,
+`cargo test --locked --bin mc121-rust`). Merge only when both are green on the
+exact head commit. Because Railway deploys whatever lands on `master`, the
+repository owner should mark both jobs as required status checks in the branch
+protection rule for `master` (Settings → Branches); that setting cannot be
+changed from a session.

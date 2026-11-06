@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: AGENTS.md hygiene and fixed-checklist integrity
         run: python3 .github/scripts/repo_hygiene.py
       - name: Required compile inputs survive the Docker context
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Install the Dockerfile's Rust toolchain
         run: |
           version=$(sed -n 's/^FROM rust:\([0-9][0-9.]*\)-.*/\1/p' Dockerfile | head -n1)
