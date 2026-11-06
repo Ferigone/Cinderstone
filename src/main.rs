@@ -521,6 +521,7 @@ struct Server {
     tick_events: watch::Sender<i64>,
     epoch: Instant,
     level: Option<Mutex<LevelData>>,
+    difficulty_locked: bool,
     border: StdRwLock<WorldBorder>,
     player_store: PlayerDataStore,
     entity_store: EntityDataStore,
@@ -2895,6 +2896,7 @@ async fn main() -> Result<()> {
         .as_ref()
         .map(LevelData::open)
         .transpose()?;
+    let difficulty_locked = level.as_ref().is_some_and(LevelData::difficulty_locked);
     if let Some(level) = &level {
         initial_clock = level.clock()?;
     }
@@ -3145,6 +3147,7 @@ async fn main() -> Result<()> {
         tick_events,
         epoch: Instant::now(),
         level: level.map(Mutex::new),
+        difficulty_locked,
         border: StdRwLock::new(border),
         player_store,
         entity_store,
@@ -3896,9 +3899,7 @@ async fn play(
         }),
     )
     .await?;
-    if server.options.anvil_world.is_none() {
-        send(&codec,&mut writer,0x0b,encoded(|w| {w.u8(server.options.difficulty as u8).bool(false);})).await?;
-    }
+    send(&codec,&mut writer,0x0b,encoded(|w| {w.u8(server.options.difficulty as u8).bool(server.difficulty_locked);})).await?;
     send_packets(&codec, &mut writer, server.administration_permission_packets(entity_id)?).await?;
     let initial_inventory = container.snapshot()?;
     let mut container_revision = initial_inventory.revision;

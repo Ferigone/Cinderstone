@@ -117,6 +117,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         tick_events,
         epoch: Instant::now(),
         level: None,
+        difficulty_locked: false,
         border: StdRwLock::new(WorldBorder::default()),
         player_store,
         entity_store,
