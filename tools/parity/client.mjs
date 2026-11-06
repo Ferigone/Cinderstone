@@ -51,8 +51,12 @@ try {
   client.on('window_items', p => { if (p.windowId === 0 && !inventory) inventory = p.items; });
   client.on('packet', (p, meta) => {
     if (!phase) return;
-    if (meta.name === 'block_change' && ['x', 'y', 'z'].every(k => p.location[k] === scenario.target[k]))
-      phase.events.push({name: 'block_change', state: p.type});
+    if (meta.name === 'block_change' && (scenario.observe_positions || [scenario.target]).some(
+      at => ['x', 'y', 'z'].every(k => p.location[k] === at[k]))) {
+      const event = {name: 'block_change', state: p.type};
+      if (scenario.observe_positions) event.location = p.location;
+      phase.events.push(event);
+    }
     if (meta.name === 'acknowledge_player_digging')
       phase.events.push({name: 'acknowledge_player_digging', sequence: p.sequenceId});
   });
@@ -75,6 +79,19 @@ try {
       phase.events.some(e => e.name === 'acknowledge_player_digging' && e.sequence >= sequence), name);
     await pause(250); // Include duplicate updates; do not silently deduplicate.
     if (failure) throw failure;
+  }
+  if (scenario.rejected_placement) {
+    const rejected = scenario.rejected_placement;
+    phase = {name: 'reject-occupied-neighbor', events: []}; result.phases.push(phase);
+    client.write('block_place', {hand: 0, location: rejected.clicked, direction: rejected.direction,
+      cursorX: rejected.cursor[0], cursorY: rejected.cursor[1], cursorZ: rejected.cursor[2],
+      insideBlock: false, sequence: 103});
+    await until(() => phase.events.some(e => e.name === 'acknowledge_player_digging' && e.sequence >= 103),
+      'rejected placement acknowledgment');
+    await pause(250);
+    if (failure) throw failure;
+    assert.equal(phase.events.filter(e => e.name === 'block_change').length, 2,
+      'rejected placement must reconcile clicked and adjacent blocks without a mutation');
   }
   phase = null;
   result.ok = true;

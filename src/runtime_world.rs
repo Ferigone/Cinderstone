@@ -20,6 +20,11 @@ pub enum WorldChange {
         chunk: (i32, i32),
         payload: bytes::Bytes,
     },
+    /// Use-item-on corrections belong only to the requesting player, in world-event order.
+    BlockResync {
+        player: i32,
+        blocks: [BlockChange; 2],
+    },
     Acknowledge {
         player: i32,
         sequence: i32,

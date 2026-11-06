@@ -36,5 +36,74 @@
     ],
     "tolerances": [],
     "control": "Same logical flat block world and seed 0: Java uses the declared flat generator, native uses its fresh production flat backend. Client compares SHA-256 of all 98,304 target-chunk block states plus hashed world seed before acting. Java weather/daylight/mob/random ticks are disabled; native default clock remains active. Each action waits for its update and acknowledgment; native has no tick freeze."
+  },
+  "creative-reconciliation": {
+    "checklist_areas": [
+      "network.3",
+      "block_interactions.1",
+      "inventory.1"
+    ],
+    "profile": "offline creative, flat overworld, seed 0, fresh empty player",
+    "position": [
+      8.5,
+      65,
+      8.5
+    ],
+    "target": {
+      "x": 10,
+      "y": 64,
+      "z": 8
+    },
+    "operations": [
+      "join",
+      "select 64 stone in hotbar 0",
+      "place stone",
+      "break stone",
+      "reject placement against occupied dirt below grass"
+    ],
+    "comparison": "Ordered block_change packets at the placed block, clicked grass and occupied dirt neighbor, including duplicates and locations, and acknowledgments for place/break/rejected placement; initial scene and empty inventory.",
+    "excluded": [
+      "other packet types and block positions outside observe_positions",
+      "transport framing/compression",
+      "entity and teleport ids",
+      "wall-clock timing, world age and keepalive nonces",
+      "lighting/chunk encoding",
+      "random UUIDs, sounds, particles and RNG consumption",
+      "survival and other blocks",
+      "persistence after edits",
+      "Java save import (native requires complete source provenance for gameplay)"
+    ],
+    "tolerances": [],
+    "control": "Same logical flat block world and seed 0: Java uses the declared flat generator, native uses its fresh production flat backend. Client compares SHA-256 of all 98,304 target-chunk block states plus hashed world seed before acting. Java weather/daylight/mob/random ticks are disabled; native default clock remains active. Each action waits for its update and acknowledgment; native has no tick freeze.",
+    "observe_positions": [
+      {
+        "x": 10,
+        "y": 64,
+        "z": 8
+      },
+      {
+        "x": 10,
+        "y": 63,
+        "z": 8
+      },
+      {
+        "x": 10,
+        "y": 62,
+        "z": 8
+      }
+    ],
+    "rejected_placement": {
+      "clicked": {
+        "x": 10,
+        "y": 63,
+        "z": 8
+      },
+      "direction": 0,
+      "cursor": [
+        0.5,
+        0,
+        0.5
+      ]
+    }
   }
 }

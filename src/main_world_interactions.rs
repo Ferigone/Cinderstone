@@ -414,6 +414,32 @@ pub(super) fn commit_fixture_plan(
 }
 
 impl Server {
+    /// ServerGamePacketListenerImpl.handleUseItemOn sends clicked, then adjacent
+    /// authoritative states even when useItemOn rejects placement. Queue on the
+    /// block stream (not direct socket output). Successful use queues these
+    /// before its ordinary block publication, as Java's chunk tick does. Do not broadcast these
+    /// corrections to observers or filter them by the client's loaded chunks.
+    pub(super) async fn finish_use_item_on(
+        &self, id: i32, target: (i32,i32,i32), direction: geometry::Direction, sequence: i32,
+    ) -> Result<()> {
+        let mut world = self.world.write().await;
+        self.publish_use_item_on_resync(&mut world,id,target,direction)?;
+        self.acknowledge_block_changes_up_to(id,sequence)
+    }
+
+    fn publish_use_item_on_resync(
+        &self, world: &mut WorldBackend, id: i32, target: (i32,i32,i32), direction: geometry::Direction,
+    ) -> Result<()> {
+        let delta = direction.step();
+        let adjacent = (target.0.wrapping_add(delta.0), target.1.wrapping_add(delta.1), target.2.wrapping_add(delta.2));
+        let block = |world: &mut WorldBackend, at: (i32,i32,i32)| -> Result<BlockChange> {
+            Ok(BlockChange { x: at.0, y: at.1, z: at.2, state: world.block(at.0,at.1,at.2)? })
+        };
+        let blocks = [block(world,target)?, block(world,adjacent)?];
+        let _ = self.changes.send(WorldUpdate::BlockResync { player: id, blocks });
+        Ok(())
+    }
+
     /// Replace the old single-state use-item-on branch with this call. Empty
     /// hands can open doors; secondary use skips that block interaction.
     pub(super) async fn interact_world_block(
@@ -465,7 +491,10 @@ impl Server {
             ))
         })??;
         let secondary = player.metadata.flags & 0x02 != 0;
-        if (!secondary||both_empty)&&players.use_redstone_block(&mut world,target,id,now,border,&self.entity_events)?{return Ok(MainInteractionResult::Applied);}
+        if (!secondary||both_empty)&&players.use_redstone_block(&mut world,target,id,now,border,&self.entity_events)?{
+            self.publish_use_item_on_resync(&mut world,id,target,direction)?;
+            return Ok(MainInteractionResult::Applied);
+        }
         let powder_owner = players.block_runtime.concrete_powder_owner()?.clone();
         let powder_operation = if player.gamemode == 1 && !stack.is_empty() {
             Some(main_concrete_powder_placement::prepare_player_operation(
@@ -570,7 +599,7 @@ impl Server {
         if powder_used {
             main_concrete_powder_placement::require_player_commit(&mut world, &plan)?;
         }
-        self.commit_world_interaction(&mut world, &mut players, id, plan)
+        self.commit_world_interaction_resync(&mut world, &mut players, id, plan, Some((target,direction)))
     }
 
     pub(super) async fn edit_world_block(
@@ -658,6 +687,13 @@ impl Server {
         id: i32,
         plan: InteractionPlan,
     ) -> Result<MainInteractionResult> {
+        self.commit_world_interaction_resync(world,players,id,plan,None)
+    }
+
+    fn commit_world_interaction_resync(
+        &self, world: &mut WorldBackend, players: &mut LivePlayers, id: i32,
+        plan: InteractionPlan, resync: Option<((i32,i32,i32),geometry::Direction)>,
+    ) -> Result<MainInteractionResult> {
         if self.shutting_down.load(Ordering::Acquire) {
             return Ok(MainInteractionResult::Rejected);
         }
@@ -670,6 +706,7 @@ impl Server {
         let source_edit = match players.prepare_native_source_edit(world, &plan) {
             Ok(token) => token,
             Err(_) => {
+                if resync.is_some() { return Ok(MainInteractionResult::Rejected); }
                 let corrections = plan
                     .changed_positions
                     .iter()
@@ -706,6 +743,9 @@ impl Server {
             players.world_interactions.append_from_player(id,actor.position,plan.events);
         }else{ensure!(id==-1,"interaction actor disappeared");players.world_interactions.append(id,plan.events);}
 
+        if let Some((target,direction)) = resync {
+            self.publish_use_item_on_resync(world,id,target,direction)?;
+        }
         match lighting {
             Ok(light) => {
                 changes.extend(light);

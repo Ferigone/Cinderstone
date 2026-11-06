@@ -429,8 +429,8 @@ impl FluidSimulationHost for MainFluidHost<'_> {
                     id: 0x2a,
                     payload: payload.to_vec(),
                 }),
-                WorldUpdate::Acknowledge { .. } => {
-                    bail!("fluid mutation unexpectedly returned an acknowledgement")
+                WorldUpdate::Acknowledge { .. } | WorldUpdate::BlockResync { .. } => {
+                    bail!("fluid mutation unexpectedly returned a player protocol event")
                 }
             }
         }
