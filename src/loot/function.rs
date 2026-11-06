@@ -15,7 +15,7 @@ use super::context::{EntityTarget, LootContext, Visited};
 use super::enchant::{self, copy_with_count, count_of, new_stack, set_component};
 use super::facts::{facts, HolderSet, Kind};
 use super::number::{IntRange, NumberProvider};
-use super::predicate::stack_item_id;
+use super::predicate::{stack_item_id, ItemPredicate};
 use super::{mth, unsupported, LootError, Result};
 use crate::inventory::ItemStack;
 use crate::nbt::{JavaString, Tag};
@@ -24,6 +24,9 @@ use crate::protocol::{Reader, Writer};
 const DAMAGE: i32 = 3;
 const CUSTOM_NAME: i32 = 5;
 const ITEM_NAME: i32 = 6;
+const LORE: i32 = 7;
+const CUSTOM_MODEL_DATA: i32 = 13;
+const CONTAINER_LOOT: i32 = 56;
 const POTION_CONTENTS: i32 = 31;
 const SUSPICIOUS_STEW_EFFECTS: i32 = 32;
 const TRIM: i32 = 35;
@@ -102,14 +105,80 @@ pub enum NameTarget {
     ItemName,
 }
 
-/// A text component this port can serialize to its network NBT form.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TextComponent {
-    /// `{"translate": key}` with no arguments, fallback or style.
-    Translate(String),
-    /// A plain string component.
-    Plain(String),
+/// A text component (`ComponentSerialization.CODEC`), the full model of `crate::components`.
+pub type TextComponent = crate::components::text::Component;
+
+/// `ListOperation`: how a function merges its values into an existing list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ListOperation {
+    ReplaceAll,
+    ReplaceSection { offset: i32, size: Option<i32> },
+    Insert { offset: i32 },
+    Append,
 }
+
+impl ListOperation {
+    /// `ListOperation.apply(old, new, maxSize)`; an out-of-range operation keeps `old` (the
+    /// original logs an error and does the same).
+    pub fn apply<T: Clone>(&self, old: &[T], new: &[T], max: usize) -> Vec<T> {
+        match *self {
+            ListOperation::ReplaceAll => new.to_vec(),
+            ListOperation::Append => {
+                if old.len() + new.len() > max {
+                    old.to_vec()
+                } else {
+                    old.iter().chain(new).cloned().collect()
+                }
+            }
+            ListOperation::Insert { offset } => {
+                let offset = offset as usize;
+                if offset > old.len() || old.len() + new.len() > max {
+                    old.to_vec()
+                } else {
+                    old[..offset].iter().chain(new).chain(&old[offset..]).cloned().collect()
+                }
+            }
+            ListOperation::ReplaceSection { offset, size } => {
+                let offset = offset as usize;
+                if offset > old.len() {
+                    return old.to_vec();
+                }
+                let mut out: Vec<T> = old[..offset].iter().chain(new).cloned().collect();
+                let end = offset as i64 + i64::from(size.unwrap_or(new.len() as i32));
+                if end < old.len() as i64 {
+                    out.extend_from_slice(&old[end as usize..]);
+                }
+                if out.len() > max {
+                    old.to_vec()
+                } else {
+                    out
+                }
+            }
+        }
+    }
+}
+
+/// Components whose last network field is the `show_in_tooltip` flag (`ToggleTooltips.TOGGLES`).
+pub const TOOLTIP_TOGGLES: [&str; 9] = [
+    "trim", "dyed_color", "enchantments", "stored_enchantments", "unbreakable", "can_break",
+    "can_place_on", "attribute_modifiers", "jukebox_playable",
+];
+
+/// `BuiltInRegistries.BLOCK_ENTITY_TYPE` of 1.21, in registry order.
+pub const BLOCK_ENTITY_TYPES: [&str; 44] = [
+    "minecraft:furnace", "minecraft:chest", "minecraft:trapped_chest", "minecraft:ender_chest",
+    "minecraft:jukebox", "minecraft:dispenser", "minecraft:dropper", "minecraft:sign",
+    "minecraft:hanging_sign", "minecraft:mob_spawner", "minecraft:piston", "minecraft:brewing_stand",
+    "minecraft:enchanting_table", "minecraft:end_portal", "minecraft:beacon", "minecraft:skull",
+    "minecraft:daylight_detector", "minecraft:hopper", "minecraft:comparator", "minecraft:banner",
+    "minecraft:structure_block", "minecraft:end_gateway", "minecraft:command_block",
+    "minecraft:shulker_box", "minecraft:bed", "minecraft:conduit", "minecraft:barrel", "minecraft:smoker",
+    "minecraft:blast_furnace", "minecraft:lectern", "minecraft:bell", "minecraft:jigsaw",
+    "minecraft:campfire", "minecraft:beehive", "minecraft:sculk_sensor",
+    "minecraft:calibrated_sculk_sensor", "minecraft:sculk_catalyst", "minecraft:sculk_shrieker",
+    "minecraft:chiseled_bookshelf", "minecraft:brushable_block", "minecraft:decorated_pot",
+    "minecraft:crafter", "minecraft:trial_spawner", "minecraft:vault",
+];
 
 /// `SetStewEffectFunction.EffectEntry`.
 #[derive(Debug, Clone, PartialEq)]
@@ -142,6 +211,12 @@ pub enum FunctionKind {
     SetTrim { material: String, pattern: String, show_in_tooltip: bool },
     SetItem { item: String },
     SetName { name: Option<TextComponent>, entity: Option<EntityTarget>, target: NameTarget },
+    SetLore { lore: Vec<TextComponent>, mode: ListOperation, entity: Option<EntityTarget> },
+    /// `(component type id, show_in_tooltip)`.
+    ToggleTooltips(Vec<(i32, bool)>),
+    SetCustomModelData(NumberProvider),
+    SetLootTable { name: String, seed: i64 },
+    Filtered { filter: ItemPredicate, modifier: Box<Function> },
     SetStewEffect { effects: Vec<StewEffect> },
     SetOminousBottleAmplifier { amplifier: NumberProvider },
     SetInstrument { options: HolderSet },
@@ -180,15 +255,22 @@ fn varint_bytes(value: i32) -> Vec<u8> {
 }
 
 fn text_nbt(component: &TextComponent) -> Result<Vec<u8>> {
-    let tag = match component {
-        TextComponent::Translate(key) => Tag::Compound(vec![(
-            JavaString::Utf8("translate".to_owned()),
-            Tag::String(JavaString::Utf8(key.clone())),
-        )]),
-        TextComponent::Plain(text) => Tag::String(JavaString::Utf8(text.clone())),
-    };
-    tag.encode_network_anonymous()
-        .map_err(|error| LootError::Host(error.to_string()))
+    component.to_network_nbt().map_err(|error| LootError::Host(error.to_string()))
+}
+
+/// The lines of a `minecraft:lore` component: a count, then each line as network NBT.
+fn lore_lines(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
+    let mut reader = Reader::new(bytes);
+    let count = reader.varint().map_err(host)?;
+    let mut lines = Vec::new();
+    for _ in 0..count {
+        let before = reader.remaining();
+        let (_, used) = Tag::decode_anonymous_prefix(before).map_err(host)?;
+        lines.push(before[..used].to_vec());
+        reader = Reader::new(&before[used..]);
+    }
+    reader.finish().map_err(host)?;
+    Ok(lines)
 }
 
 impl Function {
@@ -434,6 +516,60 @@ impl Function {
                     set_component(&mut stack, type_id, text_nbt(name)?);
                 }
                 Ok(stack)
+            }
+            FunctionKind::SetLore { lore, mode, entity } => {
+                if entity.is_some_and(|which| ctx.entity(which).is_some()) && !lore.is_empty() {
+                    return unsupported("set_lore entity-resolved components (ComponentUtils.updateForEntity)");
+                }
+                let old = lore_lines(stack.effective_component_bytes(LORE).unwrap_or(&[0]))?;
+                let new = lore.iter().map(text_nbt).collect::<Result<Vec<_>>>()?;
+                let lines = mode.apply(&old, &new, 256);
+                let mut writer = Writer::new();
+                writer.varint(lines.len() as i32);
+                for line in &lines {
+                    writer.raw(line);
+                }
+                if !stack.is_empty() {
+                    set_component(&mut stack, LORE, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::ToggleTooltips(toggles) => {
+                for (type_id, show) in toggles {
+                    if let Some(bytes) = stack.effective_component_bytes(*type_id) {
+                        let mut bytes = bytes.to_vec();
+                        if let Some(last) = bytes.last_mut() {
+                            *last = u8::from(*show);
+                        }
+                        set_component(&mut stack, *type_id, bytes);
+                    }
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetCustomModelData(value) => {
+                let value = value.get_int(ctx)?;
+                if !stack.is_empty() {
+                    set_component(&mut stack, CUSTOM_MODEL_DATA, varint_bytes(value));
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetLootTable { name, seed } => {
+                if !stack.is_empty() {
+                    let mut entries = vec![(JavaString::Utf8("loot_table".to_owned()), Tag::String(JavaString::Utf8(name.clone())))];
+                    if *seed != 0 {
+                        entries.push((JavaString::Utf8("seed".to_owned()), Tag::Long(*seed)));
+                    }
+                    let bytes = Tag::Compound(entries).encode_network_anonymous().map_err(|e| LootError::Host(e.to_string()))?;
+                    set_component(&mut stack, CONTAINER_LOOT, bytes);
+                }
+                Ok(stack)
+            }
+            FunctionKind::Filtered { filter, modifier } => {
+                if filter.test(&stack)? {
+                    modifier.apply(stack, ctx)
+                } else {
+                    Ok(stack)
+                }
             }
             FunctionKind::SetStewEffect { effects } => {
                 if stack_item_id(&stack) == "minecraft:suspicious_stew" && !effects.is_empty() {

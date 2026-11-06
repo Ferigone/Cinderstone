@@ -11,8 +11,8 @@ use super::context::{param_set, EntityTarget, ParamSet, GENERIC};
 use super::entry::{Entry, LootPool, LootTable, SingletonKind, TableRef};
 use super::facts::{canonical, facts, HolderSet, Kind};
 use super::function::{
-    component_id, BonusFormula, ComponentSource, Function, FunctionKind, NameTarget, StewEffect,
-    TextComponent,
+    component_id, BonusFormula, ComponentSource, Function, FunctionKind, ListOperation, NameTarget, StewEffect,
+    TextComponent, BLOCK_ENTITY_TYPES, TOOLTIP_TOGGLES,
 };
 use super::number::{IntRange, LevelBasedValue, NumberProvider, ScoreboardName};
 use super::predicate::*;
@@ -76,6 +76,14 @@ fn int(value: &Value, what: &str) -> Result<i32> {
         Ok(number as i32)
     } else {
         codec(format!("{what}: expected an integer"))
+    }
+}
+
+/// `Codec.LONG` over `JsonOps` (Gson's `longValue`).
+fn long(value: &Value, what: &str) -> Result<i64> {
+    match value {
+        Value::Number(n) => Ok(crate::components::java::json_number_long_value(n)),
+        _ => codec(format!("{what}: expected a long")),
     }
 }
 
@@ -790,18 +798,46 @@ fn functions_field(map: &Map<String, Value>) -> Result<Vec<Function>> {
     }
 }
 
+/// `ComponentSerialization.CODEC` over `JsonOps`.
 fn text_component(value: &Value) -> Result<TextComponent> {
-    match value {
-        Value::String(text) => Ok(TextComponent::Plain(text.clone())),
-        Value::Object(map) => {
-            let simple = map.keys().all(|key| key == "translate");
-            match (map.get("translate").and_then(Value::as_str), simple) {
-                (Some(key), true) => Ok(TextComponent::Translate(key.to_owned())),
-                _ => super::unsupported("text component other than plain text or a bare translate key"),
+    use crate::components::text::ComponentError;
+    TextComponent::from_json(value).map_err(|error| match error {
+        ComponentError::Codec(what) => LootError::Codec(format!("text component: {what}")),
+        ComponentError::Unsupported(what) => LootError::Unsupported(format!("text component: {what}")),
+    })
+}
+
+/// `ListOperation.codec(max)`: the `mode` member and its fields, inlined in the function.
+fn list_operation(map: &Map<String, Value>, max: i32) -> Result<ListOperation> {
+    let non_negative = |key: &str| -> Result<Option<i32>> {
+        match optional(map, key) {
+            None => Ok(None),
+            Some(value) => {
+                let n = int(value, key)?;
+                if n < 0 {
+                    return codec(format!("{key}: Value must be non-negative: {n}"));
+                }
+                Ok(Some(n))
             }
         }
-        _ => super::unsupported("text component form"),
-    }
+    };
+    let operation = match string(required(map, "mode", "list operation")?, "mode")? {
+        "replace_all" => ListOperation::ReplaceAll,
+        "append" => ListOperation::Append,
+        "insert" => ListOperation::Insert { offset: non_negative("offset")?.unwrap_or(0) },
+        "replace_section" => {
+            let offset = non_negative("offset")?.unwrap_or(0);
+            let size = non_negative("size")?;
+            if let Some(size) = size {
+                if size > max {
+                    return codec(format!("Size value too large: {size}, max size is {max}"));
+                }
+            }
+            ListOperation::ReplaceSection { offset, size }
+        }
+        other => return codec(format!("Unknown list operation {other}")),
+    };
+    Ok(operation)
 }
 
 /// `LootItemFunctions.ROOT_CODEC`: a list is an inline `sequence`.
@@ -1022,6 +1058,49 @@ pub fn function(value: &Value) -> Result<Function> {
                 .unwrap_or(true),
         },
         "reference" => FunctionKind::Reference(id(required(map, "name", "reference")?, "name")?),
+        "set_lore" => {
+            let lines = required(map, "lore", "set_lore")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("lore: expected a list".to_owned()))?;
+            if lines.len() > 256 {
+                return codec(format!("lore: List is too long: {}, expected range [0-256]", lines.len()));
+            }
+            FunctionKind::SetLore {
+                lore: lines.iter().map(text_component).collect::<Result<Vec<_>>>()?,
+                mode: list_operation(map, 256)?,
+                entity: optional(map, "entity").map(entity_target).transpose()?,
+            }
+        }
+        "toggle_tooltips" => {
+            let mut toggles = Vec::new();
+            for (name, show) in object(required(map, "toggles", "toggle_tooltips")?, "toggles")? {
+                let name = resource_location(name, "component type")?;
+                let type_id = component_id(&name).ok_or_else(|| LootError::Codec(format!("unknown component type {name}")))?;
+                let bare = name.strip_prefix("minecraft:").unwrap_or(&name);
+                if !TOOLTIP_TOGGLES.contains(&bare) || !name.starts_with("minecraft:") {
+                    return codec(format!("Can't toggle tooltip visiblity for {name}"));
+                }
+                toggles.push((type_id, boolean(show, "toggle")?));
+            }
+            FunctionKind::ToggleTooltips(toggles)
+        }
+        "set_custom_model_data" => FunctionKind::SetCustomModelData(number_provider(required(map, "value", "set_custom_model_data")?)?),
+        "set_loot_table" => {
+            let name = id(required(map, "name", "set_loot_table")?, "name")?;
+            let seed = match optional(map, "seed") {
+                None => 0,
+                Some(value) => long(value, "seed")?,
+            };
+            let kind = id(required(map, "type", "set_loot_table")?, "type")?;
+            if !BLOCK_ENTITY_TYPES.contains(&kind.as_str()) {
+                return codec(format!("Unknown registry key in minecraft:block_entity_type: {kind}"));
+            }
+            FunctionKind::SetLootTable { name, seed }
+        }
+        "filtered" => FunctionKind::Filtered {
+            filter: item_predicate(required(map, "item_filter", "filtered")?)?,
+            modifier: Box::new(function(required(map, "modifier", "filtered")?)?),
+        },
         other => FunctionKind::Unsupported(other.to_owned()),
     };
     Ok(Function { conditions, kind })

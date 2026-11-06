@@ -425,6 +425,35 @@ def synthetic_cases():
         item("beef", functions=[{"function": "minecraft:furnace_smelt"}, const_count(3)]),
         item("potato", functions=[{"function": "minecraft:furnace_smelt"}]),
         item("apple", functions=[{"function": "minecraft:furnace_smelt"}])]}]}, 24)
+    # item modifiers that write lore, tooltip flags, model data, container loot; filtered; styled names
+    lore = lambda lines, **mode: {"function": "minecraft:set_lore", "lore": lines, **(mode or {"mode": "append"})}
+    styled = {"text": "Gold", "color": "gold", "bold": True, "extra": [{"translate": "item.x", "with": ["a", 1]}]}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stick", functions=[lore(["one", {"text": "two", "italic": False}])]),
+        item("stick", functions=[lore(["a", "b", "c"]), lore(["X"], mode="insert", offset=1)]),
+        item("stick", functions=[lore(["a", "b", "c"]), lore(["X", "Y"], mode="replace_section", offset=1, size=1)]),
+        item("stick", functions=[lore(["a", "b", "c"]), lore(["X"], mode="replace_section", offset=2)]),
+        item("stick", functions=[lore(["a", "b"]), lore(["X"], mode="insert", offset=5)]),
+        item("stick", functions=[lore(["a", "b"]), lore(["X"], mode="replace_all")]),
+        item("stick", functions=[lore(["a"]), lore([], mode="replace_all")]),
+        item("stick", functions=[lore(["line"] * 200), lore(["more"] * 100)]),
+        item("stick", functions=[lore([styled])]),
+        item("stick", functions=[{"function": "minecraft:set_name", "name": styled}]),
+        item("stick", functions=[{"function": "minecraft:set_name", "name": {"text": "", "extra": ["x", {"keybind": "key.jump"}]}, "target": "item_name"}]),
+        item("diamond_sword", functions=[{"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:attribute_modifiers": False, "minecraft:enchantments": False}}]),
+        item("diamond_sword", functions=[{"function": "minecraft:set_enchantments", "enchantments": {"minecraft:sharpness": 2}},
+                                         {"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:enchantments": False, "minecraft:unbreakable": False, "minecraft:trim": True}}]),
+        item("stick", functions=[{"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:enchantments": True}}]),
+        item("music_disc_cat", functions=[{"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:jukebox_playable": False}}]),
+        item("iron_chestplate", functions=[{"function": "minecraft:set_components", "components": {"minecraft:trim": {"material": "minecraft:gold", "pattern": "minecraft:coast"}}},
+                                           {"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:trim": False}}]),
+        item("stick", functions=[{"function": "minecraft:set_custom_model_data", "value": {"type": "minecraft:uniform", "min": 0, "max": 100}}]),
+        item("chest", functions=[{"function": "minecraft:set_loot_table", "name": "minecraft:chests/simple_dungeon", "type": "minecraft:chest"}]),
+        item("barrel", functions=[{"function": "minecraft:set_loot_table", "name": "minecraft:chests/igloo_chest", "seed": -42, "type": "minecraft:barrel"}]),
+        item("stick", functions=[{"function": "minecraft:filtered", "item_filter": {"items": "minecraft:stick"}, "modifier": const_count(7)}]),
+        item("apple", functions=[{"function": "minecraft:filtered", "item_filter": {"items": "minecraft:stick"}, "modifier": const_count(7)}]),
+        item("stick", functions=[{"function": "minecraft:filtered", "item_filter": {"count": {"min": 2}},
+                                  "modifier": [const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), lore(["filtered"])]}])]}]}, 48)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 
