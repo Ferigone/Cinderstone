@@ -1,16 +1,17 @@
-# saved-data-20261101-e31d — `DimensionDataStorage` and the first saved-data owners (WP-G2 stage 2)
+# saved-data-20261101-e31d — `DimensionDataStorage` and the saved-data owners (WP-G2 stage 2, stage 3 owners)
 
 Instance: saved-data-20261101-e31d (same session as loot-20261101-e31d and components-20261101-e31d);
 team: lane G world/persistence (no team issue). Claim:
 [issue #41 comment](https://github.com/Ferigone/Cinderstone/issues/41#issuecomment-6567879423).
 State: ready_for_integration once its pull request is green (library stage; no Main callsite)
-Base: master `2b4d209`; branch `ccr-e31d38f2-ovzstg`.
+Base: master `34ec9fb`; branch `ccr-e31d38f2-ovzstg`. Stage 3 claim: [issue #41 comment](https://github.com/Ferigone/Cinderstone/issues/41#issuecomment-6675638627).
 Capacity: one Claude Code session, no subordinate agents. Nothing continues in the background after this turn.
 
 ## Owned files
 
 New and exclusive: `src/saved_data/**`, `fixtures/saved-data-vectors.json`,
-`fixtures/saved-data-mutants.json`, `tools/saved_data_generate.py`,
+`fixtures/saved-data-mutants.json`, `fixtures/saved-data-owners-vectors.json`, `tools/saved_data_generate.py`,
+`tools/saved_data_owners_generate.py`,
 `docs/reference/saved-data.md`, this file. Shared edits: one `pub mod saved_data;` line in
 `src/lib.rs` (standing export exception); the `saved-data` and `saved-data-mutants` modes of
 `tools/loot_oracle.java` (this instance's harness); in code this instance already owns:
@@ -21,13 +22,14 @@ Main, manifests, checklist, README, roadmap, journal and deployment files.
 
 ## Delivery IDs and bounded behavior
 
-`world_storage.4` — **partial** (stage 2 and the first owners of stage 3 only). Preserves
+`world_storage.4` — **partial** (stage 2 and the `idcounts`, `random_sequences`, `command_storage_*` and `chunks` owners of stage 3 only). Preserves
 `scope_version: 1`, 100 items, **56/100 code, 51/100 Main** (unchanged; no point is added).
 Implemented: the `data/<name>.dat` envelope (gzip or plain read, gzip write, atomic replace), lazy
 load with a cache that remembers absence, dirty tracking, save-only-if-dirty, unknown files never
 rewritten, exact data-fixer handling for the two owned types, and the owners `idcounts`
-(`MapIndex`) and `random_sequences` (`RandomSequences`). Not implemented: `level.dat` field owners,
-per-dimension storage, save ordering, any other owner, any other data fixer, Main wiring. Details:
+(`MapIndex`), `random_sequences` (`RandomSequences`), `command_storage_<ns>` (`CommandStorage`, with its
+`HashMap` orders) and `chunks` (`ForcedChunksSavedData`, with fastutil `LongOpenHashSet` order). Not implemented: `level.dat` field owners,
+per-dimension storage, save ordering, raids, map data and structure-index owners, any other data fixer, Main wiring. Details:
 [saved-data.md](../../reference/saved-data.md).
 
 ## Source evidence
@@ -39,8 +41,9 @@ types (decompiled text not committed). No REA tool execution is claimed.
 
 ## Validation
 
-`cargo test --locked --lib saved_data`: 9 tests, including **60 scenarios / 195 steps** and **646
-payload mutants** against the executed original, zero disagreements. A one-off check fed six
+`cargo test --locked --lib saved_data`: 11 tests, including **60 scenarios / 195 steps** and **646
+payload mutants** against the executed original, and for command storage / forced chunks **162
+scenarios and 426 mutants** with the written NBT stream compared byte for byte (66 + 86 committed), zero disagreements. A one-off check fed six
 library-written files to the original, which loaded them with equal payloads. The oracle also
 found four fidelity bugs in the already merged `loot::sequences` (numeric `salt`, id
 canonicalization, list-of-number sources, `reset`/`clear` marking dirty); fixed here with the
