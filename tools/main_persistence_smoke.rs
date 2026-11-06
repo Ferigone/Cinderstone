@@ -97,6 +97,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         connection_rates: StdRwLock::new(BTreeMap::new()),
         fixtures: actual_fixtures,
         seed_hash: 0,
+        world_seed: Some(0),
         world: RwLock::new(world),
         save_lock: Mutex::new(()),
         player_admission: Mutex::new(()),
@@ -123,6 +124,11 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         entity_store,
         shutting_down: AtomicBool::new(false),
     });
+    let before_seed_clock = *server.clock.read().unwrap();
+    let before_seed_random = server.players.read().unwrap().item_runtime.world_random_state48();
+    server.execute_seed_command("seed", None, 4).unwrap();
+    assert_eq!(*server.clock.read().unwrap(), before_seed_clock);
+    assert_eq!(server.players.read().unwrap().item_runtime.world_random_state48(), before_seed_random);
     let profile = PlayerProfile::offline("NativeMainSave").unwrap();
     let uuid = profile.uuid;
     let position = Position {
