@@ -72,4 +72,8 @@ or performance work in Roadmap §10. #20 has no checklist row/count increment.
 completing join/place/break, equal chunk hashes and seed, and an ordered
 placement mismatch: Java emits two target stone updates; native emits one.
 The report deliberately keeps `ok: false`. Follow-up [#158](https://github.com/Ferigone/Cinderstone/issues/158)
-tracks the discrepancy. The other excluded behaviors remain untested.
+is resolved by the later [creative-reconciliation report](../validation/use-item-on-reconciliation.json).
+That scenario additionally records the clicked and occupied adjacent positions,
+verifying the correction pair and placement's ordinary update in Java's observed
+order, plus rejection without mutation. The original failed report stays unchanged.
+The other excluded behaviors remain untested.

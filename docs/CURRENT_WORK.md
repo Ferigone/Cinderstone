@@ -5,6 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Use-item-on block reconciliation (#158)
+
+[Focused protocol evidence](validation/use-item-on-reconciliation.json) now agrees
+with unchanged Java 1.21 for creative stone placement, breaking and placement
+rejected by an occupied neighbor: clicked block, adjacent block, ordinary changed
+block (when present), then acknowledgment. Duplicate updates are retained. The
+correction pair is sent only to the requesting player through the ordered block
+stream, including workstation/container use paths. Invalid hits return before
+interaction and reconciliation. The earlier failed report below remains historical.
+This closes a packet discrepancy, not full block interaction parity; survival,
+other block families and persistence are outside this check. Scope version 1 and
+the existing 56/100 code, 51/100 Main counts remain unchanged.
+
 ## End-to-end differential runner (WP-Q1)
 
 The [scenario runner](reference/parity-runner.md) compares an unchanged pinned

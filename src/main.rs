@@ -4292,49 +4292,61 @@ async fn play(
                         let hand=fields.varint()?; let target=unpack_position(fields.i64()?); let face=fields.varint()?;
                         let cursor=[fields.f32()?,fields.f32()?,fields.f32()?]; fields.bool()?;
                         let sequence=fields.varint()?; fields.finish()?;
-                        if sequence<0 || !(0..=5).contains(&face) || !cursor.iter().all(|v| v.is_finite()) { bail!("invalid placement request"); }
-                        if teleport_confirmed && server.use_native_furnace(entity_id,hand,target).await? {
+                        if !(0..=1).contains(&hand) || sequence<0 || !(0..=5).contains(&face) || !cursor.iter().all(|v| v.is_finite()) { bail!("invalid placement request"); }
+                        let direction=[geometry::Direction::Down,geometry::Direction::Up,geometry::Direction::North,geometry::Direction::South,geometry::Direction::West,geometry::Direction::East][face as usize];
+                        let hit=Vec3::new(f64::from(target.0)+f64::from(cursor[0]),f64::from(target.1)+f64::from(cursor[1]),f64::from(target.2)+f64::from(cursor[2]));
+                        // Java returns before interaction and resync for these invalid hits.
+                        if !can_reach_block(position,server.current_metadata(entity_id)?,target)
+                            || !geometry::valid_use_item_hit_location(target,hit) {
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            continue;
+                        }
+                        if teleport_confirmed && server.use_native_furnace(entity_id,hand,target).await? {
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_stonecutter(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_grindstone(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_anvil(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_loom(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_smithing_table(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_crafting_table(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
                         if teleport_confirmed && server.use_native_container(entity_id,hand,target).await? {
-                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
                         }
-                        if teleport_confirmed {
-                            let direction=[geometry::Direction::Down,geometry::Direction::Up,geometry::Direction::North,geometry::Direction::South,geometry::Direction::West,geometry::Direction::East][face as usize];
-                            let hit=Vec3::new(f64::from(target.0)+f64::from(cursor[0]),f64::from(target.1)+f64::from(cursor[1]),f64::from(target.2)+f64::from(cursor[2]));
+                        let result = if teleport_confirmed {
                             let result=server.interact_world_block(entity_id,hand,target,direction,hit).await?;
                             if result == main_world_interactions::MainInteractionResult::Applied {server.drain_world_interaction_phase().await?;}
                             if result == main_world_interactions::MainInteractionResult::Unsupported {
                                 eprintln!("{}",json!({"event":"world_interaction_unsupported","entity_id":entity_id,"target":target,"hand":hand}));
                             }
+                            result
+                        } else { main_world_interactions::MainInteractionResult::Pass };
+                        if result == main_world_interactions::MainInteractionResult::Applied {
+                            // The commit queued the correction pair before its ordinary block updates.
+                            server.acknowledge_block_changes_up_to(entity_id,sequence)?;
+                        } else {
+                            server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                         }
-                        server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                     },
                     0x39 => {
                         let hand=fields.varint()?; let sequence=fields.varint()?;
@@ -4359,6 +4371,13 @@ async fn play(
                 match change {
                     Ok(WorldUpdate::Block(change)) if loaded.contains(&(change.x.div_euclid(16), change.z.div_euclid(16))) => {
                         send(&codec, &mut writer, 0x09, encoded(|w| { w.i64(pack_position(change.x, change.y, change.z)).varint(change.state as i32); })).await?;
+                    },
+                    Ok(WorldUpdate::BlockResync{player,blocks}) if player==entity_id => {
+                        for change in blocks {
+                            send(&codec,&mut writer,0x09,encoded(|w| {
+                                w.i64(pack_position(change.x,change.y,change.z)).varint(change.state as i32);
+                            })).await?;
+                        }
                     },
                     Ok(WorldUpdate::Light{chunk,payload}) if loaded.contains(&chunk) => send(&codec,&mut writer,0x2a,payload).await?,
                     Ok(WorldUpdate::Acknowledge{player,sequence}) if player==entity_id => send(&codec,&mut writer,0x05,encoded(|w|{w.varint(sequence);})).await?,

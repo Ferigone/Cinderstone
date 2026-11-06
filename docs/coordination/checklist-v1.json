@@ -356,7 +356,7 @@
       "points": 1,
       "code_ported": true,
       "main_integrated": true,
-      "verification": "final validation deferred"
+      "verification": "Issue #158: focused Java/native creative stone place/break and occupied-neighbor rejection agree, retaining duplicate updates and acknowledgment order; docs/validation/use-item-on-reconciliation.json. Other contexts retain their existing limits."
     },
     {
       "id": "block_interactions.2",
