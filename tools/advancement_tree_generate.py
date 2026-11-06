@@ -39,6 +39,14 @@ PROGRESS = [
     {"advancement": "minecraft:husbandry/bred_all_animals", "removed": "minecraft:story/root", "granted_order": [], "progress": {"done": False}},
     {"advancement": "minecraft:adventure/adventuring_time", "removed": "minecraft:story/root", "granted_order": ["minecraft:plains"],
      "progress": {"criteria": {"minecraft:plains": "2024-01-01 00:00:00 +0000"}, "done": False}},
+    # Saved progress naming criteria the requirements no longer have (a data pack changed them).
+    {"advancement": "minecraft:adventure/kill_all_mobs", "removed": "minecraft:story/root",
+     "granted_order": ["minecraft:obsolete_a", "minecraft:zombie", "minecraft:obsolete_b", "minecraft:obsolete_c", "minecraft:obsolete_d"],
+     "progress": {"criteria": {"minecraft:obsolete_a": "2024-01-01 00:00:00 +0000", "minecraft:zombie": "2024-01-01 00:00:01 +0000",
+                               "minecraft:obsolete_b": "2024-01-01 00:00:02 +0000", "minecraft:obsolete_c": "2024-01-01 00:00:03 +0000",
+                               "minecraft:obsolete_d": "2024-01-01 00:00:04 +0000"}, "done": False}},
+    {"advancement": "minecraft:husbandry/bred_all_animals", "removed": "minecraft:story/root", "granted_order": ["minecraft:gone"],
+     "progress": {"criteria": {"minecraft:gone": "2024-01-01 00:00:00 +0000"}, "done": False}},
 ]
 
 

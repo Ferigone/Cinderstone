@@ -503,29 +503,87 @@ fn names_in_set_order(progress: &AdvancementProgress) -> Vec<String> {
     set.keys().map(str::to_owned).collect()
 }
 
-/// `AdvancementProgress.serializeToNetwork`: the criteria in the iteration order of the original's
-/// `HashMap`. The decoded criteria go through `Collectors.toMap` (a default `HashMap`), are copied
-/// into a `HashMap` sized for them, then `update` adds the remaining names in `names()` order.
-fn write_progress(writer: &mut Writer, progress: &AdvancementProgress, granted_order: &[&str]) {
-    let all: Vec<&str> = progress.criteria().map(|(name, _)| name).collect();
-    let granted: Vec<&str> = granted_order.iter().copied().filter(|name| all.contains(name)).collect();
-    let granted_hashes: Vec<i32> = granted.iter().map(|name| string_hash(name)).collect();
-    let copied: Vec<&str> = hashmap_order_by_hash(&granted_hashes, 16).into_iter().map(|i| granted[i]).collect();
-    let names = names_in_set_order(progress);
-    let mut inserted: Vec<&str> = copied.clone();
-    for name in &names {
-        if !inserted.contains(&name.as_str()) && all.contains(&name.as_str()) {
-            inserted.push(name);
+/// A `java.util.HashMap<String, _>` reduced to what decides its iteration order: buckets of keys in
+/// insertion order, the table size, the size and the resize threshold.
+struct JavaHashMap {
+    buckets: Vec<Vec<String>>,
+    size: usize,
+    threshold: usize,
+}
+
+impl JavaHashMap {
+    fn spread(key: &str) -> usize {
+        let h = string_hash(key) as u32;
+        (h ^ (h >> 16)) as usize
+    }
+
+    /// `new HashMap<>()` (no table until the first insertion makes 16 buckets) or, for a copy of
+    /// `copied` entries, a first table of `tableSizeFor(copied / 0.75 + 1)`.
+    fn with_first_table(capacity: usize) -> Self {
+        Self { buckets: vec![Vec::new(); capacity], size: 0, threshold: capacity * 3 / 4 }
+    }
+
+    fn insert(&mut self, key: &str) {
+        let mask = self.buckets.len() - 1;
+        let bucket = &mut self.buckets[Self::spread(key) & mask];
+        if bucket.iter().any(|k| k == key) {
+            return;
+        }
+        bucket.push(key.to_owned());
+        self.size += 1;
+        if self.size > self.threshold {
+            // `resize()`: the lo/hi split keeps relative order within each bucket.
+            let capacity = self.buckets.len() * 2;
+            let mut grown = vec![Vec::new(); capacity];
+            for bucket in &self.buckets {
+                for key in bucket {
+                    grown[Self::spread(key) & (capacity - 1)].push(key.clone());
+                }
+            }
+            self.buckets = grown;
+            self.threshold = capacity * 3 / 4;
         }
     }
-    let hashes: Vec<i32> = inserted.iter().map(|name| string_hash(name)).collect();
-    // `new HashMap<>(m)`: for a non-empty `m` a table of `tableSizeFor(m.size() / 0.75 + 1)`;
-    // copying an empty map allocates nothing, so the first `putIfAbsent` makes the default 16.
-    let initial = if copied.is_empty() { 16 } else { (((copied.len() as f32 / 0.75) + 1.0) as usize).next_power_of_two() };
-    let order = hashmap_order_by_hash(&hashes, initial);
-    writer.varint(inserted.len() as i32);
-    for index in order {
-        let name = inserted[index];
+
+    /// `removeIf`: the table never shrinks.
+    fn retain(&mut self, keep: impl Fn(&str) -> bool) {
+        for bucket in &mut self.buckets {
+            bucket.retain(|key| keep(key));
+        }
+        self.size = self.buckets.iter().map(Vec::len).sum();
+    }
+
+    fn keys(&self) -> impl Iterator<Item = &str> {
+        self.buckets.iter().flatten().map(String::as_str)
+    }
+}
+
+/// `AdvancementProgress.serializeToNetwork`: the criteria in the iteration order of the original's
+/// `HashMap`. The decoded criteria (`decoded_order`, obsolete ones included) go through
+/// `Collectors.toMap` (a default `HashMap`) and are copied into a `HashMap` sized for them; `update`
+/// then removes the criteria no requirement names (the table keeps its size) and adds the missing
+/// ones in `names()` order.
+fn write_progress(writer: &mut Writer, progress: &AdvancementProgress, decoded_order: &[&str]) {
+    let current: Vec<&str> = progress.criteria().map(|(name, _)| name).collect();
+    let hashes: Vec<i32> = decoded_order.iter().map(|name| string_hash(name)).collect();
+    let collected: Vec<&str> = hashmap_order_by_hash(&hashes, 16).into_iter().map(|i| decoded_order[i]).collect();
+    let mut map = if collected.is_empty() {
+        JavaHashMap::with_first_table(16)
+    } else {
+        JavaHashMap::with_first_table((((collected.len() as f32 / 0.75) + 1.0) as usize).next_power_of_two())
+    };
+    for name in &collected {
+        map.insert(name);
+    }
+    map.retain(|name| current.contains(&name));
+    for name in names_in_set_order(progress) {
+        if current.contains(&name.as_str()) {
+            map.insert(&name);
+        }
+    }
+    let order: Vec<String> = map.keys().map(str::to_owned).collect();
+    writer.varint(order.len() as i32);
+    for name in &order {
         writer.string(name);
         match progress.criterion(name).and_then(|c| c.obtained) {
             Some(seconds) => {
@@ -539,8 +597,8 @@ fn write_progress(writer: &mut Writer, progress: &AdvancementProgress, granted_o
     }
 }
 
-/// One entry of the packet's `progress` map: the advancement id, its progress, and the order in
-/// which the progress's decoded criteria were inserted (for the original's `HashMap` order).
+/// One entry of the packet's `progress` map: the advancement id, its progress, and the decoded
+/// criterion names in their file order, obsolete ones included (for the original's `HashMap` order).
 pub struct ProgressEntry<'a> {
     pub id: &'a str,
     pub progress: &'a AdvancementProgress,
