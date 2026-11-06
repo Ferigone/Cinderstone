@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "minecraft": "1.21",
+  "protocol": 767,
+  "source_commit": "559d6cb0044f5759a5e418dfdbde583d1b2c7484",
+  "main_source_sha256": "fd987e71dc339c56572c8c32f50a86b70bca406d020e123050515193d3af0026",
+  "binary_sha256": "684cde07cd70dffab70b21c6987b89ecd85ecd19879007571bae2f03bf8a6dfc",
+  "runner_sha256": "d355382e3d90dc15f72c90e612e4db49d588af9c2c2df1112f61c54c8fd24ca8",
+  "client_sha256": "43aad9a72da925c4e917fe7f4f15d6bbbbd1e03f551a78770d51d868bae7b45a",
+  "cases": [
+    {
+      "rules": {
+        "reducedDebugInfo": false,
+        "doImmediateRespawn": false
+      },
+      "java": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": false,
+          "show_death_screen": true
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": false,
+          "show_death_screen": true
+        },
+        "position_received": true
+      }
+    },
+    {
+      "rules": {
+        "reducedDebugInfo": true,
+        "doImmediateRespawn": false
+      },
+      "java": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": true,
+          "show_death_screen": true
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": true,
+          "show_death_screen": true
+        },
+        "position_received": true
+      }
+    },
+    {
+      "rules": {
+        "reducedDebugInfo": false,
+        "doImmediateRespawn": true
+      },
+      "java": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": false,
+          "show_death_screen": false
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": false,
+          "show_death_screen": false
+        },
+        "position_received": true
+      }
+    },
+    {
+      "rules": {
+        "reducedDebugInfo": true,
+        "doImmediateRespawn": true
+      },
+      "java": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": true,
+          "show_death_screen": false
+        },
+        "position_received": true
+      },
+      "native_imported": {
+        "ok": true,
+        "flags": {
+          "reduced_debug_info": true,
+          "show_death_screen": false
+        },
+        "position_received": true
+      }
+    }
+  ],
+  "scope": "PLAY login UI flags and teleport acknowledgment; no death/respawn gameplay",
+  "native_fresh": {
+    "ok": true,
+    "flags": {
+      "reduced_debug_info": false,
+      "show_death_screen": true
+    },
+    "position_received": true
+  },
+  "observed_at": "2026-11-06T14:59:18.157737+00:00",
+  "checks": {
+    "cargo check --locked --all-targets": "passed (also after rebase on 03627f2)",
+    "cargo test --locked --lib world_rules": "passed",
+    "cargo test --locked --bin mc121-rust persistence_smoke": "passed"
+  },
+  "source_commit_scope": "Native Main source; runner and client identified separately by SHA-256."
+}

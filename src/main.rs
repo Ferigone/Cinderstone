@@ -3862,6 +3862,12 @@ async fn play(
     let view = server.options.view_distance;
     let maximum_players = server.maximum_players()?;
     let enforce_secure_chat = server.current_secure_chat_enforcement();
+    let (reduced_debug_info, show_death_screen) = {
+        let players = server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
+        let rules = &players.world_context.rules;
+        (rules.boolean("reducedDebugInfo").context("missing reducedDebugInfo rule")?,
+         !rules.boolean("doImmediateRespawn").context("missing doImmediateRespawn rule")?)
+    };
     send(
         &codec,
         &mut writer,
@@ -3874,8 +3880,8 @@ async fn play(
                 .varint(maximum_players)
                 .varint(view)
                 .varint(view)
-                .bool(false)
-                .bool(true)
+                .bool(reduced_debug_info)
+                .bool(show_death_screen)
                 .bool(false)
                 .varint(server.fixtures.dimension)
                 .string("minecraft:overworld")
