@@ -1,7 +1,7 @@
-//! The two Java collections whose iteration order shows in the files the owners write: a
-//! `java.util.HashMap<String, V>` and fastutil's `LongOpenHashSet`.
+//! The Java collections whose iteration order shows in the files the owners write: a
+//! `java.util.HashMap` / `HashSet` and fastutil's `LongOpenHashSet`.
 
-use crate::components::java::hashmap_order_by_hash;
+use crate::components::java::{hashmap_order_by_hash, resource_location_hash};
 use crate::nbt::{JavaString, Tag};
 
 /// `String.hashCode()` of a Java string that may hold unpaired surrogates.
@@ -11,25 +11,60 @@ pub fn java_string_hash(text: &JavaString) -> i32 {
     })
 }
 
-/// A `java.util.HashMap<String, V>` created with `Maps.newHashMap()`: entries are kept in
+/// `hashCode()` of a key type.
+pub trait JavaHash {
+    fn java_hash(&self) -> i32;
+}
+
+impl JavaHash for JavaString {
+    fn java_hash(&self) -> i32 {
+        java_string_hash(self)
+    }
+}
+
+/// `UUID.hashCode()` of the 16 big-endian bytes: `(int) (hilo >> 32) ^ (int) hilo`, with
+/// `hilo = mostSigBits ^ leastSigBits`.
+impl JavaHash for [u8; 16] {
+    fn java_hash(&self) -> i32 {
+        let most = u64::from_be_bytes(self[..8].try_into().expect("8 bytes"));
+        let least = u64::from_be_bytes(self[8..].try_into().expect("8 bytes"));
+        let hilo = most ^ least;
+        ((hilo >> 32) as i32) ^ (hilo as i32)
+    }
+}
+
+/// A canonical `namespace:path`, hashed as `ResourceLocation.hashCode()`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceId(pub String);
+
+impl JavaHash for ResourceId {
+    fn java_hash(&self) -> i32 {
+        resource_location_hash(&self.0)
+    }
+}
+
+/// A `java.util.HashMap<K, V>` created with `Maps.newHashMap()`: entries are kept in
 /// insertion order and the iteration order is derived from the hash codes and the table size.
 ///
 /// The table starts with 16 buckets and doubles when the size passes 75%; it never shrinks, so
 /// removed entries leave a larger table behind. Buckets are never treeified here (that needs eight
 /// keys in one bucket of a table of at least 64 buckets).
 #[derive(Debug, Clone)]
-pub struct JavaHashMap<V> {
-    entries: Vec<(JavaString, V)>,
+pub struct JavaHashMap<K, V> {
+    entries: Vec<(K, V)>,
     table: usize,
 }
 
-impl<V> Default for JavaHashMap<V> {
+impl<K, V> Default for JavaHashMap<K, V> {
     fn default() -> Self {
-        Self::new()
+        Self {
+            entries: Vec::new(),
+            table: 16,
+        }
     }
 }
 
-impl<V> JavaHashMap<V> {
+impl<K: JavaHash + PartialEq, V> JavaHashMap<K, V> {
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
@@ -45,15 +80,27 @@ impl<V> JavaHashMap<V> {
         self.entries.is_empty()
     }
 
-    pub fn get(&self, key: &JavaString) -> Option<&V> {
+    /// `clear()`: the entries go, the table keeps its size.
+    pub fn clear(&mut self) {
+        self.entries.clear();
+    }
+
+    pub fn get(&self, key: &K) -> Option<&V> {
         self.entries
             .iter()
             .find(|(existing, _)| existing == key)
             .map(|(_, value)| value)
     }
 
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.entries
+            .iter_mut()
+            .find(|(existing, _)| existing == key)
+            .map(|(_, value)| value)
+    }
+
     /// `put`: replacing a value keeps the entry where it is; a new key goes last in its bucket.
-    pub fn put(&mut self, key: JavaString, value: V) -> Option<V> {
+    pub fn put(&mut self, key: K, value: V) -> Option<V> {
         if let Some(slot) = self
             .entries
             .iter_mut()
@@ -68,7 +115,7 @@ impl<V> JavaHashMap<V> {
         None
     }
 
-    pub fn remove(&mut self, key: &JavaString) -> Option<V> {
+    pub fn remove(&mut self, key: &K) -> Option<V> {
         let index = self
             .entries
             .iter()
@@ -77,15 +124,64 @@ impl<V> JavaHashMap<V> {
     }
 
     /// The entries in the order `HashMap` iterates them.
-    pub fn iter_ordered(&self) -> Vec<(&JavaString, &V)> {
+    pub fn iter_ordered(&self) -> Vec<(&K, &V)> {
         let hashes: Vec<i32> = self
             .entries
             .iter()
-            .map(|(key, _)| java_string_hash(key))
+            .map(|(key, _)| key.java_hash())
             .collect();
         hashmap_order_by_hash(&hashes, self.table)
             .into_iter()
             .map(|index| (&self.entries[index].0, &self.entries[index].1))
+            .collect()
+    }
+}
+
+/// A `java.util.HashSet<K>` (a `HashMap` with dummy values).
+#[derive(Debug, Clone)]
+pub struct JavaHashSet<K> {
+    map: JavaHashMap<K, ()>,
+}
+
+impl<K> Default for JavaHashSet<K> {
+    fn default() -> Self {
+        Self {
+            map: JavaHashMap::default(),
+        }
+    }
+}
+
+impl<K: JavaHash + PartialEq> JavaHashSet<K> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
+    pub fn contains(&self, key: &K) -> bool {
+        self.map.get(key).is_some()
+    }
+    /// `add`: true when the key was not there.
+    pub fn add(&mut self, key: K) -> bool {
+        self.map.put(key, ()).is_none()
+    }
+    /// `remove`: true when the key was there.
+    pub fn remove(&mut self, key: &K) -> bool {
+        self.map.remove(key).is_some()
+    }
+    /// `clear()`: the table keeps its size.
+    pub fn clear(&mut self) {
+        self.map.clear();
+    }
+    /// The members in `HashSet` order.
+    pub fn iter_ordered(&self) -> Vec<&K> {
+        self.map
+            .iter_ordered()
+            .into_iter()
+            .map(|(key, _)| key)
             .collect()
     }
 }
@@ -324,7 +420,7 @@ impl LongOpenHashSet {
 pub fn to_java_order(tag: &Tag) -> Tag {
     match tag {
         Tag::Compound(entries) => {
-            let mut map: JavaHashMap<Tag> = JavaHashMap::new();
+            let mut map: JavaHashMap<JavaString, Tag> = JavaHashMap::default();
             for (name, value) in entries {
                 map.put(name.clone(), to_java_order(value));
             }

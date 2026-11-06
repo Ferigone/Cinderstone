@@ -25,7 +25,7 @@ fn component_from_json(text: &str, what: &str) -> Result<Component, String> {
 
 // ---- CompoundTag accessors with the original's defaults
 
-fn get_string(tag: &Tag, key: &str) -> String {
+pub(crate) fn get_string(tag: &Tag, key: &str) -> String {
     match tag.get(key) {
         Some(Tag::String(text)) => text.to_string_lossy().into_owned(),
         _ => String::new(),
@@ -40,7 +40,7 @@ fn contains(tag: &Tag, key: &str, kind: u8) -> bool {
 }
 
 /// `NumericTag.getAsByte`: floor-narrowed, so a float like -0.5 is -1.
-fn get_boolean(tag: &Tag, key: &str) -> bool {
+pub(crate) fn get_boolean(tag: &Tag, key: &str) -> bool {
     let Some(found) = tag.get(key) else {
         return false;
     };
@@ -54,7 +54,7 @@ fn get_boolean(tag: &Tag, key: &str) -> bool {
     }
 }
 
-fn get_int(tag: &Tag, key: &str) -> i32 {
+pub(crate) fn get_int(tag: &Tag, key: &str) -> i32 {
     tag.get(key).and_then(numeric_as_int).unwrap_or(0)
 }
 
