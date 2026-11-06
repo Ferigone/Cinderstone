@@ -1282,6 +1282,91 @@ public class loot_oracle {
         Files.writeString(Path.of(a[1]), GSON.toJson(all));
         break;
       }
+      case "packs": {
+        // The original PackRepository over a world `datapacks` folder prepared on disk.
+        // Input: JSON array of {dir, steps:[{op:"select",ids}|{op:"add",id}|{op:"remove",id}|{op:"reload"}]};
+        // output per case: the discovered packs and the selection after every step.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject scenario = e.getAsJsonObject();
+          net.minecraft.world.level.validation.DirectoryValidator validator = new net.minecraft.world.level.validation.DirectoryValidator(p -> true);
+          PackRepository repository = new PackRepository(
+              new net.minecraft.server.packs.repository.ServerPacksSource(validator),
+              new net.minecraft.server.packs.repository.FolderRepositorySource(Path.of(scenario.get("dir").getAsString()), PackType.SERVER_DATA, net.minecraft.server.packs.repository.PackSource.WORLD, validator));
+          repository.reload();
+          JsonObject result = new JsonObject();
+          JsonArray available = new JsonArray();
+          for (Pack pack : repository.getAvailablePacks()) {
+            JsonObject j = new JsonObject();
+            j.addProperty("id", pack.getId());
+            j.addProperty("compatibility", pack.getCompatibility().name());
+            j.addProperty("description", net.minecraft.network.chat.Component.Serializer.toJson(pack.getDescription(), access));
+            j.addProperty("title", net.minecraft.network.chat.Component.Serializer.toJson(pack.getTitle(), access));
+            JsonArray features = new JsonArray();
+            new TreeSet<>(net.minecraft.world.flag.FeatureFlags.REGISTRY.toNames(pack.getRequestedFeatures()).stream().map(Object::toString).toList()).forEach(features::add);
+            j.add("features", features);
+            j.addProperty("required", pack.isRequired());
+            j.addProperty("fixed", pack.isFixedPosition());
+            j.addProperty("position", pack.getDefaultPosition().name());
+            j.addProperty("auto", pack.getPackSource().shouldAddAutomatically());
+            available.add(j);
+          }
+          result.add("available", available);
+          JsonArray selectedAfter = new JsonArray();
+          for (String id : repository.getSelectedIds()) selectedAfter.add(id);
+          result.add("selected", selectedAfter);
+          JsonArray steps = new JsonArray();
+          for (JsonElement stepElement : scenario.getAsJsonArray("steps")) {
+            JsonObject step = stepElement.getAsJsonObject();
+            JsonObject r = new JsonObject();
+            switch (step.get("op").getAsString()) {
+              case "select": { List<String> ids = new ArrayList<>(); for (JsonElement id : step.getAsJsonArray("ids")) ids.add(id.getAsString()); repository.setSelected(ids); break; }
+              case "add": r.addProperty("ret", repository.addPack(step.get("id").getAsString())); break;
+              case "remove": r.addProperty("ret", repository.removePack(step.get("id").getAsString())); break;
+              case "reload": repository.reload(); break;
+              default: throw new IllegalArgumentException(step.get("op").getAsString());
+            }
+            JsonArray selected = new JsonArray();
+            for (Pack pack : repository.getSelectedPacks()) selected.add(pack.getId());
+            r.add("selected", selected);
+            JsonArray features = new JsonArray();
+            new TreeSet<>(net.minecraft.world.flag.FeatureFlags.REGISTRY.toNames(repository.getRequestedFeatureFlags()).stream().map(Object::toString).toList()).forEach(features::add);
+            r.add("features", features);
+            steps.add(r);
+          }
+          result.add("steps", steps);
+          outArr.add(result);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("packs=" + in.size());
+        break;
+      }
+      case "world-data-config": {
+        // WorldDataConfiguration.CODEC over NbtOps as LevelStorageSource.readDataConfig reads it
+        // (a failure is DEFAULT) and as PrimaryLevelData writes it. Input: JSON array of SNBT
+        // compounds; every one and its one-step mutants are decoded. Output rows: {payload, encoded}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        LinkedHashMap<String, Tag> payloads = new LinkedHashMap<>();
+        for (JsonElement e : in) {
+          Tag base = new TagParser(new com.mojang.brigadier.StringReader(e.getAsString())).readValue();
+          payloads.putIfAbsent(tagHex(base), base);
+          for (Tag mutant : nbtMutants(base)) payloads.putIfAbsent(tagHex(mutant), mutant);
+        }
+        JsonArray outArr = new JsonArray();
+        for (Map.Entry<String, Tag> payload : payloads.entrySet()) {
+          net.minecraft.world.level.WorldDataConfiguration config = net.minecraft.world.level.WorldDataConfiguration.CODEC
+              .parse(NbtOps.INSTANCE, payload.getValue()).resultOrPartial(m -> {}).orElse(net.minecraft.world.level.WorldDataConfiguration.DEFAULT);
+          Tag encoded = net.minecraft.world.level.WorldDataConfiguration.CODEC.encodeStart(NbtOps.INSTANCE, config).getOrThrow(m -> new IllegalStateException(m));
+          JsonObject r = new JsonObject();
+          r.addProperty("payload", payload.getKey());
+          r.addProperty("encoded", tagHex(encoded));
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("world-data-config=" + outArr.size());
+        break;
+      }
       case "export-facts": {
         Files.writeString(Path.of(a[1]), GSON.toJson(exportFacts()));
         break;
