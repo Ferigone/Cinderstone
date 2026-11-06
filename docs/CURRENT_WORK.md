@@ -5,6 +5,18 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Read-only seed command connected (#179)
+
+Console and operator-level2 players can use `/seed` through Brigadier. It reads
+an explicit saved raw seed or the declared native-flat seed0 (only with that
+profile's matching hash), never returns the biome hash, and refuses unknown
+provenance. Feedback preserves Java's green bracketed copy/hover/insertion
+component and is private to its source. The [protocol comparison](validation/seed-command-runtime.json)
+checks a full64-bit negative imported seed, native0, denial, another operator,
+feedback suppression, console execution and restart. [Details](reference/seed-command.md).
+Queries change no clock or level RNG. Full WP-E3 remains open; fixed scope1/100
+and58code/53Main counts are unchanged. Hosted verification remains under #19.
+
 ## Weather commands connected (#177)
 
 Player and console `/weather clear|rain|thunder [duration]` now use Brigadier,

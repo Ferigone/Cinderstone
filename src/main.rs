@@ -78,6 +78,7 @@ mod main_chunk_runtime;
 mod main_border_login;
 mod main_time_command;
 mod main_weather_command;
+mod main_seed_command;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -508,6 +509,7 @@ struct Server {
     fixtures: Fixtures,
     seed_hash: i64,
     world: RwLock<WorldBackend>,
+    world_seed: Option<i64>,
     save_lock: Mutex<()>,
     player_admission: Mutex<()>,
     administration: StdRwLock<main_administration::Administration>,
@@ -3038,6 +3040,7 @@ async fn main() -> Result<()> {
             .unwrap_or_default(),
         0,
     );
+    let world_seed = main_seed_command::world_seed(level.as_ref(), fixtures.seed_hash);
     let seed_hash = level
         .as_ref()
         .map(LevelData::seed)
@@ -3164,6 +3167,7 @@ async fn main() -> Result<()> {
         fixtures,
         seed_hash,
         world: RwLock::new(world),
+        world_seed,
         save_lock: Mutex::new(()),
         player_admission: Mutex::new(()),
         administration: StdRwLock::new(administration),

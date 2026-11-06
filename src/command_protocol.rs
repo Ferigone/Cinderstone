@@ -290,6 +290,7 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let trigger=tree.literal(0,"trigger",false);
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
+        tree.literal(0, "seed", true);
         let weather = tree.literal(0, "weather", false);
         for kind in ["clear", "rain", "thunder"] {
             let branch = tree.literal(weather, kind, true);
@@ -317,6 +318,15 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "seed" || input.starts_with("seed ") {
+        if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
+        let suggestions = crate::commands::seed_command::suggestions(input, permission_level)
+            .map_err(|error| anyhow::anyhow!("seed suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "weather" || input.starts_with("weather ") {
         if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
         let suggestions = crate::commands::weather_command::suggestions(input, permission_level)
@@ -473,6 +483,10 @@ fn administration_suggestions_with_time(
     if include_time && permission_level >= 2 && last_separator.is_none()
         && "weather".starts_with(&lowered) && remaining != "weather" {
         matches.push("weather".to_owned());
+    }
+    if include_time && permission_level >= 2 && last_separator.is_none()
+        && "seed".starts_with(&lowered) && remaining != "seed" {
+        matches.push("seed".to_owned());
     }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.
