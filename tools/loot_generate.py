@@ -558,6 +558,23 @@ def synthetic_cases():
         item("stick", functions=[ccd({"type": "minecraft:context", "target": "attacker"}, [{"source": "x[]", "target": "y", "op": "append"},
                                                                                        {"source": "{k:1}", "target": "z{m:2}", "op": "merge"}])]),
         item("stick", functions=[ccd("attacking_player", [])])]}]}, 6)
+    # bundles: fractional weights, merging, nested bundles, bees, shulker boxes, overflow
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("bundle", functions=[contents("minecraft:bundle_contents", [
+            item("apple", functions=[const_count({"type": "minecraft:uniform", "min": 1, "max": 70})]),
+            item("ender_pearl", functions=[const_count(10)]),
+            item("apple", functions=[const_count(5)]),
+            item("diamond_sword"),
+            item("white_shulker_box"),
+            item("bee_nest"),
+            item("bundle", functions=[contents("minecraft:bundle_contents", [item("stick", functions=[const_count(8)])])]),
+            item("arrow", functions=[const_count(64)])])]),
+        item("bundle", functions=[contents("minecraft:bundle_contents", [item("ender_pearl", functions=[const_count(16)]), item("stick")])]),
+        item("bundle", functions=[contents("minecraft:bundle_contents", [item("iron_sword", functions=[{"function": "minecraft:set_damage", "damage": 0.5}]),
+                                                                        item("iron_sword", functions=[{"function": "minecraft:set_damage", "damage": 0.5}]),
+                                                                        item("iron_sword"), item("iron_sword")])]),
+        item("bundle", functions=[contents("minecraft:bundle_contents", [item("apple", functions=[const_count(20)]), item("bread", functions=[const_count(20)])]),
+                                  modify("minecraft:bundle_contents", const_count({"type": "minecraft:uniform", "min": 0, "max": 64}))])]}]}, 36)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 
