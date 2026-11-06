@@ -1672,6 +1672,101 @@ public class loot_oracle {
         System.out.println("trigger-match=" + outArr.size());
         break;
       }
+      case "functions": {
+        // CommandFunction.fromLines over the real 1.21 command dispatcher (a recording copy that
+        // notes every command string it parses and whether parseCommand would accept it), then
+        // MacroFunction.instantiate for each given argument compound. Input [{lines, arguments}].
+        com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> real = res.getCommands().getDispatcher();
+        java.util.LinkedHashMap<String, Boolean> parsed = new java.util.LinkedHashMap<>();
+        net.minecraft.commands.CommandSourceStack source = new net.minecraft.commands.CommandSourceStack(net.minecraft.commands.CommandSource.NULL,
+            Vec3.ZERO, net.minecraft.world.phys.Vec2.ZERO, null, 2, "", net.minecraft.network.chat.CommonComponents.EMPTY, null, null);
+        com.mojang.brigadier.CommandDispatcher<net.minecraft.commands.CommandSourceStack> recording = new com.mojang.brigadier.CommandDispatcher<>(real.getRoot()) {
+          @Override
+          public com.mojang.brigadier.ParseResults<net.minecraft.commands.CommandSourceStack> parse(com.mojang.brigadier.StringReader reader, net.minecraft.commands.CommandSourceStack s) {
+            String text = reader.getString();
+            com.mojang.brigadier.ParseResults<net.minecraft.commands.CommandSourceStack> r = super.parse(reader, s);
+            boolean ok;
+            try {
+              Commands.validateParseResults(r);
+              ok = com.mojang.brigadier.context.ContextChain.tryFlatten(r.getContext().build(text)).isPresent();
+            } catch (Exception ex) { ok = false; }
+            parsed.put(text.substring(reader.getCursor() <= text.length() ? 0 : 0), ok);
+            return r;
+          }
+        };
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray()) {
+          JsonObject spec = e.getAsJsonObject();
+          JsonObject r = new JsonObject();
+          List<String> lines = new ArrayList<>();
+          for (JsonElement l : spec.getAsJsonArray("lines")) lines.add(l.getAsString());
+          try {
+            Object fn = net.minecraft.commands.functions.CommandFunction.fromLines(ResourceLocation.parse("test:f"), recording, source, lines);
+            r.addProperty("ok", true);
+            java.util.function.Function<Object, String> input = action -> {
+              try { Field f = net.minecraft.commands.execution.tasks.BuildContexts.class.getDeclaredField("commandInput"); f.setAccessible(true); return (String) f.get(action); }
+              catch (Exception ex) { throw new RuntimeException(ex); }
+            };
+            if (fn instanceof net.minecraft.commands.functions.PlainTextFunction<?> plain) {
+              r.addProperty("kind", "plain");
+              JsonArray cmds = new JsonArray();
+              for (Object action : plain.entries()) cmds.add(input.apply(action));
+              r.add("commands", cmds);
+            } else {
+              r.addProperty("kind", "macro");
+              Field pf = fn.getClass().getDeclaredField("parameters"); pf.setAccessible(true);
+              JsonArray params = new JsonArray();
+              for (Object p2 : (List<?>) pf.get(fn)) params.add((String) p2);
+              r.add("parameters", params);
+              Field ef = fn.getClass().getDeclaredField("entries"); ef.setAccessible(true);
+              JsonArray entries = new JsonArray();
+              for (Object entry : (List<?>) ef.get(fn)) {
+                JsonObject o = new JsonObject();
+                if (entry.getClass().getSimpleName().equals("PlainTextEntry")) {
+                  Field cf = entry.getClass().getDeclaredField("compiledAction"); cf.setAccessible(true);
+                  o.addProperty("plain", input.apply(cf.get(entry)));
+                } else {
+                  Field tf = entry.getClass().getDeclaredField("template"); tf.setAccessible(true);
+                  net.minecraft.commands.functions.StringTemplate t = (net.minecraft.commands.functions.StringTemplate) tf.get(entry);
+                  JsonArray seg = new JsonArray(); for (String x : t.segments()) seg.add(x); o.add("segments", seg);
+                  JsonArray var = new JsonArray(); for (String x : t.variables()) var.add(x); o.add("variables", var);
+                  Field ixf = entry.getClass().getDeclaredField("parameters"); ixf.setAccessible(true);
+                  JsonArray idx = new JsonArray(); for (int x : (it.unimi.dsi.fastutil.ints.IntList) ixf.get(entry)) idx.add(x); o.add("indices", idx);
+                }
+                entries.add(o);
+              }
+              r.add("entries", entries);
+              JsonArray instances = new JsonArray();
+              if (spec.has("arguments")) for (JsonElement arg : spec.getAsJsonArray("arguments")) {
+                JsonObject inst = new JsonObject();
+                try {
+                  CompoundTag args = arg.isJsonNull() ? null : net.minecraft.nbt.TagParser.parseTag(arg.getAsString());
+                  Object f2 = ((net.minecraft.commands.functions.CommandFunction<net.minecraft.commands.CommandSourceStack>) fn).instantiate(args, recording);
+                  JsonArray cmds = new JsonArray();
+                  for (Object action : ((net.minecraft.commands.functions.InstantiatedFunction<?>) f2).entries()) cmds.add(input.apply(action));
+                  inst.add("commands", cmds);
+                } catch (net.minecraft.commands.FunctionInstantiationException ex) {
+                  inst.addProperty("error", ex.messageComponent().getString());
+                }
+                instances.add(inst);
+              }
+              r.add("instances", instances);
+            }
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + t.getMessage());
+          }
+          outArr.add(r);
+        }
+        JsonObject out = new JsonObject();
+        out.add("results", outArr);
+        JsonObject p2 = new JsonObject();
+        for (var en : parsed.entrySet()) p2.addProperty(en.getKey(), en.getValue());
+        out.add("parsed", p2);
+        Files.writeString(Path.of(a[2]), GSON.toJson(out));
+        System.out.println("functions=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the
