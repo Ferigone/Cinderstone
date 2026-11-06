@@ -5,6 +5,17 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Weather commands connected (#177)
+
+Player and console `/weather clear|rain|thunder [duration]` now use Brigadier,
+permission level 2, the retained weather timers and the actual level RNG. Java's
+TimeArgument minimum/units, default sampling and command result are preserved;
+the normal tick emits interpolated weather changes. The [runtime comparison](validation/weather-command-runtime.json)
+matches ordered Java/native weather packets, feedback and suggestions, with
+non-op denial and imported/native restart checks. [Scope and reproduction](reference/weather-command.md).
+Lightning/precipitation mechanics and the full command catalog remain open;
+`commands_data.1` stays partial. Scope1/100 and counts58code/53Main are unchanged.
+
 ## Recipe unlocks through vanilla recipe advancements — `crafting.4` closed
 
 The shipped `recipes/**` advancements (1,276 and their root) are loaded and

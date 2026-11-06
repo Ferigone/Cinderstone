@@ -165,12 +165,16 @@ impl Server {
         }
         let time_line = if source_id.is_none() { line.strip_prefix('/').unwrap_or(line) } else { line };
         let is_time = time_line.split_whitespace().next() == Some("time");
-        let outcome = if is_time {
-            self.execute_time_command(time_line, source.permission_level)?
+        let is_weather = time_line.split_whitespace().next() == Some("weather");
+        let outcome = if is_time || is_weather {
+            drop(owner);
+            if is_time { self.execute_time_command(time_line, source.permission_level)? }
+            else { self.execute_weather_command(time_line, source.permission_level)? }
         } else {
-            owner.execute_line(line, &source, source_id, &online, wall_time_ms()?)
+            let outcome = owner.execute_line(line, &source, source_id, &online, wall_time_ms()?);
+            drop(owner);
+            outcome
         };
-        drop(owner);
         let (send_feedback, log_admin) = {
             let players = self.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
             (players.world_context.rules.boolean("sendCommandFeedback").context("missing sendCommandFeedback")?,
@@ -195,7 +199,7 @@ impl Server {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
                     } else if send_feedback {
-                        let component = if is_time { main_time_command::feedback_component(&message)? } else { message.network_component()? };
+                        let component = if is_time || is_weather { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
