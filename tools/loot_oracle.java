@@ -1198,6 +1198,90 @@ public class loot_oracle {
         System.out.println("scoreboard-load-mutants=" + outArr.size());
         break;
       }
+      case "tags": {
+        // The original TagLoader over folder packs on disk. Input: JSON array of scenarios
+        // {known:[ids], packs:[{id, files:{"ns:path":text}}]}; output per scenario:
+        // {tags:{id:[values in collection order]}} (ids sorted).
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject scenario = e.getAsJsonObject();
+          Path root = Files.createTempDirectory("tags-oracle");
+          try {
+            List<PackResources> packs = new ArrayList<>();
+            for (JsonElement packElement : scenario.getAsJsonArray("packs")) {
+              JsonObject pack = packElement.getAsJsonObject();
+              Path dir = root.resolve(pack.get("id").getAsString());
+              Files.createDirectories(dir);
+              for (Map.Entry<String, JsonElement> file : pack.getAsJsonObject("files").entrySet()) {
+                String[] parts = file.getKey().split(":", 2);
+                Path target = dir.resolve("data").resolve(parts[0]).resolve("tags/test").resolve(parts[1] + ".json");
+                Files.createDirectories(target.getParent());
+                Files.writeString(target, file.getValue().getAsString());
+              }
+              packs.add(new PathPackResources(new PackLocationInfo(pack.get("id").getAsString(), net.minecraft.network.chat.Component.literal(pack.get("id").getAsString()), PackSource.WORLD, Optional.empty()), dir));
+            }
+            Set<String> known = new HashSet<>();
+            for (JsonElement k : scenario.getAsJsonArray("known")) known.add(k.getAsString());
+            MultiPackResourceManager manager = new MultiPackResourceManager(PackType.SERVER_DATA, packs);
+            net.minecraft.tags.TagLoader<String> loader = new net.minecraft.tags.TagLoader<>(
+                id -> known.contains(id.toString()) ? Optional.of(id.toString()) : Optional.empty(), "tags/test");
+            Map<ResourceLocation, Collection<String>> built;
+            try {
+              built = loader.loadAndBuild(manager);
+            } catch (StackOverflowError overflow) {
+              // DependencySorter.isCyclic recurses forever once a tag depends on itself.
+              JsonObject failed = new JsonObject();
+              failed.addProperty("error", "StackOverflowError");
+              outArr.add(failed);
+              manager.close();
+              continue;
+            }
+            TreeMap<String, JsonArray> sorted = new TreeMap<>();
+            for (Map.Entry<ResourceLocation, Collection<String>> entry : built.entrySet()) {
+              JsonArray values = new JsonArray();
+              for (String v : entry.getValue()) values.add(v);
+              sorted.put(entry.getKey().toString(), values);
+            }
+            JsonObject r = new JsonObject();
+            JsonObject tags = new JsonObject();
+            for (Map.Entry<String, JsonArray> entry : sorted.entrySet()) tags.add(entry.getKey(), entry.getValue());
+            r.add("tags", tags);
+            outArr.add(r);
+            manager.close();
+          } finally {
+            try (var walk = Files.walk(root)) { walk.sorted(Comparator.reverseOrder()).forEach(path -> path.toFile().delete()); }
+          }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("tags=" + in.size());
+        break;
+      }
+      case "export-tags": {
+        // Every shipped `tags/**` JSON of the vanilla data pack, by directory: {dir:{"ns:path":text}}.
+        PackRepository repo = ServerPacksSource.createVanillaTrustedRepository();
+        repo.reload();
+        List<PackResources> packs = repo.getAvailablePacks().stream().filter(p -> p.getId().equals("vanilla")).map(Pack::open).toList();
+        MultiPackResourceManager manager = new MultiPackResourceManager(PackType.SERVER_DATA, packs);
+        JsonObject all = new JsonObject();
+        net.minecraft.resources.FileToIdConverter converter = net.minecraft.resources.FileToIdConverter.json("tags");
+        TreeMap<String, TreeMap<String, String>> byDirectory = new TreeMap<>();
+        for (Map.Entry<ResourceLocation, Resource> entry : converter.listMatchingResources(manager).entrySet()) {
+          String id = converter.fileToId(entry.getKey()).getPath();
+          int slash = id.indexOf('/');
+          if (slash < 0) continue;
+          String text;
+          try (java.io.InputStream stream = entry.getValue().open()) { text = new String(stream.readAllBytes(), StandardCharsets.UTF_8); }
+          byDirectory.computeIfAbsent(id.substring(0, slash), k -> new TreeMap<>()).put(entry.getKey().getNamespace() + ":" + id.substring(slash + 1), text);
+        }
+        for (Map.Entry<String, TreeMap<String, String>> directory : byDirectory.entrySet()) {
+          JsonObject files = new JsonObject();
+          for (Map.Entry<String, String> file : directory.getValue().entrySet()) files.addProperty(file.getKey(), file.getValue());
+          all.add(directory.getKey(), files);
+        }
+        Files.writeString(Path.of(a[1]), GSON.toJson(all));
+        break;
+      }
       case "export-facts": {
         Files.writeString(Path.of(a[1]), GSON.toJson(exportFacts()));
         break;
