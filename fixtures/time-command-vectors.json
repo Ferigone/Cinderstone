@@ -1,0 +1,305 @@
+[
+  {
+    "permission": 0,
+    "packet_hex": "01000000",
+    "cases": [
+      {
+        "input": "time set day",
+        "cursor": 0,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      }
+    ]
+  },
+  {
+    "permission": 1,
+    "packet_hex": "01000000",
+    "cases": []
+  },
+  {
+    "permission": 2,
+    "packet_hex": "0d00010101030203040474696d65010505060708090373657401010a0361646401030b0c050571756572790500036461790500046e6f6f6e0500056e696768740500086d69646e6967687406000474696d652a0000000006000474696d652a0000000005000764617974696d6505000867616d6574696d6500",
+    "cases": [
+      {
+        "input": "",
+        "cursor": 0,
+        "remaining": false,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": [
+            "time"
+          ]
+        }
+      },
+      {
+        "input": "t",
+        "cursor": 0,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 1,
+          "texts": [
+            "time"
+          ]
+        }
+      },
+      {
+        "input": "time",
+        "cursor": 4,
+        "remaining": false,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time ",
+        "cursor": 4,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 5,
+          "end": 5,
+          "texts": [
+            "add",
+            "query",
+            "set"
+          ]
+        }
+      },
+      {
+        "input": "time set",
+        "cursor": 8,
+        "remaining": false,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set ",
+        "cursor": 8,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 9,
+          "end": 9,
+          "texts": [
+            "day",
+            "midnight",
+            "night",
+            "noon"
+          ]
+        }
+      },
+      {
+        "input": "time set day",
+        "cursor": 12,
+        "remaining": false,
+        "executable": true,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set 2d",
+        "cursor": 11,
+        "remaining": false,
+        "executable": true,
+        "ticks": 48000,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set 1.5s",
+        "cursor": 13,
+        "remaining": false,
+        "executable": true,
+        "ticks": 30,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time add 0.5s",
+        "cursor": 13,
+        "remaining": false,
+        "executable": true,
+        "ticks": 10,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time query ",
+        "cursor": 10,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 11,
+          "end": 11,
+          "texts": [
+            "day",
+            "daytime",
+            "gametime"
+          ]
+        }
+      },
+      {
+        "input": "time query day",
+        "cursor": 14,
+        "remaining": false,
+        "executable": true,
+        "suggestions": {
+          "start": 11,
+          "end": 14,
+          "texts": [
+            "daytime"
+          ]
+        }
+      },
+      {
+        "input": "time query daytime",
+        "cursor": 18,
+        "remaining": false,
+        "executable": true,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time query gametime",
+        "cursor": 19,
+        "remaining": false,
+        "executable": true,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set -1",
+        "cursor": 9,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 11,
+          "end": 11,
+          "texts": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      },
+      {
+        "input": "time set 1q",
+        "cursor": 9,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set x",
+        "cursor": 9,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time query foo",
+        "cursor": 11,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time set 1 ",
+        "cursor": 10,
+        "remaining": true,
+        "executable": true,
+        "ticks": 1,
+        "suggestions": {
+          "start": 0,
+          "end": 0,
+          "texts": []
+        }
+      },
+      {
+        "input": "time add 12",
+        "cursor": 11,
+        "remaining": false,
+        "executable": true,
+        "ticks": 12,
+        "suggestions": {
+          "start": 11,
+          "end": 11,
+          "texts": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      },
+      {
+        "input": "time add 12D",
+        "cursor": 9,
+        "remaining": true,
+        "executable": false,
+        "suggestions": {
+          "start": 11,
+          "end": 12,
+          "texts": [
+            "d"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "permission": 3,
+    "packet_hex": "0d00010101030203040474696d65010505060708090373657401010a0361646401030b0c050571756572790500036461790500046e6f6f6e0500056e696768740500086d69646e6967687406000474696d652a0000000006000474696d652a0000000005000764617974696d6505000867616d6574696d6500",
+    "cases": []
+  },
+  {
+    "permission": 4,
+    "packet_hex": "0d00010101030203040474696d65010505060708090373657401010a0361646401030b0c050571756572790500036461790500046e6f6f6e0500056e696768740500086d69646e6967687406000474696d652a0000000006000474696d652a0000000005000764617974696d6505000867616d6574696d6500",
+    "cases": []
+  }
+]

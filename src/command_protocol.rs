@@ -92,6 +92,7 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 
 #[derive(Clone, Copy)]
 enum Parser {
+    Time,
     GreedyString,
     Word,
     Players,
@@ -196,6 +197,7 @@ impl Tree {
                 } => {
                     output.string(name);
                     match parser {
+                        Parser::Time => { output.varint(42).i32(0); },
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -288,12 +290,39 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let trigger=tree.literal(0,"trigger",false);
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
+        let time = tree.literal(0, "time", false);
+        let set = tree.literal(time, "set", false);
+        for name in ["day", "noon", "night", "midnight"] { tree.literal(set, name, true); }
+        tree.argument(set, "time", Parser::Time, false);
+        let add = tree.literal(time, "add", false);
+        tree.argument(add, "time", Parser::Time, false);
+        let query = tree.literal(time, "query", false);
+        for name in ["daytime", "gametime", "day"] { tree.literal(query, name, true); }
         for root in ["scoreboard","team"] {
             let root=tree.literal(0,root,false);
             tree.argument(root,"arguments",Parser::GreedyString,false);
         }
     }
     tree.packet()
+}
+
+/// The time branch uses the actual dispatcher; administration keeps its existing route.
+pub fn native_command_suggestions(
+    request: &SuggestionRequest, permission_level: u8, context: &SuggestionContext<'_>,
+) -> Result<Packet> {
+    let leading = usize::from(request.command.starts_with('/'));
+    let input = &request.command[leading..];
+    if input == "time" || input.starts_with("time ") ||
+        (!input.is_empty() && "time".starts_with(&input.to_lowercase())) {
+        if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
+        let suggestions = crate::commands::time_command::suggestions(input, permission_level)
+            .map_err(|error| anyhow::anyhow!("time suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
+    administration_suggestions_with_time(request, permission_level, context, true)
 }
 
 /// Snapshot supplied by the real access-list/player owners. In particular,
@@ -349,6 +378,15 @@ pub fn administration_suggestions(
     request: &SuggestionRequest,
     permission_level: u8,
     context: &SuggestionContext<'_>,
+) -> Result<Packet> {
+    administration_suggestions_with_time(request, permission_level, context, false)
+}
+
+fn administration_suggestions_with_time(
+    request: &SuggestionRequest,
+    permission_level: u8,
+    context: &SuggestionContext<'_>,
+    include_time: bool,
 ) -> Result<Packet> {
     ensure!(
         request.command.encode_utf16().count() <= 32500,
@@ -413,6 +451,10 @@ pub fn administration_suggestions(
         if name != remaining && matches_substr(&lowered, &name.to_lowercase()) {
             matches.push(name.clone());
         }
+    }
+    if include_time && permission_level >= 2 && last_separator.is_none()
+        && "time".starts_with(&lowered) && remaining != "time" {
+        matches.push("time".to_owned());
     }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.

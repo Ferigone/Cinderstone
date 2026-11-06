@@ -1,0 +1,682 @@
+{
+  "ok": true,
+  "native_commit": "a3d64bc4b448fb22cb36177031a1f5bf11aa641d",
+  "native_src_tree": "85807aef78fdcbe9cc57095730e74c58de593d32",
+  "native_binary_sha256": "89957b7b9b11fb3b702a3705101611f54b878c374a331a63d1e439ab0900c215",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "time",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time add",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time add time",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 0
+          }
+        },
+        {
+          "path": "time query",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query day",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query daytime",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query gametime",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set day",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set midnight",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set night",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set noon",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set time",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 0
+          }
+        }
+      ],
+      "success": [
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              0
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000000800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set day",
+          "component": {
+            "with": [
+              1000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000003e80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              1000
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000003e80800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set noon",
+          "component": {
+            "with": [
+              6000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000017700800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set night",
+          "component": {
+            "with": [
+              13000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000032c80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set midnight",
+          "component": {
+            "with": [
+              18000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000046500800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set 2d",
+          "component": {
+            "with": [
+              48000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000bb800800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query day",
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              0
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000000800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time add 1.5s",
+          "component": {
+            "with": [
+              30
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000001e0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time add 0.5d",
+          "component": {
+            "with": [
+              12030
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b0004776974680000000100002efe0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query day",
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              12030
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b0004776974680000000100002efe0800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set 2147483647t",
+          "component": {
+            "with": [
+              2147483647
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000017fffffff0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              11647
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b0004776974680000000100002d7f0800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set 7s",
+          "component": {
+            "with": [
+              140
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000008c0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time add 0.125s",
+          "component": {
+            "with": [
+              143
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000008f0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set night",
+          "component": {
+            "with": [
+              13000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000032c80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "time ",
+          "start": 5,
+          "length": 0,
+          "matches": [
+            "add",
+            "query",
+            "set"
+          ]
+        },
+        {
+          "text": "time set ",
+          "start": 9,
+          "length": 0,
+          "matches": [
+            "day",
+            "midnight",
+            "night",
+            "noon"
+          ]
+        },
+        {
+          "text": "time set 1",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        },
+        {
+          "text": "time query ",
+          "start": 11,
+          "length": 0,
+          "matches": [
+            "day",
+            "daytime",
+            "gametime"
+          ]
+        },
+        {
+          "text": "/time add 12",
+          "start": 12,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_mutation": true,
+      "gametime_query": true,
+      "client_night": true,
+      "console": true,
+      "saved_day_time": 13000,
+      "restart": true
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "time",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time add",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time add time",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 0
+          }
+        },
+        {
+          "path": "time query",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query day",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query daytime",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time query gametime",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set day",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set midnight",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set night",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set noon",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "time set time",
+          "executable": true,
+          "parser": "minecraft:time",
+          "properties": {
+            "min": 0
+          }
+        }
+      ],
+      "success": [
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              0
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000000800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set day",
+          "component": {
+            "with": [
+              1000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000003e80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              1000
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000003e80800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set noon",
+          "component": {
+            "with": [
+              6000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000017700800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set night",
+          "component": {
+            "with": [
+              13000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000032c80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set midnight",
+          "component": {
+            "with": [
+              18000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000046500800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set 2d",
+          "component": {
+            "with": [
+              48000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000bb800800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query day",
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              0
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000000800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time add 1.5s",
+          "component": {
+            "with": [
+              30
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000001e0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time add 0.5d",
+          "component": {
+            "with": [
+              12030
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b0004776974680000000100002efe0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query day",
+          "component": {
+            "with": [
+              2
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b00047769746800000001000000020800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              12030
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b0004776974680000000100002efe0800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set 2147483647t",
+          "component": {
+            "with": [
+              2147483647
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000017fffffff0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time query daytime",
+          "component": {
+            "with": [
+              11647
+            ],
+            "translate": "commands.time.query"
+          },
+          "hex": "0a0b0004776974680000000100002d7f0800097472616e736c6174650013636f6d6d616e64732e74696d652e71756572790000"
+        },
+        {
+          "command": "time set 7s",
+          "component": {
+            "with": [
+              140
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000008c0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time add 0.125s",
+          "component": {
+            "with": [
+              143
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b000477697468000000010000008f0800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        },
+        {
+          "command": "time set night",
+          "component": {
+            "with": [
+              13000
+            ],
+            "translate": "commands.time.set"
+          },
+          "hex": "0a0b00047769746800000001000032c80800097472616e736c6174650011636f6d6d616e64732e74696d652e7365740000"
+        }
+      ],
+      "completion": [
+        {
+          "text": "time ",
+          "start": 5,
+          "length": 0,
+          "matches": [
+            "add",
+            "query",
+            "set"
+          ]
+        },
+        {
+          "text": "time set ",
+          "start": 9,
+          "length": 0,
+          "matches": [
+            "day",
+            "midnight",
+            "night",
+            "noon"
+          ]
+        },
+        {
+          "text": "time set 1",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        },
+        {
+          "text": "time query ",
+          "start": 11,
+          "length": 0,
+          "matches": [
+            "day",
+            "daytime",
+            "gametime"
+          ]
+        },
+        {
+          "text": "/time add 12",
+          "start": 12,
+          "length": 0,
+          "matches": [
+            "d",
+            "s",
+            "t"
+          ]
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_mutation": true,
+      "gametime_query": true,
+      "client_night": true,
+      "console": true,
+      "saved_day_time": 13000,
+      "restart": true
+    }
+  },
+  "limits": [
+    "Single overworld, actual imported clock with doDaylightCycle=false; no general imported gameplay claim.",
+    "Only time grammar, completion and selected success packets/day-time are compared. Game-age values and transport timing are not compared.",
+    "Java-only result vectors use execute-store into a tracked scoreboard; no native execute command is claimed."
+  ],
+  "native_flat": {
+    "permission_denial": true,
+    "player_and_console": true,
+    "client_night": true,
+    "saved_day_time": 13025,
+    "restored_day_time": 13029,
+    "cycle_unchanged": true,
+    "restart": true
+  },
+  "completed_at": "2026-11-06T18:10:44.538Z",
+  "published_source_commit": "cc542aac0d68aec27496dc800dc9c975abd3cef1",
+  "integration_note": "Runtime proof predates the final master rebase; identical src tree is available at published_source_commit. Exact-head CI checks the final integration."
+}

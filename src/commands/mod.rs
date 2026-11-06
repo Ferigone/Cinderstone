@@ -3,7 +3,7 @@
 //! Mojang's Brigadier 1.2.9 with the dedicated server's built-in exception messages.
 //!
 //! This is `commands_data.1` partial work (WP-E3, issue #24). Nothing here is wired to
-//! Main: Minecraft argument types, selectors and the command catalog are later stages, and
+//! Main except the bounded `/time` path: remaining argument types, selectors and the command catalog are later stages, and
 //! the existing bounded administration commands keep their own parser.
 //!
 //! Brigadier is MIT-licensed (`licenses/brigadier-MIT.txt`). See
@@ -19,6 +19,7 @@ pub mod ranges;
 pub mod simple_arguments;
 pub mod string_reader;
 pub mod suggestion;
+pub mod time_command;
 pub mod tree_packet;
 
 pub use arguments::{

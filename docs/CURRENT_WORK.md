@@ -799,3 +799,8 @@ packet witnesses additionally cover interpolation and warning fields.
 All-target check and the focused native packet test passed. Runtime border-change
 listeners, commands, damage and the remaining WP-G2 work stay out of scope;
 `world_storage.4` remains incomplete and scope version 1/counts are unchanged.
+
+
+### time-20261106-b291 — #173
+
+Connected player and console `/time set`, `add`, and `query` to the live persisted clock through Brigadier. Permission-2 command tree, units/completion and typed feedback are covered by focused original Java 1.21 vectors and `docs/validation/time-command-runtime.json` (actual protocol, denial, op refresh, time publication, imported and fresh-native cold restarts). Runtime proof source predates the final master rebase; final integration is checked by exact-head CI. Full #24, selectors, execute and multiworld remain out of scope; `commands_data.1` stays incomplete, scope_version 1 /100 unchanged.
