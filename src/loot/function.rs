@@ -24,6 +24,7 @@ use crate::protocol::{Reader, Writer};
 const DAMAGE: i32 = 3;
 const CUSTOM_NAME: i32 = 5;
 const ITEM_NAME: i32 = 6;
+const CUSTOM_DATA: i32 = 0;
 const LORE: i32 = 7;
 const CHARGED_PROJECTILES: i32 = 29;
 const BUNDLE_CONTENTS: i32 = 30;
@@ -375,6 +376,18 @@ impl ContainerComponent {
     }
 }
 
+/// `CompoundTag.merge`: compounds merge recursively, every other value replaces.
+fn merge_compound(target: &mut Tag, patch: &Tag) {
+    let (Tag::Compound(entries), Tag::Compound(patch)) = (target, patch) else { return };
+    for (key, value) in patch {
+        match (entries.iter_mut().find(|(k, _)| k == key), value) {
+            (Some((_, existing @ Tag::Compound(_))), Tag::Compound(_)) => merge_compound(existing, value),
+            (Some((_, existing)), _) => *existing = value.clone(),
+            (None, _) => entries.push((key.clone(), value.clone())),
+        }
+    }
+}
+
 /// `Filterable<T>`: the raw value and an optional filtered one.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Filterable<T> {
@@ -533,6 +546,8 @@ pub enum FunctionKind {
     Filtered { filter: ItemPredicate, modifier: Box<Function> },
     SetBannerPattern { layers: Vec<BannerLayer>, append: bool },
     SetAttributes { modifiers: Vec<AttributeModifierSpec>, replace: bool },
+    /// `SetCustomDataFunction`: the compound merged into `minecraft:custom_data`.
+    SetCustomData(Tag),
     SetContents { component: ContainerComponent, entries: Vec<super::entry::Entry> },
     ModifyContents { component: ContainerComponent, modifier: Box<Function> },
     SetBookCover { title: Option<Filterable<String>>, author: Option<String>, generation: Option<i32> },
@@ -966,6 +981,23 @@ impl Function {
                 new.encode(&mut writer);
                 if !stack.is_empty() {
                     set_component(&mut stack, FIREWORK_EXPLOSION, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetCustomData(patch) => {
+                // `CustomData.update`: merge into a copy; an empty result removes the component.
+                let mut tag = match stack.effective_component_bytes(CUSTOM_DATA) {
+                    Some(bytes) => Tag::decode_anonymous(bytes).map_err(host)?,
+                    None => Tag::Compound(Vec::new()),
+                };
+                merge_compound(&mut tag, patch);
+                if !stack.is_empty() {
+                    if matches!(&tag, Tag::Compound(entries) if entries.is_empty()) {
+                        stack.components.retain(|c| c.type_id != CUSTOM_DATA);
+                    } else {
+                        let bytes = tag.encode_network_anonymous().map_err(host)?;
+                        set_component(&mut stack, CUSTOM_DATA, bytes);
+                    }
                 }
                 Ok(stack)
             }

@@ -530,6 +530,15 @@ def synthetic_cases():
                                     modify("minecraft:charged_projectiles", {"function": "minecraft:set_name", "name": "Pointy"})]),
         item("shulker_box", functions=[modify("minecraft:container", const_count(5))]),
         item("stick", functions=[modify("minecraft:charged_projectiles", const_count(5))])]}]}, 45)
+    # custom data (SNBT text and JSON objects through NbtOps)
+    cdata = lambda tag: {"function": "minecraft:set_custom_data", "tag": tag}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stick", functions=[cdata("{a:1b,b:[I;1,2],c:{d:'x',e:[1.5f,2f]},f:1e3}")]),
+        item("stick", functions=[cdata("{a:{x:1,y:2},b:1}"), cdata("{a:{y:3,z:4},b:{n:1},c:[L;5L]}")]),
+        item("stick", functions=[cdata("{}")]),
+        item("stick", functions=[cdata({"a": 1, "b": True, "c": "s", "d": {"e": [1, 2]}, "f": [True, False], "g": [], "h": ["x", 1], "i": [{"k": 1}, {"": 2}]})]),
+        item("stick", functions=[cdata({})]),
+        item("apple", functions=[cdata("{a:[{b:1},{c:2}],big:300b,neg:-0.0d}"), cdata({"a": "replaced"})])]}]}, 18)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 

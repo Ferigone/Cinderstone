@@ -808,6 +808,87 @@ fn text_component(value: &Value) -> Result<TextComponent> {
     })
 }
 
+/// `TagParser.LENIENT_CODEC`: SNBT text, or else any JSON value converted by `JsonOps` into
+/// `NbtOps` that turns out to be a compound.
+fn lenient_compound(value: &Value) -> Result<crate::nbt::Tag> {
+    use crate::nbt::Tag;
+    if let Value::String(text) = value {
+        return crate::tag_parser::parse_compound(text).map_err(|e| LootError::Codec(format!("tag: {e}")));
+    }
+    match json_to_nbt(value)? {
+        tag @ Tag::Compound(_) => Ok(tag),
+        _ => codec("tag: Not a compound tag"),
+    }
+}
+
+/// `JsonOps.convertTo(NbtOps)`: numbers as narrow as they are exact, booleans bytes, lists collected as
+/// `NbtOps.createList` does (byte, int and long runs become arrays; mixed lists wrap their
+/// elements in `{"": value}` compounds).
+fn json_to_nbt(value: &Value) -> Result<crate::nbt::Tag> {
+    use crate::nbt::{JavaString, Tag};
+    Ok(match value {
+        Value::Null => return Err(LootError::Unsupported("tag: JSON null (NbtOps.empty, an END tag)".to_owned())),
+        Value::Bool(flag) => Tag::Byte(i8::from(*flag)),
+        // `JsonOps.convertTo`: an exact integer is the narrowest of byte/short/int/long
+        // (`BigDecimal.longValueExact`), anything else a float when the float is exact, else a double.
+        Value::Number(n) => {
+            let exact = n.as_i64().or_else(|| {
+                n.as_f64().filter(|v| v.fract() == 0.0 && *v >= -9.223_372_036_854_775_808e18 && *v < 9.223_372_036_854_775_808e18).map(|v| v as i64)
+            });
+            match exact {
+                Some(l) if i64::from(l as i8) == l => Tag::Byte(l as i8),
+                Some(l) if i64::from(l as i16) == l => Tag::Short(l as i16),
+                Some(l) if i64::from(l as i32) == l => Tag::Int(l as i32),
+                Some(l) => Tag::Long(l),
+                None => {
+                    let d = n.as_f64().unwrap_or(0.0);
+                    if f64::from(d as f32) == d {
+                        Tag::Float(if d == 0.0 { 0.0 } else { d as f32 })
+                    } else {
+                        Tag::Double(d)
+                    }
+                }
+            }
+        }
+        Value::String(text) => Tag::String(JavaString::Utf8(text.clone())),
+        Value::Object(map) => {
+            let mut entries: Vec<(JavaString, Tag)> = Vec::new();
+            for (key, value) in map {
+                entries.push((JavaString::Utf8(key.clone()), json_to_nbt(value)?));
+            }
+            Tag::Compound(entries)
+        }
+        Value::Array(items) => {
+            let tags = items.iter().map(json_to_nbt).collect::<Result<Vec<_>>>()?;
+            let Some(first) = tags.first() else {
+                return Ok(Tag::List { element_type: 0, values: Vec::new() });
+            };
+            let same = tags.iter().all(|t| t.tag_id() == first.tag_id());
+            match (first, same) {
+                (Tag::Byte(_), true) => Tag::ByteArray(tags.iter().map(|t| if let Tag::Byte(b) = t { *b } else { 0 }).collect()),
+                (Tag::Int(_), true) => Tag::IntArray(tags.iter().map(|t| if let Tag::Int(n) = t { *n } else { 0 }).collect()),
+                (Tag::Long(_), true) => Tag::LongArray(tags.iter().map(|t| if let Tag::Long(n) = t { *n } else { 0 }).collect()),
+                (Tag::Compound(_), _) | (_, false) => {
+                    let wrap = |t: &Tag| -> Tag {
+                        match t {
+                            Tag::Compound(e) if !(e.len() == 1 && e[0].0 == JavaString::Utf8(String::new())) => t.clone(),
+                            other => Tag::Compound(vec![(JavaString::Utf8(String::new()), other.clone())]),
+                        }
+                    };
+                    if same {
+                        // All compounds: a homogeneous list unless one of them is a wrapper.
+                        let values: Vec<Tag> = tags.iter().map(wrap).collect();
+                        Tag::List { element_type: 10, values }
+                    } else {
+                        Tag::List { element_type: 10, values: tags.iter().map(wrap).collect() }
+                    }
+                }
+                _ => Tag::List { element_type: first.tag_id(), values: tags },
+            }
+        }
+    })
+}
+
 /// `ContainerComponentManipulators.CODEC`.
 fn container_component(value: &Value) -> Result<ContainerComponent> {
     let name = id(value, "component")?;
@@ -1256,6 +1337,7 @@ pub fn function(value: &Value) -> Result<Function> {
             trail: optional(map, "trail").map(|v| boolean(v, "trail")).transpose()?,
             twinkle: optional(map, "twinkle").map(|v| boolean(v, "twinkle")).transpose()?,
         },
+        "set_custom_data" => FunctionKind::SetCustomData(lenient_compound(required(map, "tag", "set_custom_data")?)?),
         "set_contents" => FunctionKind::SetContents {
             component: container_component(required(map, "component", "set_contents")?)?,
             entries: entry_list(required(map, "entries", "set_contents")?, "entries")?,
