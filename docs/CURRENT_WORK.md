@@ -18,6 +18,17 @@ This closes a packet discrepancy, not full block interaction parity; survival,
 other block families and persistence are outside this check. Scope version 1 and
 the existing 56/100 code, 51/100 Main counts remain unchanged.
 
+## Imported world default-spawn packet (#161)
+
+Main now reads the current `level.dat` shared spawn for the initial PLAY
+`SetDefaultSpawnPosition` packet instead of always sending the native flat
+spawn. The native default remains `(8,64,8), 0`. The focused
+[real Java/native comparison](validation/spawn-login.json) checks
+`(13,70,-19), 37.5` including the complete packet body, plus the native default.
+This fixes admission-time spawn publication only. Initial-player spawn search,
+respawn and general imported-world gameplay remain outside this delivery;
+WP-G2 and `world_storage.4` remain incomplete. Scope/counts stay 1 / 100 and 56/51.
+
 ## End-to-end differential runner (WP-Q1)
 
 The [scenario runner](reference/parity-runner.md) compares an unchanged pinned

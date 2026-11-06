@@ -198,7 +198,7 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "verification": "final validation deferred"
+      "verification": "Partial: initial PLAY shared-spawn packet uses saved level.dat coordinates/angle; real Java/native bytes in docs/validation/spawn-login.json (#161). Full level.dat/SavedData lifecycle remains incomplete."
     },
     {
       "id": "world_storage.5",
