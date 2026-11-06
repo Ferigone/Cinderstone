@@ -1,0 +1,485 @@
+{
+  "schema_version": 1,
+  "ok": false,
+  "completed_at": "2026-11-06T14:19:45.706442+00:00",
+  "scenario": "creative-stone",
+  "specification": {
+    "checklist_areas": [
+      "network.3",
+      "block_interactions.1",
+      "inventory.1"
+    ],
+    "profile": "offline creative, flat overworld, seed 0, fresh empty player",
+    "position": [
+      8.5,
+      65,
+      8.5
+    ],
+    "target": {
+      "x": 10,
+      "y": 64,
+      "z": 8
+    },
+    "operations": [
+      "join",
+      "select 64 stone in hotbar 0",
+      "place stone",
+      "break stone"
+    ],
+    "comparison": "Ordered block_change packets at target and digging acknowledgments for each sequential action; initial 46-slot inventory contents.",
+    "excluded": [
+      "other packet types and other block positions",
+      "transport framing/compression",
+      "entity and teleport ids",
+      "wall-clock timing, world age and keepalive nonces",
+      "lighting/chunk encoding",
+      "random UUIDs, sounds, particles and RNG consumption",
+      "survival and other blocks",
+      "persistence after edits",
+      "Java save import (native requires complete source provenance for gameplay)"
+    ],
+    "tolerances": [],
+    "control": "Same logical flat block world and seed 0: Java uses the declared flat generator, native uses its fresh production flat backend. Client compares SHA-256 of all 98,304 target-chunk block states plus hashed world seed before acting. Java weather/daylight/mob/random ticks are disabled; native default clock remains active. Each action waits for its update and acknowledgment; native has no tick freeze."
+  },
+  "native_commit": "041c3bd893623d562ff2f75d4b625f74e96c6f8f",
+  "native_binary_sha256": "d4b4c7a5222aa2dbddadea00242df91c694bcc02283eca0ac759b1044dfce820",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "java_version": "openjdk version \"21.0.13\" 2026-10-20",
+  "traces": {
+    "java": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "join",
+          "events": [
+            {
+              "name": "scene",
+              "chunk": [
+                0,
+                0
+              ],
+              "block_states_sha256": "e21fd60b70cebc80b90fe1c1c57fdcf2ade65cfad51dfc1280e297d94d0567e5",
+              "hashed_seed": [
+                2047574433,
+                -177187409
+              ]
+            },
+            {
+              "name": "inventory",
+              "slots": [
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "place",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 1
+            },
+            {
+              "name": "block_change",
+              "state": 1
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 101
+            }
+          ]
+        },
+        {
+          "name": "break",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 0
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 102
+            }
+          ]
+        }
+      ],
+      "error": null
+    },
+    "native": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "join",
+          "events": [
+            {
+              "name": "scene",
+              "chunk": [
+                0,
+                0
+              ],
+              "block_states_sha256": "e21fd60b70cebc80b90fe1c1c57fdcf2ade65cfad51dfc1280e297d94d0567e5",
+              "hashed_seed": [
+                2047574433,
+                -177187409
+              ]
+            },
+            {
+              "name": "inventory",
+              "slots": [
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "place",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 1
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 101
+            }
+          ]
+        },
+        {
+          "name": "break",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 0
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 102
+            }
+          ]
+        }
+      ],
+      "error": null
+    }
+  },
+  "differences": [
+    {
+      "kind": "ordered-trace",
+      "phase_index": 1,
+      "java": {
+        "name": "place",
+        "events": [
+          {
+            "name": "block_change",
+            "state": 1
+          },
+          {
+            "name": "block_change",
+            "state": 1
+          },
+          {
+            "name": "acknowledge_player_digging",
+            "sequence": 101
+          }
+        ]
+      },
+      "native": {
+        "name": "place",
+        "events": [
+          {
+            "name": "block_change",
+            "state": 1
+          },
+          {
+            "name": "acknowledge_player_digging",
+            "sequence": 101
+          }
+        ]
+      }
+    }
+  ],
+  "error": null,
+  "pristine_world_sha256": "b7aef840b98332e3f5d3303f2249e1c14516f4f80788cd5f4609e9099330d53f",
+  "mismatch_issues": [
+    "https://github.com/Ferigone/Cinderstone/issues/158"
+  ],
+  "validation": {
+    "cargo_check_all_targets": "passed",
+    "cargo_test_lib": "passed",
+    "cargo_test_binary": "passed",
+    "trace_differ_tests": "passed"
+  }
+}
