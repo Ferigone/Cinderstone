@@ -25,6 +25,10 @@ const DAMAGE: i32 = 3;
 const CUSTOM_NAME: i32 = 5;
 const ITEM_NAME: i32 = 6;
 const LORE: i32 = 7;
+const CHARGED_PROJECTILES: i32 = 29;
+const BUNDLE_CONTENTS: i32 = 30;
+const CONTAINER: i32 = 52;
+const ATTRIBUTE_MODIFIERS: i32 = 12;
 const CUSTOM_MODEL_DATA: i32 = 13;
 const CONTAINER_LOOT: i32 = 56;
 const FIREWORK_EXPLOSION: i32 = 45;
@@ -249,6 +253,128 @@ impl FireworkExplosion {
     }
 }
 
+/// `BuiltInRegistries.ATTRIBUTE` of 1.21, in registry order.
+pub const ATTRIBUTES: [&str; 31] = [
+    "minecraft:generic.armor", "minecraft:generic.armor_toughness", "minecraft:generic.attack_damage",
+    "minecraft:generic.attack_knockback", "minecraft:generic.attack_speed", "minecraft:player.block_break_speed",
+    "minecraft:player.block_interaction_range", "minecraft:generic.burning_time",
+    "minecraft:generic.explosion_knockback_resistance", "minecraft:player.entity_interaction_range",
+    "minecraft:generic.fall_damage_multiplier", "minecraft:generic.flying_speed", "minecraft:generic.follow_range",
+    "minecraft:generic.gravity", "minecraft:generic.jump_strength", "minecraft:generic.knockback_resistance",
+    "minecraft:generic.luck", "minecraft:generic.max_absorption", "minecraft:generic.max_health",
+    "minecraft:player.mining_efficiency", "minecraft:generic.movement_efficiency",
+    "minecraft:generic.movement_speed", "minecraft:generic.oxygen_bonus", "minecraft:generic.safe_fall_distance",
+    "minecraft:generic.scale", "minecraft:player.sneaking_speed", "minecraft:zombie.spawn_reinforcements",
+    "minecraft:generic.step_height", "minecraft:player.submerged_mining_speed",
+    "minecraft:player.sweeping_damage_ratio", "minecraft:generic.water_movement_efficiency",
+];
+
+/// `EquipmentSlotGroup`, by id.
+pub const SLOT_GROUPS: [&str; 10] = ["any", "mainhand", "offhand", "hand", "feet", "legs", "chest", "head", "armor", "body"];
+
+/// `AttributeModifier.Operation`, by id.
+pub const ATTRIBUTE_OPERATIONS: [&str; 3] = ["add_value", "add_multiplied_base", "add_multiplied_total"];
+
+/// `SetAttributesFunction.Modifier`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AttributeModifierSpec {
+    pub id: String,
+    pub attribute: i32,
+    pub operation: i32,
+    pub amount: NumberProvider,
+    pub slots: Vec<i32>,
+}
+
+/// One `ItemAttributeModifiers.Entry` as it is on the wire, with the fields `matches` reads.
+#[derive(Clone)]
+struct AttributeEntry {
+    attribute: i32,
+    id: String,
+    bytes: Vec<u8>,
+}
+
+fn attribute_modifiers(bytes: &[u8]) -> Result<(Vec<AttributeEntry>, bool)> {
+    let mut reader = Reader::new(bytes);
+    let count = reader.varint().map_err(host)?;
+    let mut entries = Vec::new();
+    for _ in 0..count {
+        let start = reader.remaining();
+        let attribute = reader.varint().map_err(host)?;
+        let id = reader.string(32767).map_err(host)?;
+        reader.bytes(8).map_err(host)?;
+        reader.varint().map_err(host)?;
+        reader.varint().map_err(host)?;
+        let used = start.len() - reader.remaining().len();
+        entries.push(AttributeEntry { attribute, id, bytes: start[..used].to_vec() });
+    }
+    let show = reader.bool().map_err(host)?;
+    reader.finish().map_err(host)?;
+    Ok((entries, show))
+}
+
+/// `ArmorItem` (and `AnimalArmorItem`): `getDefaultAttributeModifiers` is not the component prototype.
+fn is_armor_item(id: &str) -> bool {
+    let path = id.strip_prefix("minecraft:").unwrap_or(id);
+    ["_helmet", "_chestplate", "_leggings", "_boots", "_horse_armor"].iter().any(|s| path.ends_with(s)) || path == "wolf_armor"
+}
+
+/// `ContainerComponentManipulators`: the component a container function reads and writes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ContainerComponent {
+    Container,
+    BundleContents,
+    ChargedProjectiles,
+}
+
+impl ContainerComponent {
+    fn type_id(self) -> i32 {
+        match self {
+            Self::Container => CONTAINER,
+            Self::BundleContents => BUNDLE_CONTENTS,
+            Self::ChargedProjectiles => CHARGED_PROJECTILES,
+        }
+    }
+
+    fn items(self, bytes: &[u8]) -> Result<Vec<ItemStack>> {
+        let mut reader = Reader::new(bytes);
+        let count = reader.varint().map_err(host)?;
+        let mut rest = reader.remaining();
+        let mut items = Vec::new();
+        for _ in 0..count {
+            let (stack, used) = ItemStack::decode(rest).map_err(host)?;
+            items.push(stack);
+            rest = &rest[used..];
+        }
+        if !rest.is_empty() {
+            return Err(LootError::Host("trailing bytes after container items".to_owned()));
+        }
+        Ok(items)
+    }
+
+    /// `setContents(stack, items)`.
+    fn set(self, stack: &mut ItemStack, items: Vec<ItemStack>) -> Result<()> {
+        let items = match self {
+            Self::BundleContents => return unsupported("bundle_contents (BundleContents.Mutable.tryInsert)"),
+            // `ItemContainerContents.fromItems`: trailing empty slots are dropped.
+            Self::Container => {
+                let last = items.iter().rposition(|item| !item.is_empty()).map_or(0, |i| i + 1);
+                if last > 256 {
+                    return Err(LootError::Host(format!("Got {last} items, but maximum is 256")));
+                }
+                items[..last].to_vec()
+            }
+            Self::ChargedProjectiles => items,
+        };
+        let mut writer = Writer::new();
+        writer.varint(items.len() as i32);
+        for item in &items {
+            writer.raw(&item.encode());
+        }
+        set_component(stack, self.type_id(), writer.into_inner());
+        Ok(())
+    }
+}
+
 /// `Filterable<T>`: the raw value and an optional filtered one.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Filterable<T> {
@@ -406,6 +532,9 @@ pub enum FunctionKind {
     SetLootTable { name: String, seed: i64 },
     Filtered { filter: ItemPredicate, modifier: Box<Function> },
     SetBannerPattern { layers: Vec<BannerLayer>, append: bool },
+    SetAttributes { modifiers: Vec<AttributeModifierSpec>, replace: bool },
+    SetContents { component: ContainerComponent, entries: Vec<super::entry::Entry> },
+    ModifyContents { component: ContainerComponent, modifier: Box<Function> },
     SetBookCover { title: Option<Filterable<String>>, author: Option<String>, generation: Option<i32> },
     SetWrittenBookPages { pages: Vec<Filterable<TextComponent>>, mode: ListOperation },
     SetWritableBookPages { pages: Vec<Filterable<String>>, mode: ListOperation },
@@ -441,7 +570,7 @@ pub struct Function {
 }
 
 /// `LootItemFunctions.compose(list)` applied to a stack.
-pub fn apply_all(functions: &[Function], mut stack: ItemStack, ctx: &mut LootContext<'_>) -> Result<ItemStack> {
+pub fn apply_all<'t>(functions: &'t [Function], mut stack: ItemStack, ctx: &mut LootContext<'t>) -> Result<ItemStack> {
     for function in functions {
         stack = function.apply(stack, ctx)?;
     }
@@ -475,14 +604,14 @@ fn lore_lines(bytes: &[u8]) -> Result<Vec<Vec<u8>>> {
 
 impl Function {
     /// `LootItemFunction.apply(stack, context)`.
-    pub fn apply(&self, stack: ItemStack, ctx: &mut LootContext<'_>) -> Result<ItemStack> {
+    pub fn apply<'t>(&'t self, stack: ItemStack, ctx: &mut LootContext<'t>) -> Result<ItemStack> {
         if !all_of(&self.conditions, ctx)? {
             return Ok(stack);
         }
         self.run(stack, ctx)
     }
 
-    fn run(&self, mut stack: ItemStack, ctx: &mut LootContext<'_>) -> Result<ItemStack> {
+    fn run<'t>(&'t self, mut stack: ItemStack, ctx: &mut LootContext<'t>) -> Result<ItemStack> {
         match &self.kind {
             FunctionKind::SetCount { count, add } => {
                 let base = if *add { count_of(&stack) } else { 0 };
@@ -837,6 +966,72 @@ impl Function {
                 new.encode(&mut writer);
                 if !stack.is_empty() {
                     set_component(&mut stack, FIREWORK_EXPLOSION, writer.into_inner());
+                }
+                Ok(stack)
+            }
+            FunctionKind::SetContents { component, entries } => {
+                if stack.is_empty() {
+                    return Ok(stack);
+                }
+                let items = super::entry::create_contents(entries, ctx)?;
+                component.set(&mut stack, items)?;
+                Ok(stack)
+            }
+            FunctionKind::ModifyContents { component, modifier } => {
+                if stack.is_empty() {
+                    return Ok(stack);
+                }
+                let Some(bytes) = stack.effective_component_bytes(component.type_id()) else {
+                    return Ok(stack);
+                };
+                let items = component.items(bytes)?;
+                let mut modified = Vec::with_capacity(items.len());
+                for item in items {
+                    if item.is_empty() {
+                        modified.push(item);
+                        continue;
+                    }
+                    let mut item = modifier.apply(item, ctx)?;
+                    // `limitSize(getMaxStackSize())`.
+                    if !item.is_empty() {
+                        let mut probe = item.clone();
+                        probe.count = 1;
+                        let maximum = probe.max_stack_size().map_err(host)?;
+                        if item.count > maximum {
+                            item.count = maximum;
+                        }
+                    }
+                    modified.push(item);
+                }
+                component.set(&mut stack, modified)?;
+                Ok(stack)
+            }
+            FunctionKind::SetAttributes { modifiers, replace } => {
+                let (mut entries, show) = if *replace {
+                    (Vec::new(), true)
+                } else {
+                    let (entries, show) = attribute_modifiers(stack.effective_component_bytes(ATTRIBUTE_MODIFIERS).unwrap_or(&[0, 1]))?;
+                    if entries.is_empty() && is_armor_item(&stack_item_id(&stack)) {
+                        return unsupported("set_attributes without replace on armor (ArmorItem.getDefaultAttributeModifiers)");
+                    }
+                    (entries, show)
+                };
+                for modifier in modifiers {
+                    let slot = modifier.slots[ctx.random().next_bounded_i32(modifier.slots.len() as i32)? as usize];
+                    let amount = f64::from(modifier.amount.get_float(ctx)?);
+                    entries.retain(|entry| !(entry.attribute == modifier.attribute && entry.id == modifier.id));
+                    let mut writer = Writer::new();
+                    writer.varint(modifier.attribute).string(&modifier.id).raw(&amount.to_be_bytes()).varint(modifier.operation).varint(slot);
+                    entries.push(AttributeEntry { attribute: modifier.attribute, id: modifier.id.clone(), bytes: writer.into_inner() });
+                }
+                let mut writer = Writer::new();
+                writer.varint(entries.len() as i32);
+                for entry in &entries {
+                    writer.raw(&entry.bytes);
+                }
+                writer.bool(show);
+                if !stack.is_empty() {
+                    set_component(&mut stack, ATTRIBUTE_MODIFIERS, writer.into_inner());
                 }
                 Ok(stack)
             }

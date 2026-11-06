@@ -77,10 +77,10 @@ type Layers<'t> = Vec<&'t [Function]>;
 type Sink<'s> = &'s mut dyn FnMut(ItemStack) -> Result<()>;
 
 /// Apply the function layers innermost-first, then hand the stack on.
-fn emit(
+fn emit<'t>(
     stack: ItemStack,
-    layers: &Layers<'_>,
-    ctx: &mut LootContext<'_>,
+    layers: &Layers<'t>,
+    ctx: &mut LootContext<'t>,
     out: Sink<'_>,
 ) -> Result<()> {
     let mut stack = stack;
@@ -141,6 +141,88 @@ impl Entry {
                 Ok(true)
             }
         }
+    }
+}
+
+impl Entry {
+    /// `expand(context, consumer)` with the consumer run as each candidate is found (as
+    /// `SetContainerContents` uses it), so its draws interleave with later conditions.
+    fn expand_each<'t>(
+        &'t self,
+        ctx: &mut LootContext<'t>,
+        each: &mut dyn FnMut(Expanded<'t>, &mut LootContext<'t>) -> Result<()>,
+    ) -> Result<bool> {
+        if !all_of(self.conditions(), ctx)? {
+            return Ok(false);
+        }
+        match self {
+            Self::Singleton(singleton) => {
+                if let SingletonKind::Tag { name, expand: true } = &singleton.kind {
+                    if let Some(members) = facts().tag(Kind::Item, name) {
+                        for item in members {
+                            each(Expanded::TagMember { owner: singleton, item }, ctx)?;
+                        }
+                    }
+                } else {
+                    each(Expanded::Container(singleton), ctx)?;
+                }
+                Ok(true)
+            }
+            Self::Alternatives { children, .. } => {
+                for child in children {
+                    if child.expand_each(ctx, each)? {
+                        return Ok(true);
+                    }
+                }
+                Ok(false)
+            }
+            Self::Sequence { children, .. } => {
+                for child in children {
+                    if !child.expand_each(ctx, each)? {
+                        return Ok(false);
+                    }
+                }
+                Ok(true)
+            }
+            Self::Group { children, .. } => {
+                for child in children {
+                    child.expand_each(ctx, each)?;
+                }
+                Ok(true)
+            }
+        }
+    }
+}
+
+/// `SetContainerContents.run`: every entry expanded without weighting, each candidate created
+/// through `LootTable.createStackSplitter`.
+pub fn create_contents<'t>(entries: &'t [Entry], ctx: &mut LootContext<'t>) -> Result<Vec<ItemStack>> {
+    let level = ctx.level();
+    let mut stacks = Vec::new();
+    for entry in entries {
+        entry.expand_each(ctx, &mut |candidate, ctx| {
+            let mut layers: Layers<'t> = Vec::new();
+            let mut sink = |stack: ItemStack| -> Result<()> { split_stack(level, stack, &mut |part| stacks.push(part)) };
+            create_candidate(candidate, ctx, &mut layers, &mut sink)
+        })?;
+    }
+    Ok(stacks)
+}
+
+fn create_candidate<'t>(
+    candidate: Expanded<'t>,
+    ctx: &mut LootContext<'t>,
+    layers: &mut Layers<'t>,
+    out: Sink<'_>,
+) -> Result<()> {
+    match candidate {
+        Expanded::Container(owner) => {
+            layers.push(&owner.functions);
+            let result = owner.create(ctx, layers, out);
+            layers.pop();
+            result
+        }
+        Expanded::TagMember { item, .. } => emit(new_stack(item)?, layers, ctx, out),
     }
 }
 
@@ -240,15 +322,7 @@ impl LootPool {
         layers: &mut Layers<'t>,
         out: Sink<'_>,
     ) -> Result<()> {
-        match candidate {
-            Expanded::Container(owner) => {
-                layers.push(&owner.functions);
-                let result = owner.create(ctx, layers, out);
-                layers.pop();
-                result
-            }
-            Expanded::TagMember { item, .. } => emit(new_stack(item)?, layers, ctx, out),
-        }
+        create_candidate(candidate, ctx, layers, out)
     }
 
     /// `LootPool.addRandomItems`.

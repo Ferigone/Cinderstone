@@ -12,7 +12,7 @@ use super::entry::{Entry, LootPool, LootTable, SingletonKind, TableRef};
 use super::facts::{canonical, facts, HolderSet, Kind};
 use super::function::{
     component_id, BonusFormula, ComponentSource, Function, FunctionKind, ListOperation, NameTarget, StewEffect,
-    TextComponent, BannerLayer, Filterable, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
+    TextComponent, AttributeModifierSpec, ContainerComponent, BannerLayer, Filterable, ATTRIBUTES, ATTRIBUTE_OPERATIONS, SLOT_GROUPS, BannerPatternRef, FireworkExplosion, BANNER_PATTERNS, BLOCK_ENTITY_TYPES,
     DYE_COLORS, FIREWORK_SHAPES, TOOLTIP_TOGGLES,
 };
 use super::number::{IntRange, LevelBasedValue, NumberProvider, ScoreboardName};
@@ -808,6 +808,30 @@ fn text_component(value: &Value) -> Result<TextComponent> {
     })
 }
 
+/// `ContainerComponentManipulators.CODEC`.
+fn container_component(value: &Value) -> Result<ContainerComponent> {
+    let name = id(value, "component")?;
+    if component_id(&name).is_none() || !name.starts_with("minecraft:") {
+        return codec(format!("Unknown registry key in minecraft:data_component_type: {name}"));
+    }
+    match name.as_str() {
+        "minecraft:container" => Ok(ContainerComponent::Container),
+        "minecraft:bundle_contents" => Ok(ContainerComponent::BundleContents),
+        "minecraft:charged_projectiles" => Ok(ContainerComponent::ChargedProjectiles),
+        _ => codec("No items in component"),
+    }
+}
+
+/// `holderByNameCodec` over a fixed registry given in id order: the index of the id.
+fn id_in(value: &Value, registry: &[&str], what: &str) -> Result<i32> {
+    let name = id(value, what)?;
+    registry
+        .iter()
+        .position(|n| *n == name)
+        .map(|i| i as i32)
+        .ok_or_else(|| LootError::Codec(format!("Unknown registry key in {what}: {name}")))
+}
+
 /// `Codec.string(0, max)`: the length is counted in UTF-16 units.
 fn bounded_string(value: &Value, max: usize, what: &str) -> Result<String> {
     let text = string(value, what)?;
@@ -1232,6 +1256,39 @@ pub fn function(value: &Value) -> Result<Function> {
             trail: optional(map, "trail").map(|v| boolean(v, "trail")).transpose()?,
             twinkle: optional(map, "twinkle").map(|v| boolean(v, "twinkle")).transpose()?,
         },
+        "set_contents" => FunctionKind::SetContents {
+            component: container_component(required(map, "component", "set_contents")?)?,
+            entries: entry_list(required(map, "entries", "set_contents")?, "entries")?,
+        },
+        "modify_contents" => FunctionKind::ModifyContents {
+            component: container_component(required(map, "component", "modify_contents")?)?,
+            modifier: Box::new(function(required(map, "modifier", "modify_contents")?)?),
+        },
+        "set_attributes" => {
+            let list = required(map, "modifiers", "set_attributes")?
+                .as_array()
+                .ok_or_else(|| LootError::Codec("modifiers: expected a list".to_owned()))?;
+            let mut modifiers = Vec::new();
+            for modifier in list {
+                let modifier = object(modifier, "modifier")?;
+                let id = id(required(modifier, "id", "modifier")?, "id")?;
+                let attribute = id_in(required(modifier, "attribute", "modifier")?, &ATTRIBUTES, "attribute")?;
+                let operation = named_index(required(modifier, "operation", "modifier")?, &ATTRIBUTE_OPERATIONS, "operation")?;
+                let amount = number_provider(required(modifier, "amount", "modifier")?)?;
+                let slots = match required(modifier, "slot", "modifier")? {
+                    Value::Array(items) => items.iter().map(|v| named_index(v, &SLOT_GROUPS, "slot")).collect::<Result<Vec<_>>>()?,
+                    other => vec![named_index(other, &SLOT_GROUPS, "slot")?],
+                };
+                if slots.is_empty() {
+                    return codec("slot: List must have contents");
+                }
+                modifiers.push(AttributeModifierSpec { id, attribute, operation, amount, slots });
+            }
+            FunctionKind::SetAttributes {
+                modifiers,
+                replace: optional(map, "replace").map(|v| boolean(v, "replace")).transpose()?.unwrap_or(true),
+            }
+        }
         "set_book_cover" => FunctionKind::SetBookCover {
             title: optional(map, "title").map(|v| filterable(v, |v| bounded_string(v, 32, "title"))).transpose()?,
             author: optional(map, "author").map(|v| string(v, "author").map(str::to_owned)).transpose()?,

@@ -492,6 +492,44 @@ def synthetic_cases():
         item("writable_book", functions=[writable(["p"] * 60), writable(["q"] * 50)]),
         item("writable_book", functions=[writable(["a", "b"]), writable(["c"], mode="replace_all")]),
         item("stick", functions=[cover(generation=3)])]}]}, 27)
+    # attribute modifiers
+    mod = lambda id_, attr, op, amount, slot: {"id": id_, "attribute": attr, "operation": op, "amount": amount, "slot": slot}
+    attrs = lambda mods, **extra: {"function": "minecraft:set_attributes", "modifiers": mods, **extra}
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("stick", functions=[attrs([mod("test:a", "minecraft:generic.max_health", "add_value", {"type": "minecraft:uniform", "min": 1, "max": 4}, "mainhand")])]),
+        item("stick", functions=[attrs([mod("test:a", "generic.armor", "add_multiplied_base", 0.5, ["head", "chest", "legs"]),
+                                        mod("test:b", "minecraft:generic.luck", "add_multiplied_total", -2, "any")])]),
+        item("diamond_sword", functions=[attrs([mod("test:extra", "minecraft:generic.attack_knockback", "add_value", 1, "mainhand")], replace=False)]),
+        item("diamond_sword", functions=[attrs([mod("minecraft:base_attack_damage", "minecraft:generic.attack_damage", "add_value", 20, "mainhand")], replace=False)]),
+        item("diamond_sword", functions=[attrs([mod("test:x", "minecraft:generic.scale", "add_value", 1, ["feet", "body", "armor", "hand", "offhand"])])]),
+        item("stick", functions=[attrs([mod("test:a", "minecraft:generic.max_health", "add_value", 1, "any")]),
+                                 attrs([mod("test:a", "minecraft:generic.max_health", "add_value", 3, "head"),
+                                        mod("test:a", "minecraft:generic.armor", "add_value", 2, "head")], replace=False),
+                                 {"function": "minecraft:toggle_tooltips", "toggles": {"minecraft:attribute_modifiers": False}},
+                                 attrs([mod("test:c", "minecraft:generic.luck", "add_value", 1, "any")], replace=False)])]}]}, 36)
+    # container contents
+    contents = lambda component, entries: {"function": "minecraft:set_contents", "component": component, "entries": entries}
+    modify = lambda component, modifier: {"function": "minecraft:modify_contents", "component": component, "modifier": modifier}
+    chance = lambda p: [{"condition": "minecraft:random_chance", "chance": p}]
+    add({"type": "minecraft:chest", "pools": [{"rolls": 1, "entries": [
+        item("shulker_box", functions=[contents("minecraft:container", [
+            item("apple", functions=[const_count({"type": "minecraft:uniform", "min": 1, "max": 100})]),
+            item("stick", conditions=chance(0.5), functions=[const_count(3)]),
+            {"type": "minecraft:group", "children": [item("bread", conditions=chance(0.5)), item("ender_pearl", functions=[const_count(40)])]},
+            {"type": "minecraft:alternatives", "children": [item("diamond", conditions=chance(0.3)), item("emerald")]},
+            {"type": "minecraft:tag", "name": "minecraft:logs_that_burn", "expand": False, "functions": [const_count(2)]},
+            item("book", functions=[{"function": "minecraft:enchant_randomly"}])])]),
+        item("shulker_box", functions=[contents("minecraft:container", [{"type": "minecraft:tag", "name": "minecraft:wool", "expand": True}])]),
+        item("crossbow", functions=[contents("minecraft:charged_projectiles", [item("arrow", functions=[const_count(2)]), item("firework_rocket")])]),
+        item("stick", functions=[contents("minecraft:container", [item("apple")])]),
+        item("shulker_box", functions=[contents("minecraft:container", [item("apple"), item("bread"), item("stick")]),
+                                       modify("minecraft:container", const_count({"type": "minecraft:uniform", "min": 0, "max": 99}))]),
+        item("shulker_box", functions=[contents("minecraft:container", [item("ender_pearl"), item("apple")]),
+                                       modify("minecraft:container", {"function": "minecraft:filtered", "item_filter": {"items": "minecraft:apple"}, "modifier": const_count(0)})]),
+        item("crossbow", functions=[contents("minecraft:charged_projectiles", [item("arrow")]),
+                                    modify("minecraft:charged_projectiles", {"function": "minecraft:set_name", "name": "Pointy"})]),
+        item("shulker_box", functions=[modify("minecraft:container", const_count(5))]),
+        item("stick", functions=[modify("minecraft:charged_projectiles", const_count(5))])]}]}, 45)
     add({"type": "minecraft:chest", "pools": [{"rolls": 3, "entries": [
         item("arrow", functions=[[const_count({"type": "minecraft:uniform", "min": 1, "max": 3}), {"function": "minecraft:limit_count", "limit": 2}], const_count(5, add=True)])]}]}, 12)
 
