@@ -96,7 +96,6 @@ enum Parser {
     Time(i32),
     BorderDouble,
     NonnegativeFloat,
-    NonnegativeInteger,
     Vec2,
     GreedyString,
     Word,
@@ -206,7 +205,6 @@ impl Tree {
                         Parser::Time(minimum) => { output.varint(42).i32(*minimum); },
                         Parser::BorderDouble => {output.varint(2).u8(3).f64(-crate::border::MAX_SIZE).f64(crate::border::MAX_SIZE);},
                         Parser::NonnegativeFloat => {output.varint(1).u8(1).f32(0.);},
-                        Parser::NonnegativeInteger => {output.varint(3).u8(1).i32(0);},
                         Parser::Vec2 => {output.varint(11);},
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
