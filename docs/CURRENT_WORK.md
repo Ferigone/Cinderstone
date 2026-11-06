@@ -5,6 +5,18 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## End-to-end differential runner (WP-Q1)
+
+The [scenario runner](reference/parity-runner.md) compares an unchanged pinned
+Java 1.21 server with native Main over real protocol connections. Its first
+catalogue entry covers fresh creative stone placement/breaking, checking the
+initial chunk block-state hash and seed before comparing ordered updates and
+acknowledgments. The [executed report](validation/parity-creative-stone.json) records both
+servers completing the flow and one retained placement-packet divergence (#158).
+All-target check, library/server tests and focused differ tests passed. Java-import gameplay still requires native source
+provenance (WP-G5); no broad parity or performance claim. Scope version 1 and
+checklist counts are unchanged: WP-Q1 has no checklist row.
+
 ## BLOCK restore provenance and scaffold interaction provider
 
 Source `c2c1b77cf3ee6edd29f3c4d12d2483c4b4dfac8b` passed the [finite native check](reference/scaffolding-counter-owners.md): a genuine dry used-BLOCK/empty-queue save kept shared counter4 through STATUS/PING/shutdown; an explicitly malformed copy missing only FLUID rejected with the new BLOCK diagnostic before world restoration/listening. Pure raw-saved provenance now guards before BE/Level/Math RNG creation, with independent later real-source/owner checks retained. No counter0 or queue-derived history is invented.

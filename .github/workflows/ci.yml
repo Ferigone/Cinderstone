@@ -25,6 +25,8 @@ jobs:
       - uses: actions/checkout@v5
       - name: AGENTS.md hygiene and fixed-checklist integrity
         run: python3 .github/scripts/repo_hygiene.py
+      - name: End-to-end scenario trace differ
+        run: python3 -m unittest discover -s tools/parity -p 'test_*.py'
       - name: Required compile inputs survive the Docker context
         run: docker build --target compile-input-check --progress=plain .
 
