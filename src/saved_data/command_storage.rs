@@ -20,7 +20,7 @@ fn is_empty_compound(tag: &Tag) -> bool {
 /// `CommandStorage.Container`: the compounds of one namespace, in a `HashMap` keyed by path.
 #[derive(Debug, Clone, Default)]
 pub struct CommandStorageContainer {
-    storage: JavaHashMap<Tag>,
+    storage: JavaHashMap<JavaString, Tag>,
     dirty: bool,
 }
 
@@ -34,7 +34,7 @@ impl CommandStorageContainer {
     pub fn load(data: &Tag) -> Self {
         let mut container = Self::new();
         if let Some(Tag::Compound(entries)) = data.get("contents") {
-            let mut decoded: JavaHashMap<Tag> = JavaHashMap::new();
+            let mut decoded: JavaHashMap<JavaString, Tag> = JavaHashMap::default();
             for (name, value) in entries {
                 decoded.put(name.clone(), value.clone());
             }
@@ -81,7 +81,7 @@ impl SavedData for CommandStorageContainer {
     /// `Container.save`: a fresh `CompoundTag` is filled in the storage's iteration order, so its
     /// own `HashMap` (sized for the entries, not for the removed ones) decides the written order.
     fn save(&self) -> Tag {
-        let mut fresh: JavaHashMap<Tag> = JavaHashMap::new();
+        let mut fresh: JavaHashMap<JavaString, Tag> = JavaHashMap::default();
         for (path, tag) in self.storage.iter_ordered() {
             fresh.put(path.clone(), tag.clone());
         }
@@ -130,7 +130,7 @@ fn split(id: &str) -> Result<(String, JavaString), SavedDataError> {
 /// walks, in `HashMap` order), over a [`DimensionDataStorage`] the caller passes in.
 #[derive(Debug, Clone, Default)]
 pub struct CommandStorage {
-    namespaces: JavaHashMap<()>,
+    namespaces: JavaHashMap<JavaString, ()>,
 }
 
 impl CommandStorage {

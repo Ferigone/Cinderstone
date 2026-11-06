@@ -192,6 +192,15 @@ public class loot_oracle {
         if (scenarioBlockEntity.has("lock")) b.set(net.minecraft.core.component.DataComponents.LOCK, new net.minecraft.world.LockCode(scenarioBlockEntity.get("lock").getAsString()));
         return null;
       }
+      case "send": {
+        // StubConnection.send: record the frame against the player that owns the connection.
+        String owner = bossConnections.get(self);
+        if (owner != null && a.length == 1) bossSent.add(new String[] {owner, frame((net.minecraft.network.protocol.Packet<?>) a[0])});
+        return null;
+      }
+      case "getUUID": return bossUuids.get(self);
+      case "hashCode": return bossIds.get(self);
+      case "equals": return self == a[0];
       case "getServer": return stubServer;
       case "getPlayerList": return scorePlayers;
       case "broadcastAll": { if (a.length == 1) scoreBroadcasts.add((net.minecraft.network.protocol.Packet<?>) a[0]); return null; }
@@ -224,6 +233,61 @@ public class loot_oracle {
     }
   }
 
+
+  // ---------------------------------------------------------------- boss bars
+  static final java.util.IdentityHashMap<Object, String> bossConnections = new java.util.IdentityHashMap<>();
+  static final java.util.IdentityHashMap<Object, java.util.UUID> bossUuids = new java.util.IdentityHashMap<>();
+  // Entity.hashCode() is the entity id, which a server hands out in increasing order: the stub
+  // players get 1, 2, 3, ... in the order they are first mentioned in a scenario.
+  static final java.util.IdentityHashMap<Object, Integer> bossIds = new java.util.IdentityHashMap<>();
+  static int nextBossId = 1;
+  static final List<String[]> bossSent = new ArrayList<>();
+  static Class<?> stubConnectionClass;
+  static Class<?> stubPlayerClass;
+
+  /** A ServerPlayer with a UUID whose connection records what it is sent. */
+  static Object makeBossPlayer(String name, java.util.UUID uuid) throws Throwable {
+    if (stubConnectionClass == null) {
+      Loader loader = new Loader(loot_oracle.class.getClassLoader());
+      ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+      cw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubConnection", null, "net/minecraft/server/network/ServerGamePacketListenerImpl", null);
+      hookMethod(cw, "send", "(Lnet/minecraft/network/protocol/Packet;)V");
+      cw.visitEnd();
+      stubConnectionClass = loader.define("oracle.StubConnection", cw.toByteArray());
+      ClassWriter pw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+      pw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubPlayer", null, "net/minecraft/server/level/ServerPlayer", null);
+      hookMethod(pw, "getUUID", "()Ljava/util/UUID;");
+      hookMethod(pw, "hashCode", "()I");
+      hookMethod(pw, "equals", "(Ljava/lang/Object;)Z");
+      pw.visitEnd();
+      stubPlayerClass = loader.define("oracle.StubPlayer", pw.toByteArray());
+    }
+    Object connection = unsafe.allocateInstance(stubConnectionClass);
+    Object player = unsafe.allocateInstance(stubPlayerClass);
+    Field field = net.minecraft.server.level.ServerPlayer.class.getDeclaredField("connection");
+    field.setAccessible(true);
+    field.set(player, connection);
+    bossConnections.put(connection, name);
+    bossUuids.put(player, uuid);
+    bossIds.put(player, nextBossId++);
+    return player;
+  }
+
+  static JsonObject bossState(net.minecraft.server.bossevents.CustomBossEvent e) {
+    JsonObject d = new JsonObject();
+    d.addProperty("uuid", e.getId().toString());
+    d.addProperty("name", gson(e.getName()));
+    d.addProperty("progress_bits", Float.floatToRawIntBits(e.getProgress()));
+    d.addProperty("value", e.getValue());
+    d.addProperty("max", e.getMax());
+    d.addProperty("color", e.getColor().getName());
+    d.addProperty("overlay", e.getOverlay().getName());
+    d.addProperty("darken", e.shouldDarkenScreen());
+    d.addProperty("music", e.shouldPlayBossMusic());
+    d.addProperty("fog", e.shouldCreateWorldFog());
+    d.addProperty("visible", e.isVisible());
+    return d;
+  }
 
   // ---------------------------------------------------------------- scoreboard
   static Object scorePlayers;
@@ -1434,6 +1498,140 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("world-data-config=" + outArr.size());
+        break;
+      }
+      case "bossbar": {
+        // CustomBossEvents / CustomBossEvent / ServerBossEvent with stub players. Input: [{steps}].
+        // Each step answers with the frames sent to players (in send order) and the state asked for.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          net.minecraft.server.bossevents.CustomBossEvents events = new net.minecraft.server.bossevents.CustomBossEvents();
+          Map<String, Object> players = new LinkedHashMap<>();
+          nextBossId = 1;
+          CompoundTag lastSave = new CompoundTag();
+          JsonArray results = new JsonArray();
+          for (JsonElement stepElement : e.getAsJsonObject().getAsJsonArray("steps")) {
+            JsonObject step = stepElement.getAsJsonObject();
+            JsonObject r = new JsonObject();
+            bossSent.clear();
+            try {
+              String op = step.get("op").getAsString();
+              net.minecraft.server.bossevents.CustomBossEvent event = step.has("id") && !op.equals("create") && !op.equals("load") ? events.get(ResourceLocation.parse(step.get("id").getAsString())) : null;
+              if (step.has("player") && !players.containsKey(step.get("player").getAsString())) {
+                players.put(step.get("player").getAsString(), makeBossPlayer(step.get("player").getAsString(), java.util.UUID.fromString(step.get("uuid").getAsString())));
+              }
+              switch (op) {
+                case "create": event = events.create(ResourceLocation.parse(step.get("id").getAsString()), parseComponent(step.get("name"))); r.add("state", bossState(event)); break;
+                case "remove": events.remove(event); break;
+                case "set_name": event.setName(parseComponent(step.get("name"))); break;
+                case "set_value": event.setValue(step.get("value").getAsInt()); r.add("state", bossState(event)); break;
+                case "set_max": event.setMax(step.get("value").getAsInt()); r.add("state", bossState(event)); break;
+                case "set_progress": event.setProgress(Float.intBitsToFloat(step.get("bits").getAsInt())); break;
+                case "set_color": event.setColor(net.minecraft.world.BossEvent.BossBarColor.byName(step.get("value").getAsString())); break;
+                case "set_overlay": event.setOverlay(net.minecraft.world.BossEvent.BossBarOverlay.byName(step.get("value").getAsString())); break;
+                case "set_darken": event.setDarkenScreen(step.get("value").getAsBoolean()); break;
+                case "set_music": event.setPlayBossMusic(step.get("value").getAsBoolean()); break;
+                case "set_fog": event.setCreateWorldFog(step.get("value").getAsBoolean()); break;
+                case "set_visible": event.setVisible(step.get("value").getAsBoolean()); break;
+                case "add_player": event.addPlayer((net.minecraft.server.level.ServerPlayer) players.get(step.get("player").getAsString())); break;
+                case "remove_player": event.removePlayer((net.minecraft.server.level.ServerPlayer) players.get(step.get("player").getAsString())); break;
+                case "remove_all": event.removeAllPlayers(); break;
+                case "add_offline": event.addOfflinePlayer(java.util.UUID.fromString(step.get("uuid").getAsString())); break;
+                case "set_players": {
+                  for (JsonElement p : step.getAsJsonArray("players")) {
+                    String who = p.getAsString();
+                    if (!players.containsKey(who)) players.put(who, makeBossPlayer(who, java.util.UUID.fromString(step.getAsJsonObject("uuids").get(who).getAsString())));
+                  }
+                  List<net.minecraft.server.level.ServerPlayer> list = new ArrayList<>();
+                  for (JsonElement p : step.getAsJsonArray("players")) list.add((net.minecraft.server.level.ServerPlayer) players.get(p.getAsString()));
+                  r.addProperty("changed", event.setPlayers(list));
+                  break;
+                }
+                case "connect": events.onPlayerConnect((net.minecraft.server.level.ServerPlayer) players.get(step.get("player").getAsString())); break;
+                case "disconnect": events.onPlayerDisconnect((net.minecraft.server.level.ServerPlayer) players.get(step.get("player").getAsString())); break;
+                case "state": r.add("state", bossState(event)); break;
+                case "ids": { JsonArray ids = new JsonArray(); for (ResourceLocation id : events.getIds()) ids.add(id.toString()); r.add("ids", ids); break; }
+                case "save": {
+                  lastSave = events.save(access);
+                  r.addProperty("nbt", tagHex(lastSave));
+                  break;
+                }
+                case "load": {
+                  // Loads the most recent `save` (or an SNBT compound) into the current events.
+                  CompoundTag tag = step.has("snbt")
+                      ? (CompoundTag) renameWrap(new TagParser(new com.mojang.brigadier.StringReader(step.get("snbt").getAsString())).readValue())
+                      : lastSave;
+                  events.load(tag, access);
+                  break;
+                }
+                case "packet": {
+                  net.minecraft.world.BossEvent source = event;
+                  net.minecraft.network.protocol.game.ClientboundBossEventPacket packet = switch (step.get("kind").getAsString()) {
+                    case "add" -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createAddPacket(source);
+                    case "remove" -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createRemovePacket(source.getId());
+                    case "progress" -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createUpdateProgressPacket(source);
+                    case "name" -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createUpdateNamePacket(source);
+                    case "style" -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createUpdateStylePacket(source);
+                    default -> net.minecraft.network.protocol.game.ClientboundBossEventPacket.createUpdatePropertiesPacket(source);
+                  };
+                  // The id is random; report the frame with it masked by its position (id bytes 1..16).
+                  r.addProperty("frame", frame(packet));
+                  r.addProperty("event_id", source.getId().toString());
+                  break;
+                }
+                default: throw new IllegalArgumentException(op);
+              }
+            } catch (Throwable t) {
+              Throwable cause = t instanceof java.lang.reflect.InvocationTargetException ite ? ite.getCause() : t;
+              r.addProperty("error", cause.getClass().getSimpleName());
+            }
+            JsonArray sent = new JsonArray();
+            for (String[] frame : bossSent) { JsonObject f = new JsonObject(); f.addProperty("player", frame[0]); f.addProperty("frame", frame[1]); sent.add(f); }
+            r.add("sent", sent);
+            results.add(r);
+          }
+          outArr.add(results);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("bossbar=" + in.size());
+        break;
+      }
+      case "bossbar-mutants": {
+        // One-step mutants of a saved CustomBossEvent, loaded by the original. Input:
+        // [{id, bases:[snbt]}]. Output rows: {payload, ok, error?, state?, nbt?}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject spec = e.getAsJsonObject();
+          String id = spec.get("id").getAsString();
+          LinkedHashMap<String, Tag> payloads = new LinkedHashMap<>();
+          for (JsonElement base : spec.getAsJsonArray("bases")) {
+            Tag tag = renameWrap(new TagParser(new com.mojang.brigadier.StringReader(base.getAsString())).readValue());
+            payloads.putIfAbsent(tagHex(tag), tag);
+            for (Tag mutant : nbtMutants(tag)) payloads.putIfAbsent(tagHex(mutant), mutant);
+          }
+          for (Map.Entry<String, Tag> payload : payloads.entrySet()) {
+            JsonObject r = new JsonObject();
+            r.addProperty("id", id);
+            r.addProperty("payload", payload.getKey());
+            try {
+              net.minecraft.server.bossevents.CustomBossEvents events = new net.minecraft.server.bossevents.CustomBossEvents();
+              CompoundTag wrapper = new CompoundTag();
+              wrapper.put(id, payload.getValue());
+              events.load(wrapper, access);
+              r.addProperty("ok", true);
+              r.add("state", bossState(events.get(ResourceLocation.parse(id))));
+              r.addProperty("nbt", tagHex(events.save(access)));
+            } catch (Throwable t) {
+              r.addProperty("ok", false);
+              r.addProperty("error", t.getClass().getSimpleName());
+            }
+            outArr.add(r);
+          }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("bossbar-mutants=" + outArr.size());
         break;
       }
       case "advancement-progress": {

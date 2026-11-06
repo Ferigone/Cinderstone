@@ -143,3 +143,4 @@ pub mod source_nbt_decode;
 pub mod nbt_snbt;
 pub mod datapack;
 pub mod advancements;
+pub mod bossbar;
