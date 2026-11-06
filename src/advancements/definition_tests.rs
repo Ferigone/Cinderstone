@@ -105,6 +105,22 @@ fn vanilla_tree_layout_and_packet_match_the_original() {
     }
     assert_eq!(checked, 122);
 
+    // Visibility for each set of done advancements.
+    let hidden = |id: &str| advancements[id].display.as_ref().is_some_and(|d| d.hidden);
+    for case in oracle["visibility"].as_array().unwrap() {
+        let done: BTreeSet<&str> = case["done"].as_array().unwrap().iter().map(|v| v.as_str().unwrap()).collect();
+        let mut visible = BTreeSet::new();
+        for root in tree.roots() {
+            for (id, shown) in super::tree::visibility(&tree, root, &|id| done.contains(id), &has_display, &hidden) {
+                if shown {
+                    visible.insert(id);
+                }
+            }
+        }
+        let expected: BTreeSet<String> = case["visible"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_owned()).collect();
+        assert_eq!(visible, expected, "visibility with {} done", done.len());
+    }
+
     // The packet: every holder sorted by id, one removed id, one progress entry.
     let spec = &oracle["progress_spec"];
     let target = spec["advancement"].as_str().unwrap();

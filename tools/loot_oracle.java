@@ -1548,6 +1548,28 @@ public class loot_oracle {
         System.out.println("advancement-tree nodes=" + nodes.size());
         break;
       }
+      case "advancement-visibility": {
+        // AdvancementVisibilityEvaluator.evaluateVisibility from every root of the vanilla tree for
+        // each given set of done advancements: the ids it reports visible. Input: [[done ids]].
+        net.minecraft.advancements.AdvancementTree tree = res.getAdvancements().tree();
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          java.util.Set<String> done = new java.util.HashSet<>();
+          for (JsonElement id : e.getAsJsonArray()) done.add(id.getAsString());
+          java.util.TreeMap<String, Boolean> seen = new java.util.TreeMap<>();
+          for (net.minecraft.advancements.AdvancementNode root : tree.roots()) {
+            net.minecraft.server.advancements.AdvancementVisibilityEvaluator.evaluateVisibility(root,
+                n -> done.contains(n.holder().id().toString()), (n, visible) -> seen.put(n.holder().id().toString(), visible));
+          }
+          JsonArray visible = new JsonArray();
+          for (var entry : seen.entrySet()) if (entry.getValue()) visible.add(entry.getKey());
+          outArr.add(visible);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("advancement-visibility=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the

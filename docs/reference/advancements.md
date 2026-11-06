@@ -71,6 +71,9 @@ member order, which `serde_json` does not keep.
 - **Layout:** `layout(root, has_display, children_of)` is `TreeNodePosition.run`, the
   Walker-style layout that sets each visible advancement's `(x, y)`. Invisible advancements are
   skipped through to their children.
+- **Visibility:** `visibility(tree, node, is_done, has_display, hidden)` is
+  `AdvancementVisibilityEvaluator.evaluateVisibility`. A node is visible when it or a descendant is
+  done, or when the nearest of itself and its two closest ancestors that has a rule says show.
 - **Packet:** `update_advancements_packet` writes the body of `ClientboundUpdateAdvancementsPacket`.
   It covers each holder's parent, display (title, description, icon `ItemStack`, frame, the flags
   integer, background, x/y), requirements and telemetry flag, then the removed ids and the
@@ -99,6 +102,8 @@ The test `vanilla_tree_layout_and_packet_match_the_original` checks:
 
 - the tree's parents, children and roots;
 - all 122 display positions (bit-exact, using the original's child order);
+- the visible sets the original reports for 60 sets of done advancements (from none to all,
+  random densities);
 - the 186,085-byte packet, byte for byte.
 
 ## What is implemented

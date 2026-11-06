@@ -331,6 +331,62 @@ pub fn layout(root: &str, has_display: &dyn Fn(&str) -> bool, children_of: &dyn 
     Ok(layout.nodes.iter().map(|node| (node.id.clone(), (node.x as f32, node.y))).collect())
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum VisibilityRule {
+    Show,
+    Hide,
+    NoChange,
+}
+
+/// `AdvancementVisibilityEvaluator.evaluateVisibility(node, isDone, output)`: from `node`'s root,
+/// every advancement of the tree with whether it is visible. A node is visible when it or a
+/// descendant is done, or when the nearest of itself and its two closest ancestors that has a rule
+/// says show (a done displayed advancement shows, an undone hidden one or any invisible one hides).
+/// `children_of` gives each node's children (any order: the result does not depend on it).
+pub fn visibility(tree: &AdvancementTree, node: &str, is_done: &dyn Fn(&str) -> bool, has_display: &dyn Fn(&str) -> bool, hidden: &dyn Fn(&str) -> bool) -> BTreeMap<String, bool> {
+    fn walk(
+        tree: &AdvancementTree,
+        id: &str,
+        stack: &mut Vec<VisibilityRule>,
+        is_done: &dyn Fn(&str) -> bool,
+        has_display: &dyn Fn(&str) -> bool,
+        hidden: &dyn Fn(&str) -> bool,
+        out: &mut BTreeMap<String, bool>,
+    ) -> bool {
+        let done = is_done(id);
+        let rule = if !has_display(id) {
+            VisibilityRule::Hide
+        } else if done {
+            VisibilityRule::Show
+        } else if hidden(id) {
+            VisibilityRule::Hide
+        } else {
+            VisibilityRule::NoChange
+        };
+        let mut any_done = done;
+        stack.push(rule);
+        for child in tree.children(id) {
+            any_done |= walk(tree, child, stack, is_done, has_display, hidden, out);
+        }
+        // `evaluateVisiblityForUnfinishedNode`: the top three rules, nearest first.
+        let shown = any_done
+            || stack
+                .iter()
+                .rev()
+                .take(3)
+                .find(|rule| **rule != VisibilityRule::NoChange)
+                .is_some_and(|rule| *rule == VisibilityRule::Show);
+        stack.pop();
+        out.insert(id.to_owned(), shown);
+        any_done
+    }
+    let root = tree.root_of(node).to_owned();
+    let mut stack = vec![VisibilityRule::NoChange; 3];
+    let mut out = BTreeMap::new();
+    walk(tree, &root, &mut stack, is_done, has_display, hidden, &mut out);
+    out
+}
+
 fn write_location(writer: &mut Writer, id: &str) {
     writer.string(id);
 }
