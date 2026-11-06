@@ -1,0 +1,561 @@
+{
+  "grammar": [
+    {
+      "permission": 0,
+      "packet_hex": "01000000",
+      "cases": [
+        {
+          "input": "weather rain",
+          "cursor": 0,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        }
+      ]
+    },
+    {
+      "permission": 1,
+      "packet_hex": "01000000",
+      "cases": []
+    },
+    {
+      "permission": 2,
+      "packet_hex": "080001010103020304077765617468657205010505636c656172050106047261696e050107077468756e6465720600086475726174696f6e2a000000010600086475726174696f6e2a000000010600086475726174696f6e2a0000000100",
+      "cases": [
+        {
+          "input": "",
+          "cursor": 0,
+          "remaining": false,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": [
+              "weather"
+            ]
+          }
+        },
+        {
+          "input": "w",
+          "cursor": 0,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 1,
+            "texts": [
+              "weather"
+            ]
+          }
+        },
+        {
+          "input": "weather",
+          "cursor": 7,
+          "remaining": false,
+          "executable": false,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather ",
+          "cursor": 7,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 8,
+            "end": 8,
+            "texts": [
+              "clear",
+              "rain",
+              "thunder"
+            ]
+          }
+        },
+        {
+          "input": "weather r",
+          "cursor": 8,
+          "remaining": true,
+          "executable": false,
+          "suggestions": {
+            "start": 8,
+            "end": 9,
+            "texts": [
+              "rain"
+            ]
+          }
+        },
+        {
+          "input": "weather rain",
+          "cursor": 12,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain ",
+          "cursor": 12,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain 2d",
+          "cursor": 15,
+          "remaining": false,
+          "executable": true,
+          "ticks": 48000,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather clear 1.5s",
+          "cursor": 18,
+          "remaining": false,
+          "executable": true,
+          "ticks": 30,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather thunder 0.5t",
+          "cursor": 20,
+          "remaining": false,
+          "executable": true,
+          "ticks": 1,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather clear",
+          "cursor": 13,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather thunder",
+          "cursor": 15,
+          "remaining": false,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain 0",
+          "cursor": 13,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 14,
+            "end": 14,
+            "texts": [
+              "d",
+              "s",
+              "t"
+            ]
+          }
+        },
+        {
+          "input": "weather clear -1",
+          "cursor": 14,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 16,
+            "end": 16,
+            "texts": [
+              "d",
+              "s",
+              "t"
+            ]
+          }
+        },
+        {
+          "input": "weather rain 1q",
+          "cursor": 13,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain 0.49t",
+          "cursor": 13,
+          "remaining": true,
+          "executable": true,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain 2147483647t",
+          "cursor": 24,
+          "remaining": false,
+          "executable": true,
+          "ticks": 2147483647,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        },
+        {
+          "input": "weather rain 20 trailing",
+          "cursor": 16,
+          "remaining": true,
+          "executable": true,
+          "ticks": 20,
+          "suggestions": {
+            "start": 0,
+            "end": 0,
+            "texts": []
+          }
+        }
+      ]
+    },
+    {
+      "permission": 3,
+      "packet_hex": "080001010103020304077765617468657205010505636c656172050106047261696e050107077468756e6465720600086475726174696f6e2a000000010600086475726174696f6e2a000000010600086475726174696f6e2a0000000100",
+      "cases": []
+    },
+    {
+      "permission": 4,
+      "packet_hex": "080001010103020304077765617468657205010505636c656172050106047261696e050107077468756e6465720600086475726174696f6e2a000000010600086475726174696f6e2a000000010600086475726174696f6e2a0000000100",
+      "cases": []
+    }
+  ],
+  "execution": [
+    {
+      "input": "weather clear",
+      "permission": 2,
+      "seed": 0,
+      "result": -1,
+      "ok": true,
+      "state": [
+        120017,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -723955400
+    },
+    {
+      "input": "weather rain",
+      "permission": 2,
+      "seed": 0,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        22560,
+        22560,
+        true,
+        false
+      ],
+      "next_int": -723955400
+    },
+    {
+      "input": "weather thunder",
+      "permission": 2,
+      "seed": 0,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        14160,
+        14160,
+        true,
+        true
+      ],
+      "next_int": -723955400
+    },
+    {
+      "input": "weather clear 2d",
+      "permission": 2,
+      "seed": 0,
+      "result": 48000,
+      "ok": true,
+      "state": [
+        48000,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather rain 1.5s",
+      "permission": 2,
+      "seed": 0,
+      "result": 30,
+      "ok": true,
+      "state": [
+        0,
+        30,
+        30,
+        true,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather thunder 0.5t",
+      "permission": 2,
+      "seed": 0,
+      "result": 1,
+      "ok": true,
+      "state": [
+        0,
+        1,
+        1,
+        true,
+        true
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather rain 0",
+      "permission": 2,
+      "seed": 0,
+      "ok": false,
+      "state": [
+        0,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather clear -1",
+      "permission": 2,
+      "seed": 0,
+      "ok": false,
+      "state": [
+        0,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather rain 20 trailing",
+      "permission": 2,
+      "seed": 0,
+      "ok": false,
+      "state": [
+        0,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather rain 2147483647t",
+      "permission": 2,
+      "seed": 0,
+      "result": 2147483647,
+      "ok": true,
+      "state": [
+        0,
+        2147483647,
+        2147483647,
+        true,
+        false
+      ],
+      "next_int": -1155484576
+    },
+    {
+      "input": "weather clear",
+      "permission": 2,
+      "seed": 1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        95643,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": 431529176
+    },
+    {
+      "input": "weather rain",
+      "permission": 2,
+      "seed": 1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        22201,
+        22201,
+        true,
+        false
+      ],
+      "next_int": 431529176
+    },
+    {
+      "input": "weather thunder",
+      "permission": 2,
+      "seed": 1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        13801,
+        13801,
+        true,
+        true
+      ],
+      "next_int": 431529176
+    },
+    {
+      "input": "weather clear",
+      "permission": 2,
+      "seed": -1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        142476,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": 1887904451
+    },
+    {
+      "input": "weather rain",
+      "permission": 2,
+      "seed": -1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        13788,
+        13788,
+        true,
+        false
+      ],
+      "next_int": 1887904451
+    },
+    {
+      "input": "weather thunder",
+      "permission": 2,
+      "seed": -1,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        5388,
+        5388,
+        true,
+        true
+      ],
+      "next_int": 1887904451
+    },
+    {
+      "input": "weather clear",
+      "permission": 2,
+      "seed": 123456789,
+      "result": -1,
+      "ok": true,
+      "state": [
+        30477,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1016548095
+    },
+    {
+      "input": "weather rain",
+      "permission": 2,
+      "seed": 123456789,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        16141,
+        16141,
+        true,
+        false
+      ],
+      "next_int": -1016548095
+    },
+    {
+      "input": "weather thunder",
+      "permission": 2,
+      "seed": 123456789,
+      "result": -1,
+      "ok": true,
+      "state": [
+        0,
+        7741,
+        7741,
+        true,
+        true
+      ],
+      "next_int": -1016548095
+    },
+    {
+      "input": "weather thunder 20",
+      "permission": 0,
+      "seed": 123,
+      "ok": false,
+      "state": [
+        0,
+        0,
+        0,
+        false,
+        false
+      ],
+      "next_int": -1188957731
+    }
+  ]
+}

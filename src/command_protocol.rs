@@ -92,7 +92,7 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 
 #[derive(Clone, Copy)]
 enum Parser {
-    Time,
+    Time(i32),
     GreedyString,
     Word,
     Players,
@@ -197,7 +197,7 @@ impl Tree {
                 } => {
                     output.string(name);
                     match parser {
-                        Parser::Time => { output.varint(42).i32(0); },
+                        Parser::Time(minimum) => { output.varint(42).i32(*minimum); },
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -290,12 +290,17 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let trigger=tree.literal(0,"trigger",false);
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
+        let weather = tree.literal(0, "weather", false);
+        for kind in ["clear", "rain", "thunder"] {
+            let branch = tree.literal(weather, kind, true);
+            tree.argument(branch, "duration", Parser::Time(1), false);
+        }
         let time = tree.literal(0, "time", false);
         let set = tree.literal(time, "set", false);
         for name in ["day", "noon", "night", "midnight"] { tree.literal(set, name, true); }
-        tree.argument(set, "time", Parser::Time, false);
+        tree.argument(set, "time", Parser::Time(0), false);
         let add = tree.literal(time, "add", false);
-        tree.argument(add, "time", Parser::Time, false);
+        tree.argument(add, "time", Parser::Time(0), false);
         let query = tree.literal(time, "query", false);
         for name in ["daytime", "gametime", "day"] { tree.literal(query, name, true); }
         for root in ["scoreboard","team"] {
@@ -312,6 +317,16 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "weather" || input.starts_with("weather ") ||
+        (!input.is_empty() && "weather".starts_with(&input.to_lowercase())) {
+        if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
+        let suggestions = crate::commands::weather_command::suggestions(input, permission_level)
+            .map_err(|error| anyhow::anyhow!("weather suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "time" || input.starts_with("time ") ||
         (!input.is_empty() && "time".starts_with(&input.to_lowercase())) {
         if permission_level < 2 { return encode_suggestions(request.id, 0, 0, &[]); }
@@ -455,6 +470,10 @@ fn administration_suggestions_with_time(
     if include_time && permission_level >= 2 && last_separator.is_none()
         && "time".starts_with(&lowered) && remaining != "time" {
         matches.push("time".to_owned());
+    }
+    if include_time && permission_level >= 2 && last_separator.is_none()
+        && "weather".starts_with(&lowered) && remaining != "weather" {
+        matches.push("weather".to_owned());
     }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.

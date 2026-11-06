@@ -77,6 +77,7 @@ use tokio::{
 mod main_chunk_runtime;
 mod main_border_login;
 mod main_time_command;
+mod main_weather_command;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;

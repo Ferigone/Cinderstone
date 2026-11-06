@@ -120,6 +120,10 @@ impl WorldContext {
     pub fn weather(&self) -> WeatherState {
         self.weather
     }
+    /// Mutate the actual level weather without replacing its interpolation history.
+    pub fn weather_mut(&mut self) -> &mut WeatherState {
+        &mut self.weather
+    }
     pub fn advance_weather(&mut self, random: &mut LegacyRandomSource) -> Vec<WeatherChange> {
         self.weather.advance_with_legacy_random(
             self.dimension.has_skylight,
