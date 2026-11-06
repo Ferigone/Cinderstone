@@ -5,6 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Player idle timeout connected (#185)
+
+Console and permission-level3 players can run `/setidletimeout <minutes>` through
+Brigadier. The actual dedicated property and retained setting survive restart.
+Zero disables the policy; PLAY ticks disconnect inactive players, including ops,
+with `multiplayer.disconnect.idling`. Supported native creative actions update
+the actual last-action owner; movement/keep-alive remain separate clocks.
+The [real Java/native flow](validation/idle-timeout-runtime.json) waits beyond a
+minute, compares command/operator packets and proves stale operators leave while
+swing/hotbar activity survives. Original listener witnesses cover the strict
+60000/60001ms boundary. [Details](reference/idle-timeout.md). Full #24/#64 stay
+open; fixed scope1/100 and58/53 remain unchanged. Hosted checks remain under #19.
+
 ## Native list command and current player display names (#183)
 
 Console and every player can use `/list` and `/list uuids` through native

@@ -175,11 +175,13 @@ impl Server {
         let is_time = time_line.split_whitespace().next() == Some("time");
         let is_weather = time_line.split_whitespace().next() == Some("weather");
         let is_difficulty = time_line.split_whitespace().next() == Some("difficulty");
-        let outcome = if is_time || is_weather || is_difficulty {
+        let is_idle = time_line.split_whitespace().next() == Some("setidletimeout");
+        let outcome = if is_time || is_weather || is_difficulty || is_idle {
             drop(owner);
             if is_time { self.execute_time_command(time_line, source.permission_level)? }
             else if is_weather { self.execute_weather_command(time_line, source.permission_level)? }
-            else { self.execute_difficulty_command(time_line, source.permission_level)? }
+            else if is_difficulty { self.execute_difficulty_command(time_line, source.permission_level)? }
+            else { self.execute_idle_timeout(time_line, source.permission_level)? }
         } else {
             let outcome = owner.execute_line(line, &source, source_id, &online, wall_time_ms()?);
             drop(owner);
@@ -209,20 +211,32 @@ impl Server {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
                     } else if send_feedback {
-                        let component = if is_time || is_weather || is_difficulty { main_time_command::feedback_component(&message)? } else { message.network_component()? };
+                        let component = if is_time || is_weather || is_difficulty || is_idle { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
-                        let source_display = source_id.and_then(|id| online.iter().find(|p| p.entity_id == id))
-                            .map(|player| admission_commands::default_player_display_component(&player.profile))
-                            .unwrap_or_else(|| json!({"text":source.name}));
+                        let source_display = if is_idle {
+                            if let Some(id) = source_id {
+                                let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;
+                                let profile = &players.registry.get(id).context("idle command source missing")?.profile;
+                                main_scoreboard::decorated_name(&players.gameplay.scoreboard, profile)
+                            } else {json!({"text":source.name})}
+                        } else {
+                            source_id.and_then(|id| online.iter().find(|p| p.entity_id == id))
+                                .map(|player| admission_commands::default_player_display_component(&player.profile))
+                                .unwrap_or_else(|| json!({"text":source.name}))
+                        };
                         let admin_message = json!({"translate":"chat.type.admin", "with":[source_display,message.json_component()], "color":"gray","italic":true});
                         if log_admin && source_id.is_some() {
                             println!("{}", json!({"event":"administration_feedback","component":admin_message}));
                         }
                         if send_feedback {
                             let owner=self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
-                            let packet=system_message(admission_commands::encode_component_json(&admin_message)?);
+                            let bytes=admission_commands::encode_component_json(&admin_message)?;
+                            let bytes=if is_idle {
+                                mc121_rust::components::text::Component::from_nbt(&Tag::decode_anonymous(&bytes)?)?.to_network_nbt()?
+                            } else {bytes};
+                            let packet=system_message(bytes);
                             for player in &online {
                                 if Some(player.entity_id)!=source_id && owner.lists().operators.contains_key(&player.profile.uuid) {
                                     let _=self.entity_events.send(PlayerEvent::WorldAudience { recipients:Arc::new(vec![player.entity_id]), packets:Arc::new(vec![packet.clone()]) });

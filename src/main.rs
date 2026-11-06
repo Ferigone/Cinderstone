@@ -81,6 +81,7 @@ mod main_weather_command;
 mod main_seed_command;
 mod main_difficulty_command;
 mod main_list_command;
+mod main_idle_timeout;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -4154,6 +4155,10 @@ async fn play(
                         KeepAliveAction::Timeout=>{ play_disconnect(&codec,&mut writer,"disconnect.timeout").await?; return Ok(PlayExit::Disconnected); },
                     }
                 }
+                if server.player_is_idle(entity_id)? {
+                    play_disconnect(&codec, &mut writer, "multiplayer.disconnect.idling").await?;
+                    return Ok(PlayExit::Disconnected);
+                }
             }
             packet = rx.recv() => {
                 let Some(packet) = packet else { return Ok(PlayExit::Disconnected); };
@@ -4200,7 +4205,7 @@ async fn play(
                         }
                     },
                     0x08 => { let desired=fields.f32()?; fields.finish()?; server.acknowledge_chunk_batch(entity_id,desired)?; },
-                    0x09 => { let action=fields.varint()?; fields.finish()?; ensure!((0..=1).contains(&action),"unknown client command"); if action==1 {if let Some(packet)=server.stats_packet(entity_id)? {send_packets(&codec,&mut writer,vec![packet]).await?;}} },
+                    0x09 => { let action=fields.varint()?; fields.finish()?; ensure!((0..=1).contains(&action),"unknown client command"); server.record_player_action(entity_id)?; if action==1 {if let Some(packet)=server.stats_packet(entity_id)? {send_packets(&codec,&mut writer,vec![packet]).await?;}} },
                     0x28 => server.recipe_settings(entity_id, &packet.payload)?,
                     0x29 => server.recipe_seen(entity_id, &packet.payload)?,
                     0x2a => {
@@ -4287,6 +4292,7 @@ async fn play(
                     },
                     0x25 => {
                         let requested_id=fields.varint()?; let action=fields.varint()?; fields.varint()?; fields.finish()?;
+                        server.record_player_action(entity_id)?;
                         if requested_id != entity_id { continue; }
                         match action { 0 => metadata.flags |= 0x02, 1 => metadata.flags &= !0x02,
                             3 => metadata.flags |= 0x08, 4 => metadata.flags &= !0x08, _=>{} }
@@ -4298,14 +4304,16 @@ async fn play(
                         // packet only requests the flying bit of Abilities.
                         server.set_flying(entity_id,flags&0x02!=0)?;
                     },
-                    0x36 => { let hand=fields.varint()?; fields.finish()?; server.animate(entity_id, hand)?; },
+                    0x36 => { let hand=fields.varint()?; fields.finish()?; server.animate(entity_id, hand)?; server.record_player_action(entity_id)?; },
                     0x0d => {
                         let window=fields.varint()?; let button=fields.varint()?; fields.finish()?;
+                        server.record_player_action(entity_id)?;
                         if server.loom_button(entity_id,window,button).await? { continue; }
                         let _=server.stonecutter_button(entity_id,window,button).await?;
                     },
                     0x0e => {
                         let click=ContainerClick::decode(&packet.payload)?;
+                        server.record_player_action(entity_id)?;
                         if let Err(error) = main_workstation_components::require_supported_prediction(&click) {
                             // Refuse before adopting predictions or mutating
                             // actual stacks, then sync the retained current owner.
@@ -4331,7 +4339,7 @@ async fn play(
                         let result=server.close_current_player_menu(entity_id).await;
                         finish_menu_action(result,&container,&codec,&mut writer,&mut container_revision).await?;
                     },
-                    0x2f => { let slot=fields.i16()?; fields.finish()?; container.transact(|menu| {menu.inventory.set_selected_hotbar(slot)?;Ok(((),vec![]))})?; },
+                    0x2f => { let slot=fields.i16()?; fields.finish()?; container.transact(|menu| {menu.inventory.set_selected_hotbar(slot)?;Ok(((),vec![]))})?; server.record_player_action(entity_id)?; },
                     0x32 => {
                         if gamemode != 1 { continue; }
                         let slot=fields.i16()?; let stack=ItemStack::decode_exact(fields.remaining())?;
@@ -4367,6 +4375,7 @@ async fn play(
                     0x24 => {
                         let action = fields.varint()?; let packed = fields.i64()?; let face = fields.i8()?; let sequence = fields.varint()?; fields.finish()?;
                         if sequence < 0 || !(0..=6).contains(&action) || !(0..=5).contains(&face) { bail!("invalid creative digging request"); }
+                        server.record_player_action(entity_id)?;
                         if action==6 {
                             container.transact(|menu| Ok(((),menu.swap_hands()?)))?;
                             continue;
@@ -4399,6 +4408,7 @@ async fn play(
                             server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                             continue;
                         }
+                        server.record_player_action(entity_id)?;
                         if teleport_confirmed && server.use_native_furnace(entity_id,hand,target).await? {
                             server.finish_use_item_on(entity_id,target,direction,sequence).await?;
                             continue;
@@ -4452,6 +4462,7 @@ async fn play(
                         if !(0..=1).contains(&hand) || sequence<0 || !yaw.is_finite() || !pitch.is_finite() { bail!("invalid use item request"); }
                         server.acknowledge_block_changes_up_to(entity_id,sequence)?;
                         if teleport_confirmed {
+                            server.record_player_action(entity_id)?;
                             position.yaw=player_physics::wrap_rotation(yaw);
                             position.pitch=player_physics::wrap_rotation(pitch);
                             server.move_player(entity_id,position)?;
