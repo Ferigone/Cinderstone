@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "ok": true,
+  "completed_at": "2026-11-06T14:44:45.387922+00:00",
+  "scenario": "creative-reconciliation",
+  "specification": {
+    "checklist_areas": [
+      "network.3",
+      "block_interactions.1",
+      "inventory.1"
+    ],
+    "profile": "offline creative, flat overworld, seed 0, fresh empty player",
+    "position": [
+      8.5,
+      65,
+      8.5
+    ],
+    "target": {
+      "x": 10,
+      "y": 64,
+      "z": 8
+    },
+    "operations": [
+      "join",
+      "select 64 stone in hotbar 0",
+      "place stone",
+      "break stone",
+      "reject placement against occupied dirt below grass"
+    ],
+    "comparison": "Ordered block_change packets at the placed block, clicked grass and occupied dirt neighbor, including duplicates and locations, and acknowledgments for place/break/rejected placement; initial scene and empty inventory.",
+    "excluded": [
+      "other packet types and block positions outside observe_positions",
+      "transport framing/compression",
+      "entity and teleport ids",
+      "wall-clock timing, world age and keepalive nonces",
+      "lighting/chunk encoding",
+      "random UUIDs, sounds, particles and RNG consumption",
+      "survival and other blocks",
+      "persistence after edits",
+      "Java save import (native requires complete source provenance for gameplay)"
+    ],
+    "tolerances": [],
+    "control": "Same logical flat block world and seed 0: Java uses the declared flat generator, native uses its fresh production flat backend. Client compares SHA-256 of all 98,304 target-chunk block states plus hashed world seed before acting. Java weather/daylight/mob/random ticks are disabled; native default clock remains active. Each action waits for its update and acknowledgment; native has no tick freeze.",
+    "observe_positions": [
+      {
+        "x": 10,
+        "y": 64,
+        "z": 8
+      },
+      {
+        "x": 10,
+        "y": 63,
+        "z": 8
+      },
+      {
+        "x": 10,
+        "y": 62,
+        "z": 8
+      }
+    ],
+    "rejected_placement": {
+      "clicked": {
+        "x": 10,
+        "y": 63,
+        "z": 8
+      },
+      "direction": 0,
+      "cursor": [
+        0.5,
+        0,
+        0.5
+      ]
+    }
+  },
+  "native_commit": "c324f2ab702c2b7a77d69264408f50dbe8386608",
+  "native_binary_sha256": "ba6ded77570c22b899911b45ce725632008bcb11d821c58c10620b86bfe0be75",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "java_version": "openjdk version \"21.0.13\" 2026-10-20",
+  "traces": {
+    "java": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "join",
+          "events": [
+            {
+              "name": "scene",
+              "chunk": [
+                0,
+                0
+              ],
+              "block_states_sha256": "e21fd60b70cebc80b90fe1c1c57fdcf2ade65cfad51dfc1280e297d94d0567e5",
+              "hashed_seed": [
+                2047574433,
+                -177187409
+              ]
+            },
+            {
+              "name": "inventory",
+              "slots": [
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "place",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 9,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 63
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 1,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 1,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 101
+            }
+          ]
+        },
+        {
+          "name": "break",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 0,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 102
+            }
+          ]
+        },
+        {
+          "name": "reject-occupied-neighbor",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 9,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 63
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 10,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 62
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 103
+            }
+          ]
+        }
+      ],
+      "error": null
+    },
+    "native": {
+      "ok": true,
+      "phases": [
+        {
+          "name": "join",
+          "events": [
+            {
+              "name": "scene",
+              "chunk": [
+                0,
+                0
+              ],
+              "block_states_sha256": "e21fd60b70cebc80b90fe1c1c57fdcf2ade65cfad51dfc1280e297d94d0567e5",
+              "hashed_seed": [
+                2047574433,
+                -177187409
+              ]
+            },
+            {
+              "name": "inventory",
+              "slots": [
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                },
+                {
+                  "count": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "place",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 9,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 63
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 1,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 1,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 101
+            }
+          ]
+        },
+        {
+          "name": "break",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 0,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 64
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 102
+            }
+          ]
+        },
+        {
+          "name": "reject-occupied-neighbor",
+          "events": [
+            {
+              "name": "block_change",
+              "state": 9,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 63
+              }
+            },
+            {
+              "name": "block_change",
+              "state": 10,
+              "location": {
+                "x": 10,
+                "z": 8,
+                "y": 62
+              }
+            },
+            {
+              "name": "acknowledge_player_digging",
+              "sequence": 103
+            }
+          ]
+        }
+      ],
+      "error": null
+    }
+  },
+  "differences": [],
+  "error": null,
+  "pristine_world_sha256": "3a520bedad84dcb2bcd4e1fd1b4d3f48de407462da9b4bd40df0e18f9b671780",
+  "native_source_tree": "c79007ab10a09bc70798d068407e3c6b0d4fd015",
+  "published_equivalent_commit": "663c51445f52b01100acd0e6cd884c37570b0d62",
+  "publication_note": "The runner recorded the local build commit; git diff verified identical trees before publishing the equivalent GitHub API commit."
+}
