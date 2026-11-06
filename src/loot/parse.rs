@@ -342,7 +342,7 @@ pub fn int_range(value: &Value) -> Result<IntRange> {
 
 // ---------------------------------------------------------------- predicates
 
-fn int_bounds(value: &Value) -> Result<IntBounds> {
+pub fn int_bounds(value: &Value) -> Result<IntBounds> {
     if value.is_number() {
         let exact = int(value, "bounds")?;
         return Ok(IntBounds {
@@ -357,7 +357,7 @@ fn int_bounds(value: &Value) -> Result<IntBounds> {
     })
 }
 
-fn double_bounds(value: &Value) -> Result<DoubleBounds> {
+pub fn double_bounds(value: &Value) -> Result<DoubleBounds> {
     if value.is_number() {
         let exact = double(value, "bounds")?;
         return Ok(DoubleBounds {
@@ -568,7 +568,7 @@ pub fn damage_source_predicate(value: &Value) -> Result<DamageSourcePredicate> {
     })
 }
 
-fn state_properties(value: &Value) -> Result<StatePropertiesPredicate> {
+pub fn state_properties(value: &Value) -> Result<StatePropertiesPredicate> {
     let map = object(value, "state properties predicate")?;
     let mut properties = Vec::new();
     for (name, matcher) in map {
