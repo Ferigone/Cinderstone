@@ -1421,6 +1421,26 @@ public class loot_oracle {
         System.out.println("tags=" + in.size());
         break;
       }
+      case "snbt": {
+        // TagParser.parseTag over each input string: {ok, nbt} (NbtIo.writeAnyTag) or {ok:false, error}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject r = new JsonObject();
+          try {
+            CompoundTag tag = net.minecraft.nbt.TagParser.parseTag(e.getAsString());
+            r.addProperty("ok", true);
+            r.addProperty("nbt", tagHex(tag));
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()).replaceAll("[^\\x20-\\x7e]", "?"));
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("snbt=" + outArr.size());
+        break;
+      }
       case "registry-codec": {
         // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
         // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the
