@@ -81,8 +81,8 @@ impl Server {
     }
 
     /// One award pass. With `departing`, only that player's queued matches and
-    /// recipe-book additions are awarded (no `TICK`), so its removal save holds
-    /// them; otherwise every player whose recipe-book INIT is built.
+    /// recipe-book additions are awarded (no `TICK`), so a save captured next
+    /// holds them; otherwise every player whose recipe-book INIT is built.
     pub(super) fn award_recipe_advancements_locked(&self, players: &mut LivePlayers, departing: Option<[u8; 16]>) -> Result<()> {
         let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
         let catalogue = RecipeAdvancements::vanilla();

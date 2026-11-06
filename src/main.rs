@@ -1127,6 +1127,11 @@ impl Server {
         id: i32,
         view: PlayerInventorySaveView,
     ) -> Result<Option<PlayerData>> {
+        // Matches still queued for this player are awarded before any save
+        // (autosave, shutdown, removal) captures its book and advancements.
+        if let Some(uuid) = players.registry.get(id).map(|player| player.profile.uuid) {
+            self.award_recipe_advancements_locked(players, Some(uuid))?;
+        }
         let Some(player) = players.registry.get(id).cloned() else {
             return Ok(None);
         };
@@ -1254,8 +1259,6 @@ impl Server {
             players.player_removal_progress.get_mut(&id).expect("actual removal marker").leave_game = Some(outcome);
         }
         if players.player_removal_progress.get(&id).expect("actual removal marker").source_save.is_none() {
-            // Matches still queued for this player are awarded before its save.
-            self.award_recipe_advancements_locked(players, Some(uuid))?;
             let data = self.capture_player_with_view_locked(players, id, PlayerInventorySaveView::SourcePlayerInventory)?
                 .context("actual removal player disappeared before source save")?;
             players.player_removal_progress.get_mut(&id).expect("actual removal marker").source_save = Some(data);
