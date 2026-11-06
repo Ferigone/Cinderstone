@@ -164,6 +164,10 @@ impl Server {
             return self.execute_scoreboard(line, source_id, &source.name, source.permission_level);
         }
         let time_line = if source_id.is_none() { line.strip_prefix('/').unwrap_or(line) } else { line };
+        if time_line.split_whitespace().next() == Some("list") {
+            drop(owner);
+            return self.execute_list_command(time_line, source_id);
+        }
         if time_line.split_whitespace().next() == Some("seed") {
             drop(owner);
             return self.execute_seed_command(time_line, source_id, source.permission_level);

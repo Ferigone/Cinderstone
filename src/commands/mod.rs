@@ -3,7 +3,7 @@
 //! Mojang's Brigadier 1.2.9 with the dedicated server's built-in exception messages.
 //!
 //! This is `commands_data.1` partial work (WP-E3, issue #24). Nothing here is wired to
-//! Main except bounded `/time`, `/weather` and `/seed` paths: remaining argument types, selectors and the command catalog are later stages, and
+//! Main except bounded `/time`, `/weather`, `/seed`, `/difficulty` and `/list` paths: remaining argument types, selectors and the command catalog are later stages, and
 //! the existing bounded administration commands keep their own parser.
 //!
 //! Brigadier is MIT-licensed (`licenses/brigadier-MIT.txt`). See
@@ -15,6 +15,7 @@ pub mod difficulty_command;
 pub mod dispatcher;
 pub mod exception;
 pub mod java_text;
+pub mod list_command;
 pub mod operation;
 pub mod ranges;
 pub mod seed_command;
