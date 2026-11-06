@@ -5,6 +5,7 @@
 pub mod criteria;
 pub mod fastutil;
 pub mod format;
+pub mod hooks;
 pub mod model;
 pub mod packets;
 pub mod save;

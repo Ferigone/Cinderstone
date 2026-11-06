@@ -87,7 +87,18 @@ after `python3 tools/scoreboard_generate.py --sample 1`.
 
 ## Not implemented / limits
 
-- **Stages 4–6** of WP-E4 (criterion hooks, team effects in tracking/chat/damage, commands).
+- **Stage 4 is a library only.** `scoreboard::hooks` holds the criterion hooks:
+  - `PlayerCriteriaTracker::tick` for the vitals criteria `health`, `food`, `air`, `armor`, `xp`
+    and `level`, using `Mth.ceil` and the `Float.MIN_VALUE` / `Integer.MIN_VALUE` start values;
+  - `player_died` (`deathCount`);
+  - `player_awarded_kill` (`totalKillCount`, `playerKillCount`, and the team-kill criteria in
+    both directions, including the `NullPointerException` of a `null` team colour);
+  - `award_stat` / `reset_stat`.
+
+  The hooks are transcribed from the decompiled `ServerPlayer`, which the oracle cannot construct.
+  They are unit-tested and run on the oracle-checked `forAllObjectives`. Nothing calls them yet:
+  the player tick, death, kill credit and statistics owners must call them.
+- **Stages 5–6** of WP-E4 (team effects in tracking/chat/damage, commands).
 - **`join-time` delivery.** The module returns the packets (`start_tracking_packets`, the
   `Outbound` queue); sending them to a player is the connection owner's job. Packets to online
   players (`EachPlayer`) are not observed by the oracle (its player list is empty); their content

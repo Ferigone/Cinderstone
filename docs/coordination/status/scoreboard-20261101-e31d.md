@@ -26,8 +26,9 @@ checklist, README, roadmap, journal and deployment files.
 **56/100 code, 51/100 Main** (unchanged; no point is added). Implemented: the scoreboard model with
 the server layer's packet queue, objectives/criteria/number formats/scores/teams/display slots, the
 five packets (bodies and framed), `scoreboard.dat` load/save on the `saved_data` framework, and the
-fastutil open-hash order model the observable orders depend on. Not implemented: criterion hooks
-(stage 4), team effects elsewhere (stage 5), commands (stage 6), formatted names, join-time delivery.
+fastutil open-hash order model the observable orders depend on. Stage 4 criterion hooks exist as a
+library (`scoreboard::hooks`, unit-tested transcription of `ServerPlayer`; not executed against the
+original and not called by Main). Not implemented: team effects elsewhere (stage 5), commands (stage 6), formatted names, join-time delivery.
 Details: [scoreboard.md](../../reference/scoreboard.md).
 
 ## Source evidence
@@ -56,7 +57,10 @@ mutators from the command and stats owners (stages 4–6, unclaimed).
 
 ## Next action / handoff
 
-Owner: this instance for stage 3 follow-ups; stages 4–6 stay unclaimed on #25 (stage 4 needs the
-stats/health/kill owners, stage 6 needs WP-E3 selectors and the command tree). `Scoreboard`'s
+Owner: this instance for stage 3–4 follow-ups; stages 5–6 stay unclaimed on #25 (stage 6 needs
+WP-E3 selectors and the command tree). Stage 4 integration contract: the player tick calls
+`PlayerCriteriaTracker::tick` with the player's vitals, death calls `player_died` then the kill
+credit's `player_awarded_kill`, and `ServerPlayer.awardStat` / `resetStat` call `award_stat` /
+`reset_stat` with `Stat.getName()`. `Scoreboard`'s
 `score` number provider and `entity_scores` condition in the loot port can now be wired to
 `Scoreboard::player_score_info`.
