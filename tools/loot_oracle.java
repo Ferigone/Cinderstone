@@ -192,6 +192,16 @@ public class loot_oracle {
         if (scenarioBlockEntity.has("lock")) b.set(net.minecraft.core.component.DataComponents.LOCK, new net.minecraft.world.LockCode(scenarioBlockEntity.get("lock").getAsString()));
         return null;
       }
+      case "getFunctions": return timerFunctions;
+      case "get": {
+        // ServerFunctionManager.get(id): remember the call; no function exists.
+        if (a.length == 1 && a[0] instanceof ResourceLocation rl) { timerFired.add("function " + rl); return java.util.Optional.empty(); }
+        throw new IllegalStateException("unhooked get");
+      }
+      case "getTag": {
+        if (a.length == 1 && a[0] instanceof ResourceLocation rl) { timerFired.add("function_tag " + rl); return new ArrayList<>(); }
+        throw new IllegalStateException("unhooked getTag");
+      }
       case "send": {
         // StubConnection.send: record the frame against the player that owns the connection.
         String owner = bossConnections.get(self);
@@ -233,6 +243,27 @@ public class loot_oracle {
     }
   }
 
+
+  // ---------------------------------------------------------------- timer queue
+  static Object timerServer;
+  static Object timerFunctions;
+  static final List<String> timerFired = new ArrayList<>();
+
+  static void makeTimerStubs() throws Throwable {
+    if (timerServer != null) return;
+    Loader loader = new Loader(loot_oracle.class.getClassLoader());
+    ClassWriter fw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    fw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/StubFunctions", null, "net/minecraft/server/ServerFunctionManager", null);
+    hookMethod(fw, "get", "(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;");
+    hookMethod(fw, "getTag", "(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Collection;");
+    fw.visitEnd();
+    timerFunctions = unsafe.allocateInstance(loader.define("oracle.StubFunctions", fw.toByteArray()));
+    ClassWriter sw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
+    sw.visit(Opcodes.V21, Opcodes.ACC_PUBLIC, "oracle/TimerServer", null, "net/minecraft/server/MinecraftServer", null);
+    hookMethod(sw, "getFunctions", "()Lnet/minecraft/server/ServerFunctionManager;");
+    sw.visitEnd();
+    timerServer = unsafe.allocateInstance(loader.define("oracle.TimerServer", sw.toByteArray()));
+  }
 
   // ---------------------------------------------------------------- boss bars
   static final java.util.IdentityHashMap<Object, String> bossConnections = new java.util.IdentityHashMap<>();
@@ -1595,6 +1626,120 @@ public class loot_oracle {
         }
         Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
         System.out.println("bossbar=" + in.size());
+        break;
+      }
+      case "timer-queue": {
+        // TimerQueue<MinecraftServer> with TimerCallbacks.SERVER_CALLBACKS, loaded the way
+        // PrimaryLevelData does (Dynamic.get("ScheduledEvents").asStream()). Input: [{steps}].
+        makeTimerStubs();
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          net.minecraft.world.level.timers.TimerQueue<net.minecraft.server.MinecraftServer> queue =
+              new net.minecraft.world.level.timers.TimerQueue<>(net.minecraft.world.level.timers.TimerCallbacks.SERVER_CALLBACKS);
+          JsonArray results = new JsonArray();
+          net.minecraft.nbt.ListTag lastStore = new net.minecraft.nbt.ListTag();
+          for (JsonElement stepElement : e.getAsJsonObject().getAsJsonArray("steps")) {
+            JsonObject step = stepElement.getAsJsonObject();
+            JsonObject r = new JsonObject();
+            timerFired.clear();
+            try {
+              switch (step.get("op").getAsString()) {
+                case "load": {
+                  CompoundTag wrapper = new CompoundTag();
+                  wrapper.put("ScheduledEvents", renameWrap(new TagParser(new com.mojang.brigadier.StringReader(step.get("snbt").getAsString())).readValue()));
+                  queue = new net.minecraft.world.level.timers.TimerQueue<>(net.minecraft.world.level.timers.TimerCallbacks.SERVER_CALLBACKS,
+                      new com.mojang.serialization.Dynamic<>(NbtOps.INSTANCE, wrapper).get("ScheduledEvents").asStream());
+                  break;
+                }
+                case "schedule": {
+                  ResourceLocation id = ResourceLocation.parse(step.get("id").getAsString());
+                  net.minecraft.world.level.timers.TimerCallback<net.minecraft.server.MinecraftServer> callback = step.get("kind").getAsString().equals("function")
+                      ? new net.minecraft.world.level.timers.FunctionCallback(id) : new net.minecraft.world.level.timers.FunctionTagCallback(id);
+                  queue.schedule(step.get("name").getAsString(), step.get("time").getAsLong(), callback);
+                  break;
+                }
+                case "remove": r.addProperty("removed", queue.remove(step.get("name").getAsString())); break;
+                case "ids": { JsonArray ids = new JsonArray(); for (String id : queue.getEventsIds()) ids.add(id); r.add("ids", ids); break; }
+                case "store": lastStore = queue.store(); r.addProperty("nbt", tagHex(lastStore)); break;
+                case "reload": {
+                  CompoundTag wrapper = new CompoundTag();
+                  wrapper.put("ScheduledEvents", lastStore);
+                  queue = new net.minecraft.world.level.timers.TimerQueue<>(net.minecraft.world.level.timers.TimerCallbacks.SERVER_CALLBACKS,
+                      new com.mojang.serialization.Dynamic<>(NbtOps.INSTANCE, wrapper).get("ScheduledEvents").asStream());
+                  break;
+                }
+                case "tick": queue.tick((net.minecraft.server.MinecraftServer) timerServer, step.get("time").getAsLong()); break;
+                default: throw new IllegalArgumentException(step.get("op").getAsString());
+              }
+            } catch (Throwable t) {
+              Throwable cause = t instanceof java.lang.reflect.InvocationTargetException ite ? ite.getCause() : t;
+              r.addProperty("error", cause.getClass().getSimpleName());
+              r.addProperty("where", cause.getStackTrace().length > 0 ? cause.getStackTrace()[0].toString() : "");
+            }
+            JsonArray fired = new JsonArray();
+            for (String f : timerFired) fired.add(f);
+            r.add("fired", fired);
+            results.add(r);
+          }
+          outArr.add(results);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("timer-queue=" + in.size());
+        break;
+      }
+      case "dragon-fight": {
+        // EndDragonFight.Data.CODEC over NbtOps (the DragonFight member of level.dat), and the
+        // gateway order the constructor draws from the world seed. Input: [{op:"data", snbt} |
+        // {op:"mutants", snbt} | {op:"gateways", seed}]; "mutants" expands to the base and every
+        // one-step mutant. Output rows: {payload, ok, fields?, encoded?} / {gateways}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        for (JsonElement e : in) {
+          JsonObject spec = e.getAsJsonObject();
+          String op = spec.get("op").getAsString();
+          if (op.equals("gateways")) {
+            JsonObject r = new JsonObject();
+            it.unimi.dsi.fastutil.objects.ObjectArrayList<Integer> list = new it.unimi.dsi.fastutil.objects.ObjectArrayList<>(
+                com.google.common.collect.ContiguousSet.create(com.google.common.collect.Range.closedOpen(0, 20), com.google.common.collect.DiscreteDomain.integers()));
+            net.minecraft.Util.shuffle(list, net.minecraft.util.RandomSource.create(spec.get("seed").getAsLong()));
+            JsonArray order = new JsonArray();
+            for (Integer g : list) order.add(g);
+            r.addProperty("seed", spec.get("seed").getAsLong());
+            r.add("gateways", order);
+            outArr.add(r);
+            continue;
+          }
+          Tag base = renameWrap(new TagParser(new com.mojang.brigadier.StringReader(spec.get("snbt").getAsString())).readValue());
+          LinkedHashMap<String, Tag> payloads = new LinkedHashMap<>();
+          payloads.put(tagHex(base), base);
+          if (op.equals("mutants")) for (Tag mutant : nbtMutants(base)) payloads.putIfAbsent(tagHex(mutant), mutant);
+          for (Map.Entry<String, Tag> payload : payloads.entrySet()) {
+            JsonObject r = new JsonObject();
+            r.addProperty("payload", payload.getKey());
+            try {
+              net.minecraft.world.level.dimension.end.EndDragonFight.Data data =
+                  net.minecraft.world.level.dimension.end.EndDragonFight.Data.CODEC.parse(NbtOps.INSTANCE, payload.getValue()).getOrThrow(m -> new IllegalArgumentException(m));
+              r.addProperty("ok", true);
+              JsonObject f = new JsonObject();
+              f.addProperty("needs_state_scanning", data.needsStateScanning());
+              f.addProperty("dragon_killed", data.dragonKilled());
+              f.addProperty("previously_killed", data.previouslyKilled());
+              f.addProperty("is_respawning", data.isRespawning());
+              f.addProperty("dragon", data.dragonUUID().map(java.util.UUID::toString).orElse(null));
+              if (data.exitPortalLocation().isPresent()) { JsonArray p = new JsonArray(); BlockPos b = data.exitPortalLocation().get(); p.add(b.getX()); p.add(b.getY()); p.add(b.getZ()); f.add("exit", p); }
+              if (data.gateways().isPresent()) { JsonArray g = new JsonArray(); for (int v : data.gateways().get()) g.add(v); f.add("gateways", g); }
+              r.add("fields", f);
+              r.addProperty("encoded", tagHex(net.minecraft.world.level.dimension.end.EndDragonFight.Data.CODEC.encodeStart(NbtOps.INSTANCE, data).getOrThrow(m -> new IllegalStateException(m))));
+            } catch (Throwable t) {
+              r.addProperty("ok", false);
+              r.addProperty("error", t.getClass().getSimpleName());
+            }
+            outArr.add(r);
+          }
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("dragon-fight=" + outArr.size());
         break;
       }
       case "bossbar-mutants": {
