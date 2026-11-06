@@ -74,6 +74,7 @@ try {
     await until(() => phase.events.some(e => e.name === 'block_change' && e.state === state) &&
       phase.events.some(e => e.name === 'acknowledge_player_digging' && e.sequence >= sequence), name);
     await pause(250); // Include duplicate updates; do not silently deduplicate.
+    if (failure) throw failure;
   }
   phase = null;
   result.ok = true;

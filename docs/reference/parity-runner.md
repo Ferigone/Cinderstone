@@ -19,6 +19,7 @@ python3 tools/parity/run.py \
   --eula-file /path/to/existing/eula.txt \
   --report /tmp/parity-result.json
 python3 -m unittest discover -s tools/parity -p 'test_*.py'
+node --experimental-vm-modules --test tools/parity/client.test.mjs
 ```
 
 The runner verifies the JAR's size and SHA-1 against `fixtures/source-lock.json`.
