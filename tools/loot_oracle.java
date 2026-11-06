@@ -1421,6 +1421,77 @@ public class loot_oracle {
         System.out.println("tags=" + in.size());
         break;
       }
+      case "registry-codec": {
+        // How RegistryDataLoader reads one synchronized registry element (JsonParser.parseReader,
+        // then the loading codec over RegistryOps) and how RegistrySynchronization writes it (the
+        // network codec over RegistryOps<NbtOps>). Input: [{registry, text}]; output: {ok, nbt?|error}.
+        JsonArray in = JsonParser.parseString(Files.readString(Path.of(a[1]))).getAsJsonArray();
+        JsonArray outArr = new JsonArray();
+        RegistryOps<JsonElement> jsonRegistryOps = RegistryOps.create(JsonOps.INSTANCE, access);
+        for (JsonElement e : in) {
+          JsonObject spec = e.getAsJsonObject();
+          JsonObject r = new JsonObject();
+          try {
+            String registry = spec.get("registry").getAsString();
+            RegistryDataLoader.RegistryData<?> loading = RegistryDataLoader.WORLDGEN_REGISTRIES.stream().filter(d -> d.key().location().toString().equals(registry)).findFirst().orElseThrow();
+            RegistryDataLoader.RegistryData<?> network = RegistryDataLoader.SYNCHRONIZED_REGISTRIES.stream().filter(d -> d.key().location().toString().equals(registry)).findFirst().orElseThrow();
+            JsonElement json = JsonParser.parseString(spec.get("text").getAsString());
+            @SuppressWarnings("unchecked") Codec<Object> loadCodec = (Codec<Object>) loading.elementCodec();
+            @SuppressWarnings("unchecked") Codec<Object> netCodec = (Codec<Object>) network.elementCodec();
+            Object value = loadCodec.parse(jsonRegistryOps, json).getOrThrow(m -> new IllegalArgumentException(m));
+            r.addProperty("ok", true);
+            r.addProperty("nbt", tagHex(netCodec.encodeStart(nbtOps, value).getOrThrow(m -> new IllegalStateException(m))));
+            // JsonObject keeps insertion order: the order the codec puts the fields in.
+            r.add("json", netCodec.encodeStart(jsonRegistryOps, value).getOrThrow(m -> new IllegalStateException(m)));
+          } catch (Throwable t) {
+            r.addProperty("ok", false);
+            r.addProperty("error", t.getClass().getSimpleName() + ": " + String.valueOf(t.getMessage()).replaceAll("[^\\x20-\\x7e]", "?"));
+          }
+          outArr.add(r);
+        }
+        Files.writeString(Path.of(a[2]), GSON.toJson(outArr));
+        System.out.println("registry-codec=" + outArr.size());
+        break;
+      }
+      case "export-ids": {
+        // The ids of the given registries, in registry order: {registry:[ids]}. Arguments: out, registry...
+        JsonObject all = new JsonObject();
+        for (int index = 2; index < a.length; index++) {
+          ResourceKey<? extends Registry<?>> key = ResourceKey.createRegistryKey(ResourceLocation.parse(a[index]));
+          Registry<?> registry = access.registry(key).orElseGet(() -> (Registry) BuiltInRegistries.REGISTRY.get(key.location()));
+          JsonArray ids = new JsonArray();
+          for (Object value : registry) ids.add(((Registry<Object>) registry).getKey(value).toString());
+          all.add(a[index], ids);
+        }
+        JsonArray simple = new JsonArray();
+        for (net.minecraft.core.particles.ParticleType<?> type : BuiltInRegistries.PARTICLE_TYPE) {
+          if (type instanceof net.minecraft.core.particles.SimpleParticleType) simple.add(BuiltInRegistries.PARTICLE_TYPE.getKey(type).toString());
+        }
+        all.add("simple_particle_type", simple);
+        Files.writeString(Path.of(a[1]), GSON.toJson(all));
+        break;
+      }
+      case "export-data": {
+        // Every shipped JSON file of the vanilla data pack under the given directories:
+        // {dir:{"ns:path":text}}. Arguments: out, dir...
+        PackRepository repo = ServerPacksSource.createVanillaTrustedRepository();
+        repo.reload();
+        List<PackResources> packs = repo.getAvailablePacks().stream().filter(p -> p.getId().equals("vanilla")).map(Pack::open).toList();
+        MultiPackResourceManager manager = new MultiPackResourceManager(PackType.SERVER_DATA, packs);
+        JsonObject all = new JsonObject();
+        for (int index = 2; index < a.length; index++) {
+          net.minecraft.resources.FileToIdConverter converter = net.minecraft.resources.FileToIdConverter.json(a[index]);
+          JsonObject files = new JsonObject();
+          for (Map.Entry<ResourceLocation, Resource> entry : converter.listMatchingResources(manager).entrySet()) {
+            String text;
+            try (java.io.InputStream stream = entry.getValue().open()) { text = new String(stream.readAllBytes(), StandardCharsets.UTF_8); }
+            files.addProperty(converter.fileToId(entry.getKey()).toString(), text);
+          }
+          all.add(a[index], files);
+        }
+        Files.writeString(Path.of(a[1]), GSON.toJson(all));
+        break;
+      }
       case "export-tags": {
         // Every shipped `tags/**` JSON of the vanilla data pack, by directory: {dir:{"ns:path":text}}.
         PackRepository repo = ServerPacksSource.createVanillaTrustedRepository();

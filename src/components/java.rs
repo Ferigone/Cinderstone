@@ -94,6 +94,45 @@ pub fn json_number_int_value(number: &serde_json::Number) -> i32 {
     }
 }
 
+/// Gson's `LazilyParsedNumber.longValue()` (`Long.parseLong`, else `new BigDecimal(text).longValue()`):
+/// the integer part of the decimal, truncated toward zero, keeping its low 64 bits.
+pub fn json_number_long_value(number: &serde_json::Number) -> i64 {
+    if let Some(value) = number.as_i64() {
+        return value;
+    }
+    if let Some(value) = number.as_u64() {
+        return value as i64;
+    }
+    // `float_roundtrip` keeps the shortest decimal that reads back as the same double, which is
+    // the text a data file normally spells.
+    let text = number.to_string();
+    let (negative, text) = match text.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, text.as_str()),
+    };
+    let (mantissa, exponent) = match text.find(['e', 'E']) {
+        Some(at) => (&text[..at], text[at + 1..].parse::<i64>().unwrap_or(0)),
+        None => (text, 0),
+    };
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    let digits: Vec<u8> = whole.bytes().chain(fraction.bytes()).map(|b| b - b'0').collect();
+    let scale = exponent - fraction.len() as i64;
+    let kept = if scale >= 0 { digits.len() } else { digits.len().saturating_sub((-scale) as usize) };
+    let mut value: u64 = 0;
+    for digit in &digits[..kept] {
+        value = value.wrapping_mul(10).wrapping_add(u64::from(*digit));
+    }
+    for _ in 0..scale.max(0).min(64) {
+        value = value.wrapping_mul(10);
+    }
+    let value = value as i64;
+    if negative {
+        value.wrapping_neg()
+    } else {
+        value
+    }
+}
+
 /// `ResourceLocation.hashCode()` of `namespace:path`.
 pub fn resource_location_hash(id: &str) -> i32 {
     let (namespace, path) = id.split_once(':').unwrap_or(("minecraft", id));
