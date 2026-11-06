@@ -46,11 +46,13 @@ def main():
     assert jar.stat().st_size == lock['size'] and digest(jar, 'sha1') == lock['sha1']
     assert 'eula=true' in args.eula_file.read_text().splitlines(), 'Supply existing EULA acceptance'
     scratch = Path(tempfile.mkdtemp(prefix='cinderstone-world-type-'))
+    java_options = ['-XX:ActiveProcessorCount=2', '-Xms128M', '-Xmx768M']
     report = {'ok': False, 'java_jar_sha1': lock['sha1'], 'minecraft': '1.21', 'protocol': 767,
               'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
               'main_source_sha256': digest(ROOT / 'src/main.rs'), 'binary_sha256': digest(binary),
               'runner_sha256': digest(Path(__file__)),
               'client_sha256': digest(Path(__file__).with_name('login_rules_flow.mjs')),
+              'java_options': java_options,
               'cases': [], 'scope': 'Initial PLAY isDebug/isFlat flags only; no generator or gameplay parity'}
     java_server = native = None
     try:
@@ -71,7 +73,7 @@ def main():
                 properties['generator-settings'] = json.dumps({'biome': 'minecraft:plains', 'features': False,
                     'lakes': False, 'layers': [{'block': 'minecraft:stone', 'height': 128}]})
             (java_dir / 'server.properties').write_text(''.join(f'{k}={v}\n' for k, v in properties.items()))
-            java_server = Server(['java', '-Xms128M', '-Xmx1024M', '-jar', str(jar), 'nogui'],
+            java_server = Server(['java', *java_options, '-jar', str(jar), 'nogui'],
                                  java_dir, java_dir / 'server.log', 'Done (')
             original = capture(java_port, java_dir, 'TypeJava')
             java_server.stop(java=True); java_server = None

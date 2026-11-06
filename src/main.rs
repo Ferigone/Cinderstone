@@ -3701,6 +3701,10 @@ async fn play(
         send(&codec, &mut writer, 0x1d, rejection.network_component()?).await?;
         return Ok(PlayExit::Disconnected);
     }
+    let (is_debug_world, is_flat_world) = match &server.level {
+        Some(level) => level.lock().await.overworld_generator_flags()?,
+        None => (false, true),
+    };
     let (entity_id, mut player_random) = server.allocate_player_entity()?;
     let menu_sender = server.entity_events.clone();
     let container = SharedContainer::with_publisher(Arc::new(move |update| {
@@ -3880,10 +3884,6 @@ async fn play(
     let view = server.options.view_distance;
     let maximum_players = server.maximum_players()?;
     let enforce_secure_chat = server.current_secure_chat_enforcement();
-    let (is_debug_world, is_flat_world) = match &server.level {
-        Some(level) => level.lock().await.overworld_generator_flags()?,
-        None => (false, true),
-    };
     let (reduced_debug_info, show_death_screen) = {
         let players = server.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
         let rules = &players.world_context.rules;
