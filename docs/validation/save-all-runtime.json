@@ -1,8 +1,8 @@
 {
   "ok": true,
-  "native_commit": "e744b8f175d01f63ab5f09c50cbc96e9f8b609e6",
-  "native_src_tree": "35ce078287c82b672e77a4f2c16bdb0d538daf78",
-  "native_binary_sha256": "d19d24e0eb037b742b9c6f8c994dab9886b20dac36ab37642e956024ab1fd3de",
+  "native_commit": "3d1848f9ce94ece2d6a916c9a5e576a8231f68ab",
+  "native_src_tree": "3cc1d686dd63979c163b1f261b012b5b632da074",
+  "native_binary_sha256": "7f4c54d2f1de027bf5637488f3f5ae7ac502010e4dffca8092540aef17741e01",
   "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
   "traces": {
     "java": {
@@ -174,7 +174,7 @@
     "saving_then_failed": true,
     "no_success": true
   },
-  "completed_at": "2026-11-06T21:50:33.182Z",
-  "local_source_commit": "6cf5063c4f38f751658266685fbafd2709f7d220",
-  "source_note": "Published source tree matches executed source; API commit metadata differs."
+  "completed_at": "2026-11-06T21:58:46.305Z",
+  "local_source_commit": "4e6846dd85dc20c38f741982229e2f6fa0248883",
+  "source_note": "Current-master rebase including banlist; published source tree matches executed source; API commit metadata differs."
 }
