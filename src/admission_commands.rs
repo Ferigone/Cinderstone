@@ -79,6 +79,7 @@ pub struct BanListItem {
 pub enum MessageArg {
     Text(String),
     Integer(i32),
+    Double(f64),
     Profile(AccessProfile),
     /// The supported no-team Player display name, with actual profile identity.
     DisplayProfile(AccessProfile),
@@ -185,6 +186,7 @@ impl MessageArg {
         match self {
             Self::Text(text) => serde_json::Value::String(text.clone()),
             Self::Integer(n) => serde_json::json!(*n),
+            Self::Double(n) => serde_json::json!(*n),
             Self::Profile(profile) => serde_json::json!({"text":profile.name}),
             Self::DisplayProfile(profile) => default_player_display_component(profile),
             Self::Names(names) => join_components(names.iter().map(|name| serde_json::json!({"text":name})).collect()),

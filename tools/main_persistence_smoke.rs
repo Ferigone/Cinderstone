@@ -120,6 +120,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         level: None,
         difficulty_locked: false,
         hardcore: false,
+        console_command_position: Vec3::new(8.,64.,8.),
         border: StdRwLock::new(WorldBorder::default()),
         player_store,
         entity_store,

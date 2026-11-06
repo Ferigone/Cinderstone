@@ -80,6 +80,7 @@ mod main_time_command;
 mod main_weather_command;
 mod main_seed_command;
 mod main_difficulty_command;
+mod main_worldborder_command;
 mod main_list_command;
 mod main_idle_timeout;
 mod main_chunk_transport;
@@ -486,6 +487,8 @@ struct SavedWorld {
     format: String,
     minecraft: String,
     changes: Vec<BlockChange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    border: Option<mc121_rust::border::BorderSettings>,
     #[serde(default)]
     clock: Option<TickClock>,
     #[serde(default)]
@@ -534,6 +537,7 @@ struct Server {
     level: Option<Mutex<LevelData>>,
     difficulty_locked: bool,
     hardcore: bool,
+    console_command_position: Vec3,
     border: StdRwLock<WorldBorder>,
     player_store: PlayerDataStore,
     entity_store: EntityDataStore,
@@ -2601,6 +2605,7 @@ impl Server {
                     format: "mc121-flat-diffs-v1".into(),
                     minecraft: "1.21".into(),
                     changes: world.changes(),
+                    border: Some(self.border.read().map_err(|_|anyhow!("border poisoned"))?.settings(self.epoch.elapsed().as_millis() as i64)),
                     clock: Some(clock),
                     weather: Some(weather),
                     fluid_ticks: Some(fluid_checkpoint),
@@ -2840,6 +2845,7 @@ async fn main() -> Result<()> {
     let mut had_fluid_checkpoint = false;
     let mut fluid_checkpoint_clock = None;
     let mut initial_fluid_shapes = None;
+    let mut initial_border = None;
     let mut initial_fire_runtime = None;
     let mut had_fire_checkpoint = false;
     let mut initial_level_random_position_value = None;
@@ -2864,6 +2870,7 @@ async fn main() -> Result<()> {
         }
         fixture_world.apply_changes(&saved.changes)?;
         initial_clock = saved.clock.unwrap_or_default();
+        initial_border = saved.border;
         initial_experience_orbs = saved.experience_orbs;
         initial_block_ticks = saved.block_ticks;
         had_block_checkpoint = initial_block_ticks.is_some();
@@ -2939,6 +2946,10 @@ async fn main() -> Result<()> {
         .transpose()?;
     let difficulty_locked = level.as_ref().is_some_and(LevelData::difficulty_locked);
     let hardcore = level.as_ref().is_some_and(LevelData::hardcore);
+    let console_command_position = match &level {
+        Some(level) => {let (x,y,z,_)=level.spawn()?;Vec3::new(f64::from(x),f64::from(y),f64::from(z))},
+        None => Vec3::new(8.,64.,8.),
+    };
     if hardcore { options.difficulty = 3; }
     if let Some(level) = &level {
         initial_clock = level.clock()?;
@@ -3045,6 +3056,7 @@ async fn main() -> Result<()> {
         level
             .as_ref()
             .map(LevelData::border_settings)
+            .or(initial_border)
             .unwrap_or_default(),
         0,
     );
@@ -3197,6 +3209,7 @@ async fn main() -> Result<()> {
         level: level.map(Mutex::new),
         difficulty_locked,
         hardcore,
+        console_command_position,
         border: StdRwLock::new(border),
         player_store,
         entity_store,
