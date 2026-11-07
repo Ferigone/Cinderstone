@@ -68,6 +68,14 @@
       "texts": [
         "minecraft:armor_dye"
       ]
+    },
+    {
+      "input": "recipe take RecipeTarget dye",
+      "start": 25,
+      "end": 28,
+      "texts": [
+        "minecraft:armor_dye"
+      ]
     }
   ],
   "execution": [

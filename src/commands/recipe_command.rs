@@ -17,7 +17,8 @@ impl ArgumentType for RecipeArgument{
     fn network_info(&self)->Option<ArgumentNetworkInfo>{Some(ArgumentNetworkInfo{registry_id:35,template:vec![]})}
     fn parse(&self,r:&mut StringReader)->Result<String,CommandSyntaxException>{
         let start=r.cursor();let raw=r.remaining().chars().take_while(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||"_-./:".contains(*c)).collect::<String>();r.set_cursor(start+raw.len());
-        if raw.is_empty(){return Err(built_in::simple("argument.id.invalid",r.units(),start));}
+        // The original uses ResourceLocation.read (empty reads are allowed);
+        // Brigadier rejects the following non-separator before execution.
         match RecipeId::parse(&raw){Ok(id)=>Ok(id.as_str().to_owned()),Err(_)=>{r.set_cursor(start);Err(built_in::simple("argument.id.invalid",r.units(),start))}}
     }
 }
@@ -30,7 +31,8 @@ fn dispatcher(names:&[String])->CommandDispatcher<Source>{
     let mut d=CommandDispatcher::new();let mut root=ArgumentBuilder::literal("recipe").requires(Rc::new(|s:&Source|s.permission>=2));
     for (literal,operation) in [("give",Operation::Give),("take",Operation::Take)]{
         let id=ArgumentBuilder::argument("recipe",Rc::new(RecipeArgument)).suggests_named("minecraft:all_recipes",Rc::new(|c:&CommandContext<Source>,b|{
-            let prefix=b.remaining_lower_case();for id in &c.source().recipes{if id.starts_with(&prefix)||(!prefix.contains(':')&&id.strip_prefix("minecraft:").is_some_and(|p|p.starts_with(&prefix))){b.suggest(id);}}Ok(b.build())
+            let prefix=b.remaining_lower_case();let matches=|text:&str|text.starts_with(&prefix)||text.char_indices().any(|(i,ch)|matches!(ch,'_'|'.')&&text[i+1..].starts_with(&prefix));
+            for id in &c.source().recipes{let (namespace,path)=id.split_once(':').expect("canonical recipe id");if if prefix.contains(':'){matches(id)}else{matches(namespace)||(namespace=="minecraft"&&matches(path))}{b.suggest(id);}}Ok(b.build())
         })).executes(Rc::new(move |c|record(c,operation)));
         root=root.then(ArgumentBuilder::literal(literal).then(ArgumentBuilder::argument("targets",Rc::new(OnlinePlayerArgument{names:names.to_vec()}))
             .then(id).then(ArgumentBuilder::literal("*").executes(Rc::new(move |c|record(c,operation))))));
