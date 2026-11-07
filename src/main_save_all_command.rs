@@ -1,10 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 //! Explicit saves reuse the actual save transaction without re-entering chat_dispatch.
 use super::*;
-use mc121_rust::{commands::save_all_command, components::text::Component};
+use mc121_rust::{commands::save_all_command, components::text::{Arg, Component, Contents, Style, TextColor}};
 
 impl Server {
     pub(super) fn save_command_feedback(&self, source: Option<i32>, component: serde_json::Value,
+        broadcast: bool, error: bool, result: Option<i32>) -> Result<()> {
+        self.command_component_feedback(source, Component::from_json(&component)?, broadcast, error, result)
+    }
+
+    pub(super) fn command_component_feedback(&self, source: Option<i32>, component: Component,
         broadcast: bool, error: bool, result: Option<i32>) -> Result<()> {
         let (send_feedback, log_admin, online, visible, display) = {
             let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;
@@ -18,8 +23,8 @@ impl Server {
                 players.world_context.rules.boolean("logAdminCommands").context("missing admin log rule")?,
                 online, visible, display)
         };
-        let packet = |value: &serde_json::Value| -> Result<Packet> {
-            let bytes = Component::from_json(value)?.to_network_nbt()?;
+        let packet = |value: &Component| -> Result<Packet> {
+            let bytes = value.to_network_nbt()?;
             Ok(Packet { id: 0x6c, payload: encoded(|w| {w.raw(&bytes).bool(false);}) })
         };
         if let Some(id) = source {
@@ -29,11 +34,13 @@ impl Server {
                 });
             }
         } else {
-            println!("{}",json!({"event":"administration_feedback","component":component,"result":result,"error":error}));
+            println!("{}",json!({"event":"administration_feedback","component":component.to_json(),"result":result,"error":error}));
         }
         if broadcast {
-            let admin = json!({"translate":"chat.type.admin","with":[display,component],"color":"gray","italic":true});
-            if source.is_some() && log_admin { println!("{}",json!({"event":"administration_feedback","component":admin})); }
+            let admin = Component { contents: Contents::Translatable {key:"chat.type.admin".into(),fallback:None,
+                args:vec![Arg::Component(Component::from_json(&display)?),Arg::Component(component)]},siblings:Vec::new(),
+                style:Style{color:Some(TextColor::parse("gray")?),italic:Some(true),..Style::default()} };
+            if source.is_some() && log_admin { println!("{}",json!({"event":"administration_feedback","component":admin.to_json()})); }
             if send_feedback {
                 let owner=self.administration.read().map_err(|_|anyhow!("administration poisoned"))?;
                 let recipients=online.iter().filter(|p| Some(p.entity_id)!=source && visible.contains(&p.entity_id) && owner.lists().operators.contains_key(&p.profile.uuid))

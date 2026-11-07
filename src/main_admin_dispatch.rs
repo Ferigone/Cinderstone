@@ -174,6 +174,10 @@ impl Server {
             drop(owner);
             return self.execute_seed_command(time_line, source_id, source.permission_level);
         }
+        if time_line.split_whitespace().next() == Some("setworldspawn") {
+            drop(owner);
+            return self.execute_worldspawn_command(time_line, source_id, source.permission_level);
+        }
         let is_pardon_ip = line.strip_prefix('/').unwrap_or(line).split_whitespace().next() == Some("pardon-ip");
         let is_banlist = time_line.split_whitespace().next() == Some("banlist");
         let is_time = time_line.split_whitespace().next() == Some("time");

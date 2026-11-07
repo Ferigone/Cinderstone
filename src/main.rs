@@ -79,6 +79,7 @@ mod main_border_login;
 mod main_time_command;
 mod main_weather_command;
 mod main_seed_command;
+mod main_worldspawn_command;
 mod main_difficulty_command;
 mod main_worldborder_command;
 mod main_list_command;
@@ -486,6 +487,8 @@ async fn fixtures(path: &Path) -> Result<Fixtures> {
 
 #[derive(Serialize, Deserialize)]
 struct SavedWorld {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    world_spawn: Option<mc121_rust::commands::setworldspawn_command::WorldSpawn>,
     format: String,
     minecraft: String,
     changes: Vec<BlockChange>,
@@ -539,7 +542,7 @@ struct Server {
     level: Option<Mutex<LevelData>>,
     difficulty_locked: bool,
     hardcore: bool,
-    console_command_position: Vec3,
+    world_spawn: StdRwLock<mc121_rust::commands::setworldspawn_command::WorldSpawn>,
     border: StdRwLock<WorldBorder>,
     player_store: PlayerDataStore,
     entity_store: EntityDataStore,
@@ -2609,6 +2612,7 @@ impl Server {
             }
             WorldBackend::Fixture(world) => {
                 let saved = SavedWorld {
+                    world_spawn: Some(self.world_spawn()?),
                     format: "mc121-flat-diffs-v1".into(),
                     minecraft: "1.21".into(),
                     changes: world.changes(),
@@ -2661,6 +2665,8 @@ impl Server {
                 .settings(self.epoch.elapsed().as_millis() as i64);
             let difficulty = main_difficulty_command::id(self.players.read().map_err(|_|anyhow!("players poisoned"))?.native_difficulty);
             let mut level = level.lock().await;
+            let spawn=self.world_spawn()?;
+            level.set_spawn(spawn.x,spawn.y,spawn.z,spawn.angle)?;
             level.set_difficulty(difficulty)?;
             level.set_border_settings(&border)?;
             let wall_ms = SystemTime::now().duration_since(UNIX_EPOCH)?.as_millis() as i64;
@@ -2683,20 +2689,9 @@ struct PresenceGuard {
     server: Arc<Server>,
 }
 impl Server {
-    /// PlayerList sends the current ServerLevel shared spawn on admission.
-    /// Imported worlds own it in level.dat; native flat worlds retain their
-    /// existing default until a native spawn-setting owner is implemented.
+    /// PlayerList sends the retained shared spawn on every admission.
     async fn default_spawn_packet(&self) -> Result<Packet> {
-        let (x, y, z, angle) = match &self.level {
-            Some(level) => level.lock().await.spawn()?,
-            None => (8, 64, 8, 0.),
-        };
-        Ok(Packet {
-            id: 0x56,
-            payload: encoded(|writer| {
-                writer.i64(pack_position(x, y, z)).f32(angle);
-            }),
-        })
+        Ok(Self::spawn_packet(self.world_spawn()?))
     }
 
     async fn cleanup_player(&self, id: i32, reason: Option<&'static str>) -> Result<()> {
@@ -2853,6 +2848,7 @@ async fn main() -> Result<()> {
     let mut fluid_checkpoint_clock = None;
     let mut initial_fluid_shapes = None;
     let mut initial_border = None;
+    let mut initial_spawn = mc121_rust::commands::setworldspawn_command::WorldSpawn::default();
     let mut initial_fire_runtime = None;
     let mut had_fire_checkpoint = false;
     let mut initial_level_random_position_value = None;
@@ -2878,6 +2874,7 @@ async fn main() -> Result<()> {
         fixture_world.apply_changes(&saved.changes)?;
         initial_clock = saved.clock.unwrap_or_default();
         initial_border = saved.border;
+        initial_spawn = saved.world_spawn.unwrap_or_default();
         initial_experience_orbs = saved.experience_orbs;
         initial_block_ticks = saved.block_ticks;
         had_block_checkpoint = initial_block_ticks.is_some();
@@ -2953,9 +2950,9 @@ async fn main() -> Result<()> {
         .transpose()?;
     let difficulty_locked = level.as_ref().is_some_and(LevelData::difficulty_locked);
     let hardcore = level.as_ref().is_some_and(LevelData::hardcore);
-    let console_command_position = match &level {
-        Some(level) => {let (x,y,z,_)=level.spawn()?;Vec3::new(f64::from(x),f64::from(y),f64::from(z))},
-        None => Vec3::new(8.,64.,8.),
+    let world_spawn = match &level {
+        Some(level) => {let (x,y,z,angle)=level.spawn()?;mc121_rust::commands::setworldspawn_command::WorldSpawn{x,y,z,angle}},
+        None => initial_spawn,
     };
     if hardcore { options.difficulty = 3; }
     if let Some(level) = &level {
@@ -3216,7 +3213,7 @@ async fn main() -> Result<()> {
         level: level.map(Mutex::new),
         difficulty_locked,
         hardcore,
-        console_command_position,
+        world_spawn: StdRwLock::new(world_spawn),
         border: StdRwLock::new(border),
         player_store,
         entity_store,
@@ -3777,13 +3774,12 @@ async fn play(
     }));
     let (disconnect, mut disconnect_events) = watch::channel(None);
     let username = profile.name.clone();
+    // Bounded native admission profile: anchor the existing one-block-above
+    // position at shared spawn; saved actors are still restored below.
+    let spawn=server.world_spawn()?;
     let mut position = Position {
-        x: 8.5,
-        y: 65.0,
-        z: 8.5,
-        yaw: 0.0,
-        pitch: 0.0,
-        on_ground: false,
+        x: f64::from(spawn.x)+0.5, y: f64::from(spawn.y)+1., z: f64::from(spawn.z)+0.5,
+        yaw: spawn.angle, pitch: 0.0, on_ground: false,
     };
     let mut metadata;
     let gamemode;

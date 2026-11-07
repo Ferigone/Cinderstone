@@ -140,6 +140,13 @@ impl LevelData {
             angle,
         ))
     }
+    pub fn set_spawn(&mut self,x:i32,y:i32,z:i32,angle:f32)->Result<()> {
+        let data=self.root.tag.get_mut("Data").expect("validated Data compound");
+        for (key,value) in [("SpawnX",Tag::Int(x)),("SpawnY",Tag::Int(y)),("SpawnZ",Tag::Int(z)),("SpawnAngle",Tag::Float(angle))] {
+            data.insert(key,value)?;
+        }
+        Ok(())
+    }
     pub fn seed(&self) -> Result<i64> {
         self.data()
             .get("WorldGenSettings")
