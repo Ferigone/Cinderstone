@@ -5,6 +5,17 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Literal online-name whispers (#209)
+
+Non-op players and console use `/msg`, `/tell` and `/w` for one currently online
+player name. Native Brigadier preserves the message range; actual retained
+chat owners deliver source outgoing then target incoming, including both on a
+self-send. Current source/target team names, live visibility, roster completion
+and outsider exclusion are covered by the [original-class/native report](validation/msg-runtime.json).
+[Scope](reference/msg-command.md). Selector/UUID targets, offline lookup,
+external moderation and full #24/#63 remain open. Scope1/100 and58/53 unchanged;
+hosted verification stays under #19.
+
 ## Public literal emotes (#207)
 
 Non-op players and console use `/me <action>` through the native literal message
