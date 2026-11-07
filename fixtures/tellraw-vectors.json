@@ -1,0 +1,287 @@
+{
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "trees": [
+    {
+      "permission": 0,
+      "hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "hex": "040001010101020774656c6c726177020103077461726765747306020600076d6573736167651100"
+    }
+  ],
+  "suggestions": [
+    {
+      "input": "",
+      "start": 0,
+      "end": 0,
+      "texts": [
+        "tellraw"
+      ]
+    },
+    {
+      "input": "tel",
+      "start": 0,
+      "end": 3,
+      "texts": [
+        "tellraw"
+      ]
+    },
+    {
+      "input": "tellraw ",
+      "start": 8,
+      "end": 8,
+      "texts": [
+        "@a",
+        "@e",
+        "@n",
+        "@p",
+        "@r",
+        "@s",
+        "RawOutside",
+        "RawSource",
+        "RawTarget"
+      ]
+    },
+    {
+      "input": "tellraw RawT",
+      "start": 8,
+      "end": 12,
+      "texts": [
+        "RawTarget"
+      ]
+    },
+    {
+      "input": "tellraw RawTarget ",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    },
+    {
+      "input": "tellraw RawTarget {",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    }
+  ],
+  "execution": [
+    {
+      "input": "tellraw RawTarget \"cześć 😀\"",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 28,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000e637a65c59bc48720eda0bdedb88000"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw rawtarget {\"text\":\"rich\",\"color\":\"gold\",\"bold\":true,\"font\":\"minecraft:uniform\",\"extra\":[{\"keybind\":\"key.jump\"}],\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/help\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"text\":\"hover\",\"italic\":true}}}",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 256,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "0a0a000a686f7665724576656e740a0008636f6e74656e7473080004746578740005686f7665720100066974616c69630100080006616374696f6e000973686f775f74657874000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500052f68656c7000080005636f6c6f720004676f6c6409000565787472610a000000010800076b657962696e6400086b65792e6a756d700008000474657874000472696368010004626f6c6401080004666f6e7400116d696e6563726166743a756e69666f726d0000"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"translate\":\"chat.type.text\",\"with\":[\"A\",{\"text\":\"B\",\"color\":\"blue\"}]}",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 89,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "0a090004776974680a0000000208000000014100080005636f6c6f720004626c756508000474657874000142000800097472616e736c617465000e636861742e747970652e746578740000"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawSource [\"self\",{\"text\":\"!\",\"bold\":true}]",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 51,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [
+          "0a09000565787472610a0000000108000474657874000121010004626f6c64010008000474657874000473656c660000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"console\"",
+      "permission": 2,
+      "console": true,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 27,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "080007636f6e736f6c6500"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"system\"",
+      "permission": 2,
+      "console": false,
+      "visibility": 1,
+      "start_utf16": 18,
+      "end_utf16": 26,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000673797374656d00"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"hidden\"",
+      "permission": 2,
+      "console": false,
+      "visibility": 2,
+      "start_utf16": 18,
+      "end_utf16": 26,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"denied\"",
+      "permission": 0,
+      "console": false,
+      "visibility": 0,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw Missing \"unknown\"",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 16,
+      "end_utf16": 25,
+      "ok": false,
+      "error_key": "argument.entity.notfound.player",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"ok\"} trailing",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 31,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "ok": false,
+      "error_key": "argument.component.invalid",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"\"",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 20,
+      "result": 1,
+      "ok": true,
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000000"
+        ],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"end\"}   ",
+      "permission": 2,
+      "console": false,
+      "visibility": 0,
+      "start_utf16": 18,
+      "end_utf16": 32,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "packets": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    }
+  ]
+}

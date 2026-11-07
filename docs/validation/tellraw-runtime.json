@@ -1,0 +1,429 @@
+{
+  "ok": true,
+  "native_commit": "e03cf1a0b4080962411014c5f40b4dd8c8a98a84",
+  "native_src_tree": "be4e5771be5a5796b2f8b920193115c371d695c1",
+  "native_binary_sha256": "7ec7f38830792ccbff094efd70ebaf163db6b14c01cade438cd5daae8e693fd5",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "execution": [
+    {
+      "input": "tellraw RawTarget \"cześć 😀\"",
+      "input_utf16_length": 28,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000e637a65c59bc48720eda0bdedb88000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw rawtarget {\"text\":\"rich\",\"color\":\"gold\",\"bold\":true,\"font\":\"minecraft:uniform\",\"extra\":[{\"keybind\":\"key.jump\"}],\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/help\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"text\":\"hover\",\"italic\":true}}}",
+      "input_utf16_length": 256,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "0a0a000a686f7665724576656e740a0008636f6e74656e7473080004746578740005686f7665720100066974616c69630100080006616374696f6e000973686f775f74657874000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500052f68656c7000080005636f6c6f720004676f6c6409000565787472610a000000010800076b657962696e6400086b65792e6a756d700008000474657874000472696368010004626f6c6401080004666f6e7400116d696e6563726166743a756e69666f726d0000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawTarget {\"translate\":\"chat.type.text\",\"with\":[\"A\",{\"text\":\"B\",\"color\":\"blue\"}]}",
+      "input_utf16_length": 89,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "0a090004776974680a0000000208000000014100080005636f6c6f720004626c756508000474657874000142000800097472616e736c617465000e636861742e747970652e746578740000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawSource [\"self\",{\"text\":\"!\",\"bold\":true}]",
+      "input_utf16_length": 51,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a09000565787472610a0000000108000474657874000121010004626f6c64010008000474657874000473656c660000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 1,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawTarget \"console\"",
+      "input_utf16_length": 27,
+      "ok": true,
+      "console": true,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "080007636f6e736f6c6500"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawTarget \"system\"",
+      "input_utf16_length": 26,
+      "ok": true,
+      "console": false,
+      "visibility": 1,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000673797374656d00"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawTarget \"hidden\"",
+      "input_utf16_length": 26,
+      "ok": true,
+      "console": false,
+      "visibility": 2,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": false
+    },
+    {
+      "input": "tellraw RawTarget \"denied\"",
+      "input_utf16_length": 26,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [],
+        "RawOutside": [
+          "0a080005636f6c6f72000372656409000565787472610800000001004b556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e20303a203c2d2d5b484552455d0800047465787400000000"
+        ]
+      }
+    },
+    {
+      "input": "tellraw Missing \"unknown\"",
+      "input_utf16_length": 25,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"ok\"} trailing",
+      "input_utf16_length": 40,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010045496e636f727265637420617267756d656e7420666f7220636f6d6d616e6420617420706f736974696f6e2033323a202e2e2e7874223a226f6b227d203c2d2d5b484552455d0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":",
+      "input_utf16_length": 26,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002720617420706f736974696f6e2031383a202e2e2e526177546172676574203c2d2d5b484552455d0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget",
+      "input_utf16_length": 17,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010059556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e2031373a202e2e2e205261775461726765743c2d2d5b484552455d0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"\"",
+      "input_utf16_length": 20,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"end\"}   ",
+      "input_utf16_length": 35,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010045496e636f727265637420617267756d656e7420666f7220636f6d6d616e6420617420706f736974696f6e2033333a202e2e2e74223a22656e64227d203c2d2d5b484552455d0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw @a \"x\"",
+      "input_utf16_length": 14,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002e54656c6c7261772074617267657473206d757374206265206f6e65206f6e6c696e6520706c61796572206e616d650800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw 00000000-0000-0000-0000-000000000000 \"x\"",
+      "input_utf16_length": 48,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002e54656c6c7261772074617267657473206d757374206265206f6e65206f6e6c696e6520706c61796572206e616d650800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"selector\":\"@a\"}",
+      "input_utf16_length": 35,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"score\":{\"name\":\"x\",\"objective\":\"y\"}}",
+      "input_utf16_length": 56,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"nbt\":\"x\",\"storage\":\"minecraft:test\"}",
+      "input_utf16_length": 56,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"x\",\"extra\":[{\"selector\":\"@a\"}]}",
+      "input_utf16_length": 58,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget {\"text\":\"x\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"selector\":\"@a\"}}}",
+      "input_utf16_length": 95,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界…",
+      "input_utf16_length": 22020,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002254686973207465787420636f6d706f6e656e742063616e6e6f742062652073656e740800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"cześć 😀\"",
+      "input_utf16_length": 28,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000e637a65c59bc48720eda0bdedb88000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
+    }
+  ],
+  "limits": [
+    "Original TellRawCommand, ComponentArgument, ComponentUtils and ServerPlayer.sendSystemMessage execute with original codecs and recording connection; no full Java server transport.",
+    "Static strict JSON components and one online name only. Dynamic resolution, selectors/UUID/offline and unsupported codec variants remain outside scope."
+  ],
+  "tree": [
+    {
+      "path": "tellraw",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "tellraw targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "properties": {
+        "unused": 0,
+        "onlyAllowPlayers": 1,
+        "onlyAllowEntities": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "tellraw targets message",
+      "executable": true,
+      "parser": "minecraft:component",
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    }
+  ],
+  "completions": [
+    {
+      "input": "tellraw ",
+      "start": 8,
+      "end": 8,
+      "texts": [
+        "RawOutside",
+        "RawSource",
+        "RawTarget"
+      ],
+      "comparison": "Original projection onto supported literal online names; unsupported selectors omitted"
+    },
+    {
+      "input": "tellraw RawT",
+      "start": 8,
+      "end": 12,
+      "texts": [
+        "RawTarget"
+      ],
+      "comparison": "Original projection onto supported literal online names; unsupported selectors omitted"
+    },
+    {
+      "input": "tellraw RawTarget ",
+      "start": 0,
+      "end": 0,
+      "texts": [],
+      "comparison": "Original projection onto supported literal online names; unsupported selectors omitted"
+    },
+    {
+      "input": "tellraw RawTarget {",
+      "start": 0,
+      "end": 0,
+      "texts": [],
+      "comparison": "Original projection onto supported literal online names; unsupported selectors omitted"
+    }
+  ],
+  "unsupported_components_and_targets_rejected": true,
+  "unencodable_component_fails_privately_and_sender_remains_connected": true,
+  "completed_at": "2026-11-07T05:05:49.565Z"
+}
