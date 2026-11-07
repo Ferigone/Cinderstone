@@ -13,7 +13,9 @@ stream to the actual target. The retained visibility owner allows FULL/SYSTEM
 and suppresses HIDDEN. Result1 counts the target even when delivery is suppressed;
 there is no success or operator echo. Selectors, UUID/offline targets, dynamic
 score/selector/NBT contents (including nested/hover content) and unsupported
-codec variants fail explicitly before any target delivery. General parser/error
+codec variants fail explicitly before any target delivery. Network serialization
+failures also return private command failure; an oversized text does not escape
+into the PLAY loop. General parser/error
 message compatibility is not claimed.
 
 `tools/tellraw_oracle.java` compiles with admin_feedback/say helpers using the
@@ -32,7 +34,9 @@ After `npm ci` and a build, run `node tools/tellraw_flow.mjs
 check the decoded original tree projection, literal-name completions, selected
 exact target-only packet bytes, console/case/self routing, visibility and private
 failures with no target/admin echo. Ordered team markers bound each audience
-assertion. [Runtime report](../validation/tellraw-runtime.json). The focused
+assertion. A 22,000-CJK-character boundary input fails privately, followed by a
+successful short message on the same connection; only a prefix/length is recorded.
+[Runtime report](../validation/tellraw-runtime.json). The focused
 original differential, all-target compilation and server tests pass.
 
 Full #24 and dynamic/selector/offline/unsupported-component expansion remain

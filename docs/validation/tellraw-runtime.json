@@ -1,12 +1,13 @@
 {
   "ok": true,
-  "native_commit": "3df2ef958fb8ef32874065a393519c96ddec4a3d",
-  "native_src_tree": "d5e59fc6eb3314701c6314af955267b8c48944cf",
-  "native_binary_sha256": "0b7dcca37627337359a5dea265af9f36467c714de8538d5ac3f6acad4a1b598e",
+  "native_commit": "e03cf1a0b4080962411014c5f40b4dd8c8a98a84",
+  "native_src_tree": "be4e5771be5a5796b2f8b920193115c371d695c1",
+  "native_binary_sha256": "7ec7f38830792ccbff094efd70ebaf163db6b14c01cade438cd5daae8e693fd5",
   "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
   "execution": [
     {
       "input": "tellraw RawTarget \"cześć 😀\"",
+      "input_utf16_length": 28,
       "ok": true,
       "console": false,
       "visibility": 0,
@@ -23,6 +24,7 @@
     },
     {
       "input": "tellraw rawtarget {\"text\":\"rich\",\"color\":\"gold\",\"bold\":true,\"font\":\"minecraft:uniform\",\"extra\":[{\"keybind\":\"key.jump\"}],\"clickEvent\":{\"action\":\"suggest_command\",\"value\":\"/help\"},\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"text\":\"hover\",\"italic\":true}}}",
+      "input_utf16_length": 256,
       "ok": true,
       "console": false,
       "visibility": 0,
@@ -39,6 +41,7 @@
     },
     {
       "input": "tellraw RawTarget {\"translate\":\"chat.type.text\",\"with\":[\"A\",{\"text\":\"B\",\"color\":\"blue\"}]}",
+      "input_utf16_length": 89,
       "ok": true,
       "console": false,
       "visibility": 0,
@@ -55,6 +58,7 @@
     },
     {
       "input": "tellraw RawSource [\"self\",{\"text\":\"!\",\"bold\":true}]",
+      "input_utf16_length": 51,
       "ok": true,
       "console": false,
       "visibility": 0,
@@ -71,6 +75,7 @@
     },
     {
       "input": "tellraw RawTarget \"console\"",
+      "input_utf16_length": 27,
       "ok": true,
       "console": true,
       "visibility": 0,
@@ -87,6 +92,7 @@
     },
     {
       "input": "tellraw RawTarget \"system\"",
+      "input_utf16_length": 26,
       "ok": true,
       "console": false,
       "visibility": 1,
@@ -103,6 +109,7 @@
     },
     {
       "input": "tellraw RawTarget \"hidden\"",
+      "input_utf16_length": 26,
       "ok": true,
       "console": false,
       "visibility": 2,
@@ -117,6 +124,7 @@
     },
     {
       "input": "tellraw RawTarget \"denied\"",
+      "input_utf16_length": 26,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -130,6 +138,7 @@
     },
     {
       "input": "tellraw Missing \"unknown\"",
+      "input_utf16_length": 25,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -143,6 +152,7 @@
     },
     {
       "input": "tellraw RawTarget {\"text\":\"ok\"} trailing",
+      "input_utf16_length": 40,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -156,6 +166,7 @@
     },
     {
       "input": "tellraw RawTarget {\"text\":",
+      "input_utf16_length": 26,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -169,6 +180,7 @@
     },
     {
       "input": "tellraw RawTarget",
+      "input_utf16_length": 17,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -182,6 +194,7 @@
     },
     {
       "input": "tellraw RawTarget \"\"",
+      "input_utf16_length": 20,
       "ok": true,
       "console": false,
       "visibility": 0,
@@ -198,6 +211,7 @@
     },
     {
       "input": "tellraw RawTarget {\"text\":\"end\"}   ",
+      "input_utf16_length": 35,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -211,6 +225,7 @@
     },
     {
       "input": "tellraw @a \"x\"",
+      "input_utf16_length": 14,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -224,6 +239,7 @@
     },
     {
       "input": "tellraw 00000000-0000-0000-0000-000000000000 \"x\"",
+      "input_utf16_length": 48,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -237,6 +253,7 @@
     },
     {
       "input": "tellraw RawTarget {\"selector\":\"@a\"}",
+      "input_utf16_length": 35,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -250,6 +267,7 @@
     },
     {
       "input": "tellraw RawTarget {\"score\":{\"name\":\"x\",\"objective\":\"y\"}}",
+      "input_utf16_length": 56,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -263,6 +281,7 @@
     },
     {
       "input": "tellraw RawTarget {\"nbt\":\"x\",\"storage\":\"minecraft:test\"}",
+      "input_utf16_length": 56,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -276,6 +295,7 @@
     },
     {
       "input": "tellraw RawTarget {\"text\":\"x\",\"extra\":[{\"selector\":\"@a\"}]}",
+      "input_utf16_length": 58,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -289,6 +309,7 @@
     },
     {
       "input": "tellraw RawTarget {\"text\":\"x\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"selector\":\"@a\"}}}",
+      "input_utf16_length": 95,
       "ok": false,
       "console": false,
       "visibility": 0,
@@ -299,6 +320,37 @@
         "RawTarget": [],
         "RawOutside": []
       }
+    },
+    {
+      "input": "tellraw RawTarget \"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界…",
+      "input_utf16_length": 22020,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002254686973207465787420636f6d706f6e656e742063616e6e6f742062652073656e740800047465787400000000"
+        ],
+        "RawTarget": [],
+        "RawOutside": []
+      }
+    },
+    {
+      "input": "tellraw RawTarget \"cześć 😀\"",
+      "input_utf16_length": 28,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "RawSource": [],
+        "RawTarget": [
+          "08000e637a65c59bc48720eda0bdedb88000"
+        ],
+        "RawOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "actual_delivery": true
     }
   ],
   "limits": [
@@ -372,5 +424,6 @@
     }
   ],
   "unsupported_components_and_targets_rejected": true,
-  "completed_at": "2026-11-07T05:01:14.252Z"
+  "unencodable_component_fails_privately_and_sender_remains_connected": true,
+  "completed_at": "2026-11-07T05:05:49.565Z"
 }
