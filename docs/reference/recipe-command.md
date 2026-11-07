@@ -30,10 +30,11 @@ ServerPlayer award/reset methods, ServerRecipeBook and packet codecs execute.
 Synthetic regular/special RecipeHolder values supply only id/isSpecial;
 ingredients/crafting are not exercised. Empty advancement listeners and external
 server/transport setup are disclosed. This is not a full Java server flow.
-The differential covers two permission trees, seven focused completions and
-twelve execution cases: state, result, typed feedback and recipe packet bytes.
-The completion witness uses two descriptors and unambiguous prefixes; native
-retains the full catalogue. Proprietary artifacts remain outside the checkout.
+The differential covers two permission trees, eight focused completions and
+thirteen execution cases: state, result, typed feedback and recipe packet bytes.
+The completion witness uses two descriptors; unambiguous prefixes compare
+exactly, while word-after-underscore completion checks inclusion of the selected
+original candidate in the full native catalogue. Proprietary artifacts remain outside the checkout.
 
 After `npm ci` and building, run `node tools/recipe_command_flow.mjs
 target/debug/mc121-rust REPORT.json`. Three actual clients on temporary loopback25708
