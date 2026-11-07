@@ -1,8 +1,8 @@
 {
   "ok": true,
-  "native_commit": "4f6b9ebdb685e6cd513453870ed13912d0df7a03",
-  "native_src_tree": "b035318274d1f9eba3ff1f444463fa13ca4a8a34",
-  "native_binary_sha256": "16a2b2e2969213280a5c167df8d26f86725fbd7bdf6f280d8b3df4222cedb5a4",
+  "native_commit": "25201aaa19da8cffd861611f551d2384637dd4dc",
+  "native_src_tree": "fb23d1f1debd9195869b6a2651e8b13094568ed4",
+  "native_binary_sha256": "36013e39fc00b2ca52e62d226080752be72e6659e42163f1a9a013d0dbfc0192",
   "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
   "execution": [
     {
@@ -28,10 +28,10 @@
       },
       "result": 0,
       "dirty": false,
-      "target_tick": 126,
+      "target_tick": 163,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "xp add ExperienceTarget 6",
@@ -58,10 +58,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 149,
+      "target_tick": 185,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience add ExperienceTarget 2 points",
@@ -88,10 +88,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 172,
+      "target_tick": 207,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience query ExperienceTarget points",
@@ -116,10 +116,10 @@
       },
       "result": 1,
       "dirty": false,
-      "target_tick": 195,
+      "target_tick": 230,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience set ExperienceTarget 3 levels",
@@ -146,10 +146,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 217,
+      "target_tick": 252,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience set ExperienceTarget 2 points",
@@ -176,10 +176,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 240,
+      "target_tick": 274,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience add ExperienceTarget -5 levels",
@@ -206,10 +206,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 262,
+      "target_tick": 297,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "xp add ExperienceTarget 3 levels",
@@ -236,10 +236,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 284,
+      "target_tick": 320,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience set ExperienceTarget 12 points",
@@ -266,10 +266,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 307,
+      "target_tick": 343,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience set ExperienceTarget 13 points",
@@ -318,10 +318,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 374,
+      "target_tick": 409,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience add ExperienceTarget -100 points",
@@ -348,10 +348,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 396,
+      "target_tick": 432,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 265907049591831
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
     },
     {
       "input": "experience add ExperienceTarget 5 levels",
@@ -367,13 +367,13 @@
       },
       "sounds": {
         "ExperienceSource": [
-          "db08070000004400000208000000443e0000003f80000037409106c8a41fed"
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
         ],
         "ExperienceTarget": [
-          "db08070000004400000208000000443e0000003f80000037409106c8a41fed"
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
         ],
         "XpOutside": [
-          "db08070000004400000208000000443e0000003f80000037409106c8a41fed"
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
         ]
       },
       "actual_owner": {
@@ -384,10 +384,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 440,
+      "target_tick": 476,
       "last_level_up_before": 0,
-      "sound_random_before": 265907049591831,
-      "sound_random_after": 220607235877417
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience add ExperienceTarget -1 levels",
@@ -414,10 +414,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 463,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 499,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience set ExperienceTarget 5 levels",
@@ -444,10 +444,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 486,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 522,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience add ExperienceTarget 0 levels",
@@ -474,10 +474,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 509,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 545,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience set ExperienceTarget -1 levels",
@@ -591,10 +591,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 687,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 723,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "xp set ExperienceTarget 4 points",
@@ -621,10 +621,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 712,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 748,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience query ExperienceTarget points",
@@ -649,10 +649,10 @@
       },
       "result": 4,
       "dirty": false,
-      "target_tick": 735,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 771,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience set ExperienceTarget 4 points",
@@ -679,10 +679,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 758,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 794,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience set ExperienceTarget 2147483647 levels",
@@ -709,10 +709,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 781,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 817,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience set ExperienceTarget 2147483480 points",
@@ -739,10 +739,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 804,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 220607235877417
+      "target_tick": 840,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
     },
     {
       "input": "experience add ExperienceTarget 0 points",
@@ -758,13 +758,13 @@
       },
       "sounds": {
         "ExperienceSource": [
-          "db0807000000440000020800000044000000003f80000035c1c4792ecd9b48"
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
         ],
         "ExperienceTarget": [
-          "db0807000000440000020800000044000000003f80000035c1c4792ecd9b48"
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
         ],
         "XpOutside": [
-          "db0807000000440000020800000044000000003f80000035c1c4792ecd9b48"
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
         ]
       },
       "actual_owner": {
@@ -775,10 +775,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 848,
-      "last_level_up_before": 440,
-      "sound_random_before": 220607235877417,
-      "sound_random_after": 51460608396171
+      "target_tick": 884,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 217798923554672
     },
     {
       "input": "experience set ExperienceTarget 2 levels",
@@ -805,10 +805,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 870,
-      "last_level_up_before": 848,
-      "sound_random_before": 51460608396171,
-      "sound_random_after": 51460608396171
+      "target_tick": 907,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
     },
     {
       "input": "experience set ExperienceTarget 4 points",
@@ -835,10 +835,10 @@
       },
       "result": 1,
       "dirty": true,
-      "target_tick": 893,
-      "last_level_up_before": 848,
-      "sound_random_before": 51460608396171,
-      "sound_random_after": 51460608396171
+      "target_tick": 929,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
     },
     {
       "input": "xp query experiencetarget points",
@@ -863,10 +863,10 @@
       },
       "result": 4,
       "dirty": false,
-      "target_tick": 916,
-      "last_level_up_before": 848,
-      "sound_random_before": 51460608396171,
-      "sound_random_after": 51460608396171
+      "target_tick": 952,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
     }
   ],
   "limits": [
@@ -1102,5 +1102,5 @@
     "progress_bits": 1052389004
   },
   "cold_restart_preserves_xp_score_and_clean_query": true,
-  "completed_at": "2026-11-07T04:41:51.863Z"
+  "completed_at": "2026-11-07T04:50:41.315Z"
 }

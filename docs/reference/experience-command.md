@@ -51,7 +51,9 @@ audience assertions. Admission's direct XP packet and constructor-dirty first
 tick both finish before command assertions. Cold restart retains XP/score;
 query emits no additional bar update. [Report](../validation/experience-command-runtime.json).
 The focused command differential (including shared point arithmetic) and server
-checks pass. General syntax-error context decoration is not claimed.
+checks pass. The actual-container server regression checks that inner equipment
+validation errors propagate before command commit. General syntax-error context
+decoration is not claimed.
 
 Full #24/#57/#65, selector/UUID/offline targets, new orbs/mending/effects/vehicles
 and imported/unavailable profile expansion remain outside scope. Scope_version1,
