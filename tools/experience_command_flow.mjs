@@ -2,6 +2,7 @@
 // Actual retained XP/score/cache, target-only bars, shared level-up sounds and cold restart.
 import mc from 'minecraft-protocol';
 import nbt from 'prismarine-nbt';
+import minecraftData from 'minecraft-data';
 import assert from 'node:assert/strict';
 import {spawn,execFileSync} from 'node:child_process';
 import {mkdtemp,readFile,writeFile} from 'node:fs/promises';
@@ -25,6 +26,7 @@ async function connect(name){
  client.on('login',p=>e.id=p.entityId);client.on('error',v=>error=v);client.on('end',()=>{error=Error(name+' ended');});client.on('keep_alive',p=>client.write('keep_alive',p));client.on('chunk_batch_finished',()=>client.write('chunk_batch_received',{chunksPerTick:16}));client.on('position',p=>{client.write('teleport_confirm',{teleportId:p.teleportId});ready=true;});client.on('registry_data',p=>{if(p.id==='minecraft:chat_type')e.types=p.entries.map(v=>v.key);});client.on('declare_commands',p=>e.tree=tree(p));client.on('teams',p=>e.teams.push(p));client.on('tab_complete',p=>e.completions.push(p));client.on('packet',(p,m,b)=>{if(m.name==='experience')e.xp.push({packet:p,hex:b.subarray(1).toString('hex')});if(m.name==='sound_effect'&&p.sound?.soundId===1114)e.sounds.push({packet:p,hex:b.subarray(1).toString('hex')});if(m.name==='system_chat')e.system.push({component:nbt.simplify(p.content),hex:b.subarray(1).toString('hex')});});
  e.wait=async(test,label)=>until(()=>{if(error)throw error;return test();},label);await e.wait(()=>ready&&e.tree&&e.xp.length>=2,'admitted '+name);
  e.complete=async text=>{const id=++transaction;client.write('tab_complete',{transactionId:id,text});await e.wait(()=>e.completions.some(p=>p.transactionId===id),'completion '+text);const p=e.completions.find(p=>p.transactionId===id);return {start:p.start,end:p.start+p.length,texts:p.matches.map(v=>v.match)};};
+ client.on('set_slot',p=>{e.slots??=[];e.slots.push(p);});
  e.setting=async flags=>{client.write('settings',{locale:'en_US',viewDistance:2,chatFlags:flags,chatColors:true,skinParts:127,mainHand:1,enableTextFiltering:false,enableServerListing:true});await e.complete('experience ');};
  e.feedback=async(text,key)=>{await pause(1050);const n=e.system.length;client.write('chat_command',{command:text});await e.wait(()=>{const rows=e.system.slice(n);if(key&&rows.some(m=>red(m.component))&&!rows.some(m=>has(m.component,key)))throw Error('unexpected feedback '+text+': '+JSON.stringify(rows));return rows.some(m=>key?has(m.component,key):red(m.component));},'feedback '+text);return e.system.slice(n).find(m=>key?has(m.component,key):red(m.component));};return e;
 }
@@ -65,6 +67,15 @@ try{
  }
  const last=original.execution.at(-1).after;await run(source,target,{...original.execution[22],input:'xp query experiencetarget points',before:last,after:last});report.case_insensitive_alias_query=true;
  const counts=entries.map(e=>e.xp.length);for(const command of ['xp add @a 1','experience set 00000000-0000-0000-0000-000000000000 2 levels'])await source.feedback(command);await barrier();assert.deepEqual(entries.map(e=>e.xp.length),counts);await probe(source,target,last);report.unsupported_targets_preserve_owner=true;
+ const turtle=minecraftData('1.21').itemsByName.turtle_helmet.id;
+ target.client.write('set_creative_slot',{slot:5,item:{itemCount:1,itemId:turtle,addedComponentCount:0,removedComponentCount:0,components:[],removeComponents:[]}});
+ await target.wait(()=>target.slots?.some(p=>p.slot===5&&p.item.itemId===turtle),'actual turtle helmet owner');
+ const unsupportedBefore=entries.map(e=>({xp:e.xp.length,sounds:e.sounds.length}));
+ const denied=await source.feedback('xp add ExperienceTarget 1');assert.ok(JSON.stringify(denied.component).includes('unavailable'));
+ await probe(source,target,last);await barrier();assert.deepEqual(entries.map(e=>({xp:e.xp.length,sounds:e.sounds.length})),unsupportedBefore);
+ target.client.write('set_creative_slot',{slot:5,item:{itemCount:0}});
+ await target.wait(()=>target.slots?.some(p=>p.slot===5&&p.item.itemCount===0),'helmet removed');
+ report.unsupported_equipment_preserves_xp_score_cache_and_sounds=true;
  const selfBefore=entries.map(e=>e.xp.length);await source.feedback('xp add ExperienceSource 6','commands.experience.add.points.success.single');await source.wait(()=>source.xp.length>selfBefore[0],'self-target XP bar');await barrier();assert.deepEqual(entries.map((e,i)=>e.xp.slice(selfBefore[i]).map(v=>v.hex)),[[original.execution[1].xp_packet],[],[]]);report.self_target_updates_only_source=true;
  await stop();const saved=JSON.parse(await readFile(path.join(folder,'world.players',uuid('ExperienceTarget')+'.native.json'),'utf8'));const xp=saved.lifecycle.experience;assert.deepEqual({level:xp.level,total:xp.total,progress_bits:bits(xp.progress)},expectedBar(last));report.saved_experience=expectedBar(last);
  await start();source=await connect('ExperienceSource');target=await connect('ExperienceTarget');outside=await connect('XpOutside');assert.deepEqual(bar(target),expectedBar(last));const before=entries.map(e=>e.xp.length);const restored=await probe(source,target,last);await barrier();assert.deepEqual(entries.map(e=>e.xp.length),before);assert.equal(restored.score,last.score);report.cold_restart_preserves_xp_score_and_clean_query=true;

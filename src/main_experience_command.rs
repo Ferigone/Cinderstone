@@ -22,7 +22,7 @@ impl Server{
                 main_player_motion_hooks::require_equipment_defaults(&menu.inventory)?;
                 ensure!(!menu.inventory.slot(5).is_some_and(|stack|!stack.is_empty()&&inventory::item_name(stack.item_id)==Some("turtle_helmet")),"unsupported active-effect equipment");Ok(())
             });
-            if equipment.is_err()||players.gameplay.require_supported_floor().is_err(){drop(players);return self.experience_failure(source,Component::literal("Experience changes are unavailable for this player profile"));}
+            if !matches!(equipment,Ok(Ok(())))||players.gameplay.require_supported_floor().is_err(){drop(players);return self.experience_failure(source,Component::literal("Experience changes are unavailable for this player profile"));}
         }
         let response=match experience_command::apply(&a,&mut xp,&mut score,display){Ok(r)=>r,Err(e)=>{drop(players);return self.experience_error(source,e);}};
         let last_level_up=players.experience_runtime.last_level_up_tick(target.entity_id);let sound_before=players.item_runtime.sound_random_state48();
