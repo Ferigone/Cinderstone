@@ -5,6 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Native non-op trigger command (#203)
+
+Players use `/trigger <objective> [add <value>|set <value>]` through native
+Brigadier against their real retained score. Live completion reflects enabled
+trigger objectives; each success consumes one enable. Parsing and domain
+checks precede mutation, including invalid trailing arguments. The
+[original-class/native flow](validation/trigger-runtime.json) checks typed
+feedback, operator broadcasts from a non-op source, real score packets and
+value/lock persistence through restart. [Scope and evidence](reference/trigger-command.md).
+Full #24 and general syntax-error context decoration remain outside scope.
+Scope_version 1, denominator 100 and counts 58/53 are unchanged; hosted checks
+remain under #19.
+
 ## Shared world spawn command (#201)
 
 Console and permission-level2 players can set shared world spawn with native
