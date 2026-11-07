@@ -143,6 +143,7 @@ mod main_msg_command;
 mod main_recipe_command;
 mod main_experience_command;
 mod main_tellraw_command;
+mod main_title_command;
 mod main_chat_dispatch;
 mod main_chat_keys;
 mod main_connection;

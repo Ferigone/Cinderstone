@@ -1,0 +1,734 @@
+{
+  "ok": true,
+  "native_commit": "07187e00fd59ba1cc1e9097d32e1ea6e34274ce8",
+  "native_src_tree": "594ccf77c6693f94ea1de880d1e248d2a5e29548",
+  "native_binary_sha256": "79cd748716551564dbd8574669d3b7a907d0ea7acc623aa7cfe15c626fc77a92",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "execution": [
+    {
+      "input": "title TitleTarget title \"cześć 😀\"",
+      "input_utf16_length": 34,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 101,
+            "hex": "08000e637a65c59bc48720eda0bdedb880"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c6174650020636f6d6d616e64732e7469746c652e73686f772e7469746c652e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "title"
+    },
+    {
+      "input": "title TitleTarget subtitle {\"text\":\"rich\",\"color\":\"gold\",\"extra\":[{\"keybind\":\"key.jump\"}]}",
+      "input_utf16_length": 90,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 99,
+            "hex": "0a080005636f6c6f720004676f6c6409000565787472610a000000010800076b657962696e6400086b65792e6a756d70000800047465787400047269636800"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080005636f6c6f720004676f6c6409000565787472610a000000030800047465787400045b545d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000b5469746c65546172676574000800076b657962696e6400086b65792e6a756d7000080009696e73657274696f6e000b5469746c65546172676574080004746578740000000800097472616e736c6174650023636f6d6d616e64732e7469746c652e73686f772e7375627469746c652e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "subtitle"
+    },
+    {
+      "input": "title TitleTarget actionbar {\"translate\":\"chat.type.text\",\"with\":[\"A\",\"B\"]}",
+      "input_utf16_length": 75,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 76,
+            "hex": "0a0900047769746808000000020001410001420800097472616e736c617465000e636861742e747970652e7465787400"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c6174650024636f6d6d616e64732e7469746c652e73686f772e616374696f6e6261722e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "actionbar"
+    },
+    {
+      "input": "title TitleTarget times 0.5s 2s 10t",
+      "input_utf16_length": 35,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 102,
+            "hex": "0000000a000000280000000a"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c617465001b636f6d6d616e64732e7469746c652e74696d65732e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "times"
+    },
+    {
+      "input": "title TitleTarget clear",
+      "input_utf16_length": 23,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 15,
+            "hex": "00"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c617465001d636f6d6d616e64732e7469746c652e636c65617265642e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "clear"
+    },
+    {
+      "input": "title TitleTarget reset",
+      "input_utf16_length": 23,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 15,
+            "hex": "01"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c617465001b636f6d6d616e64732e7469746c652e72657365742e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "reset"
+    },
+    {
+      "input": "title TitleSource title [\"self\",\"!\"]",
+      "input_utf16_length": 36,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [
+          {
+            "id": 101,
+            "hex": "0a0900056578747261080000000100012108000474657874000473656c6600"
+          }
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c65536f757263650b000269640000000459ed5623214e3b86bec1cb6b2992093e0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c65536f757263652000080009696e73657274696f6e000b5469746c65536f7572636508000474657874000b5469746c65536f75726365000800097472616e736c6174650020636f6d6d616e64732e7469746c652e73686f772e7469746c652e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 1,
+      "kind": "title"
+    },
+    {
+      "input": "title titletarget clear",
+      "input_utf16_length": 23,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 15,
+            "hex": "00"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c617465001d636f6d6d616e64732e7469746c652e636c65617265642e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "clear"
+    },
+    {
+      "input": "title TitleTarget actionbar \"console\"",
+      "input_utf16_length": 37,
+      "ok": true,
+      "console": true,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 76,
+            "hex": "080007636f6e736f6c65"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a00000002080000000653657276657200090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c6174650024636f6d6d616e64732e7469746c652e73686f772e616374696f6e6261722e73696e676c6500080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "actionbar",
+      "console_feedback": {
+        "component": {
+          "translate": "commands.title.show.actionbar.single",
+          "with": [
+            {
+              "clickEvent": {
+                "action": "suggest_command",
+                "value": "/tell TitleTarget "
+              },
+              "hoverEvent": {
+                "action": "show_entity",
+                "contents": {
+                  "id": [
+                    453194856,
+                    1536832657,
+                    -1536501430,
+                    1615702151
+                  ],
+                  "name": "TitleTarget",
+                  "type": "minecraft:player"
+                }
+              },
+              "insertion": "TitleTarget",
+              "text": "TitleTarget"
+            }
+          ]
+        },
+        "error": false,
+        "event": "administration_feedback",
+        "result": 1
+      }
+    },
+    {
+      "input": "title TitleTarget title \"hidden\"",
+      "input_utf16_length": 32,
+      "ok": true,
+      "console": false,
+      "visibility": 2,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 101,
+            "hex": "08000668696464656e"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c6174650020636f6d6d616e64732e7469746c652e73686f772e7469746c652e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "title"
+    },
+    {
+      "input": "title TitleTarget times -1 20 10",
+      "input_utf16_length": 32,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010057546865207469636b20636f756e74206d757374206e6f74206265206c657373207468616e20302c20666f756e64202d3120617420706f736974696f6e2032363a202e2e2e742074696d6573202d313c2d2d5b484552455d0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title Missing clear",
+      "input_utf16_length": 19,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget clear",
+      "input_utf16_length": 23,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": [
+          "0a080005636f6c6f72000372656409000565787472610800000001004b556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e20303a203c2d2d5b484552455d0800047465787400000000"
+        ]
+      }
+    },
+    {
+      "input": "title TitleTarget title {\"text\":\"ok\"} trailing",
+      "input_utf16_length": 46,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010045496e636f727265637420617267756d656e7420666f7220636f6d6d616e6420617420706f736974696f6e2033383a202e2e2e7874223a226f6b227d203c2d2d5b484552455d0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget subtitle {\"text\":",
+      "input_utf16_length": 35,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002720617420706f736974696f6e2032373a202e2e2e207375627469746c65203c2d2d5b484552455d0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget times 1 2",
+      "input_utf16_length": 27,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f720003726564090005657874726108000000010059556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e2032373a202e2e2e2074696d6573203120323c2d2d5b484552455d0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title @a clear",
+      "input_utf16_length": 14,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002c5469746c652074617267657473206d757374206265206f6e65206f6e6c696e6520706c61796572206e616d650800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title 00000000-0000-0000-0000-000000000000 reset",
+      "input_utf16_length": 48,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002c5469746c652074617267657473206d757374206265206f6e65206f6e6c696e6520706c61796572206e616d650800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget title {\"selector\":\"@a\"}",
+      "input_utf16_length": 41,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget subtitle {\"text\":\"x\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":{\"score\":{\"name\":\"x\",\"objective\":\"y\"}}}}",
+      "input_utf16_length": 125,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001003b54686973207465787420636f6d706f6e656e7420726571756972657320756e617661696c61626c6520636f6e74657874207265736f6c7574696f6e0800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget actionbar \"界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界界…",
+      "input_utf16_length": 22030,
+      "ok": false,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a080005636f6c6f72000372656409000565787472610800000001002254686973207465787420636f6d706f6e656e742063616e6e6f742062652073656e740800047465787400000000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      }
+    },
+    {
+      "input": "title TitleTarget clear",
+      "input_utf16_length": 23,
+      "ok": true,
+      "console": false,
+      "visibility": 0,
+      "delivered": {
+        "TitleSource": [],
+        "TitleTarget": [
+          {
+            "id": 15,
+            "hex": "00"
+          }
+        ],
+        "TitleOutside": []
+      },
+      "feedback": {
+        "TitleSource": [
+          "0a090004776974680a000000010a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b5469746c655461726765740b00026964000000041b0334685b9a3491a46ad94a604da8870800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c205469746c655461726765742000080009696e73657274696f6e000b5469746c6554617267657408000474657874000b5469746c65546172676574000800097472616e736c617465001d636f6d6d616e64732e7469746c652e636c65617265642e73696e676c650000"
+        ],
+        "TitleTarget": [],
+        "TitleOutside": []
+      },
+      "actual_result": 1,
+      "actual_target": 2,
+      "kind": "clear"
+    }
+  ],
+  "limits": [
+    "Original TitleCommand and ComponentArgument/ComponentUtils execute with actual typed feedback and recording connections; no full Java server/client renderer.",
+    "One online name and supported static JSON only. Original completion comparison projects out unsupported selectors. Animation state belongs to the client."
+  ],
+  "tree": [
+    {
+      "path": "title",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "properties": {
+        "unused": 0,
+        "onlyAllowPlayers": 1,
+        "onlyAllowEntities": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets clear",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets reset",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets title",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets title title",
+      "executable": true,
+      "parser": "minecraft:component",
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets subtitle",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets subtitle title",
+      "executable": true,
+      "parser": "minecraft:component",
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets actionbar",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets actionbar title",
+      "executable": true,
+      "parser": "minecraft:component",
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets times",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets times fadeIn",
+      "executable": false,
+      "parser": "minecraft:time",
+      "properties": {
+        "min": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets times fadeIn stay",
+      "executable": false,
+      "parser": "minecraft:time",
+      "properties": {
+        "min": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "title targets times fadeIn stay fadeOut",
+      "executable": true,
+      "parser": "minecraft:time",
+      "properties": {
+        "min": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    }
+  ],
+  "completions": [
+    {
+      "input": "title ",
+      "start": 6,
+      "end": 6,
+      "texts": [
+        "TitleOutside",
+        "TitleSource",
+        "TitleTarget"
+      ]
+    },
+    {
+      "input": "title TitleT",
+      "start": 6,
+      "end": 12,
+      "texts": [
+        "TitleTarget"
+      ]
+    },
+    {
+      "input": "title TitleTarget ",
+      "start": 18,
+      "end": 18,
+      "texts": [
+        "actionbar",
+        "clear",
+        "reset",
+        "subtitle",
+        "times",
+        "title"
+      ]
+    },
+    {
+      "input": "title TitleTarget t",
+      "start": 18,
+      "end": 19,
+      "texts": [
+        "times",
+        "title"
+      ]
+    },
+    {
+      "input": "title TitleTarget times 1",
+      "start": 25,
+      "end": 25,
+      "texts": [
+        "d",
+        "s",
+        "t"
+      ]
+    },
+    {
+      "input": "title TitleTarget title ",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    }
+  ],
+  "unsupported_and_unencodable_components_fail_privately_with_source_connected": true,
+  "completed_at": "2026-11-07T05:19:20.175Z"
+}

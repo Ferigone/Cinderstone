@@ -74,3 +74,5 @@ pub mod recipe_command;
 pub mod experience_command;
 
 pub mod tellraw_command;
+
+pub mod title_command;

@@ -5,6 +5,16 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Player title display commands (#217)
+
+Permission2 player/console `/title` supports clear/reset/title/subtitle/actionbar
+and TimeArgument-based times for one actual online name. Ordered target-only
+display, shared typed/operator feedback and rich identity are covered by
+[original/native evidence](reference/title.md), including self/case/console and
+hidden-chat targets. Dynamic/unsupported/unencodable components and
+selector/UUID/offline targets fail privately before display. Full #24 remains
+open; scope1/100 and58/53 unchanged. Hosted checks stay under #19.
+
 ## Static tellraw messages (#215)
 
 Permission2 player/console `/tellraw` sends an existing supported static JSON
