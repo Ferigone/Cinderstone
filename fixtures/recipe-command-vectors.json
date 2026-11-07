@@ -348,6 +348,28 @@
       ],
       "admin": [],
       "recipe_packets": []
+    },
+    {
+      "input": "recipe give RecipeTarget BEACON",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "command.expected.separator",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001a636f6d6d616e642e65787065637465642e736570617261746f72000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
     }
   ]
 }

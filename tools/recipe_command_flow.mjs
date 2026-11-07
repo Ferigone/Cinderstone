@@ -36,7 +36,7 @@ async function run(source,target,row){
  await ensureKnown(source,target,row.initial_known);await barrier();const before=entries.map(e=>({book:e.book.length,system:e.system.length})),offset=log.length;
  const actor=row.permission===0?target:source;let feedback;
  if(row.console){consoleLine(row.input);await until(()=>log.slice(offset).includes('"event":"recipe_command"'),'actual console recipe completion');}
- else{const key=row.ok?successKey(row.input.includes(' take ')?'take':'give'):['command.unknown.command','command.unknown.argument'].includes(row.error_key)?null:row.error_key;feedback=await actor.feedback(row.input,key);if(key)assert.equal(feedback.hex,row.feedback[0]);}
+ else{const key=row.ok?successKey(row.input.includes(' take ')?'take':'give'):['commands.recipe.give.failed','commands.recipe.take.failed','recipe.notFound','argument.entity.notfound.player'].includes(row.error_key)?row.error_key:null;feedback=await actor.feedback(row.input,key);if(key)assert.equal(feedback.hex,row.feedback[0]);}
  await barrier();const delivered={};for(let i=0;i<entries.length;i++){const e=entries[i],actual=e.book.slice(before[i].book).map(v=>v.hex);assert.deepEqual(actual,e===target?row.recipe_packets:[],e.name+' recipe audience');delivered[e.name]=actual;
   const systems=e.system.slice(before[i].system);if(row.console&&e===source)assert.deepEqual(systems.map(v=>v.hex),row.admin);else if(e===actor&&!row.console)assert.equal(systems.length,1);else assert.equal(systems.length,0,'no unintended feedback');
  }

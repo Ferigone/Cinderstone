@@ -17,6 +17,7 @@ impl ArgumentType for RecipeArgument{
     fn network_info(&self)->Option<ArgumentNetworkInfo>{Some(ArgumentNetworkInfo{registry_id:35,template:vec![]})}
     fn parse(&self,r:&mut StringReader)->Result<String,CommandSyntaxException>{
         let start=r.cursor();let raw=r.remaining().chars().take_while(|c|c.is_ascii_lowercase()||c.is_ascii_digit()||"_-./:".contains(*c)).collect::<String>();r.set_cursor(start+raw.len());
+        if raw.is_empty(){return Err(built_in::simple("argument.id.invalid",r.units(),start));}
         match RecipeId::parse(&raw){Ok(id)=>Ok(id.as_str().to_owned()),Err(_)=>{r.set_cursor(start);Err(built_in::simple("argument.id.invalid",r.units(),start))}}
     }
 }
