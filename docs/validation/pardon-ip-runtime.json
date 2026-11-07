@@ -1,8 +1,8 @@
 {
   "ok": true,
-  "native_commit": "e6fae06b007de11847f98a0dbaa6ea6618fd7425",
-  "native_src_tree": "4856ebc41f281111374dc0b622b6f11c8b20fdf1",
-  "native_binary_sha256": "5f4303e0fe846f08ef757f55ab0d00ce2ace2f4351bc9d11b653022d3df55344",
+  "native_commit": "4a1d669adb1c67e1ea12b0aa7c3663e496f43bb5",
+  "native_src_tree": "12530f6ec58dcb73bf07559b97dc4cf57ab8cd40",
+  "native_binary_sha256": "5ad4e94c6205b0b7d9e868f728c6966291cdfd948d7aaddca6586617f78e18a8",
   "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
   "traces": {
     "java": {
@@ -232,12 +232,13 @@
     "Existing access-list host and its retained-entry behavior; no general date/locale/HashMap or profile-cache parity claim.",
     "Selected command/component bytes, live-key completions and real admission are compared; syntax-error rendering and packet timing are not."
   ],
-  "completed_at": "2026-11-07T01:29:21.724Z",
-  "local_source_commit": "f948718f25d609ed99b5c515f17b8b2b098985de",
+  "completed_at": "2026-11-07T01:35:16.494Z",
+  "local_source_commit": "468edd25c0d57fb347738f720bd41b196ba6398f",
   "verification": {
     "focused_original_tests": 2,
     "native_build": "passed",
-    "all_targets": "required CI; local monolithic lib-test metadata was SIGKILLed by memory limits",
-    "source_equivalence": "API source commit and local source have identical Rust src trees"
+    "all_targets": "required CI; local monolithic lib-test metadata exceeded memory",
+    "source_equivalence": "API source commit and local source have identical Rust src trees",
+    "rebase_base": "3fb0d6dc13db86abd5d8e2f5422a0fcb1c0fdae0"
   }
 }
