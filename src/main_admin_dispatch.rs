@@ -109,6 +109,11 @@ impl Server {
 
     pub(super) fn administration_suggestions(&self, entity_id: i32, request: &SuggestionRequest) -> Result<Packet> {
         let input=request.command.strip_prefix('/').unwrap_or(&request.command);
+        if matches!(input.split(' ').next(),Some("experience"|"xp")){
+            let online=self.online_administration_profiles()?;let p=online.iter().find(|p|p.entity_id==entity_id).context("XP suggestion source missing")?;
+            let permission=self.administration.read().map_err(|_|anyhow!("administration poisoned"))?.permission_level(p.profile.uuid).clamp(0,4) as u8;
+            let names=online.iter().map(|p|p.profile.name.clone()).collect::<Vec<_>>();return command_protocol::experience_suggestions(request,permission,&names);
+        }
         if input=="recipe"||input.starts_with("recipe ") {
             let online=self.online_administration_profiles()?;let p=online.iter().find(|p|p.entity_id==entity_id).context("recipe suggestion source missing")?;
             let permission=self.administration.read().map_err(|_|anyhow!("administration poisoned"))?.permission_level(p.profile.uuid).clamp(0,4) as u8;
@@ -173,6 +178,9 @@ impl Server {
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
         let say_line=if source_id.is_none(){line.strip_prefix('/').unwrap_or(line)}else{line};
+        if matches!(say_line.split_whitespace().next(),Some("experience"|"xp")){
+            drop(owner);return self.execute_experience_command(say_line,source_id,source.permission_level);
+        }
         if say_line.split_whitespace().next()==Some("recipe") {
             drop(owner);return self.execute_recipe_command(say_line,source_id,source.permission_level);
         }

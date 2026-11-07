@@ -648,6 +648,28 @@ impl MainExperienceRuntime {
         self.revision = self.revision.wrapping_add(1);
         result
     }
+    pub(super) fn last_level_up_tick(&self,id:i32)->i32{self.last_level_up.get(&id).copied().unwrap_or(0)}
+    pub(super) fn require_level_up_sound_owner(&self,id:i32,levels:&[i32],physical:&EntityPhysicalState,items:&RuntimeEntities)->Result<()>{
+        let last=self.last_level_up_tick(id);if levels.iter().any(|level|level%5==0&&(last as f32)<(physical.tick_count as f32-100.)){
+            ensure!(items.sound_random_state48().is_some(),"level sound random owner unavailable");
+        }Ok(())
+    }
+    /// Only positive giveExperienceLevels transitions enter this shared path.
+    pub(super) fn level_up_sounds(&mut self,id:i32,levels:&[i32],physical:&EntityPhysicalState,items:&mut RuntimeEntities,registry:&EntityRegistry,events:&broadcast::Sender<PlayerEvent>)->Result<()>{
+        for &level in levels {
+            let last=self.last_level_up.get(&id).copied().unwrap_or(0);
+            if level%5==0 && (last as f32)<(physical.tick_count as f32-100.) {
+                let volume=if level>30 {1.} else {level as f32/30.}*0.75f32;
+                let seed=items.next_sound_seed()?;
+                let p=physical.position_vec();let mut w=Writer::new();
+                w.varint(1114+1).varint(7).i32((p.x*8.)as i32).i32((p.y*8.)as i32).i32((p.z*8.)as i32).f32(volume).f32(1.).i64(seed);
+                let recipients=registry.snapshot().iter().filter(|q|Vec3::new(q.position.x,q.position.y,q.position.z).subtract(p).length_squared()<256.).map(|q|q.entity_id).collect();
+                emit(events,recipients,vec![Packet{id:0x68,payload:w.into_inner()}]);
+                self.last_level_up.insert(id,physical.tick_count);
+            }
+        }
+        Ok(())
+    }
     pub(super) fn pickup_one(
         &mut self, handle:EntityHandle, id:i32, physical:&EntityPhysicalState,
         items:&mut RuntimeEntities, registry:&mut EntityRegistry,
@@ -665,24 +687,13 @@ impl MainExperienceRuntime {
         let amount=orb.state.value;
         let audience=orb.seen.iter().copied().collect::<Vec<_>>();
         let lifecycle=lifecycles.get_mut(&uuid).context("XP lifecycle missing")?;
-        let mut xp=lifecycle.experience.clone();let mut levels=Vec::new();
-        experience::give_experience_points(&mut xp,amount,|level|{levels.push(level);Ok(())})?;
+        let mut xp=lifecycle.experience.clone();let mut levels=Vec::new();let mut previous=xp.level;
+        experience::give_experience_points(&mut xp,amount,|level|{if level>previous||(previous==i32::MAX&&level==0){levels.push(level);}previous=level;Ok(())})?;
         self.pickup_delay.insert(id,2);
         emit(events,audience,vec![experience::take_packet(handle.id,id)]);
         registry.set_entity_data(id,16,MetadataValue::Int(score.wrapping_add(amount)),false)?;
         lifecycle.experience=xp;
-        for level in levels {
-            let last=self.last_level_up.get(&id).copied().unwrap_or(0);
-            if level>0 && level%5==0 && (last as f32)<(physical.tick_count as f32-100.) {
-                let volume=if level>30 {1.} else {level as f32/30.}*0.75f32;
-                let seed=items.next_sound_seed()?;
-                let p=physical.position_vec();let mut w=Writer::new();
-                w.varint(1114+1).varint(7).i32((p.x*8.)as i32).i32((p.y*8.)as i32).i32((p.z*8.)as i32).f32(volume).f32(1.).i64(seed);
-                let recipients=registry.snapshot().iter().filter(|q|Vec3::new(q.position.x,q.position.y,q.position.z).subtract(p).length_squared()<256.).map(|q|q.entity_id).collect();
-                emit(events,recipients,vec![Packet{id:0x68,payload:w.into_inner()}]);
-                self.last_level_up.insert(id,physical.tick_count);
-            }
-        }
+        self.level_up_sounds(id,&levels,physical,items,registry,events)?;
         // The embedding Player.doTick sends SetExperience from finish_player_tick.
         let orb=self.orbs.get_mut(&handle.id).context("XP pickup owner disappeared")?;
         orb.state.count=orb.state.count.wrapping_sub(1);

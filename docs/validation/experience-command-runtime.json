@@ -1,0 +1,1106 @@
+{
+  "ok": true,
+  "native_commit": "25201aaa19da8cffd861611f551d2384637dd4dc",
+  "native_src_tree": "fb23d1f1debd9195869b6a2651e8b13094568ed4",
+  "native_binary_sha256": "36013e39fc00b2ca52e62d226080752be72e6659e42163f1a9a013d0dbfc0192",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "execution": [
+    {
+      "input": "experience query ExperienceTarget levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000000000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e6c6576656c730000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 0
+      },
+      "result": 0,
+      "dirty": false,
+      "target_tick": 163,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "xp add ExperienceTarget 6",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000006000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3f5b6db70006"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 0,
+        "total": 6,
+        "progress_bits": 1062956471,
+        "score": 6
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 185,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience add ExperienceTarget 2 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3de38e3e0108"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 207,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience query ExperienceTarget points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000001000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e706f696e74730000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": false,
+      "target_tick": 230,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience set ExperienceTarget 3 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000003000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3de38e3e0308"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 252,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience set ExperienceTarget 2 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3e1d89d90308"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1042123225,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 274,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience add ExperienceTarget -5 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a00000002030000fffffffb000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000000"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 297,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "xp add ExperienceTarget 3 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000003000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000300"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 320,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience set ExperienceTarget 12 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020300000000000c000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3f6c4ec50300"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 343,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience set ExperienceTarget 13 points",
+      "ok": false,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650026636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e696e76616c6964000800047465787400000000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "failure_probe": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      }
+    },
+    {
+      "input": "experience add ExperienceTarget 1 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000401"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 4,
+        "total": 1,
+        "progress_bits": 0,
+        "score": 9
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 409,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience add ExperienceTarget -100 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a00000002030000ffffff9c000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000000"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 432,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 265342655640492
+    },
+    {
+      "input": "experience add ExperienceTarget 5 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000005000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000500"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
+        ],
+        "ExperienceTarget": [
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
+        ],
+        "XpOutside": [
+          "db08070000004400000208000000443e0000003f8000001f3aabe7dce5dcaf"
+        ]
+      },
+      "actual_owner": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 476,
+      "last_level_up_before": 0,
+      "sound_random_before": 265342655640492,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience add ExperienceTarget -1 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a00000002030000ffffffff000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000400"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 4,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 499,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience set ExperienceTarget 5 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000005000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000500"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 522,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience add ExperienceTarget 0 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000000000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000500"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 545,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience set ExperienceTarget -1 levels",
+      "ok": false,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a080005636f6c6f720003726564090005657874726108000000010050496e7465676572206d757374206e6f74206265206c657373207468616e20302c20666f756e64202d3120617420706f736974696f6e2033323a202e2e2e6e6365546172676574203c2d2d5b484552455d0800047465787400000000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "failure_probe": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      }
+    },
+    {
+      "input": "experience add ExperienceTarget 1 trailing",
+      "ok": false,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a080005636f6c6f720003726564090005657874726108000000010045496e636f727265637420617267756d656e7420666f7220636f6d6d616e6420617420706f736974696f6e2033343a202e2e2e655461726765742031203c2d2d5b484552455d0800047465787400000000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "failure_probe": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      }
+    },
+    {
+      "input": "experience query Missing points",
+      "ok": false,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "failure_probe": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      }
+    },
+    {
+      "input": "experience query ExperienceTarget levels",
+      "ok": false,
+      "caller": "ExperienceTarget",
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610800000001004b556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e20303a203c2d2d5b484552455d0800047465787400000000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "failure_probe": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      }
+    },
+    {
+      "input": "experience set ExperienceTarget 2 levels",
+      "ok": true,
+      "caller": "console",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000200"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 723,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "xp set ExperienceTarget 4 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080005636f6c6f720004676f6c6409000565787472610a000000030800047465787400045b585d20080004666f6e7400116d696e6563726166743a756e69666f726d000800000010457870657269656e6365546172676574000800076b657962696e6400086b65792e6a756d7000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740000000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3eba2e8c0200"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 748,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience query ExperienceTarget points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000004000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e706f696e74730000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 4,
+      "dirty": false,
+      "target_tick": 771,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience set ExperienceTarget 4 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3eba2e8c0200"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 794,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience set ExperienceTarget 2147483647 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020300007fffffff000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3eba2e8cffffffff0700"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 817,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience set ExperienceTarget 2147483480 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020300007fffff58000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3f800000ffffffff0700"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1065353216,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 840,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 242879808098374
+    },
+    {
+      "input": "experience add ExperienceTarget 0 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000000000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000000"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
+        ],
+        "ExperienceTarget": [
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
+        ],
+        "XpOutside": [
+          "db0807000000440000020800000044000000003f8000009cbd2d4bc6164378"
+        ]
+      },
+      "actual_owner": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 884,
+      "last_level_up_before": 476,
+      "sound_random_before": 242879808098374,
+      "sound_random_after": 217798923554672
+    },
+    {
+      "input": "experience set ExperienceTarget 2 levels",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "000000000200"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 907,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
+    },
+    {
+      "input": "experience set ExperienceTarget 4 points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [
+          "3eba2e8c0200"
+        ],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "dirty": true,
+      "target_tick": 929,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
+    },
+    {
+      "input": "xp query experiencetarget points",
+      "ok": true,
+      "caller": "ExperienceSource",
+      "feedback_hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000004000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e706f696e74730000",
+      "delivered": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "sounds": {
+        "ExperienceSource": [],
+        "ExperienceTarget": [],
+        "XpOutside": []
+      },
+      "actual_owner": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 4,
+      "dirty": false,
+      "target_tick": 952,
+      "last_level_up_before": 884,
+      "sound_random_before": 217798923554672,
+      "sound_random_after": 217798923554672
+    }
+  ],
+  "limits": [
+    "Original ExperienceCommand and ServerPlayer/Player arithmetic execute with score metadata and Level sound sinks; explicit XP codec models the dirty tick, not a full Java server flow.",
+    "Selected XP/private/admin packet bytes and sound key/category/volume/pitch match original witnesses. Native sound seeds come from the existing separate level RNG; original sound transport is a recording sink. Selector/UUID/offline and imported/unavailable player profiles remain outside scope."
+  ],
+  "tree": [
+    {
+      "path": "experience",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience add",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience add targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "properties": {
+        "unused": 0,
+        "onlyAllowPlayers": 1,
+        "onlyAllowEntities": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience add targets amount",
+      "executable": true,
+      "parser": "brigadier:integer",
+      "properties": {
+        "flags": {
+          "unused": 0,
+          "max_present": 0,
+          "min_present": 0
+        }
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience add targets amount points",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience add targets amount levels",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience set",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience set targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "properties": {
+        "unused": 0,
+        "onlyAllowPlayers": 1,
+        "onlyAllowEntities": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience set targets amount",
+      "executable": true,
+      "parser": "brigadier:integer",
+      "properties": {
+        "flags": {
+          "unused": 0,
+          "max_present": 0,
+          "min_present": 1
+        },
+        "min": 0
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience set targets amount points",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience set targets amount levels",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience query",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience query targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "properties": {
+        "unused": 0,
+        "onlyAllowPlayers": 1,
+        "onlyAllowEntities": 1
+      },
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience query targets points",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "experience query targets levels",
+      "executable": true,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "xp",
+      "executable": false,
+      "parser": null,
+      "properties": null,
+      "suggestion": null,
+      "redirect": "experience"
+    }
+  ],
+  "permission_tree_and_single_query_argument": true,
+  "completions": [
+    {
+      "input": "experience ",
+      "start": 11,
+      "end": 11,
+      "texts": [
+        "add",
+        "query",
+        "set"
+      ]
+    },
+    {
+      "input": "xp ",
+      "start": 3,
+      "end": 3,
+      "texts": [
+        "add",
+        "query",
+        "set"
+      ]
+    },
+    {
+      "input": "experience add ExperienceT",
+      "start": 15,
+      "end": 26,
+      "texts": [
+        "ExperienceTarget"
+      ]
+    },
+    {
+      "input": "experience add ExperienceTarget 2 ",
+      "start": 34,
+      "end": 34,
+      "texts": [
+        "levels",
+        "points"
+      ]
+    },
+    {
+      "input": "xp set ExperienceTarget 2 l",
+      "start": 26,
+      "end": 27,
+      "texts": [
+        "levels"
+      ]
+    },
+    {
+      "input": "experience query ExperienceT",
+      "start": 17,
+      "end": 28,
+      "texts": [
+        "ExperienceTarget"
+      ]
+    },
+    {
+      "input": "experience query ExperienceTarget ",
+      "start": 34,
+      "end": 34,
+      "texts": [
+        "levels",
+        "points"
+      ]
+    }
+  ],
+  "case_insensitive_alias_query": true,
+  "unsupported_targets_preserve_owner": true,
+  "self_target_updates_only_source": true,
+  "saved_experience": {
+    "level": 2,
+    "total": 0,
+    "progress_bits": 1052389004
+  },
+  "cold_restart_preserves_xp_score_and_clean_query": true,
+  "completed_at": "2026-11-07T04:50:41.315Z"
+}
