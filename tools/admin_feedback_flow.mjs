@@ -105,8 +105,8 @@ try {
   for(const phase of ['red','blue','none','console']) {
     if(phase==='red'||phase==='blue') {
       await teamCommand(`team modify feedback color ${phase}`);
-      await teamCommand('team modify feedback prefix '+JSON.stringify({text:phase==='red'?'[T] ':'[U] '}));
-      await teamCommand('team modify feedback suffix '+JSON.stringify({text:phase==='red'?'!':'?'}));
+      await teamCommand('team modify feedback prefix '+JSON.stringify(phase==='red'?{text:'[T] '}:{text:'[U] ',font:'minecraft:uniform'}));
+      await teamCommand('team modify feedback suffix '+JSON.stringify(phase==='red'?{text:'!'}:{keybind:'key.jump'}));
       if(phase==='red')await teamCommand('team join feedback FeedbackSource');
     } else if(phase==='none')await teamCommand('team leave FeedbackSource');
     await run('difficulty easy','commands.difficulty.success',source,observer,null);

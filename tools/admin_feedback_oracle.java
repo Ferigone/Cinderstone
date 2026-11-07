@@ -82,8 +82,9 @@ public class admin_feedback_oracle {
             if(phase.equals("red")||phase.equals("blue")) {
                 source.team=new PlayerTeam(new Scoreboard(),"feedback");
                 source.team.setColor(phase.equals("red")?net.minecraft.ChatFormatting.RED:net.minecraft.ChatFormatting.BLUE);
-                source.team.setPlayerPrefix(Component.literal(phase.equals("red")?"[T] ":"[U] "));
-                source.team.setPlayerSuffix(Component.literal(phase.equals("red")?"!":"?"));
+                source.team.setPlayerPrefix(phase.equals("red")?Component.literal("[T] "):
+                    Component.literal("[U] ").withStyle(s->s.withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("uniform"))));
+                source.team.setPlayerSuffix(phase.equals("red")?Component.literal("!"):Component.keybind("key.jump"));
             }
             String[] commands={"time set 1000","weather clear 120","difficulty hard","worldborder center 12 -8"};
             Component[] feedback={Component.translatable("commands.time.set",1000),Component.translatable("commands.weather.set.clear"),

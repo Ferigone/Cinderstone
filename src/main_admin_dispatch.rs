@@ -238,10 +238,9 @@ impl Server {
                         }
                         if send_feedback {
                             let owner=self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
-                            let bytes=admission_commands::encode_component_json(&admin_message)?;
                             let bytes=if is_idle || world_command {
-                                mc121_rust::components::text::Component::from_nbt(&Tag::decode_anonymous(&bytes)?)?.to_network_nbt()?
-                            } else {bytes};
+                                mc121_rust::components::text::Component::from_json(&admin_message)?.to_network_nbt()?
+                            } else {admission_commands::encode_component_json(&admin_message)?};
                             let packet=system_message(bytes);
                             for player in &online {
                                 if Some(player.entity_id)!=source_id && owner.lists().operators.contains_key(&player.profile.uuid) {
