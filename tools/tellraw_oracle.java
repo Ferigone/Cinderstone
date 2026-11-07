@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Original MsgCommand, literal EntityArgument lookup and actual ServerPlayer/OutgoingChatMessage transport.
+// Original TellRawCommand/ComponentArgument/ComponentUtils and ServerPlayer SystemChat to recording connections.
 package cinderstone.oracle;
 import com.google.gson.*;
 import com.mojang.brigadier.*;
@@ -22,7 +22,7 @@ public class tellraw_oracle extends admin_feedback_oracle{
         public void send(net.minecraft.network.protocol.Packet<?> p,net.minecraft.network.PacketSendListener l){packets.add(p);}
     }
     static String bytes(net.minecraft.network.codec.StreamCodec codec,Object value,RegistryAccess access){return say_oracle.bytes(codec,value,access);}
-    static void decorate(Player p,String name,boolean enabled){p.team=null;if(enabled){p.team=new net.minecraft.world.scores.PlayerTeam(new net.minecraft.world.scores.Scoreboard(),name);p.team.setColor(name.equals("source")?net.minecraft.ChatFormatting.BLUE:net.minecraft.ChatFormatting.RED);p.team.setPlayerPrefix(Component.literal(name.equals("source")?"[S] ":"[T] ").withStyle(s->s.withFont(net.minecraft.resources.ResourceLocation.withDefaultNamespace("uniform"))));p.team.setPlayerSuffix(Component.keybind("key.jump"));}}
+
     @SuppressWarnings({"unchecked","rawtypes"})
     public static void main(String[] args)throws Exception{
         byte[] jar=Files.readAllBytes(Path.of(args[0]));String sha=HexFormat.of().formatHex(MessageDigest.getInstance("SHA-1").digest(jar));if(jar.length!=51623779||!sha.equals("450698d1863ab5180c25d7c804ef0fe6369dd1ba"))throw new IllegalArgumentException("Unpinned original jar");
