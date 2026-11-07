@@ -27,14 +27,14 @@ After `npm ci` and building the native binary, run:
 node tools/admin_feedback_flow.mjs target/debug/mc121-rust REPORT.json
 ```
 
-The flow uses an isolated temporary native flat world and loopback port25702.
+The flow uses an isolated temporary native flat world and loopback port 25702.
 Two actual operators execute the four commands with a red team decoration,
 change to blue with a different prefix/suffix while still online, leave the
-team and exercise console execution. All16 selected operator packet payloads
-and12 private player payloads equal the original witnesses byte for byte;
+team and exercise console execution. All 16 selected operator packet payloads
+and 12 private player payloads equal the original witnesses byte for byte;
 console output contains the same success component. Border-center packets and
 difficulty updates prove real world mutations. The report is
 [admin-feedback-runtime.json](../validation/admin-feedback-runtime.json).
 Compiler and relevant command/server tests pass. Full #24, additional commands,
 selectors/signing expansion and general error equivalence remain outside scope.
-Fixed scope1/100 and58code/53Main counts are unchanged. Hosted checks are under #19.
+The fixed scope_version 1, denominator 100 and counts 58/53 are unchanged. Hosted checks are under #19.

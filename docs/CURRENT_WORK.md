@@ -14,6 +14,17 @@ admission, drains actual player cleanup and completes the existing final save.
 player/console stop, world/inventory restart and native SIGTERM. [Scope/limits](reference/stop-command.md).
 Full #24/#45 remain open; scope1/100 and58/53 are unchanged. Hosted checks stay #19.
 
+## Current world-command source identity (#195)
+
+Operator feedback for native `time`, `weather`, `difficulty` and `worldborder`
+now preserves the source's current team prefix, suffix, color and profile
+identity. Live team changes and removal take effect on the next command;
+console uses `Server`. Private success feedback and the real world mutations
+are retained. The [original-class/native packet check](validation/admin-feedback-runtime.json)
+compares selected full packet bytes; [details](reference/admin-feedback.md).
+Full #24 remains open; scope_version 1, denominator 100 and counts 58/53 are unchanged. Hosted verification
+remains under #19.
+
 ## Native ban-list queries connected (#190)
 
 Permission3 players and console query retained player/IP bans through native
