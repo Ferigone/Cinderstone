@@ -311,6 +311,12 @@ impl Administration {
         // grammar merely because its bounded parser runs before execute().
         let input = line.strip_prefix('/').unwrap_or(line);
         let root = input.split(' ').next().unwrap_or("");
+        if input.split_whitespace().next() == Some("pardon-ip") {
+            return match mc121_rust::commands::pardon_ip_command::parse(input, source.permission_level) {
+                Ok(target) => self.execute(&AdminCommand::PardonIp {target}, source, source_entity_id, online, now_ms),
+                Err(error) => CommandOutcome {result:Err(CommandError::Host(error.message())),effects:Vec::new()},
+            };
+        }
         if root == "banlist" {
             return match mc121_rust::commands::banlist_command::parse(input, source.permission_level) {
                 Ok(kind) => self.execute(&AdminCommand::BanList(kind), source, source_entity_id, online, now_ms),
@@ -878,3 +884,7 @@ fn unescape_property_units(text: &str) -> Result<Vec<u16>> {
     }
     Ok(units)
 }
+
+#[cfg(test)]
+#[path = "../tools/pardon_ip_command_host_tests.rs"]
+mod pardon_ip_command_host_tests;

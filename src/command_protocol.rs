@@ -358,6 +358,14 @@ pub fn native_command_suggestions(
         let range=suggestions.range();
         return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
     }
+    if input == "pardon-ip" || input.starts_with("pardon-ip ") {
+        let suggestions = crate::commands::pardon_ip_command::suggestions(input, permission_level, context.banned_ip_addresses)
+            .map_err(|error| anyhow::anyhow!("pardon-ip suggestions: {error:?}"))?;
+        let matches = suggestions.list().iter().map(|value| value.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty() { return encode_suggestions(request.id, 0, 0, &[]); }
+        let range = suggestions.range();
+        return encode_suggestions(request.id, range.start() + leading, range.end() - range.start(), &matches);
+    }
     if input == "save-all" || input.starts_with("save-all ") {
         let suggestions = crate::commands::save_all_command::suggestions(input, permission_level)
             .map_err(|error| anyhow::anyhow!("save suggestions: {error:?}"))?;

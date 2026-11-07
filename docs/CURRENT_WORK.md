@@ -5,6 +5,15 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## IP unban connected to actual admission (#194)
+
+Permission3 players and console execute `/pardon-ip <target>` through native
+Brigadier, completing retained keys and persisting exact removal. The
+[original/runtime evidence](validation/pardon-ip-runtime.json) compares grammar,
+feedback and live keys, including expired removal, rejected login before unban
+and successful rejoin/cold restart. [Scope](reference/pardon-ip-command.md).
+Full #24/#64 remain open; scope1/100 and58/53 are unchanged. Hosted checks stay #19.
+
 ## Stop command connected to graceful shutdown (#193)
 
 Console and permission4 players can stop the actual server through native
