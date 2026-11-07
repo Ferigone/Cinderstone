@@ -320,7 +320,7 @@ impl MainChatRuntime {
             target_name: None,
         };
         self.broadcast(
-            entity_id,
+            Some(entity_id),
             source_filtering,
             message,
             bound,
@@ -408,7 +408,7 @@ impl MainChatRuntime {
 
     fn broadcast(
         &mut self,
-        sender_id: i32,
+        sender_id: Option<i32>,
         sender_filtering: bool,
         message: PlayerChatMessage,
         bound: BoundChatType,
@@ -425,6 +425,13 @@ impl MainChatRuntime {
         self.deliver_audience(sender_id, sender_filtering, message, audience, outcome);
     }
 
+    pub(super) fn send_say_message(&mut self,sender:Option<i32>,message:PlayerChatMessage,
+        bound:BoundChatType,now_ms:i64)->Result<MainChatOutcome>{
+        let filtering=match sender {Some(id)=>self.connection_mut(id)?.settings.text_filtering_enabled,None=>false};
+        let mut outcome=MainChatOutcome::default();
+        self.broadcast(sender,filtering,message,bound,now_ms,&mut outcome);Ok(outcome)
+    }
+
     pub(super) fn send_team_message(&mut self, sender_id: i32,
         members: &std::collections::BTreeSet<i32>, message: PlayerChatMessage,
         incoming: BoundChatType, outgoing: BoundChatType) -> Result<MainChatOutcome> {
@@ -434,11 +441,11 @@ impl MainChatRuntime {
             .map(|id| (*id, if *id == sender_id { outgoing.clone() } else { incoming.clone() }))
             .collect();
         let mut outcome = MainChatOutcome::default();
-        self.deliver_audience(sender_id, sender_filtering, message, audience, &mut outcome);
+        self.deliver_audience(Some(sender_id), sender_filtering, message, audience, &mut outcome);
         Ok(outcome)
     }
 
-    fn deliver_audience(&mut self, sender_id: i32, sender_filtering: bool,
+    fn deliver_audience(&mut self, sender_id: Option<i32>, sender_filtering: bool,
         message: PlayerChatMessage, audience: Vec<(i32, BoundChatType)>, outcome: &mut MainChatOutcome) {
         let mut filtered_full = false;
         for (recipient, bound) in audience {
@@ -447,7 +454,7 @@ impl MainChatRuntime {
                 return;
             };
             // ServerPlayer.shouldFilterMessageTo excludes the sender itself.
-            let filtering = recipient != sender_id
+            let filtering = Some(recipient) != sender_id
                 && (sender_filtering || entry.settings.text_filtering_enabled);
             filtered_full |= filtering && message.is_fully_filtered();
             if !entry.settings.visibility.accepts_player_chat() {
@@ -484,7 +491,7 @@ impl MainChatRuntime {
                 }
             }
         }
-        if filtered_full {
+        if let Some(sender_id) = sender_id.filter(|_|filtered_full) {
             if self
                 .connections
                 .get(&sender_id)
@@ -510,6 +517,9 @@ fn reject_chat_leading_slash(entity_id: i32, command: &str, outcome: &mut MainCh
 fn unsigned_has_signable_arguments(command: &str, permission_level: i32) -> bool {
     if command.starts_with('/') {
         return false;
+    }
+    if mc121_rust::commands::say_command::is_command(command) {
+        return mc121_rust::commands::say_command::has_message(command,permission_level);
     }
     if super::main_team_chat::is_command(command) {
         // An unsupported selector must never become an unsigned signing exemption.
@@ -540,6 +550,13 @@ fn known_signable_arguments(
 ) -> std::result::Result<Vec<SignableArgument>, &'static str> {
     if command.starts_with('/') {
         return Ok(Vec::new());
+    }
+    if mc121_rust::commands::say_command::is_command(command) {
+        return match mc121_rust::commands::say_command::execute(command,permission_level.clamp(0,4) as u8) {
+            Ok(value)=>Ok(vec![SignableArgument{name:"message".into(),value}]),
+            Err(mc121_rust::commands::say_command::SayError::Syntax(_))=>Ok(Vec::new()),
+            Err(_)=>Err("unported selector expansion in say MessageArgument"),
+        };
     }
     if super::main_team_chat::is_command(command) {
         return Ok(super::main_team_chat::literal_argument(command)?.map(|value|
@@ -592,6 +609,33 @@ fn known_signable_arguments(
 #[cfg(test)]
 mod team_signing_tests {
     use super::*;
+    #[test]
+    fn say_signing_preserves_original_literal_and_refuses_unsigned_secure_messages(){
+        let line="say   cześć  \"world\" 😀  ";
+        assert_eq!(known_signable_arguments(line,2).unwrap(),vec![SignableArgument{name:"message".into(),value:"  cześć  \"world\" 😀  ".into()}]);
+        assert!(unsigned_has_signable_arguments(line,2));
+        assert!(!unsigned_has_signable_arguments(line,0));
+        assert!(known_signable_arguments(line,0).unwrap().is_empty());
+        assert!(unsigned_has_signable_arguments("say @a",2));
+        assert!(known_signable_arguments("say @a",2).is_err());
+        assert!(!unsigned_has_signable_arguments("say ",2));
+        let mut chat=MainChatRuntime::new();chat.register(1,&PlayerProfile::offline("Alice").unwrap(),MainChatSettings::default()).unwrap();
+        let host=MainChatContext{now_ms:1,enforce_secure_profile:true,is_operator:true,is_singleplayer_owner:false};
+        for command in [line,"say @a"]{let outcome=chat.handle_unsigned_command(1,command,2,host).unwrap();assert!(outcome.command.is_none());assert!(!outcome.effects.is_empty());}
+    }
+    #[test]
+    fn say_signed_delivery_keeps_actual_cache_and_visibility_owners(){
+        let mut chat=MainChatRuntime::new();let profile=PlayerProfile::offline("Alice").unwrap();
+        for (id,name) in [(1,"Alice"),(2,"Bob"),(3,"Cara")]{chat.register(id,&PlayerProfile::offline(name).unwrap(),MainChatSettings::default()).unwrap();}
+        chat.connections.get_mut(&3).unwrap().settings.visibility=ChatVisibility::System;
+        let baseline=chat.connections[&1].listener.tracked_messages_count();
+        // Delivery boundary fixture; cryptographic authorization stays in the listener tests.
+        let mut message=PlayerChatMessage::unsigned(profile.uuid,"say signed fixture",1);message.signature=Some([9;256]);
+        let bound=BoundChatType{registry_id:1,name:json!("Alice"),target_name:None};let outcome=chat.send_say_message(Some(1),message,bound,1).unwrap();
+        assert_eq!(outcome.effects.iter().filter_map(|e|if let MainChatEffect::Packet{recipient,..}=e{Some(*recipient)}else{None}).collect::<Vec<_>>(),vec![1,2]);
+        for id in [1,2]{assert!(chat.connections[&id].signature_cache.index_of(&[9;256])>=0);assert_eq!(chat.connections[&id].listener.tracked_messages_count(),baseline+1);}
+        assert_eq!(chat.connections[&3].signature_cache.index_of(&[9;256]),-1);assert_eq!(chat.connections[&3].listener.tracked_messages_count(),baseline);
+    }
     #[test]
     fn nonop_team_message_uses_original_range_and_unsupported_ranges_cannot_bypass_signing() {
         let line = "tm   cześć  team ";

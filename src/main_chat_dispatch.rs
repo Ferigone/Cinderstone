@@ -84,7 +84,9 @@ impl Server {
         // Source command parsing, profile resolution and side effects remain
         // owned by the actual administration host, outside the player lock.
         let result = if let Some(command) = command {
-            if main_team_chat::is_command(&command.command) {
+            if mc121_rust::commands::say_command::is_command(&command.command) {
+                self.execute_say_command(&command, Some(entity_id), permission.clamp(0,4) as u8)
+            } else if main_team_chat::is_command(&command.command) {
                 self.execute_team_message(&command, Some(entity_id))
             } else if self.try_stop_command(&command.command, Some(entity_id))? {
                 Ok(())

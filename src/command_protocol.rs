@@ -314,6 +314,7 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let objective=tree.argument(trigger,"objective",Parser::Objective,true);
     for name in ["add","set"] {let branch=tree.literal(objective,name,false);tree.argument(branch,"value",Parser::SignedInteger,false);}
     if permission_level>=2 {
+        let say=tree.literal(0,"say",false);tree.argument(say,"message",Parser::Message,false);
         let spawn=tree.literal(0,"setworldspawn",true);
         let pos=tree.argument(spawn,"pos",Parser::BlockPos,false);
         tree.argument(pos,"angle",Parser::Angle,false);
@@ -623,6 +624,7 @@ fn administration_suggestions_with_time(
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none()
         && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
+    if include_time && permission_level>=2 && last_separator.is_none() && "say".starts_with(&lowered) && remaining!="say" {matches.push("say".to_owned());}
     if include_time && last_separator.is_none() && "trigger".starts_with(&lowered) && remaining!="trigger" {matches.push("trigger".to_owned());}
     if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
         matches.push("save-all".to_owned());
