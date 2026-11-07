@@ -239,7 +239,18 @@ impl Server {
                         if send_feedback {
                             let owner=self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
                             let bytes=if is_idle || world_command {
-                                mc121_rust::components::text::Component::from_json(&admin_message)?.to_network_nbt()?
+                                use mc121_rust::components::text::{Arg, Component, Contents, Style, TextColor};
+                                // Keep the command owner's typed numeric arguments; parse
+                                // rich team decorations with the unrestricted Component codec.
+                                let feedback = Component::from_nbt(&Tag::decode_anonymous(&message.network_component()?)?)?;
+                                Component {
+                                    contents: Contents::Translatable {
+                                        key: "chat.type.admin".into(), fallback: None,
+                                        args: vec![Arg::Component(Component::from_json(&source_display)?), Arg::Component(feedback)],
+                                    },
+                                    siblings: Vec::new(),
+                                    style: Style { color: Some(TextColor::parse("gray")?), italic: Some(true), ..Style::default() },
+                                }.to_network_nbt()?
                             } else {admission_commands::encode_component_json(&admin_message)?};
                             let packet=system_message(bytes);
                             for player in &online {
