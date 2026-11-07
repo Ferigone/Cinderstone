@@ -10,6 +10,7 @@
 //! `docs/reference/commands-brigadier.md` for the source identity and evidence.
 
 pub mod arguments;
+pub mod stop_command;
 pub mod banlist_command;
 pub mod coordinates;
 pub mod difficulty_command;

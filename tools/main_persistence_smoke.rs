@@ -125,6 +125,7 @@ async fn native_main_save_rejoin_and_stale_presence_smoke() {
         player_store,
         entity_store,
         shutting_down: AtomicBool::new(false),
+        stop_requested: tokio::sync::Notify::new(),
     });
     let before_seed_clock = *server.clock.read().unwrap();
     let before_seed_random = server.players.read().unwrap().item_runtime.world_random_state48();

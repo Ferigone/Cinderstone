@@ -84,6 +84,7 @@ mod main_worldborder_command;
 mod main_list_command;
 mod main_idle_timeout;
 mod main_save_all_command;
+mod main_stop_command;
 mod main_chunk_transport;
 mod main_drop_commit;
 mod main_fluid_simulation;
@@ -543,6 +544,7 @@ struct Server {
     player_store: PlayerDataStore,
     entity_store: EntityDataStore,
     shutting_down: AtomicBool,
+    stop_requested: tokio::sync::Notify,
 }
 
 struct LivePlayers {
@@ -3219,6 +3221,7 @@ async fn main() -> Result<()> {
         player_store,
         entity_store,
         shutting_down: AtomicBool::new(false),
+        stop_requested: tokio::sync::Notify::new(),
     });
     main_chat_keys::start_key_refresh(Arc::clone(&server), service_key_source);
     let permits = Arc::new(Semaphore::new(64));
@@ -3329,10 +3332,15 @@ async fn main() -> Result<()> {
                     }
                 });
             }
-            signal = &mut shutdown => {
+            signal = async {
+                tokio::select! {
+                    signal = &mut shutdown => signal,
+                    _ = server.stop_requested.notified() => Ok(()),
+                }
+            } => {
                 signal?;
-                server.shutting_down.store(true, Ordering::Release);
-                server.save().await?;
+                drop(listener);
+                server.graceful_shutdown().await?;
                 return Ok(());
             }
         }
@@ -4181,7 +4189,11 @@ async fn play(
             packet = rx.recv() => {
                 let Some(packet) = packet else { return Ok(PlayExit::Disconnected); };
                 let packet = packet?;
-                if server.shutting_down.load(Ordering::Acquire) { return Ok(PlayExit::Disconnected); }
+                if server.shutting_down.load(Ordering::Acquire) {
+                    // Preserve queued feedback -> disconnect ordering. Gameplay
+                    // input cannot overtake the terminal event on this connection.
+                    continue;
+                }
                 main_connection_decode::validate_play(&packet)?;
                 main_connection::accepted()?;
                 if cookies.handle_packet(&packet)? == CookieAction::DisconnectUnexpectedQuery {

@@ -57,6 +57,7 @@ impl Server {
         if packet.id == 0x07 { self.wait_first_chat_key_attempt().await?; }
         else { self.wait_secure_chat_enforcement().await?; }
         let _sequence = self.chat_dispatch.lock().await;
+        if self.shutting_down.load(Ordering::Acquire) {return Ok(());}
         let admission = self.player_admission.lock().await;
         let keys = Arc::clone(&self.chat_keys.borrow());
         let (context, permission) = self.actual_chat_context(entity_id)?;
@@ -85,6 +86,8 @@ impl Server {
         let result = if let Some(command) = command {
             if main_team_chat::is_command(&command.command) {
                 self.execute_team_message(&command, Some(entity_id))
+            } else if self.try_stop_command(&command.command, Some(entity_id))? {
+                Ok(())
             } else if self.try_save_all_command(&command.command, Some(entity_id), &_sequence).await? {
                 Ok(())
             } else {
