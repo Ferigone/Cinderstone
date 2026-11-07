@@ -72,3 +72,5 @@ pub mod msg_command;
 pub mod recipe_command;
 
 pub mod experience_command;
+
+pub mod tellraw_command;
