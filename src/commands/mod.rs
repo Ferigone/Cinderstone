@@ -25,6 +25,7 @@ pub mod pardon_ip_command;
 pub mod ranges;
 pub mod seed_command;
 pub mod setworldspawn_command;
+pub mod trigger_command;
 pub mod save_all_command;
 pub mod simple_arguments;
 pub mod string_reader;

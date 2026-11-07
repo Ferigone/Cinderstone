@@ -108,6 +108,13 @@ impl Server {
     }
 
     pub(super) fn administration_suggestions(&self, entity_id: i32, request: &SuggestionRequest) -> Result<Packet> {
+        let input=request.command.strip_prefix('/').unwrap_or(&request.command);
+        if input=="trigger"||input.starts_with("trigger ") {
+            let players=self.players.read().map_err(|_|anyhow!("players poisoned"))?;
+            let holder=&players.registry.get(entity_id).context("suggestion source absent")?.profile.name;
+            let objectives=mc121_rust::commands::trigger_command::enabled_objectives(&players.gameplay.scoreboard,holder);
+            return command_protocol::trigger_suggestions(request,&objectives);
+        }
         let online = self.online_administration_profiles()?;
         let player = online.iter().find(|player| player.entity_id == entity_id).context("command recipient absent")?;
         let owner = self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
@@ -161,7 +168,12 @@ impl Server {
                 command: team_line.to_owned(), signed_arguments: BTreeMap::new(),
             }, source_id);
         }
-        if matches!(line.split_whitespace().next(), Some("scoreboard" | "team" | "trigger")) {
+        let trigger_line=if source_id.is_none(){line.strip_prefix('/').unwrap_or(line)}else{line};
+        if trigger_line.split_whitespace().next()==Some("trigger") {
+            drop(owner);
+            return self.execute_trigger_command(trigger_line,source_id);
+        }
+        if matches!(line.split_whitespace().next(), Some("scoreboard" | "team")) {
             drop(owner);
             return self.execute_scoreboard(line, source_id, &source.name, source.permission_level);
         }

@@ -80,6 +80,7 @@ mod main_time_command;
 mod main_weather_command;
 mod main_seed_command;
 mod main_worldspawn_command;
+mod main_trigger_command;
 mod main_difficulty_command;
 mod main_worldborder_command;
 mod main_list_command;

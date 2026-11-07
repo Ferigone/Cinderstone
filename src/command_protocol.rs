@@ -93,12 +93,14 @@ pub fn decode_suggestion_request(payload: &[u8]) -> Result<SuggestionRequest> {
 #[derive(Clone, Copy)]
 enum Parser {
     NonnegativeInteger,
+    SignedInteger,
     Time(i32),
     BorderDouble,
     NonnegativeFloat,
     Vec2,
     BlockPos,
     Angle,
+    Objective,
     GreedyString,
     Word,
     Players,
@@ -204,12 +206,14 @@ impl Tree {
                     output.string(name);
                     match parser {
                         Parser::NonnegativeInteger => { output.varint(3).u8(1).i32(0); },
+                        Parser::SignedInteger => {output.varint(3).u8(0);},
                         Parser::Time(minimum) => { output.varint(42).i32(*minimum); },
                         Parser::BorderDouble => {output.varint(2).u8(3).f64(-crate::border::MAX_SIZE).f64(crate::border::MAX_SIZE);},
                         Parser::NonnegativeFloat => {output.varint(1).u8(1).f32(0.);},
                         Parser::Vec2 => {output.varint(11);},
                         Parser::BlockPos => {output.varint(8);},
                         Parser::Angle => {output.varint(27);},
+                        Parser::Objective => {output.varint(23);},
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -307,7 +311,8 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let alias=tree.literal(0,"tm",false);
     tree.nodes[alias].redirect=Some(teammsg);
     let trigger=tree.literal(0,"trigger",false);
-    tree.argument(trigger,"arguments",Parser::GreedyString,false);
+    let objective=tree.argument(trigger,"objective",Parser::Objective,true);
+    for name in ["add","set"] {let branch=tree.literal(objective,name,false);tree.argument(branch,"value",Parser::SignedInteger,false);}
     if permission_level>=2 {
         let spawn=tree.literal(0,"setworldspawn",true);
         let pos=tree.argument(spawn,"pos",Parser::BlockPos,false);
@@ -351,7 +356,17 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     tree.packet()
 }
 
-/// Weather/time branches use their dispatchers; root suggestions retain administration.
+/// The caller supplies trigger objectives enabled by the actual player's score owner.
+pub fn trigger_suggestions(request:&SuggestionRequest,objectives:&[String])->Result<Packet>{
+    let leading=usize::from(request.command.starts_with('/'));
+    let s=crate::commands::trigger_command::suggestions(&request.command[leading..],objectives)
+        .map_err(|e|anyhow::anyhow!("trigger suggestions: {e:?}"))?;
+    let matches=s.list().iter().map(|v|v.text().to_owned()).collect::<Vec<_>>();
+    if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+    let r=s.range();encode_suggestions(request.id,r.start()+leading,r.end()-r.start(),&matches)
+}
+
+/// Native branches use their dispatchers; root suggestions retain administration.
 pub fn native_command_suggestions(
     request: &SuggestionRequest, permission_level: u8, context: &SuggestionContext<'_>,
 ) -> Result<Packet> {
@@ -608,6 +623,7 @@ fn administration_suggestions_with_time(
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none()
         && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
+    if include_time && last_separator.is_none() && "trigger".starts_with(&lowered) && remaining!="trigger" {matches.push("trigger".to_owned());}
     if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
         matches.push("save-all".to_owned());
     }
