@@ -161,6 +161,12 @@ impl Server {
             }
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
+        let say_line=if source_id.is_none(){line.strip_prefix('/').unwrap_or(line)}else{line};
+        if mc121_rust::commands::say_command::is_command(say_line) {
+            drop(owner);
+            return self.execute_say_command(&mc121_rust::chat_listener::AuthorizedCommand{
+                command:say_line.to_owned(),signed_arguments:BTreeMap::new()},source_id,source.permission_level);
+        }
         let team_line = line.strip_prefix('/').unwrap_or(line);
         if main_team_chat::is_command(team_line) {
             drop(owner);
