@@ -101,6 +101,7 @@ enum Parser {
     BlockPos,
     Angle,
     Objective,
+    ResourceLocation,
     GreedyString,
     Word,
     Players,
@@ -114,7 +115,7 @@ enum NodeKind {
     Argument {
         name: &'static str,
         parser: Parser,
-        ask_server: bool,
+        suggestion: Option<&'static str>,
     },
 }
 
@@ -169,10 +170,14 @@ impl Tree {
             NodeKind::Argument {
                 name,
                 parser,
-                ask_server,
+                suggestion: ask_server.then_some("minecraft:ask_server"),
             },
             true,
         )
+    }
+
+    fn argument_named(&mut self,parent:usize,name:&'static str,parser:Parser,suggestion:&'static str)->usize{
+        self.add(parent,NodeKind::Argument{name,parser,suggestion:Some(suggestion)},true)
     }
 
     fn packet(self) -> Result<Packet> {
@@ -182,7 +187,7 @@ impl Tree {
             let (kind, custom) = match &node.kind {
                 NodeKind::Root => (0, false),
                 NodeKind::Literal(_) => (1, false),
-                NodeKind::Argument { ask_server, .. } => (2, *ask_server),
+                NodeKind::Argument { suggestion, .. } => (2, suggestion.is_some()),
             };
             let flags = kind | if node.executable { 4 } else { 0 } | if custom { 16 } else { 0 }
                 | if node.redirect.is_some() { 8 } else { 0 };
@@ -201,7 +206,7 @@ impl Tree {
                 NodeKind::Argument {
                     name,
                     parser,
-                    ask_server,
+                    suggestion,
                 } => {
                     output.string(name);
                     match parser {
@@ -214,6 +219,7 @@ impl Tree {
                         Parser::BlockPos => {output.varint(8);},
                         Parser::Angle => {output.varint(27);},
                         Parser::Objective => {output.varint(23);},
+                        Parser::ResourceLocation => {output.varint(35);},
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -229,9 +235,7 @@ impl Tree {
                             output.varint(19);
                         }
                     }
-                    if *ask_server {
-                        output.string("minecraft:ask_server");
-                    }
+                    if let Some(name)=suggestion {output.string(name);}
                 }
             }
         }
@@ -317,6 +321,7 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let objective=tree.argument(trigger,"objective",Parser::Objective,true);
     for name in ["add","set"] {let branch=tree.literal(objective,name,false);tree.argument(branch,"value",Parser::SignedInteger,false);}
     if permission_level>=2 {
+        let recipe=tree.literal(0,"recipe",false);for name in ["give","take"]{let branch=tree.literal(recipe,name,false);let target=tree.argument(branch,"targets",Parser::Players,false);tree.nodes[target].executable=false;tree.argument_named(target,"recipe",Parser::ResourceLocation,"minecraft:all_recipes");tree.literal(target,"*",true);}
         let say=tree.literal(0,"say",false);tree.argument(say,"message",Parser::Message,false);
         let spawn=tree.literal(0,"setworldspawn",true);
         let pos=tree.argument(spawn,"pos",Parser::BlockPos,false);
@@ -358,6 +363,15 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
         }
     }
     tree.packet()
+}
+
+/// Recipe names come from the retained captured catalogue; target names are live.
+pub fn recipe_suggestions(request:&SuggestionRequest,permission:u8,names:&[String])->Result<Packet>{
+    let ids=crate::server_recipe_book::VanillaRecipeCatalogue::get().iter().map(|r|r.id.as_str().to_owned()).collect::<Vec<_>>();
+    let leading=usize::from(request.command.starts_with('/'));
+    let s=crate::commands::recipe_command::suggestions(&request.command[leading..],permission,names,&ids).map_err(|e|anyhow::anyhow!("recipe suggestions: {e:?}"))?;
+    let matches=s.list().iter().map(|v|v.text().to_owned()).collect::<Vec<_>>();if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+    let r=s.range();encode_suggestions(request.id,r.start()+leading,r.end()-r.start(),&matches)
 }
 
 /// Completion uses the actual current admitted roster supplied by Main.
@@ -635,6 +649,7 @@ fn administration_suggestions_with_time(
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none()
         && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
+    if include_time && permission_level>=2 && last_separator.is_none() && "recipe".starts_with(&lowered) && remaining!="recipe" {matches.push("recipe".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none() && "say".starts_with(&lowered) && remaining!="say" {matches.push("say".to_owned());}
     if include_time && last_separator.is_none() {for name in ["msg","tell","w"]{if name.starts_with(&lowered)&&remaining!=name{matches.push(name.to_owned());}}}
     if include_time && last_separator.is_none() && "me".starts_with(&lowered) && remaining!="me" {matches.push("me".to_owned());}

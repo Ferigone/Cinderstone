@@ -1,0 +1,353 @@
+{
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "scope": "Synthetic RecipeHolder values provide only id/isSpecial; real original ServerRecipeBook and RecipeCommand execute with empty advancement listeners and recording transport.",
+  "trees": [
+    {
+      "permission": 0,
+      "hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "hex": "09000101010202030672656369706501010404676976650101050474616b650202060707746172676574730602020208070774617267657473060216000672656369706523156d696e6563726166743a616c6c5f726563697065730500012a16000672656369706523156d696e6563726166743a616c6c5f7265636970657300"
+    }
+  ],
+  "suggestions": [
+    {
+      "input": "rec",
+      "start": 0,
+      "end": 3,
+      "texts": [
+        "recipe"
+      ]
+    },
+    {
+      "input": "recipe ",
+      "start": 7,
+      "end": 7,
+      "texts": [
+        "give",
+        "take"
+      ]
+    },
+    {
+      "input": "recipe g",
+      "start": 7,
+      "end": 8,
+      "texts": [
+        "give"
+      ]
+    },
+    {
+      "input": "recipe give RecipeT",
+      "start": 12,
+      "end": 19,
+      "texts": [
+        "RecipeTarget"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget beac",
+      "start": 25,
+      "end": 29,
+      "texts": [
+        "minecraft:beacon"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:bea",
+      "start": 25,
+      "end": 38,
+      "texts": [
+        "minecraft:beacon"
+      ]
+    },
+    {
+      "input": "recipe take RecipeTarget armor_d",
+      "start": 25,
+      "end": 32,
+      "texts": [
+        "minecraft:armor_dye"
+      ]
+    }
+  ],
+  "execution": [
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "known": true,
+        "highlight": true
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+      ],
+      "admin": [],
+      "recipe_packets": [
+        "01000000000000000001106d696e6563726166743a626561636f6e"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "initial_known": true,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": true,
+        "highlight": true
+      },
+      "ok": false,
+      "error_key": "commands.recipe.give.failed",
+      "after": {
+        "known": true,
+        "highlight": true
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e676976652e6661696c6564000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    },
+    {
+      "input": "recipe take RecipeTarget minecraft:beacon",
+      "initial_known": true,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": true,
+        "highlight": true
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e74616b652e737563636573732e73696e676c650000"
+      ],
+      "admin": [],
+      "recipe_packets": [
+        "02000000000000000001106d696e6563726166743a626561636f6e"
+      ]
+    },
+    {
+      "input": "recipe take RecipeTarget minecraft:beacon",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "commands.recipe.take.failed",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e74616b652e6661696c6564000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": [
+        "02000000000000000000"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:armor_dye",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "commands.recipe.give.failed",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e676976652e6661696c6564000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:missing",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "recipe.notFound",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a0000000109000477697468080000000100116d696e6563726166743a6d697373696e670800097472616e736c617465000f7265636970652e6e6f74466f756e64000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    },
+    {
+      "input": "recipe give Missing minecraft:beacon",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "argument.entity.notfound.player",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon trailing",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e642e756e6b6e6f776e2e617267756d656e74000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    },
+    {
+      "input": "recipe give RecipeTarget beacon",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "known": true,
+        "highlight": true
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+      ],
+      "admin": [],
+      "recipe_packets": [
+        "01000000000000000001106d696e6563726166743a626561636f6e"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "initial_known": false,
+      "console": true,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "known": true,
+        "highlight": true
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+      ],
+      "admin": [
+        "0a090004776974680a00000002080000000653657276657200090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c6500080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "recipe_packets": [
+        "01000000000000000001106d696e6563726166743a626561636f6e"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "initial_known": false,
+      "console": false,
+      "team": true,
+      "permission": 2,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "known": true,
+        "highlight": true
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080005636f6c6f720004676f6c6409000565787472610a000000030800047465787400045b525d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000c526563697065546172676574000800076b657962696e6400086b65792e6a756d7000080009696e73657274696f6e000c526563697065546172676574080004746578740000000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+      ],
+      "admin": [],
+      "recipe_packets": [
+        "01000000000000000001106d696e6563726166743a626561636f6e"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "initial_known": false,
+      "console": false,
+      "team": false,
+      "permission": 0,
+      "before": {
+        "known": false,
+        "highlight": false
+      },
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "after": {
+        "known": false,
+        "highlight": false
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650017636f6d6d616e642e756e6b6e6f776e2e636f6d6d616e64000800047465787400000000"
+      ],
+      "admin": [],
+      "recipe_packets": []
+    }
+  ]
+}

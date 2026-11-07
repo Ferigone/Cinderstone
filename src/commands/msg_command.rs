@@ -7,7 +7,7 @@ use std::{cell::RefCell,rc::Rc};
 pub struct Message{pub target:String,pub text:String}
 #[derive(Clone)]
 struct Source{message:Rc<RefCell<Option<Message>>>}
-struct OnlinePlayerArgument{names:Vec<String>}
+pub(super) struct OnlinePlayerArgument{pub(super) names:Vec<String>}
 impl ArgumentType for OnlinePlayerArgument{
     type Value=String;
     fn network_info(&self)->Option<ArgumentNetworkInfo>{Some(ArgumentNetworkInfo{registry_id:6,template:vec![2]})}

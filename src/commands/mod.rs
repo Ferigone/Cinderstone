@@ -68,3 +68,5 @@ mod tests;
 pub mod say_command;
 
 pub mod msg_command;
+
+pub mod recipe_command;

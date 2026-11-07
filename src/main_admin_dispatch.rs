@@ -109,6 +109,12 @@ impl Server {
 
     pub(super) fn administration_suggestions(&self, entity_id: i32, request: &SuggestionRequest) -> Result<Packet> {
         let input=request.command.strip_prefix('/').unwrap_or(&request.command);
+        if input=="recipe"||input.starts_with("recipe ") {
+            let online=self.online_administration_profiles()?;let p=online.iter().find(|p|p.entity_id==entity_id).context("recipe suggestion source missing")?;
+            let permission=self.administration.read().map_err(|_|anyhow!("administration poisoned"))?.permission_level(p.profile.uuid).clamp(0,4) as u8;
+            let names=online.iter().map(|p|p.profile.name.clone()).collect::<Vec<_>>();
+            return command_protocol::recipe_suggestions(request,permission,&names);
+        }
         if mc121_rust::commands::msg_command::is_command(input) {
             let players=self.players.read().map_err(|_|anyhow!("players poisoned"))?;
             let names=players.registry.snapshot().iter().map(|p|p.profile.name.clone()).collect::<Vec<_>>();
@@ -167,6 +173,9 @@ impl Server {
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
         let say_line=if source_id.is_none(){line.strip_prefix('/').unwrap_or(line)}else{line};
+        if say_line.split_whitespace().next()==Some("recipe") {
+            drop(owner);return self.execute_recipe_command(say_line,source_id,source.permission_level);
+        }
         if mc121_rust::commands::msg_command::is_command(say_line) {
             drop(owner);
             return self.execute_private_message(&mc121_rust::chat_listener::AuthorizedCommand{
