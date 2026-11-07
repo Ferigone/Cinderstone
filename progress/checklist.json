@@ -93,7 +93,8 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "idle_timeout_evidence": "Partial idle timeout (#185): Brigadier command, actual action clock/PLAY disconnect, dedicated property persistence; original deadline/component vectors and real Java/native minute-long flow in docs/validation/idle-timeout-runtime.json. Full #24/#64 remain open."
+      "idle_timeout_evidence": "Partial idle timeout (#185): Brigadier command, actual action clock/PLAY disconnect, dedicated property persistence; original deadline/component vectors and real Java/native minute-long flow in docs/validation/idle-timeout-runtime.json. Full #24/#64 remain open.",
+      "pardon_ip_evidence": "Partial /pardon-ip runtime (#194): permission3 Brigadier word grammar, retained-IP completion and actual persisted removal; original-class witnesses and Java/native blocked-login/unban/rejoin/restart bytes in docs/validation/pardon-ip-runtime.json. Full #24/#64 remain open."
     },
     {
       "id": "registries.1",
@@ -670,7 +671,8 @@
       "banlist_evidence": "Partial /banlist migration (#190): permission3 Brigadier and canonical private feedback over actual retained bans, original-class vectors and Java/native denial/filter/expiry/pardon/restart flow; docs/validation/banlist-command-runtime.json. Full #24/#64 remain open.",
       "save_all_evidence": "Partial /save-all [flush] (#189): native Brigadier and actual serialized save transaction, original feedback/flush/failure witnesses and real Java/native SIGKILL clock/inventory recovery; docs/validation/save-all-runtime.json. Full #24/#45 stay open.",
       "stop_evidence": "Partial /stop runtime (#193): permission4 Brigadier, ordered PLAY disconnect, bounded actual player cleanup and existing final save; original-class witness and docs/validation/stop-command-runtime.json cover player/console stop, restart and SIGTERM. Full #24/#45 remain open.",
-      "admin_feedback_evidence": "Partial feedback correction (#195): Main time/weather/difficulty/worldborder operator packets use the current scoreboard source identity and canonical Component encoding. Executed-original display/sendSuccess witness and native live-team/console packet comparison; docs/validation/admin-feedback-runtime.json. Full #24 remains open."
+      "admin_feedback_evidence": "Partial feedback correction (#195): Main time/weather/difficulty/worldborder operator packets use the current scoreboard source identity and canonical Component encoding. Executed-original display/sendSuccess witness and native live-team/console packet comparison; docs/validation/admin-feedback-runtime.json. Full #24 remains open.",
+      "pardon_ip_evidence": "Partial /pardon-ip runtime (#194): permission3 Brigadier word grammar, retained-IP completion and actual persisted removal; original-class witnesses and Java/native blocked-login/unban/rejoin/restart bytes in docs/validation/pardon-ip-runtime.json. Full #24/#64 remain open."
     },
     {
       "id": "commands_data.2",

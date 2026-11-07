@@ -1,0 +1,244 @@
+{
+  "ok": true,
+  "native_commit": "4a1d669adb1c67e1ea12b0aa7c3663e496f43bb5",
+  "native_src_tree": "12530f6ec58dcb73bf07559b97dc4cf57ab8cd40",
+  "native_binary_sha256": "5ad4e94c6205b0b7d9e868f728c6966291cdfd948d7aaddca6586617f78e18a8",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "pardon-ip",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "pardon-ip target",
+          "executable": true,
+          "parser": "brigadier:string",
+          "properties": "SINGLE_WORD"
+        }
+      ],
+      "nonop_denied_without_write": true,
+      "feedback": [
+        {
+          "text": "pardon-ip 999.1.1.1",
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e696e76616c6964000800047465787400000000"
+        },
+        {
+          "text": "pardon-ip 203.0.113.8",
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e64732e706172646f6e69702e6661696c6564000800047465787400000000"
+        },
+        {
+          "text": "pardon-ip 198.51.100.9",
+          "hex": "0a090004776974680800000001000c3139382e35312e3130302e390800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+        },
+        {
+          "text": "pardon-ip 192.0.2.7",
+          "hex": "0a09000477697468080000000100093139322e302e322e370800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+        }
+      ],
+      "operator_feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b506172646f6e50726f62650b00026964000000042f3bcd62eddf3b2195b30c809f7174550800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c20506172646f6e50726f62652000080009696e73657274696f6e000b506172646f6e50726f626508000474657874000b506172646f6e50726f626500090004776974680800000001000c3139382e35312e3130302e390800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000",
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b506172646f6e50726f62650b00026964000000042f3bcd62eddf3b2195b30c809f7174550800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c20506172646f6e50726f62652000080009696e73657274696f6e000b506172646f6e50726f626508000474657874000b506172646f6e50726f62650009000477697468080000000100093139322e302e322e370800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "completions": [
+        {
+          "text": "/pardon-i",
+          "start": 1,
+          "length": 8,
+          "matches": [
+            "pardon-ip"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "192.0.2.7",
+            "198.51.100.9",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip 2",
+          "start": 10,
+          "length": 1,
+          "matches": [
+            "192.0.2.7",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip 19",
+          "start": 10,
+          "length": 2,
+          "matches": [
+            "192.0.2.7",
+            "198.51.100.9"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "192.0.2.7",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "203.0.113.15"
+          ]
+        }
+      ],
+      "remaining": [
+        [
+          "192.0.2.7",
+          "203.0.113.15"
+        ],
+        [
+          "203.0.113.15"
+        ]
+      ],
+      "failures_private_without_write": true,
+      "removed_retained_expired": true,
+      "hidden_feedback_suppressed": true,
+      "console": true,
+      "blocked_login_reason": "multiplayer.disconnect.banned_ip.reason",
+      "admission_restored": true,
+      "restart_failure_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e64732e706172646f6e69702e6661696c6564000800047465787400000000",
+      "restart_persisted": true
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "pardon-ip",
+          "executable": false,
+          "parser": null,
+          "properties": null
+        },
+        {
+          "path": "pardon-ip target",
+          "executable": true,
+          "parser": "brigadier:string",
+          "properties": "SINGLE_WORD"
+        }
+      ],
+      "nonop_denied_without_write": true,
+      "feedback": [
+        {
+          "text": "pardon-ip 999.1.1.1",
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e696e76616c6964000800047465787400000000"
+        },
+        {
+          "text": "pardon-ip 203.0.113.8",
+          "hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e64732e706172646f6e69702e6661696c6564000800047465787400000000"
+        },
+        {
+          "text": "pardon-ip 198.51.100.9",
+          "hex": "0a090004776974680800000001000c3139382e35312e3130302e390800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+        },
+        {
+          "text": "pardon-ip 192.0.2.7",
+          "hex": "0a09000477697468080000000100093139322e302e322e370800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+        }
+      ],
+      "operator_feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b506172646f6e50726f62650b00026964000000042f3bcd62eddf3b2195b30c809f7174550800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c20506172646f6e50726f62652000080009696e73657274696f6e000b506172646f6e50726f626508000474657874000b506172646f6e50726f626500090004776974680800000001000c3139382e35312e3130302e390800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000",
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000b506172646f6e50726f62650b00026964000000042f3bcd62eddf3b2195b30c809f7174550800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500122f74656c6c20506172646f6e50726f62652000080009696e73657274696f6e000b506172646f6e50726f626508000474657874000b506172646f6e50726f62650009000477697468080000000100093139322e302e322e370800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e7375636365737300080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "completions": [
+        {
+          "text": "/pardon-i",
+          "start": 1,
+          "length": 8,
+          "matches": [
+            "pardon-ip"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "192.0.2.7",
+            "198.51.100.9",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip 2",
+          "start": 10,
+          "length": 1,
+          "matches": [
+            "192.0.2.7",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip 19",
+          "start": 10,
+          "length": 2,
+          "matches": [
+            "192.0.2.7",
+            "198.51.100.9"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "192.0.2.7",
+            "203.0.113.15"
+          ]
+        },
+        {
+          "text": "pardon-ip ",
+          "start": 10,
+          "length": 0,
+          "matches": [
+            "203.0.113.15"
+          ]
+        }
+      ],
+      "remaining": [
+        [
+          "192.0.2.7",
+          "203.0.113.15"
+        ],
+        [
+          "203.0.113.15"
+        ]
+      ],
+      "failures_private_without_write": true,
+      "removed_retained_expired": true,
+      "hidden_feedback_suppressed": true,
+      "console": true,
+      "blocked_login_reason": "multiplayer.disconnect.banned_ip.reason",
+      "admission_restored": true,
+      "restart_failure_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e64732e706172646f6e69702e6661696c6564000800047465787400000000",
+      "restart_persisted": true
+    }
+  },
+  "limits": [
+    "Existing access-list host and its retained-entry behavior; no general date/locale/HashMap or profile-cache parity claim.",
+    "Selected command/component bytes, live-key completions and real admission are compared; syntax-error rendering and packet timing are not."
+  ],
+  "completed_at": "2026-11-07T01:35:16.494Z",
+  "local_source_commit": "468edd25c0d57fb347738f720bd41b196ba6398f",
+  "verification": {
+    "focused_original_tests": 2,
+    "native_build": "passed",
+    "all_targets": "required CI; local monolithic lib-test metadata exceeded memory",
+    "source_equivalence": "API source commit and local source have identical Rust src trees",
+    "rebase_base": "3fb0d6dc13db86abd5d8e2f5422a0fcb1c0fdae0"
+  }
+}

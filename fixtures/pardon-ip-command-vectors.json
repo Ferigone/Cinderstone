@@ -1,0 +1,266 @@
+{
+  "trees": [
+    {
+      "permission": 0,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 1,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "packet_hex": "01000000"
+    },
+    {
+      "permission": 3,
+      "packet_hex": "0300010101010209706172646f6e2d69701600067461726765740500146d696e6563726166743a61736b5f73657276657200"
+    },
+    {
+      "permission": 4,
+      "packet_hex": "0300010101010209706172646f6e2d69701600067461726765740500146d696e6563726166743a61736b5f73657276657200"
+    }
+  ],
+  "execution": [
+    {
+      "input": "pardon-ip 192.0.2.7",
+      "permission": 3,
+      "result": 1,
+      "ok": true,
+      "parsed": true,
+      "target": "192.0.2.7",
+      "feedback_hex": [
+        "0a09000477697468080000000100093139322e302e322e370800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+      ],
+      "remaining": [
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 198.51.100.9",
+      "permission": 3,
+      "result": 1,
+      "ok": true,
+      "parsed": true,
+      "target": "198.51.100.9",
+      "feedback_hex": [
+        "0a090004776974680800000001000c3139382e35312e3130302e390800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e737563636573730000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 203.0.113.8",
+      "permission": 3,
+      "ok": false,
+      "error_key": "commands.pardonip.failed",
+      "parsed": true,
+      "target": "203.0.113.8",
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e64732e706172646f6e69702e6661696c6564000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 999.1.1.1",
+      "permission": 3,
+      "ok": false,
+      "error_key": "commands.pardonip.invalid",
+      "parsed": true,
+      "target": "999.1.1.1",
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e696e76616c6964000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 01.2.3.4",
+      "permission": 3,
+      "ok": false,
+      "error_key": "commands.pardonip.invalid",
+      "parsed": true,
+      "target": "01.2.3.4",
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e696e76616c6964000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 127.1",
+      "permission": 3,
+      "ok": false,
+      "error_key": "commands.pardonip.invalid",
+      "parsed": true,
+      "target": "127.1",
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650019636f6d6d616e64732e706172646f6e69702e696e76616c6964000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip ::1",
+      "permission": 3,
+      "ok": false,
+      "error_key": "command.expected.separator",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001a636f6d6d616e642e65787065637465642e736570617261746f72000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 192.0.2.7 extra",
+      "permission": 3,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e642e756e6b6e6f776e2e617267756d656e74000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 192.0.2.7 ",
+      "permission": 3,
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e642e756e6b6e6f776e2e617267756d656e74000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip\t192.0.2.7",
+      "permission": 3,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650017636f6d6d616e642e756e6b6e6f776e2e636f6d6d616e64000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip",
+      "permission": 3,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650017636f6d6d616e642e756e6b6e6f776e2e636f6d6d616e64000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 192.0.2.7",
+      "permission": 2,
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "parsed": false,
+      "feedback_hex": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650017636f6d6d616e642e756e6b6e6f776e2e636f6d6d616e64000800047465787400000000"
+      ],
+      "remaining": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    }
+  ],
+  "suggestions": [
+    {
+      "input": "pardon-ip",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    },
+    {
+      "input": "pardon-ip ",
+      "start": 10,
+      "end": 10,
+      "texts": [
+        "192.0.2.7",
+        "198.51.100.9",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 19",
+      "start": 10,
+      "end": 12,
+      "texts": [
+        "192.0.2.7",
+        "198.51.100.9"
+      ]
+    },
+    {
+      "input": "pardon-ip 2",
+      "start": 10,
+      "end": 11,
+      "texts": [
+        "192.0.2.7",
+        "2001:db8::1"
+      ]
+    },
+    {
+      "input": "pardon-ip 192.0.",
+      "start": 10,
+      "end": 16,
+      "texts": [
+        "192.0.2.7"
+      ]
+    },
+    {
+      "input": "pardon-ip 198.51.100.9 ",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    },
+    {
+      "input": "pardon-ip invalid",
+      "start": 0,
+      "end": 0,
+      "texts": []
+    }
+  ]
+}

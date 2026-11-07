@@ -21,6 +21,7 @@ pub mod java_text;
 pub mod idle_command;
 pub mod list_command;
 pub mod operation;
+pub mod pardon_ip_command;
 pub mod ranges;
 pub mod seed_command;
 pub mod save_all_command;

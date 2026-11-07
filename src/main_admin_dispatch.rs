@@ -174,6 +174,7 @@ impl Server {
             drop(owner);
             return self.execute_seed_command(time_line, source_id, source.permission_level);
         }
+        let is_pardon_ip = line.strip_prefix('/').unwrap_or(line).split_whitespace().next() == Some("pardon-ip");
         let is_banlist = time_line.split_whitespace().next() == Some("banlist");
         let is_time = time_line.split_whitespace().next() == Some("time");
         let is_weather = time_line.split_whitespace().next() == Some("weather");
@@ -193,10 +194,13 @@ impl Server {
             drop(owner);
             outcome
         };
-        let (send_feedback, log_admin) = {
+        let (send_feedback, log_admin, system_visible) = {
             let players = self.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
+            let visible=if is_pardon_ip {players.registry.snapshot().iter()
+                .filter(|p|players.chat.accepts_system_messages(p.entity_id)).map(|p|p.entity_id).collect::<BTreeSet<_>>()}
+                else {BTreeSet::new()};
             (players.world_context.rules.boolean("sendCommandFeedback").context("missing sendCommandFeedback")?,
-             players.world_context.rules.boolean("logAdminCommands").context("missing logAdminCommands")?)
+             players.world_context.rules.boolean("logAdminCommands").context("missing logAdminCommands")?, visible)
         };
         for effect in outcome.effects {
             match effect {
@@ -216,12 +220,12 @@ impl Server {
                 AdminEffect::Feedback { message, broadcast_to_ops } => {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
-                    } else if send_feedback {
-                        let component = if is_time || is_weather || is_difficulty || is_idle || is_worldborder || is_banlist { main_time_command::feedback_component(&message)? } else { message.network_component()? };
+                    } else if send_feedback && (!is_pardon_ip || system_visible.contains(&source_id.unwrap())) {
+                        let component = if is_time || is_weather || is_difficulty || is_idle || is_worldborder || is_banlist || is_pardon_ip { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
-                        let source_display = if is_idle || world_command {
+                        let source_display = if is_idle || world_command || is_pardon_ip {
                             if let Some(id) = source_id {
                                 let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;
                                 let profile = &players.registry.get(id).context("command source missing")?.profile;
@@ -238,7 +242,7 @@ impl Server {
                         }
                         if send_feedback {
                             let owner=self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
-                            let bytes=if is_idle || world_command {
+                            let bytes=if is_idle || world_command || is_pardon_ip {
                                 use mc121_rust::components::text::{Arg, Component, Contents, Style, TextColor};
                                 // Keep the command owner's typed numeric arguments; parse
                                 // rich team decorations with the unrestricted Component codec.
@@ -254,7 +258,7 @@ impl Server {
                             } else {admission_commands::encode_component_json(&admin_message)?};
                             let packet=system_message(bytes);
                             for player in &online {
-                                if Some(player.entity_id)!=source_id && owner.lists().operators.contains_key(&player.profile.uuid) {
+                                if Some(player.entity_id)!=source_id && (!is_pardon_ip || system_visible.contains(&player.entity_id)) && owner.lists().operators.contains_key(&player.profile.uuid) {
                                     let _=self.entity_events.send(PlayerEvent::WorldAudience { recipients:Arc::new(vec![player.entity_id]), packets:Arc::new(vec![packet.clone()]) });
                                 }
                             }
@@ -265,8 +269,9 @@ impl Server {
         }
         if let Err(error) = outcome.result {
             if let Some(id) = source_id {
+                if is_pardon_ip && !system_visible.contains(&id) {return Ok(());}
                 let component = match &error {
-                    admission_commands::CommandError::Message(message) if is_difficulty || is_worldborder => {
+                    admission_commands::CommandError::Message(message) if is_difficulty || is_worldborder || is_pardon_ip => {
                         json!({"text":"","extra":[message.json_component()],"color":"red"})
                     }
                     admission_commands::CommandError::Message(message) => {
@@ -274,7 +279,7 @@ impl Server {
                     }
                     _ => json!({"text":error.to_string(),"color":"red"}),
                 };
-                let bytes = if is_difficulty || is_worldborder {
+                let bytes = if is_difficulty || is_worldborder || is_pardon_ip {
                     let tag=mc121_rust::nbt::Tag::decode_anonymous(&admission_commands::encode_component_json(&component)?)?;
                     mc121_rust::components::text::Component::from_nbt(&tag)
                         .and_then(|value|value.to_network_nbt()).map_err(|error|anyhow!("{error}"))?
