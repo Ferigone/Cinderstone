@@ -5,6 +5,15 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Static tellraw messages (#215)
+
+Permission2 player/console `/tellraw` sends an existing supported static JSON
+Component to one actual online player, with original SystemChat bytes, live
+name completion, case/self lookup and FULL/SYSTEM/HIDDEN policy. No success/admin
+echo. Dynamic contents, selectors/UUID/offline and unsupported codec variants
+fail explicitly. [Scope/evidence](reference/tellraw.md); full #24 remains open,
+scope1/100 and58/53 unchanged. Hosted verification remains under #19.
+
 ## Retained player XP commands (#213)
 
 Permission2 players and console use `/experience` and `/xp` add/set/query for one
