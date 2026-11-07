@@ -297,6 +297,7 @@ pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
 /// Scoreboard roots are usable in Main. Their full suggestion grammar belongs to WP-E3.
 pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let mut tree=administration_tree(permission_level);
+    if permission_level>=4 {tree.literal(0,"stop",true);}
     let teammsg=tree.literal(0,"teammsg",false);
     tree.argument(teammsg,"message",Parser::Message,false);
     let alias=tree.literal(0,"tm",false);
@@ -349,6 +350,14 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "stop" || input.starts_with("stop ") {
+        let suggestions=crate::commands::stop_command::suggestions(input,permission_level)
+            .map_err(|error|anyhow::anyhow!("stop suggestions: {error:?}"))?;
+        let matches=suggestions.list().iter().map(|s|s.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+        let range=suggestions.range();
+        return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
+    }
     if input == "save-all" || input.starts_with("save-all ") {
         let suggestions = crate::commands::save_all_command::suggestions(input, permission_level)
             .map_err(|error| anyhow::anyhow!("save suggestions: {error:?}"))?;
@@ -576,6 +585,9 @@ fn administration_suggestions_with_time(
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
         matches.push("save-all".to_owned());
+    }
+    if include_time && permission_level>=4 && last_separator.is_none() && "stop".starts_with(&lowered) && remaining!="stop" {
+        matches.push("stop".to_owned());
     }
     // Actual Minecraft profile names, IPs and literals are ASCII. UTF-16 ordering
     // supplies Java String ordering for any explicitly supplied extended values.

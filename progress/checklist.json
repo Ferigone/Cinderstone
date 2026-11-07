@@ -668,7 +668,8 @@
       "idle_timeout_evidence": "Partial idle timeout (#185): Brigadier command, actual action clock/PLAY disconnect, dedicated property persistence; original deadline/component vectors and real Java/native minute-long flow in docs/validation/idle-timeout-runtime.json. Full #24/#64 remain open.",
       "worldborder_evidence": "Partial /worldborder runtime (#186): permission2 Brigadier, retained collision/login border, ordered client packets and imported/native interpolation checkpoints; original-class vectors and docs/validation/worldborder-command-runtime.json. Full catalog remains incomplete.",
       "banlist_evidence": "Partial /banlist migration (#190): permission3 Brigadier and canonical private feedback over actual retained bans, original-class vectors and Java/native denial/filter/expiry/pardon/restart flow; docs/validation/banlist-command-runtime.json. Full #24/#64 remain open.",
-      "save_all_evidence": "Partial /save-all [flush] (#189): native Brigadier and actual serialized save transaction, original feedback/flush/failure witnesses and real Java/native SIGKILL clock/inventory recovery; docs/validation/save-all-runtime.json. Full #24/#45 stay open."
+      "save_all_evidence": "Partial /save-all [flush] (#189): native Brigadier and actual serialized save transaction, original feedback/flush/failure witnesses and real Java/native SIGKILL clock/inventory recovery; docs/validation/save-all-runtime.json. Full #24/#45 stay open.",
+      "stop_evidence": "Partial /stop runtime (#193): permission4 Brigadier, ordered PLAY disconnect, bounded actual player cleanup and existing final save; original-class witness and docs/validation/stop-command-runtime.json cover player/console stop, restart and SIGTERM. Full #24/#45 remain open."
     },
     {
       "id": "commands_data.2",
@@ -732,7 +733,8 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "save_all_evidence": "Partial /save-all [flush] (#189): native Brigadier and actual serialized save transaction, original feedback/flush/failure witnesses and real Java/native SIGKILL clock/inventory recovery; docs/validation/save-all-runtime.json. Full #24/#45 stay open."
+      "save_all_evidence": "Partial /save-all [flush] (#189): native Brigadier and actual serialized save transaction, original feedback/flush/failure witnesses and real Java/native SIGKILL clock/inventory recovery; docs/validation/save-all-runtime.json. Full #24/#45 stay open.",
+      "stop_evidence": "Partial /stop runtime (#193): permission4 Brigadier, ordered PLAY disconnect, bounded actual player cleanup and existing final save; original-class witness and docs/validation/stop-command-runtime.json cover player/console stop, restart and SIGTERM. Full #24/#45 remain open."
     }
   ]
 }

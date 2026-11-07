@@ -4,7 +4,7 @@ use super::*;
 use mc121_rust::{commands::save_all_command, components::text::Component};
 
 impl Server {
-    fn save_command_feedback(&self, source: Option<i32>, component: serde_json::Value,
+    pub(super) fn save_command_feedback(&self, source: Option<i32>, component: serde_json::Value,
         broadcast: bool, error: bool, result: Option<i32>) -> Result<()> {
         let (send_feedback, log_admin, online, visible, display) = {
             let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;

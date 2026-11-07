@@ -5,6 +5,15 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Stop command connected to graceful shutdown (#193)
+
+Console and permission4 players can stop the actual server through native
+Brigadier. Ordered feedback precedes the PLAY shutdown disconnect; the loop closes
+admission, drains actual player cleanup and completes the existing final save.
+[Original/protocol evidence](validation/stop-command-runtime.json) covers denial,
+player/console stop, world/inventory restart and native SIGTERM. [Scope/limits](reference/stop-command.md).
+Full #24/#45 remain open; scope1/100 and58/53 are unchanged. Hosted checks stay #19.
+
 ## Native ban-list queries connected (#190)
 
 Permission3 players and console query retained player/IP bans through native
