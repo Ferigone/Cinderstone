@@ -24,7 +24,7 @@ impl Server {
                         .position;
                     Vec3::new(p.x, p.y, p.z)
                 }
-                None => self.console_command_position,
+                None => self.console_position()?,
             };
             (
                 position,

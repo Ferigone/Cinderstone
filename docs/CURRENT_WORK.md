@@ -5,6 +5,20 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Shared world spawn command (#201)
+
+Console and permission-level2 players can set shared world spawn with native
+Brigadier BlockPos/Angle arguments. The real retained point supplies compass
+notifications, later joins and console coordinates, and survives native/imported
+saves. Saved player positions remain intact; fresh actors use the declared
+bounded admission profile anchored at that point. The
+[original-class/native flow](validation/setworldspawn-runtime.json) compares
+packets and covers denial, source coordinates/angles, fresh/rejoining actors,
+legacy checkpoints and level.dat preservation. [Scope and evidence](reference/setworldspawn-command.md).
+Full #24/#41, vanilla safe/randomized placement and spawn-ticket migration stay
+open. Scope_version 1, denominator 100 and counts 58/53 are unchanged; hosted
+verification remains under #19.
+
 ## Shared administration feedback visibility (#199)
 
 The shared Main feedback path now uses actual live chat settings for private

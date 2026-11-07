@@ -97,6 +97,8 @@ enum Parser {
     BorderDouble,
     NonnegativeFloat,
     Vec2,
+    BlockPos,
+    Angle,
     GreedyString,
     Word,
     Players,
@@ -206,6 +208,8 @@ impl Tree {
                         Parser::BorderDouble => {output.varint(2).u8(3).f64(-crate::border::MAX_SIZE).f64(crate::border::MAX_SIZE);},
                         Parser::NonnegativeFloat => {output.varint(1).u8(1).f32(0.);},
                         Parser::Vec2 => {output.varint(11);},
+                        Parser::BlockPos => {output.varint(8);},
+                        Parser::Angle => {output.varint(27);},
                         Parser::GreedyString => { output.varint(5).varint(2); },
                         Parser::Word => {
                             output.varint(5).varint(0);
@@ -305,6 +309,9 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let trigger=tree.literal(0,"trigger",false);
     tree.argument(trigger,"arguments",Parser::GreedyString,false);
     if permission_level>=2 {
+        let spawn=tree.literal(0,"setworldspawn",true);
+        let pos=tree.argument(spawn,"pos",Parser::BlockPos,false);
+        tree.argument(pos,"angle",Parser::Angle,false);
         tree.literal(0, "seed", true);
         let border=tree.literal(0,"worldborder",false);
         for name in ["add","set"] {
@@ -350,6 +357,14 @@ pub fn native_command_suggestions(
 ) -> Result<Packet> {
     let leading = usize::from(request.command.starts_with('/'));
     let input = &request.command[leading..];
+    if input == "setworldspawn" || input.starts_with("setworldspawn ") {
+        let suggestions=crate::commands::setworldspawn_command::suggestions(input,permission_level)
+            .map_err(|error|anyhow::anyhow!("setworldspawn suggestions: {error:?}"))?;
+        let matches=suggestions.list().iter().map(|s|s.text().to_owned()).collect::<Vec<_>>();
+        if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+        let range=suggestions.range();
+        return encode_suggestions(request.id,range.start()+leading,range.end()-range.start(),&matches);
+    }
     if input == "stop" || input.starts_with("stop ") {
         let suggestions=crate::commands::stop_command::suggestions(input,permission_level)
             .map_err(|error|anyhow::anyhow!("stop suggestions: {error:?}"))?;
@@ -591,6 +606,8 @@ fn administration_suggestions_with_time(
     }
     if include_time && permission_level>=2 && last_separator.is_none()
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
+    if include_time && permission_level>=2 && last_separator.is_none()
+        && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
     if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
         matches.push("save-all".to_owned());
     }

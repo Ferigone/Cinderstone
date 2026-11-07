@@ -207,7 +207,8 @@
       "points": 1,
       "code_ported": false,
       "main_integrated": false,
-      "verification": "Partial Main evidence: shared spawn in docs/validation/spawn-login.json (#161); loaded GameRules login UI flags in docs/validation/login-rules.json (#164); configured difficulty and saved lock in docs/validation/difficulty-login.json (#160), each checked against original Java packet bytes. Full level.dat/SavedData lifecycle (#41) remains incomplete."
+      "verification": "Partial Main evidence: shared spawn in docs/validation/spawn-login.json (#161); loaded GameRules login UI flags in docs/validation/login-rules.json (#164); configured difficulty and saved lock in docs/validation/difficulty-login.json (#160), each checked against original Java packet bytes. Full level.dat/SavedData lifecycle (#41) remains incomplete.",
+      "world_spawn_evidence": "Partial shared spawn command/runtime (#201): native Brigadier, actual retained spawn/admission/compass packet and dynamic console coordinates; native checkpoint and imported level.dat persistence preserve unknown fields and legacy defaults. Original-class vectors and real protocol/restart evidence in docs/validation/setworldspawn-runtime.json. Full #24/#41 and full vanilla placement remain open."
     },
     {
       "id": "world_storage.5",
@@ -883,7 +884,8 @@
       "stop_evidence": "Partial /stop runtime (#193): permission4 Brigadier, ordered PLAY disconnect, bounded actual player cleanup and existing final save; original-class witness and docs/validation/stop-command-runtime.json cover player/console stop, restart and SIGTERM. Full #24/#45 remain open.",
       "admin_feedback_evidence": "Partial feedback correction (#195): Main time/weather/difficulty/worldborder operator packets use the current scoreboard source identity and canonical Component encoding. Executed-original display/sendSuccess witness and native live-team/console packet comparison; docs/validation/admin-feedback-runtime.json. Full #24 remains open.",
       "pardon_ip_evidence": "Partial /pardon-ip runtime (#194): permission3 Brigadier word grammar, retained-IP completion and actual persisted removal; original-class witnesses and Java/native blocked-login/unban/rejoin/restart bytes in docs/validation/pardon-ip-runtime.json. Full #24/#64 remain open.",
-      "admin_visibility_evidence": "Partial shared administration feedback correction (#199): actual live chat settings suppress system feedback for Hidden recipients while Full/Commands Only retain delivery. Original ServerPlayer/CommandSourceStack witness and native ordered-world-barrier flow; docs/validation/admin-visibility-runtime.json. Full #24/#64 remain open."
+      "admin_visibility_evidence": "Partial shared administration feedback correction (#199): actual live chat settings suppress system feedback for Hidden recipients while Full/Commands Only retain delivery. Original ServerPlayer/CommandSourceStack witness and native ordered-world-barrier flow; docs/validation/admin-visibility-runtime.json. Full #24/#64 remain open.",
+      "world_spawn_evidence": "Partial shared spawn command/runtime (#201): native Brigadier, actual retained spawn/admission/compass packet and dynamic console coordinates; native checkpoint and imported level.dat persistence preserve unknown fields and legacy defaults. Original-class vectors and real protocol/restart evidence in docs/validation/setworldspawn-runtime.json. Full #24/#41 and full vanilla placement remain open."
     },
     {
       "id": "commands_data.2",
