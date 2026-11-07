@@ -5,6 +5,18 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Single-recipe grant/removal (#211)
+
+Permission2 players and console execute `/recipe give|take` for one online name
+and one recipe ID. Main mutates the retained target book and reuses its real
+recipe-unlocked advancement host before ADD, with original REMOVE/zero-result
+policy and typed feedback. [Original-class/native evidence](validation/recipe-command-runtime.json)
+covers selected packets, denial/errors, special/duplicate recipes, rich target
+name, recipe advancement progress and known/highlight cold restart.
+[Scope](reference/recipe-command.md). Wildcard encounter order, selector/UUID/offline
+targets, datapack loading and full #24/#26 remain open. Scope1/100 and58/53
+unchanged; hosted checks stay #19.
+
 ## Literal online-name whispers (#209)
 
 Non-op players and console use `/msg`, `/tell` and `/w` for one currently online
