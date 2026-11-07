@@ -75,6 +75,24 @@ impl RecipeBookHost for AwardHost<'_> {
 }
 
 impl Server {
+    /// Commands reuse the same nested recipe-unlocked/reward host, before ADD.
+    pub(super) fn mutate_command_recipe_locked(&self,players:&mut LivePlayers,uuid:[u8;16],recipe:&RecipeDescriptor,give:bool)->Result<(i32,Vec<Packet>)>{
+        let book=players.recipe_books.get_mut(&uuid).context("target recipe book missing")?;
+        let before=book.known().clone();
+        let advancements=players.gameplay.recipe_advancements_mut(uuid).context("target advancement owner missing")?;
+        let now=SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
+        let mut host=AwardHost{advancements,now,packets:Vec::new()};
+        let count=if give{book.add_recipes(std::slice::from_ref(recipe),&mut host)?}else{book.remove_recipes(std::slice::from_ref(recipe),&mut host)?};
+        let packets=host.packets;
+        // A different owner may have queued recipe-unlocked work for the next
+        // normal pass. Mark only this command's additions/removals as observed.
+        let added=book.known().difference(&before).map(|id|id.as_str().to_owned()).collect::<Vec<_>>();
+        let removed=before.difference(book.known()).map(|id|id.as_str().to_owned()).collect::<Vec<_>>();
+        let baseline=players.gameplay.recipe_trigger_baseline_mut(uuid);
+        for id in added{baseline.insert(id);}for id in removed{baseline.remove(&id);}
+        Ok((count,packets))
+    }
+
     pub(super) fn flush_recipe_advancements(&self) -> Result<()> {
         let mut guard = self.players.write().map_err(|_| anyhow!("player registry lock poisoned"))?;
         self.award_recipe_advancements_locked(&mut guard, None)

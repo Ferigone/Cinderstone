@@ -1,0 +1,462 @@
+{
+  "ok": true,
+  "native_commit": "8339ba8dd6eb66b966f853efa3e76733a1a8c7b3",
+  "native_src_tree": "2f4142bf3a8f60fea2ca18ee875643038a55ca70",
+  "native_binary_sha256": "fd298f1242458162a07d436284c3157f43412b7f254374dd07b608cec782983f",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "execution": [
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": true,
+      "caller": "RecipeSource",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "01000000000000000001106d696e6563726166743a626561636f6e"
+        ],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e676976652e6661696c6564000800047465787400000000"
+    },
+    {
+      "input": "recipe take RecipeTarget minecraft:beacon",
+      "ok": true,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "02000000000000000001106d696e6563726166743a626561636f6e"
+        ],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e74616b652e737563636573732e73696e676c650000"
+    },
+    {
+      "input": "recipe take RecipeTarget minecraft:beacon",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "02000000000000000000"
+        ],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e74616b652e6661696c6564000800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:armor_dye",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e676976652e6661696c6564000800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:missing",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a0000000109000477697468080000000100116d696e6563726166743a6d697373696e670800097472616e736c617465000f7265636970652e6e6f74466f756e64000800047465787400000000"
+    },
+    {
+      "input": "recipe give Missing minecraft:beacon",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon trailing",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f720003726564090005657874726108000000010045496e636f727265637420617267756d656e7420666f7220636f6d6d616e6420617420706f736974696f6e2034323a202e2e2e66743a626561636f6e203c2d2d5b484552455d0800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget beacon",
+      "ok": true,
+      "caller": "RecipeSource",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "01000000000000000001106d696e6563726166743a626561636f6e"
+        ],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": true,
+      "caller": "console",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "01000000000000000001106d696e6563726166743a626561636f6e"
+        ],
+        "RecipeOutside": []
+      },
+      "console_feedback": {
+        "component": {
+          "translate": "commands.recipe.give.success.single",
+          "with": [
+            1,
+            {
+              "clickEvent": {
+                "action": "suggest_command",
+                "value": "/tell RecipeTarget "
+              },
+              "hoverEvent": {
+                "action": "show_entity",
+                "contents": {
+                  "id": [
+                    1401729886,
+                    745092471,
+                    -1598295412,
+                    632332778
+                  ],
+                  "name": "RecipeTarget",
+                  "type": "minecraft:player"
+                }
+              },
+              "insertion": "RecipeTarget",
+              "text": "RecipeTarget"
+            }
+          ]
+        },
+        "error": false,
+        "event": "administration_feedback",
+        "result": 1
+      },
+      "admin": [
+        "0a090004776974680a00000002080000000653657276657200090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080009696e73657274696f6e000c52656369706554617267657408000474657874000c526563697065546172676574000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c6500080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": true,
+      "caller": "RecipeSource",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [
+          "01000000000000000001106d696e6563726166743a626561636f6e"
+        ],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000c5265636970655461726765740b0002696400000004538cb35e2c693577a0bbf28c25b0a1ea0800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500132f74656c6c205265636970655461726765742000080005636f6c6f720004676f6c6409000565787472610a000000030800047465787400045b525d20080004666f6e7400116d696e6563726166743a756e69666f726d00080000000c526563697065546172676574000800076b657962696e6400086b65792e6a756d7000080009696e73657274696f6e000c526563697065546172676574080004746578740000000800097472616e736c6174650023636f6d6d616e64732e7265636970652e676976652e737563636573732e73696e676c650000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": false,
+      "caller": "RecipeTarget",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610800000001004b556e6b6e6f776e206f7220696e636f6d706c65746520636f6d6d616e642c207365652062656c6f7720666f72206572726f7220617420706f736974696f6e20303a203c2d2d5b484552455d0800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget BEACON",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": false,
+      "highlight": false,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f7200037265640900056578747261080000000100674578706563746564207768697465737061636520746f20656e64206f6e6520617267756d656e742c2062757420666f756e6420747261696c696e67206461746120617420706f736974696f6e2032353a202e2e2e697065546172676574203c2d2d5b484552455d0800047465787400000000"
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:beacon",
+      "ok": false,
+      "caller": "RecipeSource",
+      "known": true,
+      "highlight": true,
+      "delivered": {
+        "RecipeSource": [],
+        "RecipeTarget": [],
+        "RecipeOutside": []
+      },
+      "feedback_hex": "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001b636f6d6d616e64732e7265636970652e676976652e6661696c6564000800047465787400000000"
+    }
+  ],
+  "limits": [
+    "Original RecipeCommand/ServerRecipeBook executes with synthetic descriptor-only recipes, empty advancement listeners and recording transport; no full Java server flow.",
+    "Selected recipe/private/admin packet payloads match the original. Wildcard encounter order, selector/UUID/offline targets and full advancement coverage remain outside scope."
+  ],
+  "tree": [
+    {
+      "path": "recipe",
+      "executable": false,
+      "parser": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe give",
+      "executable": false,
+      "parser": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe give targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe give targets recipe",
+      "executable": true,
+      "parser": "minecraft:resource_location",
+      "suggestion": "minecraft:all_recipes",
+      "redirect": null
+    },
+    {
+      "path": "recipe give targets *",
+      "executable": true,
+      "parser": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe take",
+      "executable": false,
+      "parser": null,
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe take targets",
+      "executable": false,
+      "parser": "minecraft:entity",
+      "suggestion": null,
+      "redirect": null
+    },
+    {
+      "path": "recipe take targets recipe",
+      "executable": true,
+      "parser": "minecraft:resource_location",
+      "suggestion": "minecraft:all_recipes",
+      "redirect": null
+    },
+    {
+      "path": "recipe take targets *",
+      "executable": true,
+      "parser": null,
+      "suggestion": null,
+      "redirect": null
+    }
+  ],
+  "permission_tree_and_named_recipe_provider": true,
+  "completions": [
+    {
+      "input": "recipe ",
+      "start": 7,
+      "end": 7,
+      "texts": [
+        "give",
+        "take"
+      ]
+    },
+    {
+      "input": "recipe g",
+      "start": 7,
+      "end": 8,
+      "texts": [
+        "give"
+      ]
+    },
+    {
+      "input": "recipe give RecipeT",
+      "start": 12,
+      "end": 19,
+      "texts": [
+        "RecipeTarget"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget beac",
+      "start": 25,
+      "end": 29,
+      "texts": [
+        "minecraft:beacon"
+      ]
+    },
+    {
+      "input": "recipe give RecipeTarget minecraft:bea",
+      "start": 25,
+      "end": 38,
+      "texts": [
+        "minecraft:beacon"
+      ]
+    },
+    {
+      "input": "recipe take RecipeTarget armor_d",
+      "start": 25,
+      "end": 32,
+      "texts": [
+        "minecraft:armor_dye"
+      ]
+    },
+    {
+      "input": "recipe take RecipeTarget dye",
+      "start": 25,
+      "end": 28,
+      "texts": [
+        "minecraft:armor_dye",
+        "minecraft:black_dye",
+        "minecraft:black_dye_from_wither_rose",
+        "minecraft:blue_dye",
+        "minecraft:blue_dye_from_cornflower",
+        "minecraft:brown_dye",
+        "minecraft:cyan_dye",
+        "minecraft:cyan_dye_from_pitcher_plant",
+        "minecraft:dye_black_bed",
+        "minecraft:dye_black_carpet",
+        "minecraft:dye_black_wool",
+        "minecraft:dye_blue_bed",
+        "minecraft:dye_blue_carpet",
+        "minecraft:dye_blue_wool",
+        "minecraft:dye_brown_bed",
+        "minecraft:dye_brown_carpet",
+        "minecraft:dye_brown_wool",
+        "minecraft:dye_cyan_bed",
+        "minecraft:dye_cyan_carpet",
+        "minecraft:dye_cyan_wool",
+        "minecraft:dye_gray_bed",
+        "minecraft:dye_gray_carpet",
+        "minecraft:dye_gray_wool",
+        "minecraft:dye_green_bed",
+        "minecraft:dye_green_carpet",
+        "minecraft:dye_green_wool",
+        "minecraft:dye_light_blue_bed",
+        "minecraft:dye_light_blue_carpet",
+        "minecraft:dye_light_blue_wool",
+        "minecraft:dye_light_gray_bed",
+        "minecraft:dye_light_gray_carpet",
+        "minecraft:dye_light_gray_wool",
+        "minecraft:dye_lime_bed",
+        "minecraft:dye_lime_carpet",
+        "minecraft:dye_lime_wool",
+        "minecraft:dye_magenta_bed",
+        "minecraft:dye_magenta_carpet",
+        "minecraft:dye_magenta_wool",
+        "minecraft:dye_orange_bed",
+        "minecraft:dye_orange_carpet",
+        "minecraft:dye_orange_wool",
+        "minecraft:dye_pink_bed",
+        "minecraft:dye_pink_carpet",
+        "minecraft:dye_pink_wool",
+        "minecraft:dye_purple_bed",
+        "minecraft:dye_purple_carpet",
+        "minecraft:dye_purple_wool",
+        "minecraft:dye_red_bed",
+        "minecraft:dye_red_carpet",
+        "minecraft:dye_red_wool",
+        "minecraft:dye_white_bed",
+        "minecraft:dye_white_carpet",
+        "minecraft:dye_white_wool",
+        "minecraft:dye_yellow_bed",
+        "minecraft:dye_yellow_carpet",
+        "minecraft:dye_yellow_wool",
+        "minecraft:gray_dye",
+        "minecraft:green_dye",
+        "minecraft:light_blue_dye_from_blue_orchid",
+        "minecraft:light_blue_dye_from_blue_white_dye",
+        "minecraft:light_gray_dye_from_azure_bluet",
+        "minecraft:light_gray_dye_from_black_white_dye",
+        "minecraft:light_gray_dye_from_gray_white_dye",
+        "minecraft:light_gray_dye_from_oxeye_daisy",
+        "minecraft:light_gray_dye_from_white_tulip",
+        "minecraft:lime_dye",
+        "minecraft:lime_dye_from_smelting",
+        "minecraft:magenta_dye_from_allium",
+        "minecraft:magenta_dye_from_blue_red_pink",
+        "minecraft:magenta_dye_from_blue_red_white_dye",
+        "minecraft:magenta_dye_from_lilac",
+        "minecraft:magenta_dye_from_purple_and_pink",
+        "minecraft:orange_dye_from_orange_tulip",
+        "minecraft:orange_dye_from_red_yellow",
+        "minecraft:orange_dye_from_torchflower",
+        "minecraft:pink_dye_from_peony",
+        "minecraft:pink_dye_from_pink_petals",
+        "minecraft:pink_dye_from_pink_tulip",
+        "minecraft:pink_dye_from_red_white_dye",
+        "minecraft:purple_dye",
+        "minecraft:red_dye_from_beetroot",
+        "minecraft:red_dye_from_poppy",
+        "minecraft:red_dye_from_rose_bush",
+        "minecraft:red_dye_from_tulip",
+        "minecraft:white_dye",
+        "minecraft:white_dye_from_lily_of_the_valley",
+        "minecraft:yellow_dye_from_dandelion",
+        "minecraft:yellow_dye_from_sunflower"
+      ],
+      "comparison": "selected original candidate inclusion in the full native catalogue"
+    }
+  ],
+  "unsupported_input_preserves_book": true,
+  "recipe_unlocked_advancement": {
+    "id": "minecraft:recipes/misc/beacon",
+    "done": true,
+    "has_the_recipe": true
+  },
+  "cold_restart_preserves_known_and_highlight": true,
+  "completed_at": "2026-11-07T04:00:42.235Z"
+}
