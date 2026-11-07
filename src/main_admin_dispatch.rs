@@ -180,6 +180,7 @@ impl Server {
         let is_difficulty = time_line.split_whitespace().next() == Some("difficulty");
         let is_idle = time_line.split_whitespace().next() == Some("setidletimeout");
         let is_worldborder = time_line.split_whitespace().next() == Some("worldborder");
+        let world_command = is_time || is_weather || is_difficulty || is_worldborder;
         let outcome = if is_time || is_weather || is_difficulty || is_idle || is_worldborder {
             drop(owner);
             if is_time { self.execute_time_command(time_line, source.permission_level)? }
@@ -220,10 +221,10 @@ impl Server {
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
                     if broadcast_to_ops {
-                        let source_display = if is_idle {
+                        let source_display = if is_idle || world_command {
                             if let Some(id) = source_id {
                                 let players = self.players.read().map_err(|_|anyhow!("players poisoned"))?;
-                                let profile = &players.registry.get(id).context("idle command source missing")?.profile;
+                                let profile = &players.registry.get(id).context("command source missing")?.profile;
                                 main_scoreboard::decorated_name(&players.gameplay.scoreboard, profile)
                             } else {json!({"text":source.name})}
                         } else {
@@ -238,7 +239,7 @@ impl Server {
                         if send_feedback {
                             let owner=self.administration.read().map_err(|_| anyhow!("administration lock poisoned"))?;
                             let bytes=admission_commands::encode_component_json(&admin_message)?;
-                            let bytes=if is_idle {
+                            let bytes=if is_idle || world_command {
                                 mc121_rust::components::text::Component::from_nbt(&Tag::decode_anonymous(&bytes)?)?.to_network_nbt()?
                             } else {bytes};
                             let packet=system_message(bytes);
