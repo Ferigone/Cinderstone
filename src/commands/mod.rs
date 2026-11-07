@@ -66,3 +66,5 @@ mod tree_packet_tests;
 mod tests;
 
 pub mod say_command;
+
+pub mod msg_command;

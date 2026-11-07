@@ -306,6 +306,8 @@ pub fn administration_command_tree(permission_level: u8) -> Result<Packet> {
 pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let mut tree=administration_tree(permission_level);
     if permission_level>=4 {tree.literal(0,"stop",true);}
+    let msg=tree.literal(0,"msg",false);let targets=tree.argument(msg,"targets",Parser::Players,false);tree.nodes[targets].executable=false;tree.argument(targets,"message",Parser::Message,false);
+    for name in ["tell","w"]{let alias=tree.literal(0,name,false);tree.nodes[alias].redirect=Some(msg);}
     let emote=tree.literal(0,"me",false);tree.argument(emote,"action",Parser::Message,false);
     let teammsg=tree.literal(0,"teammsg",false);
     tree.argument(teammsg,"message",Parser::Message,false);
@@ -356,6 +358,14 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
         }
     }
     tree.packet()
+}
+
+/// Completion uses the actual current admitted roster supplied by Main.
+pub fn msg_suggestions(request:&SuggestionRequest,names:&[String])->Result<Packet>{
+    let leading=usize::from(request.command.starts_with('/'));
+    let s=crate::commands::msg_command::suggestions(&request.command[leading..],names).map_err(|e|anyhow::anyhow!("whisper suggestions: {e:?}"))?;
+    let matches=s.list().iter().map(|v|v.text().to_owned()).collect::<Vec<_>>();if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+    let r=s.range();encode_suggestions(request.id,r.start()+leading,r.end()-r.start(),&matches)
 }
 
 /// The caller supplies trigger objectives enabled by the actual player's score owner.
@@ -626,6 +636,7 @@ fn administration_suggestions_with_time(
     if include_time && permission_level>=2 && last_separator.is_none()
         && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none() && "say".starts_with(&lowered) && remaining!="say" {matches.push("say".to_owned());}
+    if include_time && last_separator.is_none() {for name in ["msg","tell","w"]{if name.starts_with(&lowered)&&remaining!=name{matches.push(name.to_owned());}}}
     if include_time && last_separator.is_none() && "me".starts_with(&lowered) && remaining!="me" {matches.push("me".to_owned());}
     if include_time && last_separator.is_none() && "trigger".starts_with(&lowered) && remaining!="trigger" {matches.push("trigger".to_owned());}
     if include_time && permission_level >= 4 && last_separator.is_none() && "save-all".starts_with(&lowered) && remaining != "save-all" {
