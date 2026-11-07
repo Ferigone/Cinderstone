@@ -12,7 +12,7 @@ impl Server{
         }};
         let players=self.players.read().map_err(|_|anyhow!("players poisoned"))?;
         let Some(target)=players.registry.get_by_name(&message.target) else{drop(players);return self.tellraw_failure(source,Component::from_json(&json!({"translate":"argument.entity.notfound.player"}))?);};
-        let mut payload=message.component.to_network_nbt()?;payload.push(0);let visible=players.chat.accepts_system_messages(target.entity_id);
+        let mut payload=match message.component.to_network_nbt(){Ok(p)=>p,Err(_)=>{drop(players);return self.tellraw_failure(source,Component::literal("This text component cannot be sent"));}};payload.push(0);let visible=players.chat.accepts_system_messages(target.entity_id);
         if visible{let _=self.entity_events.send(PlayerEvent::WorldAudience{recipients:Arc::new(vec![target.entity_id]),packets:Arc::new(vec![Packet{id:0x6c,payload}])});}
         println!("{}",json!({"event":"tellraw_command","source":source,"target":target.entity_id,"result":1,"delivered":visible}));Ok(())
     }

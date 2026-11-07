@@ -40,7 +40,7 @@ async function execute(source,target,outside,row){
   else if(e===actor){assert.equal(rows.length,1);assert.ok(red(rows[0].component));if(row.error_key==='argument.entity.notfound.player')assert.ok(has(rows[0].component,row.error_key));}else assert.deepEqual(rows,[],e.name+' failed-command audience');delivered[e.name]=rows.map(m=>m.hex);
  }
  assert.equal(commandEvents(offset).length,row.ok?1:0);assert.ok(!log.slice(offset).split('\n').some(v=>v.includes('"event":"administration_feedback"')),'no console/admin echo');
- report.execution.push({input:row.input,ok:row.ok,console:row.console,visibility:row.visibility,delivered,...(outcome?{actual_result:outcome.result,actual_target:outcome.target,actual_delivery:outcome.delivered}:{})});
+ report.execution.push({input:row.input.length>1024?row.input.slice(0,80)+"…":row.input,input_utf16_length:row.input.length,ok:row.ok,console:row.console,visibility:row.visibility,delivered,...(outcome?{actual_result:outcome.result,actual_target:outcome.target,actual_delivery:outcome.delivered}:{})});
 }
 try{
  await start();const source=await connect('RawSource'),target=await connect('RawTarget'),outside=await connect('RawOutside');
@@ -51,6 +51,9 @@ try{
  for(const row of original.execution)await execute(source,target,outside,row);
  const unsupported=['tellraw @a "x"','tellraw 00000000-0000-0000-0000-000000000000 "x"','tellraw RawTarget {"selector":"@a"}','tellraw RawTarget {"score":{"name":"x","objective":"y"}}','tellraw RawTarget {"nbt":"x","storage":"minecraft:test"}','tellraw RawTarget {"text":"x","extra":[{"selector":"@a"}]}','tellraw RawTarget {"text":"x","hoverEvent":{"action":"show_text","contents":{"selector":"@a"}}}'];
  for(const input of unsupported)await execute(source,target,outside,{input,ok:false,permission:2,console:false,visibility:0});report.unsupported_components_and_targets_rejected=true;
+ await execute(source,target,outside,{input:'tellraw RawTarget '+JSON.stringify('界'.repeat(22000)),ok:false,permission:2,console:false,visibility:0});
+ await execute(source,target,outside,original.execution[0]);report.unencodable_component_fails_privately_and_sender_remains_connected=true;
+
  assert.deepEqual(JSON.parse(await readFile(path.join(folder,'ops.json'),'utf8')).map(v=>v.name),['RawSource']);await stop();report.ok=true;
 }catch(error){report.error=error.stack;process.exitCode=1;}
 finally{try{await stop();}catch(e){report.shutdown_error=e.message;report.ok=false;process.exitCode=1;server?.kill('SIGKILL');}report.completed_at=new Date().toISOString();await writeFile(output,JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify({ok:report.ok,report:output,local_diagnostics:folder,error:report.error}));}
