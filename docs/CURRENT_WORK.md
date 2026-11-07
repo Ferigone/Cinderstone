@@ -5,6 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Literal say command (#205)
+
+Permission2 players and console broadcast literal `/say <message>` through
+native Brigadier and the actual retained chat audience. The message keeps its
+original spacing/Unicode and uses the current decorated source identity and
+configured say chat type. Signed commands retain the authorized message;
+existing filtering, visibility, cache and spam owners apply. Selectors fail
+explicitly. [Original-class/native evidence](validation/say-runtime.json)
+checks permission, packet bytes, live identity and visibility without a private
+or operator success echo. [Scope](reference/say-command.md). Full #24/#63 and
+real-account trust remain open. Scope1/100 and58/53 remain unchanged; hosted
+verification stays under #19.
+
 ## Native non-op trigger command (#203)
 
 Players use `/trigger <objective> [add <value>|set <value>]` through native
