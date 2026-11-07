@@ -5,6 +5,19 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Retained player XP commands (#213)
+
+Permission2 players and console use `/experience` and `/xp` add/set/query for one
+online name. Real lifecycle XP, metadata score and the existing lastSentExp
+cache drive target-only normal-tick bar packets, including level-only and
+same-value changes. Level-up effects reuse the shared sound/cooldown/RNG owner.
+[Original-class/native evidence](validation/experience-command-runtime.json)
+covers arithmetic/dirty state, private/operator packets, sound metadata, int
+level overflow, failure non-mutation and XP/score cold restart. [Scope](reference/experience-command.md).
+Selector/UUID/offline targets, imported/unavailable profiles and nonfinite XP
+states remain unsupported. Full #24/#57/#65 stays open; scope1/100 and58/53
+unchanged. Hosted checks remain under #19.
+
 ## Single-recipe grant/removal (#211)
 
 Permission2 players and console execute `/recipe give|take` for one online name
