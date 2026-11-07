@@ -18,11 +18,8 @@ impl Server{
         if a.operation!=experience_command::Operation::Query {
             let supported=self.options.anvil_world.is_none()&&target.gamemode==1&&matches!(target.entity_data.get(9),Some(MetadataValue::Float(h))if *h>0.)&&physical.is_some()&&players.native_body_ready.contains(&target.entity_id);
             if !supported{drop(players);return self.experience_failure(source,Component::literal("Experience changes are unavailable for this world/player profile"));}
-            let equipment=players.containers.get(&target.entity_id).context("XP inventory owner missing")?.read(|menu|->Result<()>{
-                main_player_motion_hooks::require_equipment_defaults(&menu.inventory)?;
-                ensure!(!menu.inventory.slot(5).is_some_and(|stack|!stack.is_empty()&&inventory::item_name(stack.item_id)==Some("turtle_helmet")),"unsupported active-effect equipment");Ok(())
-            });
-            if !matches!(equipment,Ok(Ok(())))||players.gameplay.require_supported_floor().is_err(){drop(players);return self.experience_failure(source,Component::literal("Experience changes are unavailable for this player profile"));}
+            let equipment=require_experience_equipment(players.containers.get(&target.entity_id).context("XP inventory owner missing")?);
+            if equipment.is_err()||players.gameplay.require_supported_floor().is_err(){drop(players);return self.experience_failure(source,Component::literal("Experience changes are unavailable for this player profile"));}
         }
         let response=match experience_command::apply(&a,&mut xp,&mut score,display){Ok(r)=>r,Err(e)=>{drop(players);return self.experience_error(source,e);}};
         let last_level_up=players.experience_runtime.last_level_up_tick(target.entity_id);let sound_before=players.item_runtime.sound_random_state48();
@@ -40,5 +37,26 @@ impl Server{
         let sound_after=players.item_runtime.sound_random_state48();drop(players);
         self.command_component_feedback(source,response.component,response.broadcast,false,Some(response.result))?;
         println!("{}",json!({"event":"experience_command","command":line,"target":target.entity_id,"result":response.result,"dirty":response.dirty,"level":xp.level,"total":xp.total,"progress_bits":xp.progress.to_bits(),"score":score,"target_tick":physical.as_ref().map(|p|p.tick_count),"last_level_up_before":last_level_up,"sound_random_before":sound_before,"sound_random_after":sound_after}));Ok(())
+    }
+}
+
+fn require_experience_equipment(container:&SharedContainer)->Result<()>{
+    container.read(|menu|->Result<()>{
+        main_player_motion_hooks::require_equipment_defaults(&menu.inventory)?;
+        ensure!(!menu.inventory.slot(5).is_some_and(|stack|!stack.is_empty()&&inventory::item_name(stack.item_id)==Some("turtle_helmet")),"unsupported active-effect equipment");Ok(())
+    })?
+}
+#[cfg(test)]
+mod tests{
+    use super::*;
+    #[test]
+    fn actual_container_equipment_validation_propagates_inner_failure(){
+        let (empty,_)=SharedContainer::new();assert!(require_experience_equipment(&empty).is_ok());
+        let turtle=(0..2000).find(|id|inventory::item_name(*id)==Some("turtle_helmet")).unwrap();
+        let mut menu=PlayerContainer::new();
+        menu.inventory.set_creative_slot(5,inventory::ItemStack::new(turtle,1).unwrap()).unwrap();
+        let (equipped,_)=SharedContainer::from_container(menu);
+        assert!(equipped.read(|m|!m.inventory.slot(5).unwrap().is_empty()).unwrap());
+        assert!(require_experience_equipment(&equipped).is_err());
     }
 }
