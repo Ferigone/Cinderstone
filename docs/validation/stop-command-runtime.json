@@ -1,0 +1,350 @@
+{
+  "ok": true,
+  "native_commit": "06663eb73295ce3995ebcf89c666883f932ba84c",
+  "native_src_tree": "b55427ff9cba2476506407c2ea25f3572c661d48",
+  "native_binary_sha256": "e14dc1a016f4ff37904824926368e61415abd92069c28b397524fada2ea6e1eb",
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "traces": {
+    "java": {
+      "tree": [
+        {
+          "path": "stop",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_halt": true,
+      "completions": [
+        {
+          "text": "stop",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "stop ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "/st",
+          "start": 1,
+          "length": 2,
+          "matches": [
+            "stop"
+          ]
+        },
+        {
+          "text": "s",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "save-all",
+            "seed",
+            "setidletimeout",
+            "stop"
+          ]
+        }
+      ],
+      "player_stop": {
+        "source": [
+          {
+            "kind": "feedback",
+            "component": {
+              "translate": "commands.stop.stopping"
+            },
+            "hex": "0a0800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e670000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ],
+        "observer": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "hoverEvent": {
+                    "contents": {
+                      "name": "StopProbe",
+                      "id": [
+                        -1443074103,
+                        -389730244,
+                        -1285125911,
+                        1538242640
+                      ],
+                      "type": "minecraft:player"
+                    },
+                    "action": "show_entity"
+                  },
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell StopProbe "
+                  },
+                  "insertion": "StopProbe",
+                  "text": "StopProbe"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000953746f7050726f62650b0002696400000004a9fc6fc9e8c5303cb36688e95bafb8500800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c2053746f7050726f62652000080009696e73657274696f6e000953746f7050726f626508000474657874000953746f7050726f6265000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ]
+      },
+      "restart_world_inventory": true,
+      "console_stop": {
+        "source": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "": "Server"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020800000006536572766572000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ],
+        "observer": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "": "Server"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020800000006536572766572000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ]
+      }
+    },
+    "native": {
+      "tree": [
+        {
+          "path": "stop",
+          "executable": true,
+          "parser": null,
+          "properties": null
+        }
+      ],
+      "denied_nonop": true,
+      "invalid_no_halt": true,
+      "completions": [
+        {
+          "text": "stop",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "stop ",
+          "start": 0,
+          "length": 0,
+          "matches": []
+        },
+        {
+          "text": "/st",
+          "start": 1,
+          "length": 2,
+          "matches": [
+            "stop"
+          ]
+        },
+        {
+          "text": "s",
+          "start": 0,
+          "length": 1,
+          "matches": [
+            "save-all",
+            "seed",
+            "setidletimeout",
+            "stop"
+          ]
+        }
+      ],
+      "player_stop": {
+        "source": [
+          {
+            "kind": "feedback",
+            "component": {
+              "translate": "commands.stop.stopping"
+            },
+            "hex": "0a0800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e670000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ],
+        "observer": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "hoverEvent": {
+                    "contents": {
+                      "name": "StopProbe",
+                      "id": [
+                        -1443074103,
+                        -389730244,
+                        -1285125911,
+                        1538242640
+                      ],
+                      "type": "minecraft:player"
+                    },
+                    "action": "show_entity"
+                  },
+                  "clickEvent": {
+                    "action": "suggest_command",
+                    "value": "/tell StopProbe "
+                  },
+                  "insertion": "StopProbe",
+                  "text": "StopProbe"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d65000953746f7050726f62650b0002696400000004a9fc6fc9e8c5303cb36688e95bafb8500800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500102f74656c6c2053746f7050726f62652000080009696e73657274696f6e000953746f7050726f626508000474657874000953746f7050726f6265000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ]
+      },
+      "restart_world_inventory": true,
+      "console_stop": {
+        "source": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "": "Server"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020800000006536572766572000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ],
+        "observer": [
+          {
+            "kind": "feedback",
+            "component": {
+              "with": [
+                {
+                  "": "Server"
+                },
+                {
+                  "translate": "commands.stop.stopping"
+                }
+              ],
+              "color": "gray",
+              "italic": 1,
+              "translate": "chat.type.admin"
+            },
+            "hex": "0a090004776974680a000000020800000006536572766572000800097472616e736c6174650016636f6d6d616e64732e73746f702e73746f7070696e6700080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+          },
+          {
+            "kind": "disconnect",
+            "component": {
+              "translate": "multiplayer.disconnect.server_shutdown"
+            },
+            "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+          }
+        ]
+      }
+    }
+  },
+  "limits": [
+    "Supported single-level creative profile, admitted PLAY clients; login/configuration phase shutdown parity is excluded.",
+    "Selected subtree/completions, stop feedback/operator components and shutdown disconnect bytes/order are exact. General error rendering and wall-clock tick timing are excluded.",
+    "Time recovery allows 200 ticks for startup/admission; inventory slot identity/count must match exactly. Native PLAY drain is bounded by the 15s write deadline plus 1s, then saves retained actors.",
+    "Root completions retain implemented save-all/seed/setidletimeout/stop roots, excluding the unimplemented stopsound sibling; an empty selected completion normalizes its range to 0/0. Full Java catalog is outside this work package."
+  ],
+  "native_sigterm": {
+    "reason": {
+      "kind": "disconnect",
+      "component": {
+        "translate": "multiplayer.disconnect.server_shutdown"
+      },
+      "hex": "0a0800097472616e736c61746500266d756c7469706c617965722e646973636f6e6e6563742e7365727665725f73687574646f776e00"
+    },
+    "normal_exit": true
+  },
+  "completed_at": "2026-11-07T01:16:25.392Z"
+}
