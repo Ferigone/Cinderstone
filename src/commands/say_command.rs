@@ -14,7 +14,7 @@ impl MessageCommand{
 }
 #[derive(Clone)]
 struct Source{permission:u8,message:Rc<RefCell<Option<String>>>}
-struct MessageArgument;
+pub(super) struct MessageArgument;
 impl ArgumentType for MessageArgument {
     type Value=String;
     fn network_info(&self)->Option<ArgumentNetworkInfo>{Some(ArgumentNetworkInfo{registry_id:19,template:vec![]})}

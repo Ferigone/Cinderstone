@@ -109,6 +109,11 @@ impl Server {
 
     pub(super) fn administration_suggestions(&self, entity_id: i32, request: &SuggestionRequest) -> Result<Packet> {
         let input=request.command.strip_prefix('/').unwrap_or(&request.command);
+        if mc121_rust::commands::msg_command::is_command(input) {
+            let players=self.players.read().map_err(|_|anyhow!("players poisoned"))?;
+            let names=players.registry.snapshot().iter().map(|p|p.profile.name.clone()).collect::<Vec<_>>();
+            return command_protocol::msg_suggestions(request,&names);
+        }
         if input=="trigger"||input.starts_with("trigger ") {
             let players=self.players.read().map_err(|_|anyhow!("players poisoned"))?;
             let holder=&players.registry.get(entity_id).context("suggestion source absent")?.profile.name;
@@ -162,6 +167,11 @@ impl Server {
             None => CommandSource { name: "Server".into(), permission_level: 4 },
         };
         let say_line=if source_id.is_none(){line.strip_prefix('/').unwrap_or(line)}else{line};
+        if mc121_rust::commands::msg_command::is_command(say_line) {
+            drop(owner);
+            return self.execute_private_message(&mc121_rust::chat_listener::AuthorizedCommand{
+                command:say_line.to_owned(),signed_arguments:BTreeMap::new()},source_id);
+        }
         if mc121_rust::commands::say_command::is_command(say_line) {
             drop(owner);
             return self.execute_say_command(&mc121_rust::chat_listener::AuthorizedCommand{

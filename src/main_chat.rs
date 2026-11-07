@@ -432,6 +432,13 @@ impl MainChatRuntime {
         self.broadcast(sender,filtering,message,bound,now_ms,&mut outcome);Ok(outcome)
     }
 
+    pub(super) fn send_private_message(&mut self,sender:Option<i32>,target:i32,message:PlayerChatMessage,
+        incoming:BoundChatType,outgoing:BoundChatType)->Result<MainChatOutcome>{
+        let filtering=match sender{Some(id)=>self.connection_mut(id)?.settings.text_filtering_enabled,None=>false};
+        let mut audience=Vec::new();if let Some(id)=sender{audience.push((id,outgoing));}audience.push((target,incoming));
+        let mut outcome=MainChatOutcome::default();self.deliver_audience(sender,filtering,message,audience,&mut outcome);Ok(outcome)
+    }
+
     pub(super) fn send_team_message(&mut self, sender_id: i32,
         members: &std::collections::BTreeSet<i32>, message: PlayerChatMessage,
         incoming: BoundChatType, outgoing: BoundChatType) -> Result<MainChatOutcome> {
@@ -518,6 +525,7 @@ fn unsigned_has_signable_arguments(command: &str, permission_level: i32) -> bool
     if command.starts_with('/') {
         return false;
     }
+    if mc121_rust::commands::msg_command::is_command(command){return mc121_rust::commands::msg_command::has_message(command);}
     if mc121_rust::commands::say_command::is_command(command) {
         return mc121_rust::commands::say_command::has_message(command,permission_level);
     }
@@ -550,6 +558,13 @@ fn known_signable_arguments(
 ) -> std::result::Result<Vec<SignableArgument>, &'static str> {
     if command.starts_with('/') {
         return Ok(Vec::new());
+    }
+    if mc121_rust::commands::msg_command::is_command(command){
+        return match mc121_rust::commands::msg_command::parse(command){
+            Ok(m)=>Ok(vec![SignableArgument{name:"message".into(),value:m.text}]),
+            Err(mc121_rust::commands::msg_command::MessageError::Syntax(_))=>Ok(Vec::new()),
+            Err(_)=>Err("unported whisper selector/UUID grammar"),
+        };
     }
     if mc121_rust::commands::say_command::is_command(command) {
         return match mc121_rust::commands::say_command::execute(command,permission_level.clamp(0,4) as u8) {
@@ -609,6 +624,20 @@ fn known_signable_arguments(
 #[cfg(test)]
 mod team_signing_tests {
     use super::*;
+    #[test]
+    fn whisper_ranges_secure_gate_and_recipient_signature_owners(){
+        let line="tell MsgTarget   cześć  \"world\" 😀  ";assert_eq!(known_signable_arguments(line,0).unwrap(),vec![SignableArgument{name:"message".into(),value:"  cześć  \"world\" 😀  ".into()}]);
+        for command in [line,"w @a hi","msg MsgTarget @a","msg 00000000-0000-0000-0000-000000000000 hi"]{assert!(unsigned_has_signable_arguments(command,0));}
+        assert!(known_signable_arguments("w @a hi",0).is_err());assert!(!unsigned_has_signable_arguments("msg MsgTarget",0));
+        let mut chat=MainChatRuntime::new();let profile=PlayerProfile::offline("MsgSource").unwrap();for (id,name) in [(1,"MsgSource"),(2,"MsgTarget"),(3,"MsgOutside")]{chat.register(id,&PlayerProfile::offline(name).unwrap(),MainChatSettings::default()).unwrap();}
+        let host=MainChatContext{now_ms:1,enforce_secure_profile:true,is_operator:false,is_singleplayer_owner:false};
+        for command in [line,"w @a hi"]{let outcome=chat.handle_unsigned_command(1,command,0,host).unwrap();assert!(outcome.command.is_none());assert!(!outcome.effects.is_empty());}
+        let baseline=chat.connections[&1].listener.tracked_messages_count();let mut m=PlayerChatMessage::unsigned(profile.uuid,"whisper boundary",1);m.signature=Some([10;256]);
+        let incoming=BoundChatType{registry_id:2,name:json!("MsgSource"),target_name:None};let outgoing=BoundChatType{registry_id:3,name:json!("MsgSource"),target_name:Some(json!("MsgTarget"))};
+        let outcome=chat.send_private_message(Some(1),2,m,incoming,outgoing).unwrap();assert_eq!(outcome.effects.iter().filter_map(|e|if let MainChatEffect::Packet{recipient,..}=e{Some(*recipient)}else{None}).collect::<Vec<_>>(),vec![1,2]);
+        for id in [1,2]{assert!(chat.connections[&id].signature_cache.index_of(&[10;256])>=0);assert_eq!(chat.connections[&id].listener.tracked_messages_count(),baseline+1);}
+        assert_eq!(chat.connections[&3].signature_cache.index_of(&[10;256]),-1);assert_eq!(chat.connections[&3].listener.tracked_messages_count(),baseline);
+    }
     #[test]
     fn say_signing_preserves_original_literal_and_refuses_unsigned_secure_messages(){
         let line="say   cześć  \"world\" 😀  ";
