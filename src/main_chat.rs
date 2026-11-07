@@ -553,9 +553,9 @@ fn known_signable_arguments(
     }
     if mc121_rust::commands::say_command::is_command(command) {
         return match mc121_rust::commands::say_command::execute(command,permission_level.clamp(0,4) as u8) {
-            Ok(value)=>Ok(vec![SignableArgument{name:"message".into(),value}]),
+            Ok(value)=>Ok(vec![SignableArgument{name:mc121_rust::commands::say_command::MessageCommand::from_line(command).expect("known message command").argument().into(),value}]),
             Err(mc121_rust::commands::say_command::SayError::Syntax(_))=>Ok(Vec::new()),
-            Err(_)=>Err("unported selector expansion in say MessageArgument"),
+            Err(_)=>Err("unported selector expansion in broadcast MessageArgument"),
         };
     }
     if super::main_team_chat::is_command(command) {
@@ -624,17 +624,28 @@ mod team_signing_tests {
         for command in [line,"say @a"]{let outcome=chat.handle_unsigned_command(1,command,2,host).unwrap();assert!(outcome.command.is_none());assert!(!outcome.effects.is_empty());}
     }
     #[test]
+    fn nonop_emote_signs_action_and_cannot_bypass_secure_unsigned_gate(){
+        let line="me   cześć  \"world\" 😀  ";
+        assert_eq!(known_signable_arguments(line,0).unwrap(),vec![SignableArgument{name:"action".into(),value:"  cześć  \"world\" 😀  ".into()}]);
+        assert!(unsigned_has_signable_arguments(line,0));assert!(unsigned_has_signable_arguments("me @a",0));assert!(known_signable_arguments("me @a",0).is_err());
+        let mut chat=MainChatRuntime::new();chat.register(1,&PlayerProfile::offline("Alice").unwrap(),MainChatSettings::default()).unwrap();
+        let host=MainChatContext{now_ms:1,enforce_secure_profile:true,is_operator:false,is_singleplayer_owner:false};
+        for command in [line,"me @a"]{let outcome=chat.handle_unsigned_command(1,command,0,host).unwrap();assert!(outcome.command.is_none());assert!(!outcome.effects.is_empty());}
+    }
+    #[test]
     fn say_signed_delivery_keeps_actual_cache_and_visibility_owners(){
+        for registry_id in [1,6] {
         let mut chat=MainChatRuntime::new();let profile=PlayerProfile::offline("Alice").unwrap();
         for (id,name) in [(1,"Alice"),(2,"Bob"),(3,"Cara")]{chat.register(id,&PlayerProfile::offline(name).unwrap(),MainChatSettings::default()).unwrap();}
         chat.connections.get_mut(&3).unwrap().settings.visibility=ChatVisibility::System;
         let baseline=chat.connections[&1].listener.tracked_messages_count();
         // Delivery boundary fixture; cryptographic authorization stays in the listener tests.
         let mut message=PlayerChatMessage::unsigned(profile.uuid,"say signed fixture",1);message.signature=Some([9;256]);
-        let bound=BoundChatType{registry_id:1,name:json!("Alice"),target_name:None};let outcome=chat.send_say_message(Some(1),message,bound,1).unwrap();
+        let bound=BoundChatType{registry_id,name:json!("Alice"),target_name:None};let outcome=chat.send_say_message(Some(1),message,bound,1).unwrap();
         assert_eq!(outcome.effects.iter().filter_map(|e|if let MainChatEffect::Packet{recipient,..}=e{Some(*recipient)}else{None}).collect::<Vec<_>>(),vec![1,2]);
         for id in [1,2]{assert!(chat.connections[&id].signature_cache.index_of(&[9;256])>=0);assert_eq!(chat.connections[&id].listener.tracked_messages_count(),baseline+1);}
         assert_eq!(chat.connections[&3].signature_cache.index_of(&[9;256]),-1);assert_eq!(chat.connections[&3].listener.tracked_messages_count(),baseline);
+        }
     }
     #[test]
     fn nonop_team_message_uses_original_range_and_unsupported_ranges_cannot_bypass_signing() {

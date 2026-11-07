@@ -5,6 +5,17 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Public literal emotes (#207)
+
+Non-op players and console use `/me <action>` through the native literal message
+parser and retained chat audience. Original `action` signing ranges, configured
+emote chat type and current decorated source name are retained. The
+[original-class/native report](validation/emote-runtime.json) covers public tree,
+literal/rich-name packet bytes, actual visibility, selector/length rejection,
+no success echo and proof no operator grant; it includes the `/say` regression.
+[Scope](reference/emote-command.md). Selectors, external moderation and full
+#24/#63 remain open. Scope1/100 and58/53 unchanged; hosted checks stay #19.
+
 ## Literal say command (#205)
 
 Permission2 players and console broadcast literal `/say <message>` through
