@@ -325,6 +325,10 @@ pub fn native_command_tree(permission_level: u8) -> Result<Packet> {
     let objective=tree.argument(trigger,"objective",Parser::Objective,true);
     for name in ["add","set"] {let branch=tree.literal(objective,name,false);tree.argument(branch,"value",Parser::SignedInteger,false);}
     if permission_level>=2 {
+        let title=tree.literal(0,"title",false);let targets=tree.argument(title,"targets",Parser::Players,false);tree.nodes[targets].executable=false;
+        for name in ["clear","reset"]{tree.literal(targets,name,true);}
+        for name in ["title","subtitle","actionbar"]{let branch=tree.literal(targets,name,false);tree.argument(branch,"title",Parser::Component,false);}
+        let times=tree.literal(targets,"times",false);let fade=tree.argument(times,"fadeIn",Parser::Time(0),false);tree.nodes[fade].executable=false;let stay=tree.argument(fade,"stay",Parser::Time(0),false);tree.nodes[stay].executable=false;tree.argument(stay,"fadeOut",Parser::Time(0),false);
         let tellraw=tree.literal(0,"tellraw",false);let target=tree.argument(tellraw,"targets",Parser::Players,false);tree.nodes[target].executable=false;tree.argument(target,"message",Parser::Component,false);
         let experience=tree.literal(0,"experience",false);
         for (name,parser) in [("add",Parser::SignedInteger),("set",Parser::NonnegativeInteger)]{let branch=tree.literal(experience,name,false);let target=tree.argument(branch,"targets",Parser::Players,false);tree.nodes[target].executable=false;let amount=tree.argument(target,"amount",parser,false);for unit in ["points","levels"]{tree.literal(amount,unit,true);}}
@@ -665,7 +669,7 @@ fn administration_suggestions_with_time(
         && "worldborder".starts_with(&lowered) && remaining!="worldborder" {matches.push("worldborder".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none()
         && "setworldspawn".starts_with(&lowered) && remaining!="setworldspawn" {matches.push("setworldspawn".to_owned());}
-    if include_time && permission_level>=2 && last_separator.is_none(){for name in ["experience","xp","tellraw"]{if name.starts_with(&lowered)&&remaining!=name{matches.push(name.to_owned());}}}
+    if include_time && permission_level>=2 && last_separator.is_none(){for name in ["experience","xp","tellraw","title"]{if name.starts_with(&lowered)&&remaining!=name{matches.push(name.to_owned());}}}
     if include_time && permission_level>=2 && last_separator.is_none() && "recipe".starts_with(&lowered) && remaining!="recipe" {matches.push("recipe".to_owned());}
     if include_time && permission_level>=2 && last_separator.is_none() && "say".starts_with(&lowered) && remaining!="say" {matches.push("say".to_owned());}
     if include_time && last_separator.is_none() {for name in ["msg","tell","w"]{if name.starts_with(&lowered)&&remaining!=name{matches.push(name.to_owned());}}}
@@ -757,6 +761,13 @@ mod native_weather_tests {
 pub fn tellraw_suggestions(request:&SuggestionRequest,permission:u8,names:&[String])->Result<Packet>{
     let leading=usize::from(request.command.starts_with('/'));
     let s=crate::commands::tellraw_command::suggestions(&request.command[leading..],permission,names).map_err(|e|anyhow::anyhow!("command suggestions: {e:?}"))?;
+    let matches=s.list().iter().map(|v|v.text().to_owned()).collect::<Vec<_>>();if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
+    let r=s.range();encode_suggestions(request.id,r.start()+leading,r.end()-r.start(),&matches)
+}
+
+pub fn title_suggestions(request:&SuggestionRequest,permission:u8,names:&[String])->Result<Packet>{
+    let leading=usize::from(request.command.starts_with('/'));
+    let s=crate::commands::title_command::suggestions(&request.command[leading..],permission,names).map_err(|e|anyhow::anyhow!("command suggestions: {e:?}"))?;
     let matches=s.list().iter().map(|v|v.text().to_owned()).collect::<Vec<_>>();if matches.is_empty(){return encode_suggestions(request.id,0,0,&[]);}
     let r=s.range();encode_suggestions(request.id,r.start()+leading,r.end()-r.start(),&matches)
 }

@@ -6,7 +6,7 @@ use std::{cell::RefCell,rc::Rc};
 #[derive(Clone)]
 struct Source{permission:u8,action:Rc<RefCell<Option<(String,String)>>>}
 fn source(permission:u8)->Source{Source{permission,action:Rc::new(RefCell::new(None))}}
-struct JsonComponentArgument;
+pub(super) struct JsonComponentArgument;
 impl ArgumentType for JsonComponentArgument{
     type Value=String;
     fn network_info(&self)->Option<ArgumentNetworkInfo>{Some(ArgumentNetworkInfo{registry_id:17,template:vec![]})}
@@ -36,8 +36,11 @@ fn is_static(c:&Component)->bool{
 pub fn parse(input:&str,permission:u8)->Result<Message,TellrawError>{
     let s=source(permission);dispatcher(&[]).execute_str(input,&s).map_err(TellrawError::Syntax)?;let (target,json)=s.action.borrow_mut().take().expect("executed tellraw");
     if target.starts_with('@')||(target.len()==36&&[8,13,18,23].iter().all(|&i|target.as_bytes()[i]==b'-')){return Err(TellrawError::UnsupportedTarget);}
-    let value=serde_json::from_str(&json).expect("parsed JSON");let component=Component::from_json(&value).map_err(TellrawError::Component)?;
-    if !is_static(&component){return Err(TellrawError::DynamicComponent);}Ok(Message{target,component})
+    Ok(Message{target,component:static_component(&json)?})
+}
+pub(super) fn static_component(json:&str)->Result<Component,TellrawError>{
+    let value=serde_json::from_str(json).expect("parsed JSON");let component=Component::from_json(&value).map_err(TellrawError::Component)?;
+    if !is_static(&component){return Err(TellrawError::DynamicComponent);}Ok(component)
 }
 pub fn suggestions(input:&str,permission:u8,names:&[String])->Result<Suggestions,SuggestionError>{let d=dispatcher(names);d.completion_suggestions_at_end(&d.parse(input,&source(permission)))}
 #[cfg(test)]
