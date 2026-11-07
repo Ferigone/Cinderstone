@@ -1,0 +1,903 @@
+{
+  "java_jar_sha1": "450698d1863ab5180c25d7c804ef0fe6369dd1ba",
+  "scope": "Original command and ServerPlayer/Player XP methods execute; metadata score and Level sound are recording sinks. Explicit XP packet codec models the next dirty player tick, not a full Java server.",
+  "trees": [
+    {
+      "permission": 0,
+      "hex": "01000000"
+    },
+    {
+      "permission": 2,
+      "hex": "0d0002010201030304050a657870657269656e636509000102787001010603616464010107037365740101080571756572790201090774617267657473060202010a0774617267657473060202020b0c0774617267657473060306020b0c06616d6f756e74030006020b0c06616d6f756e74030100000000050006706f696e74730500066c6576656c7300"
+    }
+  ],
+  "suggestions": [
+    {
+      "input": "ex",
+      "start": 0,
+      "end": 2,
+      "texts": [
+        "experience"
+      ]
+    },
+    {
+      "input": "experience ",
+      "start": 11,
+      "end": 11,
+      "texts": [
+        "add",
+        "query",
+        "set"
+      ]
+    },
+    {
+      "input": "xp ",
+      "start": 3,
+      "end": 3,
+      "texts": [
+        "add",
+        "query",
+        "set"
+      ]
+    },
+    {
+      "input": "experience add ExperienceT",
+      "start": 15,
+      "end": 26,
+      "texts": [
+        "ExperienceTarget"
+      ]
+    },
+    {
+      "input": "experience add ExperienceTarget 2 ",
+      "start": 34,
+      "end": 34,
+      "texts": [
+        "levels",
+        "points"
+      ]
+    },
+    {
+      "input": "xp set ExperienceTarget 2 l",
+      "start": 26,
+      "end": 27,
+      "texts": [
+        "levels"
+      ]
+    },
+    {
+      "input": "experience query ExperienceT",
+      "start": 17,
+      "end": 28,
+      "texts": [
+        "ExperienceTarget"
+      ]
+    },
+    {
+      "input": "experience query ExperienceTarget ",
+      "start": 34,
+      "end": 34,
+      "texts": [
+        "levels",
+        "points"
+      ]
+    }
+  ],
+  "execution": [
+    {
+      "input": "experience query ExperienceTarget levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 0
+      },
+      "result": 0,
+      "ok": true,
+      "after": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 0
+      },
+      "feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000000000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e6c6576656c730000"
+      ],
+      "feedback_key": "commands.experience.query.levels",
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "xp add ExperienceTarget 6",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 0
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 0,
+        "total": 6,
+        "progress_bits": 1062956471,
+        "score": 6
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000006000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3f5b6db70006",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 2 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 6,
+        "progress_bits": 1062956471,
+        "score": 6
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3de38e3e0108",
+      "sounds": []
+    },
+    {
+      "input": "experience query ExperienceTarget points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000001000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e706f696e74730000"
+      ],
+      "feedback_key": "commands.experience.query.points",
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 3 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 1,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000003000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3de38e3e0308",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 2 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1038323262,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1042123225,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3e1d89d90308",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget -5 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 3,
+        "total": 8,
+        "progress_bits": 1042123225,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a00000002030000fffffffb000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000000",
+      "sounds": []
+    },
+    {
+      "input": "xp add ExperienceTarget 3 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000003000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000300",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 12 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 0,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      },
+      "feedback": [
+        "0a090004776974680a000000020300000000000c000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3f6c4ec50300",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 13 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      },
+      "ok": false,
+      "error_key": "commands.experience.set.points.invalid",
+      "after": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650026636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e696e76616c6964000800047465787400000000"
+      ],
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 1 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 3,
+        "total": 0,
+        "progress_bits": 1064062661,
+        "score": 8
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 4,
+        "total": 1,
+        "progress_bits": 0,
+        "score": 9
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000001000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000401",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget -100 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 4,
+        "total": 1,
+        "progress_bits": 0,
+        "score": 9
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a00000002030000ffffff9c000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000000",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 5 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000005000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000500",
+      "sounds": [
+        {
+          "key": "minecraft:entity.player.levelup",
+          "category": 7,
+          "volume_bits": 1040187392,
+          "pitch_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "input": "experience add ExperienceTarget -1 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 4,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a00000002030000ffffffff000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000400",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 5 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 4,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000005000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000500",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 0 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000000000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000500",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget -1 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "ok": false,
+      "error_key": "argument.integer.low",
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010b0004776974680000000200000000ffffffff0800097472616e736c6174650014617267756d656e742e696e74656765722e6c6f77000800047465787400000000"
+      ],
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 1 trailing",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "ok": false,
+      "error_key": "command.unknown.argument",
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650018636f6d6d616e642e756e6b6e6f776e2e617267756d656e74000800047465787400000000"
+      ],
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience query Missing points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "ok": false,
+      "error_key": "argument.entity.notfound.player",
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c617465001f617267756d656e742e656e746974792e6e6f74666f756e642e706c61796572000800047465787400000000"
+      ],
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience query ExperienceTarget levels",
+      "console": false,
+      "team": false,
+      "permission": 0,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "ok": false,
+      "error_key": "command.unknown.command",
+      "after": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a080005636f6c6f72000372656409000565787472610a000000010800097472616e736c6174650017636f6d6d616e642e756e6b6e6f776e2e636f6d6d616e64000800047465787400000000"
+      ],
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 2 levels",
+      "console": true,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 5,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.levels.success.single",
+      "admin": [
+        "0a090004776974680a00000002080000000653657276657200090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c6500080005636f6c6f720004677261790100066974616c6963010800097472616e736c617465000f636861742e747970652e61646d696e0000"
+      ],
+      "dirty": true,
+      "xp_packet": "000000000200",
+      "sounds": []
+    },
+    {
+      "input": "xp set ExperienceTarget 4 points",
+      "console": false,
+      "team": true,
+      "permission": 2,
+      "before": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080005636f6c6f720004676f6c6409000565787472610a000000030800047465787400045b585d20080004666f6e7400116d696e6563726166743a756e69666f726d000800000010457870657269656e6365546172676574000800076b657962696e6400086b65792e6a756d7000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740000000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3eba2e8c0200",
+      "sounds": []
+    },
+    {
+      "input": "experience query ExperienceTarget points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 4,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a000000020a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e63655461726765740003000000000004000800097472616e736c6174650020636f6d6d616e64732e657870657269656e63652e71756572792e706f696e74730000"
+      ],
+      "feedback_key": "commands.experience.query.points",
+      "admin": [],
+      "dirty": false,
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 4 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3eba2e8c0200",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 2147483647 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a000000020300007fffffff000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3eba2e8cffffffff0700",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 2147483480 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1065353216,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a000000020300007fffff58000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3f800000ffffffff0700",
+      "sounds": []
+    },
+    {
+      "input": "experience add ExperienceTarget 0 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2147483647,
+        "total": 0,
+        "progress_bits": 1065353216,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000000000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e6164642e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.add.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000000",
+      "sounds": [
+        {
+          "key": "minecraft:entity.player.levelup",
+          "category": 7,
+          "volume_bits": 0,
+          "pitch_bits": 1065353216
+        }
+      ]
+    },
+    {
+      "input": "experience set ExperienceTarget 2 levels",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 0,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000002000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e6c6576656c732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.levels.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "000000000200",
+      "sounds": []
+    },
+    {
+      "input": "experience set ExperienceTarget 4 points",
+      "console": false,
+      "team": false,
+      "permission": 2,
+      "before": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 0,
+        "score": -91
+      },
+      "result": 1,
+      "ok": true,
+      "after": {
+        "level": 2,
+        "total": 0,
+        "progress_bits": 1052389004,
+        "score": -91
+      },
+      "feedback": [
+        "0a090004776974680a0000000203000000000004000a000a686f7665724576656e740a0008636f6e74656e74730800046e616d650010457870657269656e63655461726765740b00026964000000041031b55a8fb23bef9124ec2deb0b1d060800047479706500106d696e6563726166743a706c6179657200080006616374696f6e000b73686f775f656e74697479000a000a636c69636b4576656e74080006616374696f6e000f737567676573745f636f6d6d616e6408000576616c756500172f74656c6c20457870657269656e63655461726765742000080009696e73657274696f6e0010457870657269656e6365546172676574080004746578740010457870657269656e6365546172676574000800097472616e736c617465002d636f6d6d616e64732e657870657269656e63652e7365742e706f696e74732e737563636573732e73696e676c650000"
+      ],
+      "feedback_key": "commands.experience.set.points.success.single",
+      "admin": [],
+      "dirty": true,
+      "xp_packet": "3eba2e8c0200",
+      "sounds": []
+    }
+  ]
+}

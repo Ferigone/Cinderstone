@@ -70,3 +70,5 @@ pub mod say_command;
 pub mod msg_command;
 
 pub mod recipe_command;
+
+pub mod experience_command;

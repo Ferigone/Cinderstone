@@ -141,6 +141,7 @@ mod main_team_chat;
 mod main_say_command;
 mod main_msg_command;
 mod main_recipe_command;
+mod main_experience_command;
 mod main_chat_dispatch;
 mod main_chat_keys;
 mod main_connection;

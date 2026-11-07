@@ -235,6 +235,8 @@ pub fn give_experience_points(
     while state.progress >= 1. {
         state.progress = (state.progress - 1.) * xp_needed_for_level(state.level) as f32;
         state.level = state.level.wrapping_add(1);
+        // Player.giveExperienceLevels resets all three fields on int overflow.
+        if state.level<0 {state.level=0;state.progress=0.;state.total=0;}
         level_changed(state.level)?;
         state.progress /= xp_needed_for_level(state.level) as f32;
     }
