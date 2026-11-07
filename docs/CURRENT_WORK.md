@@ -5,6 +5,18 @@ an experimental native Rust implementation. Full vanilla compatibility is not
 complete. The current supported player profile is an alive, unmounted creative
 player in the native flat world, without active status effects.
 
+## Shared administration feedback visibility (#199)
+
+The shared Main feedback path now uses actual live chat settings for private
+success/errors and operator broadcasts. Hidden recipients receive no shared
+feedback; Full and Commands Only retain it. World-state packets keep their
+independent audiences. The [original-class/native check](validation/admin-visibility-runtime.json)
+uses ordered world-event barriers to verify suppression and live restoration,
+including console broadcasts and difficulty state updates. The listener's
+separate hidden-source command rejection is preserved. [Details](reference/admin-visibility.md).
+Full #24/#64 remain open; scope_version 1, denominator 100 and counts 58/53
+are unchanged. Hosted checks remain under #19.
+
 ## IP unban connected to actual admission (#194)
 
 Permission3 players and console execute `/pardon-ip <target>` through native

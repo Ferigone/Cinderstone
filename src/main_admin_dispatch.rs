@@ -196,9 +196,8 @@ impl Server {
         };
         let (send_feedback, log_admin, system_visible) = {
             let players = self.players.read().map_err(|_| anyhow!("player registry lock poisoned"))?;
-            let visible=if is_pardon_ip {players.registry.snapshot().iter()
-                .filter(|p|players.chat.accepts_system_messages(p.entity_id)).map(|p|p.entity_id).collect::<BTreeSet<_>>()}
-                else {BTreeSet::new()};
+            let visible=players.registry.snapshot().iter()
+                .filter(|p|players.chat.accepts_system_messages(p.entity_id)).map(|p|p.entity_id).collect::<BTreeSet<_>>();
             (players.world_context.rules.boolean("sendCommandFeedback").context("missing sendCommandFeedback")?,
              players.world_context.rules.boolean("logAdminCommands").context("missing logAdminCommands")?, visible)
         };
@@ -220,7 +219,7 @@ impl Server {
                 AdminEffect::Feedback { message, broadcast_to_ops } => {
                     if source_id.is_none() {
                         println!("{}", json!({"event":"administration_feedback","component":message.json_component()}));
-                    } else if send_feedback && (!is_pardon_ip || system_visible.contains(&source_id.unwrap())) {
+                    } else if send_feedback && system_visible.contains(&source_id.unwrap()) {
                         let component = if is_time || is_weather || is_difficulty || is_idle || is_worldborder || is_banlist || is_pardon_ip { main_time_command::feedback_component(&message)? } else { message.network_component()? };
                         let _ = self.entity_events.send(PlayerEvent::WorldAudience { recipients: Arc::new(vec![source_id.unwrap()]), packets: Arc::new(vec![system_message(component)]) });
                     }
@@ -258,7 +257,7 @@ impl Server {
                             } else {admission_commands::encode_component_json(&admin_message)?};
                             let packet=system_message(bytes);
                             for player in &online {
-                                if Some(player.entity_id)!=source_id && (!is_pardon_ip || system_visible.contains(&player.entity_id)) && owner.lists().operators.contains_key(&player.profile.uuid) {
+                                if Some(player.entity_id)!=source_id && system_visible.contains(&player.entity_id) && owner.lists().operators.contains_key(&player.profile.uuid) {
                                     let _=self.entity_events.send(PlayerEvent::WorldAudience { recipients:Arc::new(vec![player.entity_id]), packets:Arc::new(vec![packet.clone()]) });
                                 }
                             }
@@ -269,7 +268,7 @@ impl Server {
         }
         if let Err(error) = outcome.result {
             if let Some(id) = source_id {
-                if is_pardon_ip && !system_visible.contains(&id) {return Ok(());}
+                if !system_visible.contains(&id) {return Ok(());}
                 let component = match &error {
                     admission_commands::CommandError::Message(message) if is_difficulty || is_worldborder || is_pardon_ip => {
                         json!({"text":"","extra":[message.json_component()],"color":"red"})
